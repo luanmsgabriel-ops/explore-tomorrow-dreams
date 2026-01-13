@@ -520,30 +520,50 @@ export const DestinationManager = () => {
                     Adicionar Vídeo
                   </button>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-4">
+                  {formData.videos.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4 border border-dashed border-border rounded-xl">
+                      Nenhum vídeo adicionado. Clique em "Adicionar Vídeo" para incluir.
+                    </p>
+                  )}
                   {formData.videos.map((video, index) => (
-                    <div key={video.id} className="flex gap-2">
+                    <div key={video.id} className="p-4 border border-border rounded-xl bg-secondary/30 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-foreground">Vídeo {index + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveVideo(index)}
+                          className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                       <input
                         type="text"
                         value={video.title}
                         onChange={(e) => handleUpdateVideo(index, 'title', e.target.value)}
                         placeholder="Título do vídeo"
-                        className="flex-1 px-4 py-2 rounded-xl bg-secondary border border-border text-foreground text-sm"
+                        className="w-full px-4 py-2 rounded-xl bg-secondary border border-border text-foreground text-sm"
                       />
                       <input
                         type="text"
                         value={video.youtubeId}
                         onChange={(e) => handleUpdateVideo(index, 'youtubeId', e.target.value)}
                         placeholder="ID do YouTube (ex: dQw4w9WgXcQ)"
-                        className="flex-1 px-4 py-2 rounded-xl bg-secondary border border-border text-foreground text-sm"
+                        className="w-full px-4 py-2 rounded-xl bg-secondary border border-border text-foreground text-sm"
                       />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveVideo(index)}
-                        className="p-2 text-destructive hover:bg-destructive/10 rounded-lg"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {/* Video Preview */}
+                      {video.youtubeId && (
+                        <div className="aspect-video rounded-lg overflow-hidden">
+                          <iframe
+                            src={`https://www.youtube.com/embed/${video.youtubeId}`}
+                            title={video.title || 'Video preview'}
+                            className="w-full h-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -579,12 +599,19 @@ export const DestinationManager = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {destinations.map((destination) => (
           <div key={destination.id} className="rounded-2xl border border-border overflow-hidden bg-card">
-            <div className="aspect-video bg-secondary">
+            <div className="aspect-video bg-secondary relative">
               {destination.image_url ? (
                 <img src={destination.image_url} alt={destination.name} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                   <ImageIcon className="w-12 h-12" />
+                </div>
+              )}
+              {/* Video count badge */}
+              {destination.videos && destination.videos.length > 0 && (
+                <div className="absolute bottom-2 right-2 flex items-center gap-1 px-2 py-1 bg-background/80 backdrop-blur-sm rounded-lg">
+                  <Video className="w-3 h-3 text-primary" />
+                  <span className="text-xs font-medium text-foreground">{destination.videos.length} vídeos</span>
                 </div>
               )}
             </div>
@@ -603,6 +630,19 @@ export const DestinationManager = () => {
                 <span className="px-2 py-1 bg-secondary rounded">{destination.category}</span>
               </div>
               <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{destination.description}</p>
+              
+              {/* Video list preview */}
+              {destination.videos && destination.videos.length > 0 && (
+                <div className="mb-4 space-y-1">
+                  <p className="text-xs font-medium text-foreground">Vídeos:</p>
+                  {destination.videos.slice(0, 3).map((video: any, idx: number) => (
+                    <p key={idx} className="text-xs text-muted-foreground truncate">
+                      • {video.title || video.youtubeId}
+                    </p>
+                  ))}
+                </div>
+              )}
+              
               <div className="flex gap-2">
                 <button
                   onClick={() => handleEdit(destination)}
