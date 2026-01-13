@@ -3,6 +3,7 @@ import { Send, Check, Loader2, ChevronLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { destinations } from '@/data/destinations';
+import { quoteFormSchema, validateForm, sanitizeText } from '@/lib/validations';
 
 interface QuoteFormChatProps {
   destinationId?: string;
@@ -39,6 +40,7 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [showDestinationSuggestions, setShowDestinationSuggestions] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const questions = useMemo(() => {
     if (destinationName) {
@@ -59,8 +61,12 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
   const handleSubmitAnswer = () => {
     if (!currentAnswer.trim()) return;
 
+    // Sanitiza a entrada
+    const sanitizedAnswer = sanitizeText(currentAnswer);
+    setValidationError(null);
+
     const currentQuestion = questions[currentStep];
-    const newAnswers = { ...answers, [currentQuestion.key]: currentAnswer };
+    const newAnswers = { ...answers, [currentQuestion.key]: sanitizedAnswer };
     setAnswers(newAnswers);
     setCurrentAnswer('');
     setShowDestinationSuggestions(false);
@@ -89,11 +95,38 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
       setCurrentAnswer(previousAnswer);
       setCurrentStep(currentStep - 1);
       setShowDestinationSuggestions(false);
+      setValidationError(null);
     }
   };
 
   const submitForm = async (formData: Record<string, string>) => {
     setIsSubmitting(true);
+    setValidationError(null);
+
+    // Valida os dados do formulário
+    const validation = validateForm(quoteFormSchema, formData);
+    if (!validation.success) {
+      const emailError = validation.errors.find(e => e.field === 'email');
+      const phoneError = validation.errors.find(e => e.field === 'whatsapp');
+      
+      if (emailError) {
+        setValidationError(emailError.message);
+        setCurrentStep(questions.findIndex(q => q.key === 'email'));
+        setIsSubmitting(false);
+        return;
+      }
+      if (phoneError) {
+        setValidationError(phoneError.message);
+        setCurrentStep(questions.findIndex(q => q.key === 'whatsapp'));
+        setIsSubmitting(false);
+        return;
+      }
+      
+      toast.error('Por favor, verifique os dados informados.');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const finalDestinationName = formData.destination_choice || destinationName;
       const otherDestination = formData.other_destination;
@@ -121,8 +154,7 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
 
       setIsComplete(true);
       toast.success('Solicitação enviada com sucesso! Entraremos em contato em breve.');
-    } catch (error) {
-      console.error('Error submitting quote:', error);
+    } catch {
       toast.error('Erro ao enviar solicitação. Tente novamente.');
     } finally {
       setIsSubmitting(false);
@@ -187,6 +219,13 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
           </div>
         </div>
 
+        {/* Validation error */}
+        {validationError && (
+          <div className="mt-2 text-sm text-destructive animate-fade-in">
+            {validationError}
+          </div>
+        )}
+
         {/* Destination suggestions */}
         {isDestinationQuestion && showDestinationSuggestions && filteredDestinations.length > 0 && (
           <div className="mt-4 grid grid-cols-2 gap-2 animate-fade-in">
@@ -222,6 +261,7 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
             value={currentAnswer}
             onChange={(e) => {
               setCurrentAnswer(e.target.value);
+              setValidationError(null);
               if (isDestinationQuestion) {
                 setShowDestinationSuggestions(true);
               }
@@ -236,6 +276,7 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
             className="flex-1 px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
             disabled={isSubmitting}
             autoFocus
+            maxLength={1000}
           />
           <button
             onClick={handleSubmitAnswer}

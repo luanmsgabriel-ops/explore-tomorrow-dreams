@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Sparkles, Loader2, Mail, Phone, Download, Send, CheckCircle, User, MapPin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import logo from '@/assets/logo.jpeg';
 import { useDestinations } from '@/hooks/useDestinations';
+import { itineraryFormSchema, validateForm, sanitizeText } from '@/lib/validations';
 
 interface ItineraryGeneratorProps {
   destinationId?: string;
@@ -26,13 +27,29 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
   const [itineraryId, setItineraryId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRequestingQuote, setIsRequestingQuote] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !whatsapp) {
-      toast.error('Preencha o nome e WhatsApp');
+    setValidationErrors({});
+    
+    // Valida os campos de contato
+    const validation = validateForm(itineraryFormSchema, {
+      name: sanitizeText(name),
+      email: email.trim(),
+      whatsapp: whatsapp.trim(),
+      preferences: '',
+    });
+
+    if (!validation.success) {
+      const errors: Record<string, string> = {};
+      for (const err of validation.errors) {
+        errors[err.field] = err.message;
+      }
+      setValidationErrors(errors);
       return;
     }
+
     // Se precisa selecionar destino, vai para essa etapa; senão, vai direto para preferências
     if (needsDestinationSelection) {
       setStep('destination');
@@ -52,12 +69,14 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
     setIsLoading(true);
 
     try {
+      const sanitizedPreferences = sanitizeText(preferences);
+      
       const response = await supabase.functions.invoke('generate-itinerary', {
         body: {
           destination: selectedDestinationName,
-          preferences,
-          email,
-          whatsapp,
+          preferences: sanitizedPreferences,
+          email: email.trim(),
+          whatsapp: whatsapp.trim(),
         },
       });
 
@@ -74,9 +93,9 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
       const { data: insertedData } = await supabase.from('ai_itineraries').insert({
         destination_id: selectedDestinationId,
         destination_name: finalDestinationName,
-        user_email: email || '',
-        user_whatsapp: whatsapp,
-        preferences,
+        user_email: email.trim() || '',
+        user_whatsapp: whatsapp.trim(),
+        preferences: sanitizedPreferences,
         itinerary_content: generatedItinerary,
         status: 'pending',
         quote_requested: false,
@@ -88,8 +107,7 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
 
       setStep('result');
       toast.success('Roteiro gerado com sucesso!');
-    } catch (error) {
-      console.error('Error generating itinerary:', error);
+    } catch {
       toast.error('Erro ao gerar roteiro. Tente novamente.');
       setStep('preferences');
     } finally {
@@ -307,12 +325,19 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
               <input
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setValidationErrors((prev) => ({ ...prev, name: '' }));
+                }}
                 placeholder="Seu nome completo"
-                className="w-full pl-12 pr-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className={`w-full pl-12 pr-4 py-3 rounded-xl bg-secondary border ${validationErrors.name ? 'border-destructive' : 'border-border'} text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary`}
                 required
+                maxLength={100}
               />
             </div>
+            {validationErrors.name && (
+              <p className="text-sm text-destructive mt-1">{validationErrors.name}</p>
+            )}
           </div>
 
           <div>
@@ -324,12 +349,19 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
               <input
                 type="tel"
                 value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
+                onChange={(e) => {
+                  setWhatsapp(e.target.value);
+                  setValidationErrors((prev) => ({ ...prev, whatsapp: '' }));
+                }}
                 placeholder="(11) 99999-9999"
-                className="w-full pl-12 pr-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className={`w-full pl-12 pr-4 py-3 rounded-xl bg-secondary border ${validationErrors.whatsapp ? 'border-destructive' : 'border-border'} text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary`}
                 required
+                maxLength={20}
               />
             </div>
+            {validationErrors.whatsapp && (
+              <p className="text-sm text-destructive mt-1">{validationErrors.whatsapp}</p>
+            )}
           </div>
 
           <div>
@@ -341,11 +373,18 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setValidationErrors((prev) => ({ ...prev, email: '' }));
+                }}
                 placeholder="seu@email.com"
-                className="w-full pl-12 pr-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className={`w-full pl-12 pr-4 py-3 rounded-xl bg-secondary border ${validationErrors.email ? 'border-destructive' : 'border-border'} text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary`}
+                maxLength={255}
               />
             </div>
+            {validationErrors.email && (
+              <p className="text-sm text-destructive mt-1">{validationErrors.email}</p>
+            )}
           </div>
 
           <button type="submit" className="w-full btn-gold">
@@ -416,6 +455,7 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
             onChange={(e) => setPreferences(e.target.value)}
             placeholder="Ex: Viagem romântica, gosto de gastronomia e vinhos, prefiro hotéis boutique, quero conhecer lugares menos turísticos..."
             className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary min-h-[120px] resize-none"
+            maxLength={1000}
           />
 
           <button onClick={handleGenerate} className="w-full btn-primary flex items-center justify-center gap-2">
@@ -460,8 +500,7 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
 
       setStep('quote_success');
       toast.success('Solicitação enviada com sucesso!');
-    } catch (error) {
-      console.error('Error requesting quote:', error);
+    } catch {
       toast.error('Erro ao solicitar cotação');
     } finally {
       setIsRequestingQuote(false);
