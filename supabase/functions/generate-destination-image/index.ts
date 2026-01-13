@@ -24,15 +24,10 @@ The scene should capture the iconic landmarks and atmosphere of ${destination}.
 Style: professional travel photography, natural lighting, vibrant colors, high quality.
 The person should be enjoying the destination, looking happy and relaxed.
 
-MANDATORY BRANDING REQUIREMENTS:
-1. In the bottom right corner, include a stylish logo with the letters "TT" intertwined in teal (#2DD4BF) and gold (#D4A574) colors, with a golden airplane silhouette. Below the logo, write "TOMORROW TRAVEL" in elegant gold lettering.
+MANDATORY BRANDING REQUIREMENT:
+In the bottom right corner, include a stylish logo with the letters "TT" intertwined in teal (#2DD4BF) and gold (#D4A574) colors, with a golden airplane silhouette. Below the logo, write "TOMORROW TRAVEL" in elegant gold lettering.
 
-2. At the bottom center of the image, add an elegant banner or text overlay with the phrase: "Isso pode se tornar REAL com a TOMORROW TRAVEL"
-   - The word "REAL" should be emphasized (bolder or larger)
-   - The brand name "TOMORROW TRAVEL" should be in gold color
-   - The text should be clearly visible but integrated beautifully into the image design
-
-The branding elements should be professional, premium-looking, and not obstruct the main travel scene.`;
+The logo should be professional, premium-looking, and not obstruct the main travel scene.`;
 
 
     const messages: any[] = [
