@@ -27,9 +27,17 @@ interface QuoteRequest {
   email: string;
   whatsapp: string;
   destination_name: string | null;
+  destination_id: string | null;
   travel_date: string | null;
   num_people: string | null;
   travel_type: string | null;
+  preferred_airport: string | null;
+  flight_time_preference: string | null;
+  traveling_with_children: boolean | null;
+  special_requests: string | null;
+  travel_word: string | null;
+  preferred_contact_time: string | null;
+  preferred_contact_channel: string | null;
   status: string;
   created_at: string;
 }
@@ -504,7 +512,8 @@ const AdminDashboard = () => {
           <div className="relative w-full max-w-lg bg-card border border-border rounded-2xl overflow-hidden p-6" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-serif text-2xl font-bold text-foreground mb-6">Detalhes da Cotação</h2>
             
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+              {/* Contato */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">E-mail</p>
@@ -516,9 +525,10 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
+              {/* Destino */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Destino</p>
+                  <p className="text-sm text-muted-foreground mb-1">Destino Principal</p>
                   <p className="text-foreground font-medium">{selectedQuote.destination_name || '-'}</p>
                 </div>
                 <div>
@@ -527,20 +537,80 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
+              {/* Viajantes */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Pessoas</p>
+                  <p className="text-sm text-muted-foreground mb-1">Quantidade de Pessoas</p>
                   <p className="text-foreground font-medium">{selectedQuote.num_people || '-'}</p>
                 </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Viaja com Crianças?</p>
+                  <p className="text-foreground font-medium">
+                    {selectedQuote.traveling_with_children === null ? '-' : selectedQuote.traveling_with_children ? 'Sim' : 'Não'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Tipo de Viagem */}
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Tipo de Viagem</p>
                   <p className="text-foreground font-medium">{selectedQuote.travel_type || '-'}</p>
                 </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Palavra que Representa</p>
+                  <p className="text-foreground font-medium">{selectedQuote.travel_word || '-'}</p>
+                </div>
               </div>
 
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Recebido em</p>
-                <p className="text-foreground font-medium">{formatDate(selectedQuote.created_at)}</p>
+              {/* Voo */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Aeroporto Preferido</p>
+                  <p className="text-foreground font-medium">{selectedQuote.preferred_airport || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Horário de Voo Preferido</p>
+                  <p className="text-foreground font-medium">{selectedQuote.flight_time_preference || '-'}</p>
+                </div>
+              </div>
+
+              {/* Contato Preferido */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Horário para Contato</p>
+                  <p className="text-foreground font-medium">{selectedQuote.preferred_contact_time || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Canal de Contato Preferido</p>
+                  <p className="text-foreground font-medium">{selectedQuote.preferred_contact_channel || '-'}</p>
+                </div>
+              </div>
+
+              {/* Pedidos Especiais */}
+              {selectedQuote.special_requests && (
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Pedidos Especiais / Outros Destinos</p>
+                  <p className="text-foreground font-medium whitespace-pre-wrap bg-secondary/50 p-3 rounded-lg">
+                    {selectedQuote.special_requests}
+                  </p>
+                </div>
+              )}
+
+              {/* Data de Recebimento */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Recebido em</p>
+                  <p className="text-foreground font-medium">{formatDate(selectedQuote.created_at)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Status</p>
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                    selectedQuote.status === 'pending' ? 'bg-accent/20 text-accent' : 'bg-primary/20 text-primary'
+                  }`}>
+                    {selectedQuote.status === 'pending' ? 'Pendente' : selectedQuote.status}
+                  </span>
+                </div>
               </div>
             </div>
 
