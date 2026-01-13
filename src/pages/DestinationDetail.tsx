@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { QuoteFormChat } from '@/components/QuoteFormChat';
 import { ItineraryGenerator } from '@/components/ItineraryGenerator';
 import { DestinationChat } from '@/components/DestinationChat';
 import { ImageGenerator } from '@/components/ImageGenerator';
+import { VideoPlayer } from '@/components/VideoPlayer';
 import { getDestinationById } from '@/data/destinations';
-import { Play, Sparkles, MessageCircle, Image, MapPin, Calendar, Users, X } from 'lucide-react';
+import { Sparkles, MessageCircle, Image, MapPin, Calendar, Users, X, ArrowLeft, Sun, Clock } from 'lucide-react';
 
 type ModalType = 'quote' | 'itinerary' | 'chat' | 'image' | null;
 
@@ -21,7 +22,8 @@ const DestinationDetail = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <h1 className="font-serif text-4xl font-bold text-foreground mb-4">Destino não encontrado</h1>
-          <p className="text-muted-foreground">O destino que você procura não existe.</p>
+          <p className="text-muted-foreground mb-6">O destino que você procura não existe.</p>
+          <Link to="/" className="btn-primary">Voltar ao início</Link>
         </div>
       </div>
     );
@@ -36,6 +38,15 @@ const DestinationDetail = () => {
         <img src={destination.image} alt={destination.name} className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0" style={{ background: 'var(--gradient-hero-overlay)' }} />
         <div className="absolute bottom-0 left-0 right-0 h-40" style={{ background: 'var(--gradient-hero-bottom)' }} />
+
+        {/* Back button */}
+        <Link 
+          to={`/${destination.type === 'nacional' ? 'nacional' : destination.type === 'internacional' ? 'internacional' : 'explorar'}`}
+          className="absolute top-24 left-4 lg:left-8 z-10 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span>Voltar</span>
+        </Link>
 
         <div className="relative z-10 h-full flex items-end pb-16">
           <div className="container mx-auto px-4 lg:px-8">
@@ -56,25 +67,61 @@ const DestinationDetail = () => {
         </div>
       </section>
 
-      {/* Action buttons */}
+      {/* Quick Info Cards */}
       <section className="py-8 border-b border-border">
         <div className="container mx-auto px-4 lg:px-8">
-          <div className="flex flex-wrap gap-4">
-            <button onClick={() => setActiveModal('itinerary')} className="btn-primary flex items-center gap-2">
-              <Sparkles className="w-5 h-5" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/50">
+              <Sun className="w-6 h-6 text-accent" />
+              <div>
+                <p className="text-xs text-muted-foreground">Melhor época</p>
+                <p className="text-sm font-medium text-foreground">{destination.bestTime}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/50">
+              <Clock className="w-6 h-6 text-primary" />
+              <div>
+                <p className="text-xs text-muted-foreground">Duração ideal</p>
+                <p className="text-sm font-medium text-foreground">{destination.idealDuration}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/50">
+              <Users className="w-6 h-6 text-teal-light" />
+              <div>
+                <p className="text-xs text-muted-foreground">Indicado para</p>
+                <p className="text-sm font-medium text-foreground">{destination.forWho}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/50">
+              <MapPin className="w-6 h-6 text-gold" />
+              <div>
+                <p className="text-xs text-muted-foreground">Categoria</p>
+                <p className="text-sm font-medium text-foreground">{destination.category}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Action buttons */}
+      <section className="py-8 border-b border-border sticky top-16 z-30 glass">
+        <div className="container mx-auto px-4 lg:px-8">
+          <div className="flex flex-wrap gap-3">
+            <button onClick={() => setActiveModal('itinerary')} className="btn-primary flex items-center gap-2 text-sm">
+              <Sparkles className="w-4 h-4" />
               Criar Roteiro com IA
             </button>
-            <button onClick={() => setActiveModal('quote')} className="btn-gold flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Cotar Passeios
+            <button onClick={() => setActiveModal('quote')} className="btn-gold flex items-center gap-2 text-sm">
+              <Calendar className="w-4 h-4" />
+              Solicitar Cotação
             </button>
-            <button onClick={() => setActiveModal('chat')} className="btn-outline flex items-center gap-2">
-              <MessageCircle className="w-5 h-5" />
+            <button onClick={() => setActiveModal('chat')} className="btn-outline flex items-center gap-2 text-sm">
+              <MessageCircle className="w-4 h-4" />
               Chat com IA
             </button>
-            <button onClick={() => setActiveModal('image')} className="btn-outline flex items-center gap-2">
-              <Image className="w-5 h-5" />
-              Gerar Imagem no Destino
+            <button onClick={() => setActiveModal('image')} className="btn-outline flex items-center gap-2 text-sm">
+              <Image className="w-4 h-4" />
+              Gerar Imagem
             </button>
           </div>
         </div>
@@ -86,36 +133,29 @@ const DestinationDetail = () => {
           <h2 className="font-serif text-3xl font-bold text-foreground mb-8">
             Vídeos de <span className="gradient-text-teal">{destination.name}</span>
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="aspect-video rounded-xl bg-secondary border border-border flex items-center justify-center group cursor-pointer hover:border-primary/50 transition-colors">
-                <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
-                  <Play className="w-8 h-8 text-primary ml-1" />
-                </div>
-              </div>
-            ))}
-          </div>
+          <VideoPlayer videos={destination.videos} destinationName={destination.name} />
         </div>
       </section>
 
-      {/* Quick info */}
-      <section className="py-16 bg-secondary">
+      {/* CTA Section */}
+      <section className="py-16 bg-gradient-to-r from-primary/10 via-transparent to-accent/10">
         <div className="container mx-auto px-4 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-6 rounded-xl bg-background border border-border">
-              <Calendar className="w-8 h-8 text-primary mb-4" />
-              <h3 className="font-serif text-xl font-bold text-foreground mb-2">Melhor Época</h3>
-              <p className="text-muted-foreground">Agosto a Fevereiro - Clima ideal</p>
-            </div>
-            <div className="p-6 rounded-xl bg-background border border-border">
-              <Users className="w-8 h-8 text-accent mb-4" />
-              <h3 className="font-serif text-xl font-bold text-foreground mb-2">Para Quem</h3>
-              <p className="text-muted-foreground">Casais, famílias e aventureiros</p>
-            </div>
-            <div className="p-6 rounded-xl bg-background border border-border">
-              <MapPin className="w-8 h-8 text-teal-light mb-4" />
-              <h3 className="font-serif text-xl font-bold text-foreground mb-2">Duração Ideal</h3>
-              <p className="text-muted-foreground">5 a 7 dias para aproveitar tudo</p>
+          <div className="max-w-2xl mx-auto text-center">
+            <h2 className="font-serif text-3xl font-bold text-foreground mb-4">
+              Pronto para conhecer <span className="gradient-text-gold">{destination.name}</span>?
+            </h2>
+            <p className="text-muted-foreground mb-8">
+              Nossa equipe de especialistas vai criar uma viagem sob medida para você.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4">
+              <button onClick={() => setActiveModal('quote')} className="btn-gold flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                Solicitar Cotação
+              </button>
+              <button onClick={() => setActiveModal('itinerary')} className="btn-outline flex items-center gap-2">
+                <Sparkles className="w-5 h-5" />
+                Criar Roteiro com IA
+              </button>
             </div>
           </div>
         </div>
@@ -131,10 +171,12 @@ const DestinationDetail = () => {
               <X className="w-5 h-5 text-foreground" />
             </button>
             
-            {activeModal === 'quote' && <QuoteFormChat destinationId={destination.id} destinationName={destination.name} onClose={() => setActiveModal(null)} />}
-            {activeModal === 'itinerary' && <ItineraryGenerator destinationId={destination.id} destinationName={destination.name} onClose={() => setActiveModal(null)} />}
-            {activeModal === 'chat' && <div className="h-[600px]"><DestinationChat destinationId={destination.id} destinationName={destination.name} /></div>}
-            {activeModal === 'image' && <ImageGenerator destinationId={destination.id} destinationName={destination.name} />}
+            <div className="overflow-y-auto max-h-[90vh]">
+              {activeModal === 'quote' && <QuoteFormChat destinationId={destination.id} destinationName={destination.name} onClose={() => setActiveModal(null)} />}
+              {activeModal === 'itinerary' && <ItineraryGenerator destinationId={destination.id} destinationName={destination.name} onClose={() => setActiveModal(null)} />}
+              {activeModal === 'chat' && <div className="h-[600px]"><DestinationChat destinationId={destination.id} destinationName={destination.name} /></div>}
+              {activeModal === 'image' && <ImageGenerator destinationId={destination.id} destinationName={destination.name} />}
+            </div>
           </div>
         </div>
       )}
