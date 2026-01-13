@@ -21,6 +21,8 @@ serve(async (req) => {
     const systemPrompt = `Você é um especialista em viagens da Tomorrow Travel, uma agência de viagens premium. 
 Sua função é criar roteiros de viagem personalizados, detalhados e inspiradores.
 
+IMPORTANTE: Se o usuário mencionar um destino específico nas preferências, crie o roteiro para esse destino mencionado, não para o destino padrão informado.
+
 Ao criar o roteiro, inclua:
 - Dia a dia da viagem com atividades específicas
 - Melhores horários para cada atividade
@@ -30,13 +32,17 @@ Ao criar o roteiro, inclua:
 - O que levar na mala
 - Pontos de atenção e dicas de segurança
 
-Use formatação Markdown para organizar o conteúdo.
+OBRIGATÓRIO: Na primeira linha da resposta, escreva APENAS o nome do destino principal do roteiro no formato:
+DESTINO_ROTEIRO: [Nome do Destino]
+
+Depois continue com o roteiro normalmente usando formatação Markdown.
 Seja entusiasta e inspire o viajante!`;
 
-    const userPrompt = `Crie um roteiro de viagem completo para: ${destination}
+    const userPrompt = `Crie um roteiro de viagem completo. O destino sugerido é: ${destination}
 
-Preferências do viajante: ${preferences || 'Não especificadas - crie um roteiro equilibrado entre cultura, natureza e gastronomia'}
+Preferências e/ou destino desejado pelo viajante: ${preferences || 'Não especificadas - crie um roteiro equilibrado entre cultura, natureza e gastronomia para o destino sugerido'}
 
+Se o viajante mencionou outro destino nas preferências, crie o roteiro para esse destino.
 O roteiro deve ter entre 5-7 dias e ser detalhado.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -71,14 +77,23 @@ O roteiro deve ter entre 5-7 dias e ser detalhado.`;
     }
 
     const data = await response.json();
-    const itinerary = data.choices?.[0]?.message?.content;
+    let itinerary = data.choices?.[0]?.message?.content;
 
     if (!itinerary) {
       throw new Error("Failed to generate itinerary");
     }
 
+    // Extract the actual destination from the response
+    let actualDestination = destination;
+    const destinationMatch = itinerary.match(/^DESTINO_ROTEIRO:\s*(.+)$/m);
+    if (destinationMatch) {
+      actualDestination = destinationMatch[1].trim();
+      // Remove the destination line from the itinerary
+      itinerary = itinerary.replace(/^DESTINO_ROTEIRO:\s*.+\n?/m, '').trim();
+    }
+
     return new Response(
-      JSON.stringify({ itinerary, destination, email, whatsapp }),
+      JSON.stringify({ itinerary, destination: actualDestination, email, whatsapp }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
