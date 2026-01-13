@@ -20,7 +20,40 @@ const Index = () => {
       {/* Hero */}
       <HeroSection />
 
-      {/* Categories intro */}
+      {/* Carousels */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <>
+          {explorarDestinations.length > 0 && (
+            <DestinationCarousel
+              title="Explorar"
+              destinations={explorarDestinations}
+              accentColor="teal"
+            />
+          )}
+
+          {nacionalDestinations.length > 0 && (
+            <DestinationCarousel
+              title="Brasil"
+              destinations={nacionalDestinations}
+              accentColor="gold"
+            />
+          )}
+
+          {internacionalDestinations.length > 0 && (
+            <DestinationCarousel
+              title="Internacional"
+              destinations={internacionalDestinations}
+              accentColor="teal"
+            />
+          )}
+        </>
+      )}
+
+      {/* Categories Section - Moved to bottom */}
       <section className="py-16 md:py-24">
         <div className="container mx-auto px-4 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
@@ -69,39 +102,6 @@ const Index = () => {
           </div>
         </div>
       </section>
-
-      {/* Carousels */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      ) : (
-        <>
-          {explorarDestinations.length > 0 && (
-            <DestinationCarousel
-              title="Explorar"
-              destinations={explorarDestinations}
-              accentColor="teal"
-            />
-          )}
-
-          {nacionalDestinations.length > 0 && (
-            <DestinationCarousel
-              title="Brasil"
-              destinations={nacionalDestinations}
-              accentColor="gold"
-            />
-          )}
-
-          {internacionalDestinations.length > 0 && (
-            <DestinationCarousel
-              title="Internacional"
-              destinations={internacionalDestinations}
-              accentColor="teal"
-            />
-          )}
-        </>
-      )}
 
       {/* Features Section */}
       <section className="py-20 border-t border-border">
