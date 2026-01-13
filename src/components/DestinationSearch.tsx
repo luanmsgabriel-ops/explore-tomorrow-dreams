@@ -1,7 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, X, MapPin } from 'lucide-react';
+import { Search, X, MapPin, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { destinations, Destination } from '@/data/destinations';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Destination {
+  id: string;
+  slug: string;
+  name: string;
+  location: string;
+  image_url: string | null;
+  category: string;
+}
 
 interface DestinationSearchProps {
   onClose?: () => void;
@@ -11,25 +20,40 @@ export const DestinationSearch = ({ onClose }: DestinationSearchProps) => {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [results, setResults] = useState<Destination[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (query.trim().length >= 2) {
-      const searchQuery = query.toLowerCase();
-      const filtered = destinations.filter(
-        (dest) =>
-          dest.name.toLowerCase().includes(searchQuery) ||
-          dest.location.toLowerCase().includes(searchQuery) ||
-          dest.category.toLowerCase().includes(searchQuery)
-      );
-      setResults(filtered);
-      setIsOpen(true);
-    } else {
-      setResults([]);
-      setIsOpen(false);
-    }
+    const searchDestinations = async () => {
+      if (query.trim().length >= 2) {
+        setIsLoading(true);
+        try {
+          const { data, error } = await supabase
+            .from('destinations')
+            .select('id, slug, name, location, image_url, category')
+            .eq('is_active', true)
+            .or(`name.ilike.%${query}%,location.ilike.%${query}%,category.ilike.%${query}%`)
+            .limit(10);
+
+          if (error) throw error;
+          setResults(data || []);
+          setIsOpen(true);
+        } catch (err) {
+          console.error('Error searching destinations:', err);
+          setResults([]);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        setResults([]);
+        setIsOpen(false);
+      }
+    };
+
+    const debounce = setTimeout(searchDestinations, 300);
+    return () => clearTimeout(debounce);
   }, [query]);
 
   useEffect(() => {
@@ -47,7 +71,7 @@ export const DestinationSearch = ({ onClose }: DestinationSearchProps) => {
     setQuery('');
     setIsOpen(false);
     onClose?.();
-    navigate(`/destino/${destination.id}`);
+    navigate(`/destino/${destination.slug}`);
   };
 
   const handleClear = () => {
@@ -60,7 +84,11 @@ export const DestinationSearch = ({ onClose }: DestinationSearchProps) => {
   return (
     <div ref={containerRef} className="relative">
       <div className="flex items-center gap-2 bg-secondary/50 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-primary/50 transition-all">
-        <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+        {isLoading ? (
+          <Loader2 className="w-4 h-4 text-muted-foreground shrink-0 animate-spin" />
+        ) : (
+          <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+        )}
         <input
           ref={inputRef}
           type="text"
@@ -94,11 +122,19 @@ export const DestinationSearch = ({ onClose }: DestinationSearchProps) => {
                 onClick={() => handleSelect(destination)}
                 className="w-full flex items-center gap-3 p-3 hover:bg-secondary/50 transition-colors text-left"
               >
-                <img
-                  src={destination.image}
-                  alt={destination.name}
-                  className="w-12 h-12 rounded-lg object-cover"
-                />
+                <div className="w-12 h-12 rounded-lg overflow-hidden bg-secondary">
+                  {destination.image_url ? (
+                    <img
+                      src={destination.image_url}
+                      alt={destination.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <MapPin className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="text-sm font-medium text-foreground truncate">
                     {destination.name}
@@ -118,7 +154,7 @@ export const DestinationSearch = ({ onClose }: DestinationSearchProps) => {
       )}
 
       {/* Sem resultados */}
-      {isOpen && results.length === 0 && query.length >= 2 && (
+      {isOpen && results.length === 0 && query.length >= 2 && !isLoading && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-lg shadow-xl p-4 z-50 animate-fade-in min-w-[280px]">
           <p className="text-sm text-muted-foreground text-center">
             Nenhum destino encontrado para "{query}"

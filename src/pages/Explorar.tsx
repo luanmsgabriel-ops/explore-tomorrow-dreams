@@ -1,11 +1,11 @@
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { DestinationCard } from '@/components/DestinationCard';
-import { getDestinationsByType } from '@/data/destinations';
-import { Compass } from 'lucide-react';
+import { useDestinations } from '@/hooks/useDestinations';
+import { Compass, Loader2 } from 'lucide-react';
 
 const Explorar = () => {
-  const destinations = getDestinationsByType('explorar');
+  const { destinations, isLoading } = useDestinations('explorar');
 
   return (
     <div className="min-h-screen bg-background">
@@ -32,11 +32,21 @@ const Explorar = () => {
       {/* Grid */}
       <section className="pb-20">
         <div className="container mx-auto px-4 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {destinations.map((destination) => (
-              <DestinationCard key={destination.id} {...destination} />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : destinations.length === 0 ? (
+            <div className="text-center py-20 text-muted-foreground">
+              Nenhum destino encontrado nesta categoria.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              {destinations.map((destination) => (
+                <DestinationCard key={destination.id} {...destination} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
