@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { QuoteFormChat } from '@/components/QuoteFormChat';
@@ -14,8 +14,13 @@ type ModalType = 'quote' | 'itinerary' | 'chat' | 'image' | null;
 
 const DestinationDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const destination = getDestinationById(id || '');
   const [activeModal, setActiveModal] = useState<ModalType>(null);
+
+  const handleGoBack = () => {
+    navigate(-1);
+  };
 
   if (!destination) {
     return (
@@ -40,13 +45,13 @@ const DestinationDetail = () => {
         <div className="absolute bottom-0 left-0 right-0 h-40" style={{ background: 'var(--gradient-hero-bottom)' }} />
 
         {/* Back button */}
-        <Link 
-          to={`/${destination.type === 'nacional' ? 'nacional' : destination.type === 'internacional' ? 'internacional' : 'explorar'}`}
-          className="absolute top-24 left-4 lg:left-8 z-10 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+        <button 
+          onClick={handleGoBack}
+          className="absolute top-24 left-4 lg:left-8 z-20 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer bg-background/30 backdrop-blur-sm px-3 py-2 rounded-lg"
         >
           <ArrowLeft className="w-5 h-5" />
           <span>Voltar</span>
-        </Link>
+        </button>
 
         <div className="relative z-10 h-full flex items-end pb-16">
           <div className="container mx-auto px-4 lg:px-8">
