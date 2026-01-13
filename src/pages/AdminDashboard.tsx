@@ -352,11 +352,13 @@ const AdminDashboard = () => {
                                   quote.status === 'pending' ? 'bg-accent/20 text-accent' : 
                                   quote.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
                                   quote.status === 'quoted' ? 'bg-purple-500/20 text-purple-400' :
-                                  'bg-primary/20 text-primary'
+                                  quote.status === 'completed' ? 'bg-primary/20 text-primary' :
+                                  'bg-muted text-muted-foreground'
                                 }`}>
                                   {quote.status === 'pending' ? 'Pendente' : 
                                    quote.status === 'in_progress' ? 'Em andamento' :
                                    quote.status === 'quoted' ? 'Cotado' :
+                                   quote.status === 'completed' ? 'Finalizado' :
                                    quote.status}
                                 </span>
                                 <span className="text-sm text-muted-foreground">{formatDate(quote.created_at)}</span>
@@ -408,11 +410,13 @@ const AdminDashboard = () => {
                                       quote.status === 'pending' ? 'bg-accent/20 text-accent' : 
                                       quote.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
                                       quote.status === 'quoted' ? 'bg-purple-500/20 text-purple-400' :
-                                      'bg-primary/20 text-primary'
+                                      quote.status === 'completed' ? 'bg-primary/20 text-primary' :
+                                      'bg-muted text-muted-foreground'
                                     }`}>
                                       {quote.status === 'pending' ? 'Pendente' : 
                                        quote.status === 'in_progress' ? 'Em andamento' :
                                        quote.status === 'quoted' ? 'Cotado' :
+                                       quote.status === 'completed' ? 'Finalizado' :
                                        quote.status}
                                     </span>
                                   </td>
@@ -767,11 +771,13 @@ const AdminDashboard = () => {
                     selectedQuote.status === 'pending' ? 'bg-accent/20 text-accent' : 
                     selectedQuote.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
                     selectedQuote.status === 'quoted' ? 'bg-purple-500/20 text-purple-400' :
-                    'bg-primary/20 text-primary'
+                    selectedQuote.status === 'completed' ? 'bg-primary/20 text-primary' :
+                    'bg-muted text-muted-foreground'
                   }`}>
                     {selectedQuote.status === 'pending' ? 'Pendente' : 
                      selectedQuote.status === 'in_progress' ? 'Em andamento' :
                      selectedQuote.status === 'quoted' ? 'Cotado' :
+                     selectedQuote.status === 'completed' ? 'Finalizado' :
                      selectedQuote.status}
                   </span>
                 </div>
@@ -816,6 +822,16 @@ const AdminDashboard = () => {
                 >
                   <CheckCircle className="w-4 h-4" />
                   Cotado
+                </button>
+              )}
+
+              {(selectedQuote.status === 'quoted' || selectedQuote.status === 'in_progress') && (
+                <button
+                  onClick={() => handleUpdateQuoteStatus(selectedQuote.id, 'completed')}
+                  className="btn-gold flex items-center gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Finalizado
                 </button>
               )}
             </div>
