@@ -20,6 +20,20 @@ const Index = () => {
       {/* Hero */}
       <HeroSection />
 
+      {/* Section Title - Between Hero and Carousels */}
+      <section className="py-16 md:py-20">
+        <div className="container mx-auto px-4 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto">
+            <h2 className="font-serif text-3xl md:text-5xl font-bold text-foreground mb-4">
+              Descubra o <span className="gradient-text-teal">Extraordinário</span>
+            </h2>
+            <p className="text-muted-foreground text-lg">
+              Curadoria de destinos únicos para viajantes que buscam experiências autênticas e inesquecíveis.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Carousels */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
@@ -53,17 +67,10 @@ const Index = () => {
         </>
       )}
 
-      {/* Categories Section - Moved to bottom */}
+      {/* Categories Section - Cards only */}
       <section className="py-16 md:py-24">
         <div className="container mx-auto px-4 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="font-serif text-3xl md:text-5xl font-bold text-foreground mb-4">
-              Descubra o <span className="gradient-text-teal">Extraordinário</span>
-            </h2>
-            <p className="text-muted-foreground text-lg">
-              Curadoria de destinos únicos para viajantes que buscam experiências autênticas e inesquecíveis.
-            </p>
-          </div>
+          {/* Category cards */}
 
           {/* Category cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
