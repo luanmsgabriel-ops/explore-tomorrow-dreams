@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Image, Upload, Loader2, Download, RefreshCw, Mail, Phone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { imageGeneratorSchema, validateForm } from '@/lib/validations';
 
 interface ImageGeneratorProps {
   destinationId: string;
@@ -14,6 +15,7 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
   const [email, setEmail] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isFormValid = email.trim() !== '' && whatsapp.trim() !== '';
@@ -27,6 +29,12 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
       return;
     }
 
+    // Limita tamanho do arquivo a 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Imagem deve ter no máximo 5MB');
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       setUserImage(event.target?.result as string);
@@ -35,8 +43,24 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
   };
 
   const handleGenerate = async () => {
-    if (!isFormValid) {
-      toast.error('Preencha seu e-mail e WhatsApp para continuar');
+    setValidationErrors({});
+    
+    // Valida os campos antes de enviar
+    const validation = validateForm(imageGeneratorSchema, {
+      email: email.trim(),
+      whatsapp: whatsapp.trim(),
+    });
+
+    if (!validation.success) {
+      const errors: Record<string, string> = {};
+      for (const err of validation.errors) {
+        errors[err.field] = err.message;
+      }
+      setValidationErrors(errors);
+      
+      if (validation.errors[0]) {
+        toast.error(validation.errors[0].message);
+      }
       return;
     }
 
@@ -48,8 +72,8 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
         body: {
           destination: destinationName,
           userImageBase64: userImage,
-          email,
-          whatsapp,
+          email: email.trim(),
+          whatsapp: whatsapp.trim(),
         },
       });
 
@@ -64,13 +88,12 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
         destination_name: destinationName,
         prompt: `Imagem gerada para ${destinationName}`,
         image_url: imageUrl,
-        user_email: email,
-        user_whatsapp: whatsapp,
+        user_email: email.trim(),
+        user_whatsapp: whatsapp.trim(),
       });
 
       toast.success('Imagem gerada com sucesso!');
-    } catch (error) {
-      console.error('Error generating image:', error);
+    } catch {
       toast.error('Erro ao gerar imagem. Tente novamente.');
     } finally {
       setIsLoading(false);
@@ -112,12 +135,19 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setValidationErrors((prev) => ({ ...prev, email: '' }));
+                }}
                 placeholder="seu@email.com"
-                className="w-full pl-11 pr-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                className={`w-full pl-11 pr-4 py-3 rounded-xl bg-secondary border ${validationErrors.email ? 'border-destructive' : 'border-border'} text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm`}
                 required
+                maxLength={255}
               />
             </div>
+            {validationErrors.email && (
+              <p className="text-xs text-destructive mt-1">{validationErrors.email}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
@@ -128,19 +158,26 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
               <input
                 type="tel"
                 value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
+                onChange={(e) => {
+                  setWhatsapp(e.target.value);
+                  setValidationErrors((prev) => ({ ...prev, whatsapp: '' }));
+                }}
                 placeholder="(11) 99999-9999"
-                className="w-full pl-11 pr-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                className={`w-full pl-11 pr-4 py-3 rounded-xl bg-secondary border ${validationErrors.whatsapp ? 'border-destructive' : 'border-border'} text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm`}
                 required
+                maxLength={20}
               />
             </div>
+            {validationErrors.whatsapp && (
+              <p className="text-xs text-destructive mt-1">{validationErrors.whatsapp}</p>
+            )}
           </div>
         </div>
 
         {/* Upload section */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-2">
-            Sua foto (opcional)
+            Sua foto (opcional - máx 5MB)
           </label>
           <div
             onClick={() => fileInputRef.current?.click()}

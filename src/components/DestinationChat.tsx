@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Bot, User } from 'lucide-react';
 import { toast } from 'sonner';
+import { chatMessageSchema, generateSecureSessionId, sanitizeText } from '@/lib/validations';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -13,6 +14,9 @@ interface DestinationChatProps {
 }
 
 export const DestinationChat = ({ destinationId, destinationName }: DestinationChatProps) => {
+  // Gera um ID de sessão criptograficamente seguro
+  const sessionIdRef = useRef<string>(generateSecureSessionId());
+  
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
@@ -35,7 +39,18 @@ export const DestinationChat = ({ destinationId, destinationName }: DestinationC
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    const userMessage: Message = { role: 'user', content: input };
+    // Valida a mensagem antes de enviar
+    const validation = chatMessageSchema.safeParse({ content: input });
+    if (!validation.success) {
+      const error = validation.error.errors[0];
+      toast.error(error?.message || 'Mensagem inválida');
+      return;
+    }
+
+    // Sanitiza a entrada
+    const sanitizedInput = sanitizeText(input);
+    
+    const userMessage: Message = { role: 'user', content: sanitizedInput };
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
@@ -55,6 +70,7 @@ export const DestinationChat = ({ destinationId, destinationName }: DestinationC
             content: m.content,
           })),
           destination: destinationName,
+          sessionId: sessionIdRef.current,
         }),
       });
 
@@ -110,8 +126,7 @@ export const DestinationChat = ({ destinationId, destinationName }: DestinationC
           }
         }
       }
-    } catch (error) {
-      console.error('Chat error:', error);
+    } catch {
       toast.error('Erro ao enviar mensagem. Tente novamente.');
       setMessages((prev) => prev.slice(0, -1));
     } finally {
@@ -181,6 +196,7 @@ export const DestinationChat = ({ destinationId, destinationName }: DestinationC
             placeholder="Pergunte sobre o destino..."
             className="flex-1 px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             disabled={isLoading}
+            maxLength={2000}
           />
           <button
             onClick={handleSend}
