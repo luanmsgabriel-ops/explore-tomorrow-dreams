@@ -99,15 +99,20 @@ export type ValidationError = {
   message: string;
 };
 
+// Tipos para resultado da validação
+export type ValidationSuccess<T> = { success: true; data: T };
+export type ValidationFailure = { success: false; errors: ValidationError[] };
+export type ValidationResult<T> = ValidationSuccess<T> | ValidationFailure;
+
 // Função helper para validar e retornar erros formatados
 export function validateForm<T>(
   schema: z.ZodSchema<T>,
   data: unknown
-): { success: true; data: T } | { success: false; errors: ValidationError[] } {
+): ValidationResult<T> {
   const result = schema.safeParse(data);
   
   if (result.success) {
-    return { success: true, data: result.data };
+    return { success: true, data: result.data } as ValidationSuccess<T>;
   }
   
   const errors: ValidationError[] = result.error.errors.map((err) => ({
@@ -115,7 +120,12 @@ export function validateForm<T>(
     message: err.message,
   }));
   
-  return { success: false, errors };
+  return { success: false, errors } as ValidationFailure;
+}
+
+// Type guard para verificar se é um erro de validação
+export function isValidationError<T>(result: ValidationResult<T>): result is ValidationFailure {
+  return result.success === false;
 }
 
 // Gera um ID de sessão criptograficamente seguro

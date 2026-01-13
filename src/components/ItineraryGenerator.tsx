@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import logo from '@/assets/logo.jpeg';
 import { useDestinations } from '@/hooks/useDestinations';
-import { itineraryFormSchema, validateForm, sanitizeText } from '@/lib/validations';
+import { itineraryFormSchema, validateForm, sanitizeText, isValidationError } from '@/lib/validations';
 
 interface ItineraryGeneratorProps {
   destinationId?: string;
@@ -41,7 +41,7 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
       preferences: '',
     });
 
-    if (!validation.success) {
+    if (isValidationError(validation)) {
       const errors: Record<string, string> = {};
       for (const err of validation.errors) {
         errors[err.field] = err.message;
