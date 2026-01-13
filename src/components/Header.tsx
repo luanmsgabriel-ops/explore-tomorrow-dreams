@@ -66,7 +66,7 @@ export const Header = () => {
               ))}
               <button
                 onClick={() => setIsQuoteModalOpen(true)}
-                className="nav-link text-sm font-medium tracking-wide uppercase text-primary hover:text-primary/80"
+                className="btn-primary px-4 py-2 text-sm font-medium tracking-wide uppercase rounded-lg"
               >
                 Cotação
               </button>
@@ -116,7 +116,7 @@ export const Header = () => {
                     setIsMobileMenuOpen(false);
                     setIsQuoteModalOpen(true);
                   }}
-                  className="flex items-center gap-2 text-primary hover:text-primary/80 text-left"
+                  className="btn-primary flex items-center justify-center gap-2 px-4 py-2 rounded-lg"
                 >
                   <FileText className="w-5 h-5" />
                   <span className="text-base font-medium">Solicitar Cotação</span>
