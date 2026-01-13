@@ -16,7 +16,9 @@ import {
   Eye,
   Loader2,
   UserPlus,
-  Trash2
+  Trash2,
+  CheckCircle,
+  Send
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -48,6 +50,11 @@ interface AIItinerary {
   user_email: string;
   user_whatsapp: string;
   created_at: string;
+  status: string;
+  quote_requested: boolean;
+  quote_requested_at: string | null;
+  preferences: string | null;
+  itinerary_content: string;
 }
 
 interface AIImage {
@@ -74,6 +81,7 @@ const AdminDashboard = () => {
   const [itineraries, setItineraries] = useState<AIItinerary[]>([]);
   const [images, setImages] = useState<AIImage[]>([]);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [selectedItinerary, setSelectedItinerary] = useState<AIItinerary | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<QuoteRequest | null>(null);
   
   // New user form state
@@ -170,6 +178,18 @@ const AdminDashboard = () => {
       toast.error(error.message || 'Erro ao criar usuário');
     } finally {
       setIsCreatingUser(false);
+    }
+  };
+
+  const handleUpdateItineraryStatus = async (itineraryId: string, newStatus: string) => {
+    try {
+      await supabase.from('ai_itineraries').update({ status: newStatus }).eq('id', itineraryId);
+      toast.success('Status atualizado com sucesso!');
+      fetchData();
+      setSelectedItinerary(null);
+    } catch (error) {
+      console.error('Error updating itinerary status:', error);
+      toast.error('Erro ao atualizar status');
     }
   };
 
@@ -387,35 +407,76 @@ const AdminDashboard = () => {
                         Roteiros Gerados com IA
                       </h1>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {itineraries.map((itinerary) => (
-                          <div key={itinerary.id} className="p-6 rounded-2xl border border-border bg-card hover:border-primary/30 transition-colors">
-                            <div className="flex items-start justify-between mb-4">
-                              <div>
-                                <h3 className="font-serif text-lg font-bold text-foreground">{itinerary.destination_name}</h3>
-                                <p className="text-sm text-muted-foreground">{formatDate(itinerary.created_at)}</p>
-                              </div>
-                              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                                <Map className="w-5 h-5 text-accent" />
-                              </div>
+                      <div className="rounded-2xl border border-border overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-secondary">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Cliente</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Destino</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Cotação</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Data</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Ações</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                              {itineraries.map((itinerary) => (
+                                <tr key={itinerary.id} className="hover:bg-secondary/30">
+                                  <td className="px-4 py-4">
+                                    <div>
+                                      <p className="font-medium text-foreground">{itinerary.user_email}</p>
+                                      <p className="text-sm text-muted-foreground">{itinerary.user_whatsapp}</p>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 text-foreground">{itinerary.destination_name}</td>
+                                  <td className="px-4 py-4">
+                                    {itinerary.quote_requested ? (
+                                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-accent/20 text-accent">
+                                        <Send className="w-3 h-3" />
+                                        Solicitada
+                                      </span>
+                                    ) : (
+                                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                                        Não solicitada
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-4">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                      itinerary.status === 'pending' 
+                                        ? 'bg-accent/20 text-accent' 
+                                        : itinerary.status === 'contacted'
+                                        ? 'bg-blue-500/20 text-blue-400'
+                                        : 'bg-primary/20 text-primary'
+                                    }`}>
+                                      {itinerary.status === 'pending' ? 'Pendente' : 
+                                       itinerary.status === 'contacted' ? 'Contatado' : 
+                                       itinerary.status === 'completed' ? 'Concluído' : itinerary.status}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-4 text-sm text-muted-foreground">{formatDate(itinerary.created_at)}</td>
+                                  <td className="px-4 py-4">
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() => setSelectedItinerary(itinerary)}
+                                        className="p-2 rounded-lg hover:bg-primary/10 text-primary transition-colors"
+                                        title="Visualizar"
+                                      >
+                                        <Eye className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {itineraries.length === 0 && (
+                            <div className="p-8 text-center text-muted-foreground">
+                              Nenhum roteiro gerado ainda
                             </div>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex items-center gap-2 text-muted-foreground">
-                                <Mail className="w-4 h-4" />
-                                <span>{itinerary.user_email}</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-muted-foreground">
-                                <Phone className="w-4 h-4" />
-                                <span>{itinerary.user_whatsapp}</span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                        {itineraries.length === 0 && (
-                          <div className="col-span-2 p-8 text-center text-muted-foreground rounded-2xl border border-border">
-                            Nenhum roteiro gerado ainda
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -635,6 +696,138 @@ const AdminDashboard = () => {
 
             <button
               onClick={() => setSelectedQuote(null)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-secondary hover:bg-muted transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Itinerary detail modal */}
+      {selectedItinerary && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm" onClick={() => setSelectedItinerary(null)}>
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-card border border-border rounded-2xl overflow-hidden p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
+                <Map className="w-7 h-7 text-accent" />
+              </div>
+              <div>
+                <h2 className="font-serif text-2xl font-bold text-foreground">{selectedItinerary.destination_name}</h2>
+                <p className="text-muted-foreground">Roteiro gerado em {formatDate(selectedItinerary.created_at)}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {/* Contato */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">E-mail</p>
+                  <p className="text-foreground font-medium">{selectedItinerary.user_email}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">WhatsApp</p>
+                  <p className="text-foreground font-medium">{selectedItinerary.user_whatsapp}</p>
+                </div>
+              </div>
+
+              {/* Status da Cotação */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Cotação Solicitada</p>
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                    selectedItinerary.quote_requested 
+                      ? 'bg-accent/20 text-accent' 
+                      : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {selectedItinerary.quote_requested ? 'Sim' : 'Não'}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Status</p>
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                    selectedItinerary.status === 'pending' 
+                      ? 'bg-accent/20 text-accent' 
+                      : selectedItinerary.status === 'contacted'
+                      ? 'bg-blue-500/20 text-blue-400'
+                      : 'bg-primary/20 text-primary'
+                  }`}>
+                    {selectedItinerary.status === 'pending' ? 'Pendente' : 
+                     selectedItinerary.status === 'contacted' ? 'Contatado' : 
+                     selectedItinerary.status === 'completed' ? 'Concluído' : selectedItinerary.status}
+                  </span>
+                </div>
+              </div>
+
+              {selectedItinerary.quote_requested_at && (
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Cotação Solicitada em</p>
+                  <p className="text-foreground font-medium">{formatDate(selectedItinerary.quote_requested_at)}</p>
+                </div>
+              )}
+
+              {/* Preferências */}
+              {selectedItinerary.preferences && (
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Preferências do Cliente</p>
+                  <p className="text-foreground font-medium whitespace-pre-wrap bg-secondary/50 p-3 rounded-lg">
+                    {selectedItinerary.preferences}
+                  </p>
+                </div>
+              )}
+
+              {/* Roteiro Gerado */}
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Roteiro Gerado</p>
+                <div className="text-foreground whitespace-pre-wrap bg-secondary/50 p-4 rounded-lg max-h-64 overflow-y-auto text-sm">
+                  {selectedItinerary.itinerary_content.substring(0, 1000)}
+                  {selectedItinerary.itinerary_content.length > 1000 && '...'}
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-wrap gap-3 mt-6">
+              <a 
+                href={`mailto:${selectedItinerary.user_email}`}
+                className="btn-outline flex items-center gap-2"
+              >
+                <Mail className="w-4 h-4" />
+                E-mail
+              </a>
+              <a 
+                href={`https://wa.me/${selectedItinerary.user_whatsapp.replace(/\D/g, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-outline flex items-center gap-2"
+              >
+                <Phone className="w-4 h-4" />
+                WhatsApp
+              </a>
+              
+              {selectedItinerary.status === 'pending' && (
+                <button
+                  onClick={() => handleUpdateItineraryStatus(selectedItinerary.id, 'contacted')}
+                  className="btn-primary flex items-center gap-2"
+                >
+                  <Phone className="w-4 h-4" />
+                  Marcar como Contatado
+                </button>
+              )}
+              
+              {selectedItinerary.status !== 'completed' && (
+                <button
+                  onClick={() => handleUpdateItineraryStatus(selectedItinerary.id, 'completed')}
+                  className="btn-gold flex items-center gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Cotação Realizada
+                </button>
+              )}
+            </div>
+
+            <button
+              onClick={() => setSelectedItinerary(null)}
               className="absolute top-4 right-4 p-2 rounded-full bg-secondary hover:bg-muted transition-colors"
             >
               ✕

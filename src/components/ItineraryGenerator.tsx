@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Loader2, Mail, Phone, Download, Send } from 'lucide-react';
+import { Sparkles, Loader2, Mail, Phone, Download, Send, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
@@ -12,12 +12,14 @@ interface ItineraryGeneratorProps {
 }
 
 export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: ItineraryGeneratorProps) => {
-  const [step, setStep] = useState<'contact' | 'preferences' | 'generating' | 'result'>('contact');
+  const [step, setStep] = useState<'contact' | 'preferences' | 'generating' | 'result' | 'quote_success'>('contact');
   const [email, setEmail] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [preferences, setPreferences] = useState('');
   const [itinerary, setItinerary] = useState('');
+  const [itineraryId, setItineraryId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRequestingQuote, setIsRequestingQuote] = useState(false);
 
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,14 +50,20 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
       setItinerary(generatedItinerary);
 
       // Save to database
-      await supabase.from('ai_itineraries').insert({
+      const { data: insertedData } = await supabase.from('ai_itineraries').insert({
         destination_id: destinationId,
         destination_name: destinationName,
         user_email: email,
         user_whatsapp: whatsapp,
         preferences,
         itinerary_content: generatedItinerary,
-      });
+        status: 'pending',
+        quote_requested: false,
+      }).select('id').single();
+
+      if (insertedData) {
+        setItineraryId(insertedData.id);
+      }
 
       setStep('result');
       toast.success('Roteiro gerado com sucesso!');
@@ -356,6 +364,52 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
     );
   }
 
+  const handleRequestQuote = async () => {
+    if (!itineraryId) {
+      toast.error('Erro ao solicitar cotação');
+      return;
+    }
+
+    setIsRequestingQuote(true);
+    try {
+      await supabase.from('ai_itineraries')
+        .update({
+          quote_requested: true,
+          quote_requested_at: new Date().toISOString(),
+        })
+        .eq('id', itineraryId);
+
+      setStep('quote_success');
+      toast.success('Solicitação enviada com sucesso!');
+    } catch (error) {
+      console.error('Error requesting quote:', error);
+      toast.error('Erro ao solicitar cotação');
+    } finally {
+      setIsRequestingQuote(false);
+    }
+  };
+
+  if (step === 'quote_success') {
+    return (
+      <div className="p-8 text-center">
+        <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6">
+          <CheckCircle className="w-10 h-10 text-primary" />
+        </div>
+        <h3 className="font-serif text-2xl font-bold text-foreground mb-3">
+          Solicitação Realizada!
+        </h3>
+        <p className="text-muted-foreground mb-6">
+          Recebemos sua solicitação de cotação para {destinationName}. Nossa equipe entrará em contato em breve pelo WhatsApp ou e-mail informados.
+        </p>
+        {onClose && (
+          <button onClick={onClose} className="btn-primary">
+            Fechar
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full max-h-[80vh]">
       <div className="p-6 border-b border-border">
@@ -375,8 +429,16 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
           <Download className="w-4 h-4" />
           Baixar Roteiro
         </button>
-        <button className="btn-gold flex items-center gap-2">
-          <Send className="w-4 h-4" />
+        <button 
+          onClick={handleRequestQuote} 
+          disabled={isRequestingQuote}
+          className="btn-gold flex items-center gap-2"
+        >
+          {isRequestingQuote ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Send className="w-4 h-4" />
+          )}
           Solicitar Cotação
         </button>
         {onClose && (

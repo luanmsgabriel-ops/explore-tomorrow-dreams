@@ -52,6 +52,9 @@ export type Database = {
           id: string
           itinerary_content: string
           preferences: string | null
+          quote_requested: boolean
+          quote_requested_at: string | null
+          status: string
           user_email: string
           user_whatsapp: string
         }
@@ -62,6 +65,9 @@ export type Database = {
           id?: string
           itinerary_content: string
           preferences?: string | null
+          quote_requested?: boolean
+          quote_requested_at?: string | null
+          status?: string
           user_email: string
           user_whatsapp: string
         }
@@ -72,6 +78,9 @@ export type Database = {
           id?: string
           itinerary_content?: string
           preferences?: string | null
+          quote_requested?: boolean
+          quote_requested_at?: string | null
+          status?: string
           user_email?: string
           user_whatsapp?: string
         }
