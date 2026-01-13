@@ -183,11 +183,39 @@ export const DestinationManager = () => {
     }));
   };
 
+  // Extract YouTube video ID from various URL formats
+  const extractYoutubeId = (input: string): string => {
+    if (!input) return '';
+    
+    // If it's already just an ID (no slashes or dots), return as is
+    if (/^[a-zA-Z0-9_-]{11}$/.test(input)) {
+      return input;
+    }
+    
+    // Try to extract from various YouTube URL formats
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+      /^([a-zA-Z0-9_-]{11})$/
+    ];
+    
+    for (const pattern of patterns) {
+      const match = input.match(pattern);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    
+    // If no pattern matches, return the input trimmed (user might be typing)
+    return input.trim();
+  };
+
   const handleUpdateVideo = (index: number, field: 'title' | 'youtubeId', value: string) => {
+    const processedValue = field === 'youtubeId' ? extractYoutubeId(value) : value;
+    
     setFormData(prev => ({
       ...prev,
       videos: prev.videos.map((v, i) => 
-        i === index ? { ...v, [field]: value } : v
+        i === index ? { ...v, [field]: processedValue } : v
       )
     }));
   };
