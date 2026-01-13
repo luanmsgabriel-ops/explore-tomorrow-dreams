@@ -1,18 +1,23 @@
-import { useState } from 'react';
-import { Sparkles, Loader2, Mail, Phone, Download, Send, CheckCircle, User } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Sparkles, Loader2, Mail, Phone, Download, Send, CheckCircle, User, MapPin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import logo from '@/assets/logo.jpeg';
+import { useDestinations } from '@/hooks/useDestinations';
 
 interface ItineraryGeneratorProps {
-  destinationId: string;
-  destinationName: string;
+  destinationId?: string;
+  destinationName?: string;
   onClose?: () => void;
 }
 
-export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: ItineraryGeneratorProps) => {
-  const [step, setStep] = useState<'contact' | 'preferences' | 'generating' | 'result' | 'quote_success'>('contact');
+export const ItineraryGenerator = ({ destinationId: initialDestinationId, destinationName: initialDestinationName, onClose }: ItineraryGeneratorProps) => {
+  const needsDestinationSelection = !initialDestinationId || !initialDestinationName;
+  const [step, setStep] = useState<'contact' | 'destination' | 'preferences' | 'generating' | 'result' | 'quote_success'>('contact');
+  const [selectedDestinationId, setSelectedDestinationId] = useState(initialDestinationId || '');
+  const [selectedDestinationName, setSelectedDestinationName] = useState(initialDestinationName || '');
+  const { destinations, isLoading: isLoadingDestinations } = useDestinations();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
@@ -28,6 +33,17 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
       toast.error('Preencha o nome e WhatsApp');
       return;
     }
+    // Se precisa selecionar destino, vai para essa etapa; senão, vai direto para preferências
+    if (needsDestinationSelection) {
+      setStep('destination');
+    } else {
+      setStep('preferences');
+    }
+  };
+
+  const handleDestinationSelect = (destId: string, destName: string) => {
+    setSelectedDestinationId(destId);
+    setSelectedDestinationName(destName);
     setStep('preferences');
   };
 
@@ -38,7 +54,7 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
     try {
       const response = await supabase.functions.invoke('generate-itinerary', {
         body: {
-          destination: destinationName,
+          destination: selectedDestinationName,
           preferences,
           email,
           whatsapp,
@@ -52,9 +68,9 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
 
       // Save to database
       const { data: insertedData } = await supabase.from('ai_itineraries').insert({
-        destination_id: destinationId,
-        destination_name: destinationName,
-        user_email: email,
+        destination_id: selectedDestinationId,
+        destination_name: selectedDestinationName,
+        user_email: email || '',
         user_whatsapp: whatsapp,
         preferences,
         itinerary_content: generatedItinerary,
@@ -98,7 +114,7 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Roteiro ${destinationName} - Tomorrow Travel</title>
+  <title>Roteiro ${selectedDestinationName} - Tomorrow Travel</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@400;500;600&display=swap');
     
@@ -236,7 +252,7 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
       </div>
     </div>
     
-    <h1 class="destination-title">Roteiro: ${destinationName}</h1>
+    <h1 class="destination-title">Roteiro: ${selectedDestinationName}</h1>
     
     <div class="content">
       ${convertMarkdownToHtml(itinerary)}
@@ -256,7 +272,7 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `roteiro-${destinationName.toLowerCase().replace(/\s+/g, '-')}-tomorrow-travel.html`;
+    a.download = `roteiro-${selectedDestinationName.toLowerCase().replace(/\s+/g, '-')}-tomorrow-travel.html`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Roteiro baixado! Abra o arquivo em seu navegador.');
@@ -273,7 +289,7 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
             Criar Roteiro com IA
           </h3>
           <p className="text-muted-foreground">
-            Informe seus dados para receber seu roteiro personalizado para {destinationName}
+            Informe seus dados para receber seu roteiro personalizado{selectedDestinationName ? ` para ${selectedDestinationName}` : ''}
           </p>
         </div>
 
@@ -336,6 +352,48 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
     );
   }
 
+  if (step === 'destination') {
+    return (
+      <div className="p-6">
+        <div className="text-center mb-6">
+          <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+            <MapPin className="w-7 h-7 text-primary" />
+          </div>
+          <h3 className="font-serif text-2xl font-bold text-foreground mb-2">
+            Escolha o Destino
+          </h3>
+          <p className="text-muted-foreground">
+            Para qual destino você deseja gerar o roteiro?
+          </p>
+        </div>
+
+        {isLoadingDestinations ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+            {destinations.map((dest) => (
+              <button
+                key={dest.id}
+                onClick={() => handleDestinationSelect(dest.id, dest.name)}
+                className="w-full p-4 rounded-xl bg-secondary border border-border hover:border-primary hover:bg-primary/5 transition-all text-left flex items-center gap-3"
+              >
+                {dest.image && (
+                  <img src={dest.image} alt={dest.name} className="w-12 h-12 rounded-lg object-cover" />
+                )}
+                <div>
+                  <p className="font-medium text-foreground">{dest.name}</p>
+                  <p className="text-sm text-muted-foreground">{dest.location}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (step === 'preferences') {
     return (
       <div className="p-6">
@@ -344,7 +402,7 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
             Suas Preferências
           </h3>
           <p className="text-muted-foreground">
-            Conte-nos mais sobre o que você busca nessa viagem (opcional)
+            Conte-nos mais sobre o que você busca na viagem para <strong>{selectedDestinationName}</strong> (opcional)
           </p>
         </div>
 
@@ -416,7 +474,7 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
           Solicitação Realizada!
         </h3>
         <p className="text-muted-foreground mb-6">
-          Recebemos sua solicitação de cotação para {destinationName}. Nossa equipe entrará em contato em breve pelo WhatsApp ou e-mail informados.
+          Recebemos sua solicitação de cotação para {selectedDestinationName}. Nossa equipe entrará em contato em breve pelo WhatsApp ou e-mail informados.
         </p>
         {onClose && (
           <button onClick={onClose} className="btn-primary">
@@ -431,7 +489,7 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
     <div className="flex flex-col h-full max-h-[80vh]">
       <div className="p-6 border-b border-border">
         <h3 className="font-serif text-xl font-bold text-foreground">
-          Seu Roteiro para {destinationName}
+          Seu Roteiro para {selectedDestinationName}
         </h3>
       </div>
 
