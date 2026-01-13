@@ -3,7 +3,7 @@ import { Send, Check, Loader2, ChevronLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { destinations } from '@/data/destinations';
-import { quoteFormSchema, validateForm, sanitizeText } from '@/lib/validations';
+import { quoteFormSchema, validateForm, sanitizeText, isValidationError } from '@/lib/validations';
 
 interface QuoteFormChatProps {
   destinationId?: string;
@@ -105,7 +105,7 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
 
     // Valida os dados do formulário
     const validation = validateForm(quoteFormSchema, formData);
-    if (!validation.success) {
+    if (isValidationError(validation)) {
       const emailError = validation.errors.find(e => e.field === 'email');
       const phoneError = validation.errors.find(e => e.field === 'whatsapp');
       

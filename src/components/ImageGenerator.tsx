@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { Image, Upload, Loader2, Download, RefreshCw, Mail, Phone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { imageGeneratorSchema, validateForm } from '@/lib/validations';
+import { imageGeneratorSchema, validateForm, isValidationError } from '@/lib/validations';
 
 interface ImageGeneratorProps {
   destinationId: string;
@@ -51,7 +51,7 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
       whatsapp: whatsapp.trim(),
     });
 
-    if (!validation.success) {
+    if (isValidationError(validation)) {
       const errors: Record<string, string> = {};
       for (const err of validation.errors) {
         errors[err.field] = err.message;
