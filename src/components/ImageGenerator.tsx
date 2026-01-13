@@ -69,6 +69,7 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
         prompt,
         image_url: imageUrl,
         user_email: email,
+        user_whatsapp: whatsapp,
       });
 
       toast.success('Imagem gerada com sucesso!');

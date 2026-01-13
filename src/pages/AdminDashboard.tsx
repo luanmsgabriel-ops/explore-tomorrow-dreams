@@ -63,6 +63,9 @@ interface AIImage {
   prompt: string;
   image_url: string;
   created_at: string;
+  user_email: string | null;
+  user_whatsapp: string | null;
+  status: string;
 }
 
 interface AdminUser {
@@ -201,6 +204,17 @@ const AdminDashboard = () => {
       setSelectedQuote(null);
     } catch (error) {
       console.error('Error updating quote status:', error);
+      toast.error('Erro ao atualizar status');
+    }
+  };
+
+  const handleUpdateImageStatus = async (imageId: string, newStatus: string) => {
+    try {
+      await supabase.from('ai_generated_images').update({ status: newStatus }).eq('id', imageId);
+      toast.success('Status atualizado com sucesso!');
+      fetchData();
+    } catch (error) {
+      console.error('Error updating image status:', error);
       toast.error('Erro ao atualizar status');
     }
   };
@@ -517,10 +531,69 @@ const AdminDashboard = () => {
                             <div className="aspect-square">
                               <img src={image.image_url} alt={image.destination_name} className="w-full h-full object-cover" />
                             </div>
-                            <div className="p-4">
-                              <h3 className="font-medium text-foreground mb-1">{image.destination_name}</h3>
-                              <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{image.prompt}</p>
-                              <p className="text-xs text-muted-foreground">{formatDate(image.created_at)}</p>
+                            <div className="p-4 space-y-3">
+                              <div>
+                                <h3 className="font-medium text-foreground mb-1">{image.destination_name}</h3>
+                                <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{image.prompt}</p>
+                                <p className="text-xs text-muted-foreground">{formatDate(image.created_at)}</p>
+                              </div>
+
+                              {/* Contact Info */}
+                              <div className="pt-2 border-t border-border space-y-1">
+                                {image.user_email && (
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <Mail className="w-3 h-3 text-muted-foreground" />
+                                    <a href={`mailto:${image.user_email}`} className="text-primary hover:underline truncate">
+                                      {image.user_email}
+                                    </a>
+                                  </div>
+                                )}
+                                {image.user_whatsapp && (
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <Phone className="w-3 h-3 text-muted-foreground" />
+                                    <a href={`https://wa.me/${image.user_whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                                      {image.user_whatsapp}
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Status Badge */}
+                              <div className="flex items-center justify-between">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  image.status === 'pending' ? 'bg-accent/20 text-accent' : 
+                                  image.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
+                                  image.status === 'completed' ? 'bg-primary/20 text-primary' :
+                                  'bg-muted text-muted-foreground'
+                                }`}>
+                                  {image.status === 'pending' ? 'Pendente' : 
+                                   image.status === 'in_progress' ? 'Em andamento' :
+                                   image.status === 'completed' ? 'Finalizado' :
+                                   image.status}
+                                </span>
+                              </div>
+
+                              {/* Status Actions */}
+                              <div className="flex flex-wrap gap-2">
+                                {image.status === 'pending' && (
+                                  <button
+                                    onClick={() => handleUpdateImageStatus(image.id, 'in_progress')}
+                                    className="flex-1 px-2 py-1.5 text-xs rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors flex items-center justify-center gap-1"
+                                  >
+                                    <Clock className="w-3 h-3" />
+                                    Em Andamento
+                                  </button>
+                                )}
+                                {(image.status === 'pending' || image.status === 'in_progress') && (
+                                  <button
+                                    onClick={() => handleUpdateImageStatus(image.id, 'completed')}
+                                    className="flex-1 px-2 py-1.5 text-xs rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center justify-center gap-1"
+                                  >
+                                    <CheckCircle className="w-3 h-3" />
+                                    Finalizado
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         ))}
