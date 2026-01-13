@@ -2,14 +2,16 @@ import { Header } from '@/components/Header';
 import { HeroSection } from '@/components/HeroSection';
 import { DestinationCarousel } from '@/components/DestinationCarousel';
 import { Footer } from '@/components/Footer';
-import { getDestinationsByType } from '@/data/destinations';
-import { Compass, Globe, MapPin, Sparkles, Play, MessageCircle } from 'lucide-react';
+import { useDestinations } from '@/hooks/useDestinations';
+import { Compass, Globe, MapPin, Sparkles, Play, MessageCircle, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Index = () => {
-  const explorarDestinations = getDestinationsByType('explorar');
-  const nacionalDestinations = getDestinationsByType('nacional');
-  const internacionalDestinations = getDestinationsByType('internacional');
+  const { destinations: explorarDestinations, isLoading: loadingExplorar } = useDestinations('explorar');
+  const { destinations: nacionalDestinations, isLoading: loadingNacional } = useDestinations('nacional');
+  const { destinations: internacionalDestinations, isLoading: loadingInternacional } = useDestinations('internacional');
+
+  const isLoading = loadingExplorar || loadingNacional || loadingInternacional;
 
   return (
     <div className="min-h-screen bg-background">
@@ -69,23 +71,37 @@ const Index = () => {
       </section>
 
       {/* Carousels */}
-      <DestinationCarousel
-        title="Explorar"
-        destinations={explorarDestinations}
-        accentColor="teal"
-      />
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <>
+          {explorarDestinations.length > 0 && (
+            <DestinationCarousel
+              title="Explorar"
+              destinations={explorarDestinations}
+              accentColor="teal"
+            />
+          )}
 
-      <DestinationCarousel
-        title="Brasil"
-        destinations={nacionalDestinations}
-        accentColor="gold"
-      />
+          {nacionalDestinations.length > 0 && (
+            <DestinationCarousel
+              title="Brasil"
+              destinations={nacionalDestinations}
+              accentColor="gold"
+            />
+          )}
 
-      <DestinationCarousel
-        title="Internacional"
-        destinations={internacionalDestinations}
-        accentColor="teal"
-      />
+          {internacionalDestinations.length > 0 && (
+            <DestinationCarousel
+              title="Internacional"
+              destinations={internacionalDestinations}
+              accentColor="teal"
+            />
+          )}
+        </>
+      )}
 
       {/* Features Section */}
       <section className="py-20 border-t border-border">

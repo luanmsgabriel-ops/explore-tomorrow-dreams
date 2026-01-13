@@ -7,20 +7,28 @@ import { ItineraryGenerator } from '@/components/ItineraryGenerator';
 import { DestinationChat } from '@/components/DestinationChat';
 import { ImageGenerator } from '@/components/ImageGenerator';
 import { VideoPlayer } from '@/components/VideoPlayer';
-import { getDestinationById } from '@/data/destinations';
-import { Sparkles, MessageCircle, Image, MapPin, Calendar, Users, X, ArrowLeft, Sun, Clock } from 'lucide-react';
+import { useDestinationById } from '@/hooks/useDestinations';
+import { Sparkles, MessageCircle, Image, MapPin, Calendar, Users, X, ArrowLeft, Sun, Clock, Loader2 } from 'lucide-react';
 
 type ModalType = 'quote' | 'itinerary' | 'chat' | 'image' | null;
 
 const DestinationDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const destination = getDestinationById(id || '');
+  const { destination, isLoading } = useDestinationById(id || '');
   const [activeModal, setActiveModal] = useState<ModalType>(null);
 
   const handleGoBack = () => {
     navigate(-1);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!destination) {
     return (
@@ -133,14 +141,16 @@ const DestinationDetail = () => {
       </section>
 
       {/* Video section */}
-      <section className="py-16">
-        <div className="container mx-auto px-4 lg:px-8">
-          <h2 className="font-serif text-3xl font-bold text-foreground mb-8">
-            Vídeos de <span className="gradient-text-teal">{destination.name}</span>
-          </h2>
-          <VideoPlayer videos={destination.videos} destinationName={destination.name} />
-        </div>
-      </section>
+      {destination.videos && destination.videos.length > 0 && (
+        <section className="py-16">
+          <div className="container mx-auto px-4 lg:px-8">
+            <h2 className="font-serif text-3xl font-bold text-foreground mb-8">
+              Vídeos de <span className="gradient-text-teal">{destination.name}</span>
+            </h2>
+            <VideoPlayer videos={destination.videos} destinationName={destination.name} />
+          </div>
+        </section>
+      )}
 
       {/* CTA Section */}
       <section className="py-16 bg-gradient-to-r from-primary/10 via-transparent to-accent/10">
