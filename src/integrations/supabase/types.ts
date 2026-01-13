@@ -14,7 +14,186 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ai_generated_images: {
+        Row: {
+          created_at: string
+          destination_id: string
+          destination_name: string
+          id: string
+          image_url: string
+          prompt: string
+          user_email: string | null
+        }
+        Insert: {
+          created_at?: string
+          destination_id: string
+          destination_name: string
+          id?: string
+          image_url: string
+          prompt: string
+          user_email?: string | null
+        }
+        Update: {
+          created_at?: string
+          destination_id?: string
+          destination_name?: string
+          id?: string
+          image_url?: string
+          prompt?: string
+          user_email?: string | null
+        }
+        Relationships: []
+      }
+      ai_itineraries: {
+        Row: {
+          created_at: string
+          destination_id: string
+          destination_name: string
+          id: string
+          itinerary_content: string
+          preferences: string | null
+          user_email: string
+          user_whatsapp: string
+        }
+        Insert: {
+          created_at?: string
+          destination_id: string
+          destination_name: string
+          id?: string
+          itinerary_content: string
+          preferences?: string | null
+          user_email: string
+          user_whatsapp: string
+        }
+        Update: {
+          created_at?: string
+          destination_id?: string
+          destination_name?: string
+          id?: string
+          itinerary_content?: string
+          preferences?: string | null
+          user_email?: string
+          user_whatsapp?: string
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          destination_id: string
+          id: string
+          role: string
+          session_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          destination_id: string
+          id?: string
+          role: string
+          session_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          destination_id?: string
+          id?: string
+          role?: string
+          session_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id?: string
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quote_requests: {
+        Row: {
+          created_at: string
+          destination_id: string | null
+          destination_name: string | null
+          email: string
+          flight_time_preference: string | null
+          id: string
+          num_people: string | null
+          preferred_airport: string | null
+          preferred_contact_channel: string | null
+          preferred_contact_time: string | null
+          special_requests: string | null
+          status: string
+          travel_date: string | null
+          travel_type: string | null
+          travel_word: string | null
+          traveling_with_children: boolean | null
+          whatsapp: string
+        }
+        Insert: {
+          created_at?: string
+          destination_id?: string | null
+          destination_name?: string | null
+          email: string
+          flight_time_preference?: string | null
+          id?: string
+          num_people?: string | null
+          preferred_airport?: string | null
+          preferred_contact_channel?: string | null
+          preferred_contact_time?: string | null
+          special_requests?: string | null
+          status?: string
+          travel_date?: string | null
+          travel_type?: string | null
+          travel_word?: string | null
+          traveling_with_children?: boolean | null
+          whatsapp: string
+        }
+        Update: {
+          created_at?: string
+          destination_id?: string | null
+          destination_name?: string | null
+          email?: string
+          flight_time_preference?: string | null
+          id?: string
+          num_people?: string | null
+          preferred_airport?: string | null
+          preferred_contact_channel?: string | null
+          preferred_contact_time?: string | null
+          special_requests?: string | null
+          status?: string
+          travel_date?: string | null
+          travel_type?: string | null
+          travel_word?: string | null
+          traveling_with_children?: boolean | null
+          whatsapp?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

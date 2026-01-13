@@ -1,12 +1,20 @@
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { QuoteFormChat } from '@/components/QuoteFormChat';
+import { ItineraryGenerator } from '@/components/ItineraryGenerator';
+import { DestinationChat } from '@/components/DestinationChat';
+import { ImageGenerator } from '@/components/ImageGenerator';
 import { getDestinationById } from '@/data/destinations';
-import { Play, Sparkles, MessageCircle, Image, MapPin, Calendar, Users } from 'lucide-react';
+import { Play, Sparkles, MessageCircle, Image, MapPin, Calendar, Users, X } from 'lucide-react';
+
+type ModalType = 'quote' | 'itinerary' | 'chat' | 'image' | null;
 
 const DestinationDetail = () => {
   const { id } = useParams<{ id: string }>();
   const destination = getDestinationById(id || '');
+  const [activeModal, setActiveModal] = useState<ModalType>(null);
 
   if (!destination) {
     return (
@@ -25,19 +33,9 @@ const DestinationDetail = () => {
 
       {/* Hero Banner */}
       <section className="relative h-[70vh] min-h-[500px]">
-        <img
-          src={destination.image}
-          alt={destination.name}
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div
-          className="absolute inset-0"
-          style={{ background: 'var(--gradient-hero-overlay)' }}
-        />
-        <div
-          className="absolute bottom-0 left-0 right-0 h-40"
-          style={{ background: 'var(--gradient-hero-bottom)' }}
-        />
+        <img src={destination.image} alt={destination.name} className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0" style={{ background: 'var(--gradient-hero-overlay)' }} />
+        <div className="absolute bottom-0 left-0 right-0 h-40" style={{ background: 'var(--gradient-hero-bottom)' }} />
 
         <div className="relative z-10 h-full flex items-end pb-16">
           <div className="container mx-auto px-4 lg:px-8">
@@ -52,9 +50,7 @@ const DestinationDetail = () => {
                 <MapPin className="w-5 h-5" />
                 <span className="text-lg">{destination.location}</span>
               </div>
-              <p className="text-xl text-muted-foreground max-w-2xl">
-                {destination.description}
-              </p>
+              <p className="text-xl text-muted-foreground max-w-2xl">{destination.description}</p>
             </div>
           </div>
         </div>
@@ -64,19 +60,19 @@ const DestinationDetail = () => {
       <section className="py-8 border-b border-border">
         <div className="container mx-auto px-4 lg:px-8">
           <div className="flex flex-wrap gap-4">
-            <button className="btn-primary flex items-center gap-2">
+            <button onClick={() => setActiveModal('itinerary')} className="btn-primary flex items-center gap-2">
               <Sparkles className="w-5 h-5" />
               Criar Roteiro com IA
             </button>
-            <button className="btn-gold flex items-center gap-2">
+            <button onClick={() => setActiveModal('quote')} className="btn-gold flex items-center gap-2">
               <Calendar className="w-5 h-5" />
               Cotar Passeios
             </button>
-            <button className="btn-outline flex items-center gap-2">
+            <button onClick={() => setActiveModal('chat')} className="btn-outline flex items-center gap-2">
               <MessageCircle className="w-5 h-5" />
               Chat com IA
             </button>
-            <button className="btn-outline flex items-center gap-2">
+            <button onClick={() => setActiveModal('image')} className="btn-outline flex items-center gap-2">
               <Image className="w-5 h-5" />
               Gerar Imagem no Destino
             </button>
@@ -84,19 +80,15 @@ const DestinationDetail = () => {
         </div>
       </section>
 
-      {/* Video section placeholder */}
+      {/* Video section */}
       <section className="py-16">
         <div className="container mx-auto px-4 lg:px-8">
           <h2 className="font-serif text-3xl font-bold text-foreground mb-8">
             Vídeos de <span className="gradient-text-teal">{destination.name}</span>
           </h2>
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className="aspect-video rounded-xl bg-secondary border border-border flex items-center justify-center group cursor-pointer hover:border-primary/50 transition-colors"
-              >
+              <div key={i} className="aspect-video rounded-xl bg-secondary border border-border flex items-center justify-center group cursor-pointer hover:border-primary/50 transition-colors">
                 <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
                   <Play className="w-8 h-8 text-primary ml-1" />
                 </div>
@@ -113,7 +105,7 @@ const DestinationDetail = () => {
             <div className="p-6 rounded-xl bg-background border border-border">
               <Calendar className="w-8 h-8 text-primary mb-4" />
               <h3 className="font-serif text-xl font-bold text-foreground mb-2">Melhor Época</h3>
-              <p className="text-muted-foreground">Agosto a Fevereiro - Clima ideal para explorar</p>
+              <p className="text-muted-foreground">Agosto a Fevereiro - Clima ideal</p>
             </div>
             <div className="p-6 rounded-xl bg-background border border-border">
               <Users className="w-8 h-8 text-accent mb-4" />
@@ -130,6 +122,22 @@ const DestinationDetail = () => {
       </section>
 
       <Footer />
+
+      {/* Modal */}
+      {activeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm" onClick={() => setActiveModal(null)}>
+          <div className="relative w-full max-w-2xl max-h-[90vh] bg-card border border-border rounded-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setActiveModal(null)} className="absolute top-4 right-4 z-10 p-2 rounded-full bg-secondary hover:bg-muted transition-colors">
+              <X className="w-5 h-5 text-foreground" />
+            </button>
+            
+            {activeModal === 'quote' && <QuoteFormChat destinationId={destination.id} destinationName={destination.name} onClose={() => setActiveModal(null)} />}
+            {activeModal === 'itinerary' && <ItineraryGenerator destinationId={destination.id} destinationName={destination.name} onClose={() => setActiveModal(null)} />}
+            {activeModal === 'chat' && <div className="h-[600px]"><DestinationChat destinationId={destination.id} destinationName={destination.name} /></div>}
+            {activeModal === 'image' && <ImageGenerator destinationId={destination.id} destinationName={destination.name} />}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
