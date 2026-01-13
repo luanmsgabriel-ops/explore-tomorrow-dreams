@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Send, Check, Loader2 } from 'lucide-react';
+import { Send, Check, Loader2, ChevronLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -43,6 +43,22 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
       setCurrentStep(currentStep + 1);
     } else {
       submitForm(newAnswers);
+    }
+  };
+
+  const handleGoBack = () => {
+    if (currentStep > 0) {
+      const previousQuestion = questions[currentStep - 1];
+      const previousAnswer = answers[previousQuestion.key] || '';
+      
+      // Remove the previous answer from answers
+      const newAnswers = { ...answers };
+      delete newAnswers[previousQuestion.key];
+      setAnswers(newAnswers);
+      
+      // Set the current answer to the previous answer for editing
+      setCurrentAnswer(previousAnswer);
+      setCurrentStep(currentStep - 1);
     }
   };
 
@@ -126,31 +142,11 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
         </div>
       </div>
 
-      {/* Chat area */}
-      <div className="flex-1 overflow-y-auto px-6 space-y-4">
-        {/* Previous answers */}
-        {Object.entries(answers).map(([key, value], index) => {
-          const q = questions.find(q => q.key === key);
-          return (
-            <div key={key} className="space-y-2 animate-fade-in">
-              <div className="flex justify-start">
-                <div className="bg-secondary rounded-2xl rounded-tl-sm px-4 py-3 max-w-[80%]">
-                  <p className="text-foreground text-sm">{q?.question}</p>
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <div className="bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-3 max-w-[80%]">
-                  <p className="text-sm">{value}</p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Current question */}
+      {/* Chat area - Only current question */}
+      <div className="flex-1 flex flex-col justify-center px-6">
         <div className="flex justify-start animate-fade-in">
-          <div className="bg-secondary rounded-2xl rounded-tl-sm px-4 py-3 max-w-[80%]">
-            <p className="text-foreground">{questions[currentStep].question}</p>
+          <div className="bg-secondary rounded-2xl rounded-tl-sm px-4 py-3 max-w-[90%]">
+            <p className="text-foreground text-lg">{questions[currentStep].question}</p>
           </div>
         </div>
       </div>
@@ -158,6 +154,16 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
       {/* Input area */}
       <div className="p-6 border-t border-border">
         <div className="flex gap-3">
+          {/* Back button */}
+          {currentStep > 0 && (
+            <button
+              onClick={handleGoBack}
+              className="p-3 rounded-xl bg-secondary border border-border text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all"
+              title="Voltar para pergunta anterior"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+          )}
           <input
             type="text"
             value={currentAnswer}
