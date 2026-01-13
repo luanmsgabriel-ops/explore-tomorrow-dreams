@@ -119,6 +119,60 @@ export type Database = {
         }
         Relationships: []
       }
+      destinations: {
+        Row: {
+          best_time: string
+          category: string
+          created_at: string
+          description: string
+          for_who: string
+          id: string
+          ideal_duration: string
+          image_url: string | null
+          is_active: boolean
+          location: string
+          name: string
+          slug: string
+          type: string
+          updated_at: string
+          videos: Json | null
+        }
+        Insert: {
+          best_time: string
+          category: string
+          created_at?: string
+          description: string
+          for_who: string
+          id?: string
+          ideal_duration: string
+          image_url?: string | null
+          is_active?: boolean
+          location: string
+          name: string
+          slug: string
+          type: string
+          updated_at?: string
+          videos?: Json | null
+        }
+        Update: {
+          best_time?: string
+          category?: string
+          created_at?: string
+          description?: string
+          for_who?: string
+          id?: string
+          ideal_duration?: string
+          image_url?: string | null
+          is_active?: boolean
+          location?: string
+          name?: string
+          slug?: string
+          type?: string
+          updated_at?: string
+          videos?: Json | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
