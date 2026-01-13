@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, Menu, X, FileText, Sparkles } from 'lucide-react';
+import { User, Menu, X, FileText, Sparkles, Instagram, MessageCircle } from 'lucide-react';
 import logo from '@/assets/logo.jpeg';
 import { QuoteFormChat } from './QuoteFormChat';
 import { DestinationSearch } from './DestinationSearch';
@@ -44,13 +44,35 @@ export const Header = () => {
                 alt="Tomorrow Travel"
                 className="h-10 w-10 rounded-lg object-cover transition-transform duration-300 group-hover:scale-110"
               />
-              <div className="hidden sm:block">
-                <span className="gradient-text-teal font-serif text-xl font-bold tracking-wide">
-                  TOMORROW
-                </span>
-                <span className="gradient-text-gold font-serif text-xl font-bold tracking-wide ml-1">
-                  TRAVEL
-                </span>
+              <div className="hidden sm:flex flex-col">
+                <div>
+                  <span className="gradient-text-teal font-serif text-xl font-bold tracking-wide">
+                    TOMORROW
+                  </span>
+                  <span className="gradient-text-gold font-serif text-xl font-bold tracking-wide ml-1">
+                    TRAVEL
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <a
+                    href="https://www.instagram.com/tomorrowtravel.br"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:scale-110 transition-transform"
+                    aria-label="Instagram"
+                  >
+                    <Instagram className="w-3.5 h-3.5 text-white" />
+                  </a>
+                  <a
+                    href="https://wa.me/5515998389220"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center w-6 h-6 rounded-full bg-green-500 hover:scale-110 transition-transform"
+                    aria-label="WhatsApp"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5 text-white" />
+                  </a>
+                </div>
               </div>
             </Link>
 
