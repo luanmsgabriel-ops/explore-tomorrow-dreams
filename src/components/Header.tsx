@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, Menu, X, FileText, Search } from 'lucide-react';
+import { User, Menu, X, FileText, Sparkles } from 'lucide-react';
 import logo from '@/assets/logo.jpeg';
 import { QuoteFormChat } from './QuoteFormChat';
 import { DestinationSearch } from './DestinationSearch';
+import { ItineraryGenerator } from './ItineraryGenerator';
+
 const navItems = [
   { label: 'Início', path: '/' },
   { label: 'Explorar', path: '/explorar' },
@@ -15,6 +17,7 @@ export const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+  const [isItineraryModalOpen, setIsItineraryModalOpen] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -69,6 +72,13 @@ export const Header = () => {
                 className="btn-primary px-4 py-2 text-sm font-medium tracking-wide uppercase rounded-lg"
               >
                 Cotação
+              </button>
+              <button
+                onClick={() => setIsItineraryModalOpen(true)}
+                className="btn-gold px-4 py-2 text-sm font-medium tracking-wide uppercase rounded-lg flex items-center gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                Roteiro IA
               </button>
               <DestinationSearch />
             </nav>
@@ -127,6 +137,16 @@ export const Header = () => {
                   <FileText className="w-5 h-5" />
                   <span className="text-base font-medium">Solicitar Cotação</span>
                 </button>
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setIsItineraryModalOpen(true);
+                  }}
+                  className="btn-gold flex items-center justify-center gap-2 px-4 py-2 rounded-lg"
+                >
+                  <Sparkles className="w-5 h-5" />
+                  <span className="text-base font-medium">Gerar Roteiro IA</span>
+                </button>
                 <Link
                   to="/admin"
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -158,6 +178,31 @@ export const Header = () => {
               <X className="w-5 h-5 text-foreground" />
             </button>
             <QuoteFormChat onClose={() => setIsQuoteModalOpen(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* Itinerary Modal */}
+      {isItineraryModalOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setIsItineraryModalOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-2xl bg-card rounded-2xl shadow-2xl border border-border overflow-hidden max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setIsItineraryModalOpen(false)}
+              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-secondary hover:bg-secondary/80 transition-colors"
+            >
+              <X className="w-5 h-5 text-foreground" />
+            </button>
+            <ItineraryGenerator 
+              destinationId="geral" 
+              destinationName="Destino dos Sonhos" 
+              onClose={() => setIsItineraryModalOpen(false)} 
+            />
           </div>
         </div>
       )}
