@@ -10,7 +10,9 @@ import Internacional from "./pages/Internacional";
 import DestinationDetail from "./pages/DestinationDetail";
 import Admin from "./pages/Admin";
 import AdminDashboard from "./pages/AdminDashboard";
+import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
+import { InstallPrompt } from "./components/InstallPrompt";
 
 const queryClient = new QueryClient();
 
@@ -28,8 +30,10 @@ const App = () => (
           <Route path="/destino/:id" element={<DestinationDetail />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/install" element={<Install />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <InstallPrompt />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
