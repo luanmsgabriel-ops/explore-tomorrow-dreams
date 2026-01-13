@@ -103,11 +103,34 @@ export const Header = () => {
               </button>
             </div>
           </div>
+        </div>
+      </header>
 
-          {/* Mobile Navigation */}
-          {isMobileMenuOpen && (
-            <nav className="lg:hidden mt-4 pb-4 border-t border-border pt-4 animate-fade-in">
-              <div className="flex flex-col gap-4">
+      {/* Mobile Navigation - Full Screen Overlay */}
+      {isMobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-[60] bg-background animate-fade-in">
+          <div className="flex flex-col h-full">
+            {/* Mobile Header */}
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <Link to="/" className="flex items-center gap-3" onClick={() => setIsMobileMenuOpen(false)}>
+                <img
+                  src={logo}
+                  alt="Tomorrow Travel"
+                  className="h-10 w-10 rounded-lg object-cover"
+                />
+              </Link>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2 text-foreground"
+                aria-label="Fechar menu"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Mobile Menu Content */}
+            <nav className="flex-1 overflow-y-auto p-6">
+              <div className="flex flex-col gap-5">
                 {/* Mobile Search */}
                 <div className="pb-2">
                   <DestinationSearch onClose={() => setIsMobileMenuOpen(false)} />
@@ -118,7 +141,7 @@ export const Header = () => {
                     key={item.path}
                     to={item.path}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className={`text-base font-medium tracking-wide ${
+                    className={`text-lg font-medium tracking-wide ${
                       location.pathname === item.path
                         ? 'text-primary'
                         : 'text-muted-foreground hover:text-foreground'
@@ -127,39 +150,43 @@ export const Header = () => {
                     {item.label}
                   </Link>
                 ))}
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    setIsQuoteModalOpen(true);
-                  }}
-                  className="btn-primary flex items-center justify-center gap-2 px-4 py-2 rounded-lg"
-                >
-                  <FileText className="w-5 h-5" />
-                  <span className="text-base font-medium">Solicitar Cotação</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    setIsItineraryModalOpen(true);
-                  }}
-                  className="btn-gold flex items-center justify-center gap-2 px-4 py-2 rounded-lg"
-                >
-                  <Sparkles className="w-5 h-5" />
-                  <span className="text-base font-medium">Gerar Roteiro IA</span>
-                </button>
+                
+                <div className="border-t border-border pt-5 mt-2 flex flex-col gap-4">
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setIsQuoteModalOpen(true);
+                    }}
+                    className="btn-primary flex items-center justify-center gap-2 px-4 py-3 rounded-lg"
+                  >
+                    <FileText className="w-5 h-5" />
+                    <span className="text-base font-medium">Solicitar Cotação</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setIsItineraryModalOpen(true);
+                    }}
+                    className="btn-gold flex items-center justify-center gap-2 px-4 py-3 rounded-lg"
+                  >
+                    <Sparkles className="w-5 h-5" />
+                    <span className="text-base font-medium">Gerar Roteiro IA</span>
+                  </button>
+                </div>
+                
                 <Link
                   to="/admin"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground mt-4"
                 >
                   <User className="w-5 h-5" />
                   <span className="text-base font-medium">Admin</span>
                 </Link>
               </div>
             </nav>
-          )}
+          </div>
         </div>
-      </header>
+      )}
 
       {/* Quote Modal */}
       {isQuoteModalOpen && (
