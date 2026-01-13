@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Send, Check, Loader2, ChevronLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { destinations } from '@/data/destinations';
 
 interface QuoteFormChatProps {
   destinationId?: string;
@@ -9,7 +10,9 @@ interface QuoteFormChatProps {
   onClose?: () => void;
 }
 
-const questions = [
+const baseQuestions = [
+  { key: 'destination_choice', question: 'Qual destino você deseja cotar?', placeholder: 'Digite o nome do destino ou escolha da lista...' },
+  { key: 'other_destination', question: 'Tem outro destino em mente ou prefere nos contar o estilo de viagem que busca?', placeholder: 'Ex: Outro destino específico, praias paradisíacas, neve, cultura...' },
   { key: 'travel_date', question: 'Quando você pretende viajar?', placeholder: 'Ex: Janeiro de 2026, Próximas férias...' },
   { key: 'num_people', question: 'Quantas pessoas vão viajar?', placeholder: 'Ex: 2 adultos, 2 adultos e 1 criança...' },
   { key: 'travel_type', question: 'O que você busca nessa viagem?', placeholder: 'Ex: Praia, aventura, romance, história, neve, luxo...' },
@@ -26,10 +29,32 @@ const questions = [
 
 export const QuoteFormChat = ({ destinationId, destinationName, onClose }: QuoteFormChatProps) => {
   const [currentStep, setCurrentStep] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string>>(() => {
+    if (destinationName) {
+      return { destination_choice: destinationName };
+    }
+    return {};
+  });
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [showDestinationSuggestions, setShowDestinationSuggestions] = useState(false);
+
+  const questions = useMemo(() => {
+    if (destinationName) {
+      return baseQuestions.filter(q => q.key !== 'destination_choice');
+    }
+    return baseQuestions;
+  }, [destinationName]);
+
+  const filteredDestinations = useMemo(() => {
+    if (!currentAnswer.trim()) return destinations.slice(0, 6);
+    const search = currentAnswer.toLowerCase();
+    return destinations.filter(d => 
+      d.name.toLowerCase().includes(search) || 
+      d.location.toLowerCase().includes(search)
+    ).slice(0, 6);
+  }, [currentAnswer]);
 
   const handleSubmitAnswer = () => {
     if (!currentAnswer.trim()) return;
@@ -38,6 +63,7 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
     const newAnswers = { ...answers, [currentQuestion.key]: currentAnswer };
     setAnswers(newAnswers);
     setCurrentAnswer('');
+    setShowDestinationSuggestions(false);
 
     if (currentStep < questions.length - 1) {
       setCurrentStep(currentStep + 1);
@@ -46,25 +72,32 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
     }
   };
 
+  const handleSelectDestination = (destName: string) => {
+    setCurrentAnswer(destName);
+    setShowDestinationSuggestions(false);
+  };
+
   const handleGoBack = () => {
     if (currentStep > 0) {
       const previousQuestion = questions[currentStep - 1];
       const previousAnswer = answers[previousQuestion.key] || '';
       
-      // Remove the previous answer from answers
       const newAnswers = { ...answers };
       delete newAnswers[previousQuestion.key];
       setAnswers(newAnswers);
       
-      // Set the current answer to the previous answer for editing
       setCurrentAnswer(previousAnswer);
       setCurrentStep(currentStep - 1);
+      setShowDestinationSuggestions(false);
     }
   };
 
   const submitForm = async (formData: Record<string, string>) => {
     setIsSubmitting(true);
     try {
+      const finalDestinationName = formData.destination_choice || destinationName;
+      const otherDestination = formData.other_destination;
+      
       const { error } = await supabase.from('quote_requests').insert({
         travel_date: formData.travel_date,
         num_people: formData.num_people,
@@ -72,14 +105,16 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
         preferred_airport: formData.preferred_airport,
         flight_time_preference: formData.flight_time_preference,
         traveling_with_children: formData.traveling_with_children?.toLowerCase().includes('sim'),
-        special_requests: formData.special_requests,
+        special_requests: otherDestination 
+          ? `Outro destino/estilo: ${otherDestination}. ${formData.special_requests || ''}`
+          : formData.special_requests,
         travel_word: formData.travel_word,
         email: formData.email,
         whatsapp: formData.whatsapp,
         preferred_contact_time: formData.preferred_contact_time,
         preferred_contact_channel: formData.preferred_contact_channel,
-        destination_id: destinationId,
-        destination_name: destinationName,
+        destination_id: destinationId || null,
+        destination_name: finalDestinationName,
       });
 
       if (error) throw error;
@@ -100,6 +135,8 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
       handleSubmitAnswer();
     }
   };
+
+  const isDestinationQuestion = questions[currentStep]?.key === 'destination_choice';
 
   if (isComplete) {
     return (
@@ -143,12 +180,28 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
       </div>
 
       {/* Chat area - Only current question */}
-      <div className="flex-1 flex flex-col justify-center px-6">
+      <div className="flex-1 flex flex-col justify-center px-6 overflow-y-auto">
         <div className="flex justify-start animate-fade-in">
           <div className="bg-secondary rounded-2xl rounded-tl-sm px-4 py-3 max-w-[90%]">
             <p className="text-foreground text-lg">{questions[currentStep].question}</p>
           </div>
         </div>
+
+        {/* Destination suggestions */}
+        {isDestinationQuestion && showDestinationSuggestions && filteredDestinations.length > 0 && (
+          <div className="mt-4 grid grid-cols-2 gap-2 animate-fade-in">
+            {filteredDestinations.map((dest) => (
+              <button
+                key={dest.id}
+                onClick={() => handleSelectDestination(dest.name)}
+                className="text-left p-3 rounded-xl bg-secondary/50 border border-border hover:bg-secondary hover:border-primary/50 transition-all"
+              >
+                <p className="font-medium text-foreground text-sm">{dest.name}</p>
+                <p className="text-xs text-muted-foreground">{dest.location}</p>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Input area */}
@@ -167,7 +220,17 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
           <input
             type="text"
             value={currentAnswer}
-            onChange={(e) => setCurrentAnswer(e.target.value)}
+            onChange={(e) => {
+              setCurrentAnswer(e.target.value);
+              if (isDestinationQuestion) {
+                setShowDestinationSuggestions(true);
+              }
+            }}
+            onFocus={() => {
+              if (isDestinationQuestion) {
+                setShowDestinationSuggestions(true);
+              }
+            }}
             onKeyDown={handleKeyDown}
             placeholder={questions[currentStep].placeholder}
             className="flex-1 px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
