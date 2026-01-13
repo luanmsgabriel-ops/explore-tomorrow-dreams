@@ -41,11 +41,9 @@ export const destinations: Destination[] = [
     idealDuration: '7 a 10 dias',
     forWho: 'Aventureiros e fotógrafos',
     videos: [
-      { id: '1', title: 'Aurora Boreal na Islândia - Espetáculo Natural', youtubeId: 'LS3g6hN7UiI' },
-      { id: '2', title: 'Os melhores lugares para ver Aurora Boreal', youtubeId: 'fVsONlc3OUY' },
-      { id: '3', title: 'Islândia - Terra de Gelo e Fogo', youtubeId: 'BdwuVF0KYr0' },
-      { id: '4', title: 'Roadtrip pela Islândia', youtubeId: 'V3tD9iEvLNQ' },
-      { id: '5', title: 'Dicas para viajar para Islândia', youtubeId: 'EruPbvwKfXg' },
+      { id: '1', title: 'Aurora Boreal - Fenômeno Incrível', youtubeId: 'fVsONlc3OUY' },
+      { id: '2', title: 'Islândia em 4K', youtubeId: 'BQy06Z9Rpa8' },
+      { id: '3', title: 'Viagem pela Islândia', youtubeId: 'WA4c0xdyPVU' },
     ],
   },
   {
@@ -60,11 +58,9 @@ export const destinations: Destination[] = [
     idealDuration: '5 a 7 dias',
     forWho: 'Amantes de história e trekking',
     videos: [
-      { id: '1', title: 'Machu Picchu - Cidade Perdida dos Incas', youtubeId: 'cnMa-Sm9H4k' },
-      { id: '2', title: 'Trilha Inca até Machu Picchu', youtubeId: 'pIGNIvZBs5Y' },
-      { id: '3', title: 'Peru - Guia Completo de Viagem', youtubeId: 'UoWqX2sR2V0' },
-      { id: '4', title: 'O que fazer em Cusco', youtubeId: '3nf4S7SJGHo' },
-      { id: '5', title: 'Dicas para visitar Machu Picchu', youtubeId: 'XWBLDaQS8ok' },
+      { id: '1', title: 'Machu Picchu - Maravilha do Mundo', youtubeId: 'cnMa-Sm9H4k' },
+      { id: '2', title: 'Peru em 4K', youtubeId: 'UFr9StkVwTk' },
+      { id: '3', title: 'Trilha Inca Completa', youtubeId: 'ZQS7m3ZnzlQ' },
     ],
   },
   {
@@ -79,11 +75,9 @@ export const destinations: Destination[] = [
     idealDuration: '10 a 14 dias',
     forWho: 'Amantes de cultura e gastronomia',
     videos: [
-      { id: '1', title: 'Kyoto - A Antiga Capital do Japão', youtubeId: 'GLq2Z-texmY' },
-      { id: '2', title: 'Templos imperdíveis em Kyoto', youtubeId: 'xJk3r2_0qLc' },
-      { id: '3', title: 'Japão - Roteiro Completo', youtubeId: 'L-9pShBdJOA' },
-      { id: '4', title: 'Cerejeiras no Japão - Hanami', youtubeId: 'u8EkSB9zSpE' },
-      { id: '5', title: 'Guia de viagem para o Japão', youtubeId: 'fvaW9DCT3hk' },
+      { id: '1', title: 'Kyoto - Japão Tradicional', youtubeId: 'yCgbXAMqNWM' },
+      { id: '2', title: 'Japão em 4K', youtubeId: '6P-1H_L4lQU' },
+      { id: '3', title: 'Templos de Kyoto', youtubeId: 'WLIv7HnZ_fE' },
     ],
   },
   {
@@ -99,10 +93,8 @@ export const destinations: Destination[] = [
     forWho: 'Casais e lua de mel',
     videos: [
       { id: '1', title: 'Maldivas - Paraíso na Terra', youtubeId: 'FEoGL5vahlQ' },
-      { id: '2', title: 'Resorts de luxo nas Maldivas', youtubeId: 'ltlFq7JFNIo' },
-      { id: '3', title: 'Mergulho nas Maldivas', youtubeId: 'sH4fHJKaVPo' },
-      { id: '4', title: 'Quanto custa viajar para Maldivas', youtubeId: '10LSQFG9oZ4' },
-      { id: '5', title: 'Dicas de viagem Maldivas', youtubeId: 'uYT7-GpKRZU' },
+      { id: '2', title: 'Maldivas em 4K', youtubeId: 'oCzKXmzvgVA' },
+      { id: '3', title: 'Resort nas Maldivas', youtubeId: 'sTsVKz-aYWM' },
     ],
   },
 
@@ -119,11 +111,9 @@ export const destinations: Destination[] = [
     idealDuration: '5 a 7 dias',
     forWho: 'Casais, mergulhadores e natureza',
     videos: [
-      { id: '1', title: 'Fernando de Noronha - Paraíso Brasileiro', youtubeId: 'BNMqTI24gy8' },
-      { id: '2', title: 'As praias mais bonitas de Noronha', youtubeId: 'D-iNF8dZK6A' },
-      { id: '3', title: 'Mergulho em Fernando de Noronha', youtubeId: 'XqgA4Zy0V8E' },
-      { id: '4', title: 'Quanto custa Noronha', youtubeId: 'VxGnEQDGKf8' },
-      { id: '5', title: 'Guia completo Fernando de Noronha', youtubeId: 'U8-Q6q2XpPo' },
+      { id: '1', title: 'Fernando de Noronha - Paraíso', youtubeId: 'E7nFYC_SdoU' },
+      { id: '2', title: 'Noronha em 4K', youtubeId: 'fxc4ehPgqkc' },
+      { id: '3', title: 'Praias de Noronha', youtubeId: 'zN3RvCNMIjY' },
     ],
   },
   {
@@ -138,11 +128,9 @@ export const destinations: Destination[] = [
     idealDuration: '4 a 5 dias',
     forWho: 'Aventureiros e fotógrafos',
     videos: [
-      { id: '1', title: 'Lençóis Maranhenses - Deserto de Lagoas', youtubeId: 'RWxPBdfoNl8' },
-      { id: '2', title: 'As lagoas mais bonitas dos Lençóis', youtubeId: 'QqBqV8dCKXg' },
-      { id: '3', title: 'Rota das Emoções completa', youtubeId: 'f9P4gI7DqZM' },
-      { id: '4', title: 'Barreirinhas e Atins', youtubeId: 'iIVgUz4MGAY' },
-      { id: '5', title: 'Dicas Lençóis Maranhenses', youtubeId: 'W95Jk9E9WMY' },
+      { id: '1', title: 'Lençóis Maranhenses - Beleza Única', youtubeId: 'RWxPBdfoNl8' },
+      { id: '2', title: 'Lençóis em 4K', youtubeId: 'qAoGFiRP3KM' },
+      { id: '3', title: 'Lagoas dos Lençóis', youtubeId: 'x8UIvnQy3PA' },
     ],
   },
   {
@@ -157,11 +145,9 @@ export const destinations: Destination[] = [
     idealDuration: '5 a 7 dias',
     forWho: 'Ecoturistas e aventureiros',
     videos: [
-      { id: '1', title: 'Chapada dos Veadeiros - Paraíso do Cerrado', youtubeId: 'NfZKbA-L_b8' },
-      { id: '2', title: 'As cachoeiras mais bonitas da Chapada', youtubeId: 'VjsHxdN8XxQ' },
-      { id: '3', title: 'Trilhas na Chapada dos Veadeiros', youtubeId: 'lGl5DWW8EQg' },
-      { id: '4', title: 'Alto Paraíso de Goiás', youtubeId: 'NRjv_E05sCE' },
-      { id: '5', title: 'Roteiro completo Chapada', youtubeId: '8hKrQqXrJGk' },
+      { id: '1', title: 'Chapada dos Veadeiros - Natureza', youtubeId: 'NfZKbA-L_b8' },
+      { id: '2', title: 'Cachoeiras da Chapada', youtubeId: 'F2p7n7H1dWU' },
+      { id: '3', title: 'Chapada em 4K', youtubeId: 'K5vTGNJ2wCc' },
     ],
   },
 
@@ -178,11 +164,9 @@ export const destinations: Destination[] = [
     idealDuration: '4 a 5 dias',
     forWho: 'Casais e lua de mel',
     videos: [
-      { id: '1', title: 'Santorini - A ilha mais bonita da Grécia', youtubeId: 'u3IVL7hnM-A' },
-      { id: '2', title: 'Pôr do sol em Oia', youtubeId: 'CKt8JlFfY_g' },
-      { id: '3', title: 'Roteiro pela Grécia', youtubeId: 'DuM9KJ6Z8TM' },
-      { id: '4', title: 'Ilhas Gregas - Qual escolher', youtubeId: 'xLPIpJC8a7E' },
-      { id: '5', title: 'Dicas de viagem Grécia', youtubeId: 'YxGLDWc_lIw' },
+      { id: '1', title: 'Santorini - Grécia em 4K', youtubeId: '7wGlvZ5P5ak' },
+      { id: '2', title: 'Pôr do Sol em Santorini', youtubeId: 'Aw0PiK7mqJY' },
+      { id: '3', title: 'Ilhas Gregas', youtubeId: 'tRgRJjH7AQ8' },
     ],
   },
   {
@@ -198,10 +182,8 @@ export const destinations: Destination[] = [
     forWho: 'Casais e relaxamento',
     videos: [
       { id: '1', title: 'Maldivas - Paraíso Tropical', youtubeId: 'FEoGL5vahlQ' },
-      { id: '2', title: 'Overwater Bungalows', youtubeId: 'ltlFq7JFNIo' },
-      { id: '3', title: 'Vida marinha nas Maldivas', youtubeId: 'sH4fHJKaVPo' },
-      { id: '4', title: 'Como escolher resort', youtubeId: '10LSQFG9oZ4' },
-      { id: '5', title: 'Roteiro Maldivas', youtubeId: 'uYT7-GpKRZU' },
+      { id: '2', title: 'Maldivas em 4K', youtubeId: 'oCzKXmzvgVA' },
+      { id: '3', title: 'Mergulho nas Maldivas', youtubeId: 'sTsVKz-aYWM' },
     ],
   },
   {
@@ -216,11 +198,9 @@ export const destinations: Destination[] = [
     idealDuration: '10 a 14 dias',
     forWho: 'Aventureiros e fotógrafos',
     videos: [
-      { id: '1', title: 'Islândia - Paisagens surreais', youtubeId: 'BdwuVF0KYr0' },
-      { id: '2', title: 'Ring Road - Volta na Islândia', youtubeId: 'V3tD9iEvLNQ' },
-      { id: '3', title: 'Lagoa Azul - Blue Lagoon', youtubeId: 'EruPbvwKfXg' },
-      { id: '4', title: 'Geleiras e cavernas de gelo', youtubeId: 'fVsONlc3OUY' },
-      { id: '5', title: 'Aurora Boreal na Islândia', youtubeId: 'LS3g6hN7UiI' },
+      { id: '1', title: 'Islândia - Terra de Gelo e Fogo', youtubeId: 'BQy06Z9Rpa8' },
+      { id: '2', title: 'Islândia em 4K', youtubeId: 'WA4c0xdyPVU' },
+      { id: '3', title: 'Aurora Boreal', youtubeId: 'fVsONlc3OUY' },
     ],
   },
   {
@@ -235,11 +215,9 @@ export const destinations: Destination[] = [
     idealDuration: '14 a 21 dias',
     forWho: 'Cultura, gastronomia e tecnologia',
     videos: [
-      { id: '1', title: 'Japão - País do Sol Nascente', youtubeId: 'L-9pShBdJOA' },
-      { id: '2', title: 'Tokyo - Metrópole futurista', youtubeId: 'fvaW9DCT3hk' },
-      { id: '3', title: 'Kyoto tradicional', youtubeId: 'GLq2Z-texmY' },
-      { id: '4', title: 'Comida japonesa autêntica', youtubeId: 'xJk3r2_0qLc' },
-      { id: '5', title: 'Dicas de viagem Japão', youtubeId: 'u8EkSB9zSpE' },
+      { id: '1', title: 'Japão - País do Sol Nascente', youtubeId: '6P-1H_L4lQU' },
+      { id: '2', title: 'Tokyo e Kyoto', youtubeId: 'yCgbXAMqNWM' },
+      { id: '3', title: 'Japão Tradicional', youtubeId: 'WLIv7HnZ_fE' },
     ],
   },
 ];
