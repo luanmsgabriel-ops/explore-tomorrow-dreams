@@ -221,6 +221,50 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleDeleteQuote = async (quoteId: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta cotação?')) return;
+    
+    try {
+      const { error } = await supabase.from('quote_requests').delete().eq('id', quoteId);
+      if (error) throw error;
+      toast.success('Cotação excluída com sucesso!');
+      setSelectedQuote(null);
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting quote:', error);
+      toast.error('Erro ao excluir cotação');
+    }
+  };
+
+  const handleDeleteItinerary = async (itineraryId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este roteiro?')) return;
+    
+    try {
+      const { error } = await supabase.from('ai_itineraries').delete().eq('id', itineraryId);
+      if (error) throw error;
+      toast.success('Roteiro excluído com sucesso!');
+      setSelectedItinerary(null);
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting itinerary:', error);
+      toast.error('Erro ao excluir roteiro');
+    }
+  };
+
+  const handleDeleteImage = async (imageId: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta imagem?')) return;
+    
+    try {
+      const { error } = await supabase.from('ai_generated_images').delete().eq('id', imageId);
+      if (error) throw error;
+      toast.success('Imagem excluída com sucesso!');
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      toast.error('Erro ao excluir imagem');
+    }
+  };
+
   const tabs = [
     { id: 'overview' as TabType, label: 'Visão Geral', icon: LayoutDashboard },
     { id: 'destinations' as TabType, label: 'Destinos', icon: Globe },
@@ -429,12 +473,22 @@ const AdminDashboard = () => {
                                   </td>
                                   <td className="px-4 py-4 text-sm text-muted-foreground">{formatDate(quote.created_at)}</td>
                                   <td className="px-4 py-4">
-                                    <button
-                                      onClick={() => setSelectedQuote(quote)}
-                                      className="p-2 rounded-lg hover:bg-primary/10 text-primary transition-colors"
-                                    >
-                                      <Eye className="w-4 h-4" />
-                                    </button>
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        onClick={() => setSelectedQuote(quote)}
+                                        className="p-2 rounded-lg hover:bg-primary/10 text-primary transition-colors"
+                                        title="Visualizar"
+                                      >
+                                        <Eye className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteQuote(quote.id)}
+                                        className="p-2 rounded-lg hover:bg-destructive/10 text-destructive transition-colors"
+                                        title="Excluir"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
                                   </td>
                                 </tr>
                               ))}
@@ -506,13 +560,20 @@ const AdminDashboard = () => {
                                   </td>
                                   <td className="px-4 py-4 text-sm text-muted-foreground">{formatDate(itinerary.created_at)}</td>
                                   <td className="px-4 py-4">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1">
                                       <button
                                         onClick={() => setSelectedItinerary(itinerary)}
                                         className="p-2 rounded-lg hover:bg-primary/10 text-primary transition-colors"
                                         title="Visualizar"
                                       >
                                         <Eye className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteItinerary(itinerary.id)}
+                                        className="p-2 rounded-lg hover:bg-destructive/10 text-destructive transition-colors"
+                                        title="Excluir"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
                                       </button>
                                     </div>
                                   </td>
@@ -604,6 +665,14 @@ const AdminDashboard = () => {
                                     Finalizado
                                   </button>
                                 )}
+                                <button
+                                  onClick={() => handleDeleteImage(image.id)}
+                                  className="px-2 py-1.5 text-xs rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors flex items-center justify-center gap-1"
+                                  title="Excluir"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  Excluir
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -841,6 +910,14 @@ const AdminDashboard = () => {
                   Finalizado
                 </button>
               )}
+              
+              <button
+                onClick={() => handleDeleteQuote(selectedQuote.id)}
+                className="ml-auto px-4 py-2 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 flex items-center gap-2 transition-all"
+              >
+                <Trash2 className="w-4 h-4" />
+                Excluir
+              </button>
             </div>
 
             <button
@@ -973,6 +1050,14 @@ const AdminDashboard = () => {
                   Cotação Realizada
                 </button>
               )}
+              
+              <button
+                onClick={() => handleDeleteItinerary(selectedItinerary.id)}
+                className="ml-auto px-4 py-2 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 flex items-center gap-2 transition-all"
+              >
+                <Trash2 className="w-4 h-4" />
+                Excluir
+              </button>
             </div>
 
             <button
