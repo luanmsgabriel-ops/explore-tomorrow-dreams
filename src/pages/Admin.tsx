@@ -10,7 +10,6 @@ const Admin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -18,26 +17,13 @@ const Admin = () => {
     setIsLoading(true);
 
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: window.location.origin,
-          },
-        });
-        if (error) throw error;
-        toast.success('Conta criada! Você já pode fazer login.');
-        setIsSignUp(false);
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-        toast.success('Login realizado com sucesso!');
-        navigate('/admin/dashboard');
-      }
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+      toast.success('Login realizado com sucesso!');
+      navigate('/admin/dashboard');
     } catch (error: any) {
       console.error('Auth error:', error);
       toast.error(error.message || 'Erro de autenticação');
@@ -60,7 +46,7 @@ const Admin = () => {
               Área do <span className="gradient-text-teal">Administrador</span>
             </h1>
             <p className="text-muted-foreground">
-              {isSignUp ? 'Crie sua conta de administrador' : 'Faça login para acessar o painel'}
+              Faça login para acessar o painel
             </p>
           </div>
 
@@ -119,30 +105,16 @@ const Admin = () => {
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  {isSignUp ? 'Criando conta...' : 'Entrando...'}
+                  Entrando...
                 </>
               ) : (
-                isSignUp ? 'Criar Conta' : 'Entrar'
+                'Entrar'
               )}
             </button>
           </form>
 
           <p className="text-center text-muted-foreground text-sm mt-6">
-            {isSignUp ? (
-              <>
-                Já tem uma conta?{' '}
-                <button onClick={() => setIsSignUp(false)} className="text-primary hover:underline">
-                  Faça login
-                </button>
-              </>
-            ) : (
-              <>
-                Primeira vez?{' '}
-                <button onClick={() => setIsSignUp(true)} className="text-primary hover:underline">
-                  Criar conta
-                </button>
-              </>
-            )}
+            Acesso restrito a administradores
           </p>
         </div>
       </div>
