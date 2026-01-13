@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
   Plus, Edit, Trash2, Loader2, Sparkles, Image as ImageIcon, 
-  Save, X, Video, MapPin, Calendar, Users, Tag
+  Save, X, Video, MapPin, Calendar, Users, Tag, Star
 } from 'lucide-react';
 
 interface Video {
@@ -26,6 +26,7 @@ interface Destination {
   for_who: string;
   videos: Video[];
   is_active: boolean;
+  is_featured: boolean;
   created_at: string;
 }
 
@@ -52,6 +53,7 @@ export const DestinationManager = () => {
     for_who: '',
     videos: [] as Video[],
     is_active: true,
+    is_featured: false,
   });
 
   useEffect(() => {
@@ -245,6 +247,7 @@ export const DestinationManager = () => {
         for_who: formData.for_who,
         videos: JSON.parse(JSON.stringify(formData.videos)),
         is_active: formData.is_active,
+        is_featured: formData.is_featured,
       };
 
       if (editingDestination) {
@@ -289,6 +292,7 @@ export const DestinationManager = () => {
       for_who: destination.for_who,
       videos: destination.videos || [],
       is_active: destination.is_active,
+      is_featured: destination.is_featured || false,
     });
     setShowForm(true);
   };
@@ -325,6 +329,7 @@ export const DestinationManager = () => {
       for_who: '',
       videos: [],
       is_active: true,
+      is_featured: false,
     });
     setEditingDestination(null);
     setShowForm(false);
@@ -608,6 +613,21 @@ export const DestinationManager = () => {
                 <span className="text-foreground">Destino ativo (visível no site)</span>
               </label>
 
+              {/* Featured toggle */}
+              <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-accent/30 bg-accent/5 hover:bg-accent/10 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={formData.is_featured}
+                  onChange={(e) => setFormData(prev => ({ ...prev, is_featured: e.target.checked }))}
+                  className="w-5 h-5 rounded border-accent accent-accent"
+                />
+                <Star className={`w-5 h-5 ${formData.is_featured ? 'text-accent fill-accent' : 'text-accent'}`} />
+                <div>
+                  <span className="text-foreground font-medium">Destino em Destaque</span>
+                  <p className="text-xs text-muted-foreground">Exibido na página inicial do site</p>
+                </div>
+              </label>
+
               {/* Submit */}
               <div className="flex gap-3">
                 <button type="button" onClick={resetForm} className="flex-1 btn-outline">
@@ -626,13 +646,20 @@ export const DestinationManager = () => {
       {/* Destinations List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {destinations.map((destination) => (
-          <div key={destination.id} className="rounded-2xl border border-border overflow-hidden bg-card">
+          <div key={destination.id} className={`rounded-2xl border overflow-hidden bg-card ${destination.is_featured ? 'border-accent ring-2 ring-accent/30' : 'border-border'}`}>
             <div className="aspect-video bg-secondary relative">
               {destination.image_url ? (
                 <img src={destination.image_url} alt={destination.name} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                   <ImageIcon className="w-12 h-12" />
+                </div>
+              )}
+              {/* Featured badge */}
+              {destination.is_featured && (
+                <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-accent text-accent-foreground rounded-lg">
+                  <Star className="w-3 h-3 fill-current" />
+                  <span className="text-xs font-medium">Destaque</span>
                 </div>
               )}
               {/* Video count badge */}

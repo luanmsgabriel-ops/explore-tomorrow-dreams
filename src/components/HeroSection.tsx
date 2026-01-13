@@ -1,16 +1,30 @@
-import { useState, useEffect } from 'react';
-import { Play, Sparkles, MessageCircle, X, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { Play, Sparkles, MessageCircle, X, Loader2, Image } from 'lucide-react';
 import heroImage from '@/assets/hero-noronha.jpg';
 import { QuoteFormChat } from '@/components/QuoteFormChat';
 import { ItineraryGenerator } from '@/components/ItineraryGenerator';
 import { VideoPlayer } from '@/components/VideoPlayer';
-import { useDestinationById } from '@/hooks/useDestinations';
+import { ImageGenerator } from '@/components/ImageGenerator';
+import { useFeaturedDestination } from '@/hooks/useDestinations';
 
-type ModalType = 'videos' | 'itinerary' | 'quote' | null;
+type ModalType = 'videos' | 'itinerary' | 'quote' | 'image' | null;
 
 export const HeroSection = () => {
   const [activeModal, setActiveModal] = useState<ModalType>(null);
-  const { destination, isLoading } = useDestinationById('fernando-noronha');
+  const { destination, isLoading } = useFeaturedDestination();
+
+  // Use featured destination data or fallback
+  const displayName = destination?.name || 'Fernando de Noronha';
+  const displayDescription = destination?.description || 'Descubra o paraíso brasileiro. Praias cristalinas, vida marinha exuberante e momentos inesquecíveis esperam por você.';
+  const displayLocation = destination?.location || 'Brasil';
+  const displayCategory = destination?.category || 'Praia & Natureza';
+  const displayBestTime = destination?.bestTime || 'Ago - Fev';
+  const displayImage = destination?.image && destination.image !== '/placeholder.svg' ? destination.image : heroImage;
+
+  // Split name for styling (first part normal, last part colored)
+  const nameParts = displayName.split(' ');
+  const lastName = nameParts.pop() || '';
+  const firstName = nameParts.join(' ');
 
   return (
     <>
@@ -18,8 +32,8 @@ export const HeroSection = () => {
         {/* Background Image */}
         <div className="absolute inset-0">
           <img
-            src={heroImage}
-            alt="Fernando de Noronha - Destino em destaque"
+            src={displayImage}
+            alt={`${displayName} - Destino em destaque`}
             className="w-full h-full object-cover"
           />
           {/* Gradient overlays */}
@@ -45,14 +59,18 @@ export const HeroSection = () => {
 
               {/* Title */}
               <h1 className="font-serif text-5xl md:text-7xl font-bold text-foreground mb-4 text-shadow-lg">
-                Fernando de
-                <br />
-                <span className="gradient-text-teal">Noronha</span>
+                {firstName && (
+                  <>
+                    {firstName}
+                    <br />
+                  </>
+                )}
+                <span className="gradient-text-teal">{lastName}</span>
               </h1>
 
               {/* Description */}
               <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-lg">
-                Descubra o paraíso brasileiro. Praias cristalinas, vida marinha exuberante e momentos inesquecíveis esperam por você.
+                {displayDescription}
               </p>
 
               {/* Actions */}
@@ -79,21 +97,28 @@ export const HeroSection = () => {
                   <MessageCircle className="w-5 h-5" />
                   Solicitar Cotação
                 </button>
+                <button 
+                  onClick={() => setActiveModal('image')}
+                  className="btn-outline flex items-center gap-2"
+                >
+                  <Image className="w-5 h-5" />
+                  Gerar Imagem com IA
+                </button>
               </div>
 
               {/* Quick info */}
               <div className="flex flex-wrap gap-6 mt-10 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-primary" />
-                  Brasil
+                  {displayLocation}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-accent" />
-                  Praia & Natureza
+                  {displayCategory}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-teal-light" />
-                  Melhor época: Ago - Fev
+                  Melhor época: {displayBestTime}
                 </div>
               </div>
             </div>
@@ -120,7 +145,7 @@ export const HeroSection = () => {
               {activeModal === 'videos' && (
                 <div className="p-6">
                   <h2 className="font-serif text-2xl font-bold text-foreground mb-6">
-                    Vídeos de <span className="gradient-text-teal">Fernando de Noronha</span>
+                    Vídeos de <span className="gradient-text-teal">{destination.name}</span>
                   </h2>
                   {destination.videos && destination.videos.length > 0 ? (
                     <VideoPlayer videos={destination.videos} destinationName={destination.name} />
@@ -134,6 +159,9 @@ export const HeroSection = () => {
               )}
               {activeModal === 'quote' && (
                 <QuoteFormChat destinationId={destination.id} destinationName={destination.name} onClose={() => setActiveModal(null)} />
+              )}
+              {activeModal === 'image' && (
+                <ImageGenerator destinationId={destination.id} destinationName={destination.name} />
               )}
             </div>
           </div>

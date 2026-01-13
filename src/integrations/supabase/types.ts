@@ -130,6 +130,7 @@ export type Database = {
           ideal_duration: string
           image_url: string | null
           is_active: boolean
+          is_featured: boolean
           location: string
           name: string
           slug: string
@@ -147,6 +148,7 @@ export type Database = {
           ideal_duration: string
           image_url?: string | null
           is_active?: boolean
+          is_featured?: boolean
           location: string
           name: string
           slug: string
@@ -164,6 +166,7 @@ export type Database = {
           ideal_duration?: string
           image_url?: string | null
           is_active?: boolean
+          is_featured?: boolean
           location?: string
           name?: string
           slug?: string
