@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, Menu, X, FileText } from 'lucide-react';
+import { User, Menu, X, FileText, Search } from 'lucide-react';
 import logo from '@/assets/logo.jpeg';
 import { QuoteFormChat } from './QuoteFormChat';
-
+import { DestinationSearch } from './DestinationSearch';
 const navItems = [
   { label: 'Início', path: '/' },
   { label: 'Explorar', path: '/explorar' },
@@ -52,7 +52,7 @@ export const Header = () => {
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-8">
+            <nav className="hidden lg:flex items-center gap-6">
               {navItems.map((item) => (
                 <Link
                   key={item.path}
@@ -70,6 +70,7 @@ export const Header = () => {
               >
                 Cotação
               </button>
+              <DestinationSearch />
             </nav>
 
             {/* Right side actions */}
@@ -97,6 +98,11 @@ export const Header = () => {
           {isMobileMenuOpen && (
             <nav className="lg:hidden mt-4 pb-4 border-t border-border pt-4 animate-fade-in">
               <div className="flex flex-col gap-4">
+                {/* Mobile Search */}
+                <div className="pb-2">
+                  <DestinationSearch onClose={() => setIsMobileMenuOpen(false)} />
+                </div>
+                
                 {navItems.map((item) => (
                   <Link
                     key={item.path}
