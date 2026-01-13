@@ -3,6 +3,7 @@ import { Sparkles, Loader2, Mail, Phone, Download, Send } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
+import logo from '@/assets/logo.jpeg';
 
 interface ItineraryGeneratorProps {
   destinationId: string;
@@ -67,14 +68,189 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
     }
   };
 
+  const convertMarkdownToHtml = (markdown: string): string => {
+    // Simple markdown to HTML conversion
+    let html = markdown
+      .replace(/^### (.*$)/gim, '<h3 style="color: #14b8a6; margin-top: 24px; margin-bottom: 12px; font-size: 18px;">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 style="color: #14b8a6; margin-top: 32px; margin-bottom: 16px; font-size: 22px; border-bottom: 2px solid #14b8a6; padding-bottom: 8px;">$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1 style="color: #14b8a6; margin-bottom: 20px; font-size: 28px;">$1</h1>')
+      .replace(/\*\*(.*)\*\*/gim, '<strong style="color: #f59e0b;">$1</strong>')
+      .replace(/\*(.*)\*/gim, '<em>$1</em>')
+      .replace(/^- (.*$)/gim, '<li style="margin-left: 20px; margin-bottom: 8px;">$1</li>')
+      .replace(/\n/gim, '<br>');
+    
+    return html;
+  };
+
   const handleDownload = () => {
-    const blob = new Blob([itinerary], { type: 'text/markdown' });
+    const htmlContent = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roteiro ${destinationName} - Tomorrow Travel</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@400;500;600&display=swap');
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+      color: #e5e5e5;
+      min-height: 100vh;
+      padding: 40px;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: linear-gradient(180deg, rgba(20,20,30,0.95) 0%, rgba(15,15,25,0.98) 100%);
+      border-radius: 24px;
+      padding: 48px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 40px;
+      padding-bottom: 24px;
+      border-bottom: 2px solid rgba(20, 184, 166, 0.3);
+    }
+    
+    .logo {
+      width: 80px;
+      height: 80px;
+      border-radius: 16px;
+      object-fit: cover;
+    }
+    
+    .brand {
+      font-family: 'Playfair Display', serif;
+    }
+    
+    .brand-tomorrow {
+      font-size: 28px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #14b8a6 0%, #2dd4bf 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .brand-travel {
+      font-size: 28px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-left: 8px;
+    }
+    
+    .destination-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 36px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    
+    .subtitle {
+      color: #14b8a6;
+      font-size: 16px;
+      font-weight: 500;
+    }
+    
+    .content {
+      line-height: 1.8;
+      font-size: 15px;
+    }
+    
+    .footer {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 2px solid rgba(20, 184, 166, 0.3);
+      text-align: center;
+      color: #666;
+      font-size: 14px;
+    }
+    
+    .footer a {
+      color: #14b8a6;
+      text-decoration: none;
+    }
+    
+    .cta {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 12px 32px;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: #000;
+      font-weight: 600;
+      border-radius: 12px;
+      text-decoration: none;
+    }
+    
+    @media print {
+      body {
+        background: white;
+        color: #333;
+        padding: 20px;
+      }
+      .container {
+        background: white;
+        box-shadow: none;
+        border: 1px solid #ddd;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="${logo}" alt="Tomorrow Travel" class="logo" onerror="this.style.display='none'">
+      <div>
+        <div class="brand">
+          <span class="brand-tomorrow">TOMORROW</span>
+          <span class="brand-travel">TRAVEL</span>
+        </div>
+        <p class="subtitle">Sua próxima aventura começa aqui</p>
+      </div>
+    </div>
+    
+    <h1 class="destination-title">Roteiro: ${destinationName}</h1>
+    
+    <div class="content">
+      ${convertMarkdownToHtml(itinerary)}
+    </div>
+    
+    <div class="footer">
+      <p>Roteiro gerado exclusivamente para você por Tomorrow Travel</p>
+      <p style="margin-top: 8px;">Dúvidas? Entre em contato conosco!</p>
+      <a href="https://wa.me/5511999999999" class="cta">Solicitar Cotação</a>
+      <p style="margin-top: 24px; font-size: 12px;">© ${new Date().getFullYear()} Tomorrow Travel. Todos os direitos reservados.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `roteiro-${destinationName.toLowerCase().replace(/\s+/g, '-')}.md`;
+    a.download = `roteiro-${destinationName.toLowerCase().replace(/\s+/g, '-')}-tomorrow-travel.html`;
     a.click();
     URL.revokeObjectURL(url);
+    toast.success('Roteiro baixado! Abra o arquivo em seu navegador.');
   };
 
   if (step === 'contact') {
@@ -95,7 +271,7 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
         <form onSubmit={handleContactSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              E-mail
+              E-mail *
             </label>
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -112,7 +288,7 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              WhatsApp
+              WhatsApp *
             </label>
             <div className="relative">
               <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
