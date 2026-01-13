@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
+import { DestinationManager } from '@/components/admin/DestinationManager';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -18,11 +19,12 @@ import {
   UserPlus,
   Trash2,
   CheckCircle,
-  Send
+  Send,
+  Globe
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabType = 'overview' | 'quotes' | 'itineraries' | 'images' | 'users';
+type TabType = 'overview' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations';
 
 interface QuoteRequest {
   id: string;
@@ -221,6 +223,7 @@ const AdminDashboard = () => {
 
   const tabs = [
     { id: 'overview' as TabType, label: 'Visão Geral', icon: LayoutDashboard },
+    { id: 'destinations' as TabType, label: 'Destinos', icon: Globe },
     { id: 'quotes' as TabType, label: 'Cotações', icon: FileText },
     { id: 'itineraries' as TabType, label: 'Roteiros IA', icon: Map },
     { id: 'images' as TabType, label: 'Imagens IA', icon: Image },
@@ -373,6 +376,10 @@ const AdminDashboard = () => {
                         </div>
                       </div>
                     </div>
+                  )}
+
+                  {activeTab === 'destinations' && (
+                    <DestinationManager />
                   )}
 
                   {activeTab === 'quotes' && (
