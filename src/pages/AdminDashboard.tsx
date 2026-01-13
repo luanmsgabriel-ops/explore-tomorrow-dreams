@@ -14,11 +14,13 @@ import {
   Phone,
   Clock,
   Eye,
-  Loader2
+  Loader2,
+  UserPlus,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabType = 'overview' | 'quotes' | 'itineraries' | 'images';
+type TabType = 'overview' | 'quotes' | 'itineraries' | 'images' | 'users';
 
 interface QuoteRequest {
   id: string;
@@ -48,6 +50,14 @@ interface AIImage {
   created_at: string;
 }
 
+interface AdminUser {
+  id: string;
+  user_id: string;
+  email: string;
+  full_name: string | null;
+  created_at: string;
+}
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -55,7 +65,15 @@ const AdminDashboard = () => {
   const [quotes, setQuotes] = useState<QuoteRequest[]>([]);
   const [itineraries, setItineraries] = useState<AIItinerary[]>([]);
   const [images, setImages] = useState<AIImage[]>([]);
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [selectedQuote, setSelectedQuote] = useState<QuoteRequest | null>(null);
+  
+  // New user form state
+  const [showNewUserForm, setShowNewUserForm] = useState(false);
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserName, setNewUserName] = useState('');
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -72,15 +90,17 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [quotesRes, itinerariesRes, imagesRes] = await Promise.all([
+      const [quotesRes, itinerariesRes, imagesRes, usersRes] = await Promise.all([
         supabase.from('quote_requests').select('*').order('created_at', { ascending: false }),
         supabase.from('ai_itineraries').select('*').order('created_at', { ascending: false }),
         supabase.from('ai_generated_images').select('*').order('created_at', { ascending: false }),
+        supabase.from('profiles').select('*').order('created_at', { ascending: false }),
       ]);
 
       if (quotesRes.data) setQuotes(quotesRes.data);
       if (itinerariesRes.data) setItineraries(itinerariesRes.data);
       if (imagesRes.data) setImages(imagesRes.data);
+      if (usersRes.data) setAdminUsers(usersRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -104,11 +124,53 @@ const AdminDashboard = () => {
     });
   };
 
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreatingUser(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Você precisa estar logado');
+        return;
+      }
+
+      const response = await supabase.functions.invoke('create-user', {
+        body: {
+          email: newUserEmail,
+          password: newUserPassword,
+          full_name: newUserName,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      toast.success('Usuário criado com sucesso!');
+      setNewUserEmail('');
+      setNewUserPassword('');
+      setNewUserName('');
+      setShowNewUserForm(false);
+      fetchData();
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      toast.error(error.message || 'Erro ao criar usuário');
+    } finally {
+      setIsCreatingUser(false);
+    }
+  };
+
   const tabs = [
     { id: 'overview' as TabType, label: 'Visão Geral', icon: LayoutDashboard },
     { id: 'quotes' as TabType, label: 'Cotações', icon: FileText },
     { id: 'itineraries' as TabType, label: 'Roteiros IA', icon: Map },
     { id: 'images' as TabType, label: 'Imagens IA', icon: Image },
+    { id: 'users' as TabType, label: 'Usuários', icon: Users },
   ];
 
   return (
@@ -164,7 +226,7 @@ const AdminDashboard = () => {
                         Visão Geral
                       </h1>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         <div className="p-6 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
                           <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
@@ -197,6 +259,18 @@ const AdminDashboard = () => {
                             <div>
                               <p className="text-3xl font-bold text-foreground">{images.length}</p>
                               <p className="text-muted-foreground text-sm">Imagens Geradas</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-6 rounded-2xl bg-gradient-to-br from-purple-500/20 to-purple-500/5 border border-purple-500/20">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                              <Users className="w-6 h-6 text-purple-500" />
+                            </div>
+                            <div>
+                              <p className="text-3xl font-bold text-foreground">{adminUsers.length}</p>
+                              <p className="text-muted-foreground text-sm">Administradores</p>
                             </div>
                           </div>
                         </div>
@@ -365,6 +439,58 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                   )}
+
+                  {activeTab === 'users' && (
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <h1 className="font-serif text-3xl font-bold text-foreground">
+                          Usuários Administradores
+                        </h1>
+                        <button
+                          onClick={() => setShowNewUserForm(true)}
+                          className="btn-primary flex items-center gap-2"
+                        >
+                          <UserPlus className="w-4 h-4" />
+                          Novo Usuário
+                        </button>
+                      </div>
+
+                      <div className="rounded-2xl border border-border overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-secondary">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Nome</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">E-mail</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Criado em</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                              {adminUsers.map((user) => (
+                                <tr key={user.id} className="hover:bg-secondary/30">
+                                  <td className="px-4 py-4">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                        <Users className="w-5 h-5 text-primary" />
+                                      </div>
+                                      <span className="font-medium text-foreground">{user.full_name || 'Sem nome'}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 text-foreground">{user.email}</td>
+                                  <td className="px-4 py-4 text-sm text-muted-foreground">{formatDate(user.created_at)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {adminUsers.length === 0 && (
+                            <div className="p-8 text-center text-muted-foreground">
+                              Nenhum usuário cadastrado
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </main>
@@ -439,6 +565,93 @@ const AdminDashboard = () => {
 
             <button
               onClick={() => setSelectedQuote(null)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-secondary hover:bg-muted transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* New user modal */}
+      {showNewUserForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm" onClick={() => setShowNewUserForm(false)}>
+          <div className="relative w-full max-w-md bg-card border border-border rounded-2xl overflow-hidden p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-serif text-2xl font-bold text-foreground mb-6">Novo Administrador</h2>
+            
+            <form onSubmit={handleCreateUser} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Nome Completo
+                </label>
+                <input
+                  type="text"
+                  value={newUserName}
+                  onChange={(e) => setNewUserName(e.target.value)}
+                  placeholder="Nome do administrador"
+                  className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  E-mail *
+                </label>
+                <input
+                  type="email"
+                  value={newUserEmail}
+                  onChange={(e) => setNewUserEmail(e.target.value)}
+                  placeholder="email@exemplo.com"
+                  className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Senha *
+                </label>
+                <input
+                  type="password"
+                  value={newUserPassword}
+                  onChange={(e) => setNewUserPassword(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                  required
+                  minLength={6}
+                />
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowNewUserForm(false)}
+                  className="flex-1 px-4 py-3 rounded-xl border border-border text-foreground hover:bg-secondary transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingUser}
+                  className="flex-1 btn-primary flex items-center justify-center gap-2"
+                >
+                  {isCreatingUser ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Criando...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4" />
+                      Criar Usuário
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+
+            <button
+              onClick={() => setShowNewUserForm(false)}
               className="absolute top-4 right-4 p-2 rounded-full bg-secondary hover:bg-muted transition-colors"
             >
               ✕
