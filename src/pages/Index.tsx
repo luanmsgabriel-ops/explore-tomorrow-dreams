@@ -3,7 +3,8 @@ import { HeroSection } from '@/components/HeroSection';
 import { DestinationCarousel } from '@/components/DestinationCarousel';
 import { Footer } from '@/components/Footer';
 import { getDestinationsByType } from '@/data/destinations';
-import { Compass, Globe, MapPin, Sparkles } from 'lucide-react';
+import { Compass, Globe, MapPin, Sparkles, Play, MessageCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Index = () => {
   const explorarDestinations = getDestinationsByType('explorar');
@@ -31,35 +32,38 @@ const Index = () => {
 
           {/* Category cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="group p-8 rounded-2xl bg-gradient-to-br from-secondary to-background border border-border hover:border-primary/50 transition-all duration-300">
+            <Link to="/explorar" className="group p-8 rounded-2xl bg-gradient-to-br from-secondary to-background border border-border hover:border-primary/50 transition-all duration-300">
               <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <Compass className="w-7 h-7 text-primary" />
               </div>
               <h3 className="font-serif text-2xl font-bold text-foreground mb-3">Explorar</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
+              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
                 Destinos fora do comum e experiências que poucos conhecem. Para os verdadeiros exploradores.
               </p>
-            </div>
+              <span className="text-primary text-sm font-medium group-hover:underline">Ver destinos →</span>
+            </Link>
 
-            <div className="group p-8 rounded-2xl bg-gradient-to-br from-secondary to-background border border-border hover:border-accent/50 transition-all duration-300">
+            <Link to="/nacional" className="group p-8 rounded-2xl bg-gradient-to-br from-secondary to-background border border-border hover:border-accent/50 transition-all duration-300">
               <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <MapPin className="w-7 h-7 text-accent" />
               </div>
               <h3 className="font-serif text-2xl font-bold text-foreground mb-3">Nacional</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
+              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
                 As joias escondidas do Brasil. Praias paradisíacas, cachoeiras e paisagens de tirar o fôlego.
               </p>
-            </div>
+              <span className="text-accent text-sm font-medium group-hover:underline">Ver destinos →</span>
+            </Link>
 
-            <div className="group p-8 rounded-2xl bg-gradient-to-br from-secondary to-background border border-border hover:border-teal-light/50 transition-all duration-300">
+            <Link to="/internacional" className="group p-8 rounded-2xl bg-gradient-to-br from-secondary to-background border border-border hover:border-teal-light/50 transition-all duration-300">
               <div className="w-14 h-14 rounded-xl bg-teal-light/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <Globe className="w-7 h-7 text-teal-light" />
               </div>
               <h3 className="font-serif text-2xl font-bold text-foreground mb-3">Internacional</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
+              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
                 Os melhores destinos do mundo. Culturas, paisagens e experiências que vão além das fronteiras.
               </p>
-            </div>
+              <span className="text-teal-light text-sm font-medium group-hover:underline">Ver destinos →</span>
+            </Link>
           </div>
         </div>
       </section>
@@ -83,6 +87,59 @@ const Index = () => {
         accentColor="teal"
       />
 
+      {/* Features Section */}
+      <section className="py-20 border-t border-border">
+        <div className="container mx-auto px-4 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <h2 className="font-serif text-3xl md:text-4xl font-bold text-foreground mb-4">
+              Por que escolher a <span className="gradient-text-teal">Tomorrow Travel</span>?
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="text-center p-6">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Sparkles className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="font-serif text-lg font-bold text-foreground mb-2">Roteiros com IA</h3>
+              <p className="text-muted-foreground text-sm">
+                Crie roteiros personalizados em segundos com nossa inteligência artificial.
+              </p>
+            </div>
+
+            <div className="text-center p-6">
+              <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
+                <Play className="w-8 h-8 text-accent" />
+              </div>
+              <h3 className="font-serif text-lg font-bold text-foreground mb-2">Vídeos Imersivos</h3>
+              <p className="text-muted-foreground text-sm">
+                Explore os destinos antes de viajar com vídeos selecionados especialmente.
+              </p>
+            </div>
+
+            <div className="text-center p-6">
+              <div className="w-16 h-16 rounded-2xl bg-teal-light/10 flex items-center justify-center mx-auto mb-4">
+                <MessageCircle className="w-8 h-8 text-teal-light" />
+              </div>
+              <h3 className="font-serif text-lg font-bold text-foreground mb-2">Chat Inteligente</h3>
+              <p className="text-muted-foreground text-sm">
+                Tire dúvidas sobre qualquer destino com nosso assistente virtual 24/7.
+              </p>
+            </div>
+
+            <div className="text-center p-6">
+              <div className="w-16 h-16 rounded-2xl bg-gold/10 flex items-center justify-center mx-auto mb-4">
+                <Globe className="w-8 h-8 text-gold" />
+              </div>
+              <h3 className="font-serif text-lg font-bold text-foreground mb-2">Curadoria Premium</h3>
+              <p className="text-muted-foreground text-sm">
+                Destinos selecionados por especialistas para experiências únicas.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-20 md:py-32 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-accent/10" />
@@ -99,13 +156,13 @@ const Index = () => {
               Nossa inteligência artificial cria roteiros sob medida para você. Informe suas preferências e receba um plano de viagem exclusivo em segundos.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <button className="btn-gold flex items-center gap-2">
-                <Sparkles className="w-5 h-5" />
-                Criar Roteiro com IA
-              </button>
-              <button className="btn-outline">
-                Solicitar Cotação
-              </button>
+              <Link to="/explorar" className="btn-gold flex items-center gap-2">
+                <Compass className="w-5 h-5" />
+                Explorar Destinos
+              </Link>
+              <Link to="/nacional" className="btn-outline">
+                Ver Brasil
+              </Link>
             </div>
           </div>
         </div>
