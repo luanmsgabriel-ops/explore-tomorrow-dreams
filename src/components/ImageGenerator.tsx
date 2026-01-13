@@ -217,6 +217,15 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
                 className="w-full"
               />
             </div>
+            
+            {/* Branded message below the image */}
+            <div className="text-center py-4 px-6 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 rounded-xl border border-primary/20">
+              <p className="text-lg font-medium text-foreground">
+                Isso pode se tornar <span className="font-bold text-primary uppercase">REAL</span> com a{' '}
+                <span className="font-bold text-accent">TOMORROW TRAVEL</span>
+              </p>
+            </div>
+            
             <div className="flex gap-3">
               <button
                 onClick={handleDownload}
