@@ -13,9 +13,6 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
-  const [prompt, setPrompt] = useState(
-    `Pessoa visitando ${destinationName}, cenário realista com os principais pontos turísticos, iluminação natural, estilo fotografia de viagem profissional`
-  );
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -51,7 +48,6 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
         body: {
           destination: destinationName,
           userImageBase64: userImage,
-          customPrompt: prompt,
           email,
           whatsapp,
         },
@@ -66,7 +62,7 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
       await supabase.from('ai_generated_images').insert({
         destination_id: destinationId,
         destination_name: destinationName,
-        prompt,
+        prompt: `Imagem gerada para ${destinationName}`,
         image_url: imageUrl,
         user_email: email,
         user_whatsapp: whatsapp,
@@ -182,18 +178,6 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
             accept="image/*"
             onChange={handleFileSelect}
             className="hidden"
-          />
-        </div>
-
-        {/* Prompt */}
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-2">
-            Descrição da imagem
-          </label>
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary min-h-[80px] resize-none text-sm"
           />
         </div>
 

@@ -11,18 +11,23 @@ serve(async (req) => {
   }
 
   try {
-    const { destination, userImageBase64, customPrompt } = await req.json();
+    const { destination, userImageBase64 } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const prompt = customPrompt || 
-      `Create a beautiful, realistic travel photograph showing a person visiting ${destination}. 
+    // Prompt construído no backend - não visível para o cliente
+    const prompt = `Create a beautiful, realistic travel photograph showing a person visiting ${destination}. 
 The scene should capture the iconic landmarks and atmosphere of ${destination}. 
 Style: professional travel photography, natural lighting, vibrant colors, high quality.
-The person should be enjoying the destination, looking happy and relaxed.`;
+The person should be enjoying the destination, looking happy and relaxed.
+
+IMPORTANT: Include in the image:
+1. A stylish watermark/logo saying "Tomorrow Travel" in the corner of the image
+2. Add an elegant text overlay at the bottom of the image with the phrase: "Isso pode se tornar real com a Tomorrow Travel"
+The text should be integrated beautifully into the image design, not obtrusive but clearly visible.`;
 
     const messages: any[] = [
       {
