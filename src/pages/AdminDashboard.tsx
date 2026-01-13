@@ -193,6 +193,18 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleUpdateQuoteStatus = async (quoteId: string, newStatus: string) => {
+    try {
+      await supabase.from('quote_requests').update({ status: newStatus }).eq('id', quoteId);
+      toast.success('Status atualizado com sucesso!');
+      fetchData();
+      setSelectedQuote(null);
+    } catch (error) {
+      console.error('Error updating quote status:', error);
+      toast.error('Erro ao atualizar status');
+    }
+  };
+
   const tabs = [
     { id: 'overview' as TabType, label: 'Visão Geral', icon: LayoutDashboard },
     { id: 'quotes' as TabType, label: 'Cotações', icon: FileText },
@@ -323,9 +335,15 @@ const AdminDashboard = () => {
                               </div>
                               <div className="flex items-center gap-4">
                                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                  quote.status === 'pending' ? 'bg-accent/20 text-accent' : 'bg-primary/20 text-primary'
+                                  quote.status === 'pending' ? 'bg-accent/20 text-accent' : 
+                                  quote.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
+                                  quote.status === 'quoted' ? 'bg-purple-500/20 text-purple-400' :
+                                  'bg-primary/20 text-primary'
                                 }`}>
-                                  {quote.status === 'pending' ? 'Pendente' : quote.status}
+                                  {quote.status === 'pending' ? 'Pendente' : 
+                                   quote.status === 'in_progress' ? 'Em andamento' :
+                                   quote.status === 'quoted' ? 'Cotado' :
+                                   quote.status}
                                 </span>
                                 <span className="text-sm text-muted-foreground">{formatDate(quote.created_at)}</span>
                               </div>
@@ -373,9 +391,15 @@ const AdminDashboard = () => {
                                   <td className="px-4 py-4 text-foreground">{quote.travel_date || '-'}</td>
                                   <td className="px-4 py-4">
                                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                      quote.status === 'pending' ? 'bg-accent/20 text-accent' : 'bg-primary/20 text-primary'
+                                      quote.status === 'pending' ? 'bg-accent/20 text-accent' : 
+                                      quote.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
+                                      quote.status === 'quoted' ? 'bg-purple-500/20 text-purple-400' :
+                                      'bg-primary/20 text-primary'
                                     }`}>
-                                      {quote.status === 'pending' ? 'Pendente' : quote.status}
+                                      {quote.status === 'pending' ? 'Pendente' : 
+                                       quote.status === 'in_progress' ? 'Em andamento' :
+                                       quote.status === 'quoted' ? 'Cotado' :
+                                       quote.status}
                                     </span>
                                   </td>
                                   <td className="px-4 py-4 text-sm text-muted-foreground">{formatDate(quote.created_at)}</td>
@@ -667,9 +691,15 @@ const AdminDashboard = () => {
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Status</p>
                   <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                    selectedQuote.status === 'pending' ? 'bg-accent/20 text-accent' : 'bg-primary/20 text-primary'
+                    selectedQuote.status === 'pending' ? 'bg-accent/20 text-accent' : 
+                    selectedQuote.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
+                    selectedQuote.status === 'quoted' ? 'bg-purple-500/20 text-purple-400' :
+                    'bg-primary/20 text-primary'
                   }`}>
-                    {selectedQuote.status === 'pending' ? 'Pendente' : selectedQuote.status}
+                    {selectedQuote.status === 'pending' ? 'Pendente' : 
+                     selectedQuote.status === 'in_progress' ? 'Em andamento' :
+                     selectedQuote.status === 'quoted' ? 'Cotado' :
+                     selectedQuote.status}
                   </span>
                 </div>
               </div>
@@ -678,20 +708,43 @@ const AdminDashboard = () => {
             <div className="flex gap-3 mt-6">
               <a 
                 href={`mailto:${selectedQuote.email}`}
-                className="flex-1 btn-primary flex items-center justify-center gap-2"
+                className="btn-outline flex items-center gap-2"
               >
                 <Mail className="w-4 h-4" />
-                Enviar E-mail
+                E-mail
               </a>
               <a 
                 href={`https://wa.me/${selectedQuote.whatsapp.replace(/\D/g, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 btn-gold flex items-center justify-center gap-2"
+                className="btn-outline flex items-center gap-2"
               >
                 <Phone className="w-4 h-4" />
                 WhatsApp
               </a>
+            </div>
+
+            {/* Status Actions */}
+            <div className="flex flex-wrap gap-3 mt-4">
+              {selectedQuote.status === 'pending' && (
+                <button
+                  onClick={() => handleUpdateQuoteStatus(selectedQuote.id, 'in_progress')}
+                  className="btn-primary flex items-center gap-2"
+                >
+                  <Clock className="w-4 h-4" />
+                  Em Andamento
+                </button>
+              )}
+              
+              {(selectedQuote.status === 'pending' || selectedQuote.status === 'in_progress') && (
+                <button
+                  onClick={() => handleUpdateQuoteStatus(selectedQuote.id, 'quoted')}
+                  className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Cotado
+                </button>
+              )}
             </div>
 
             <button
