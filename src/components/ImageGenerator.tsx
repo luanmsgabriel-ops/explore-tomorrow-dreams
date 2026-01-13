@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Image, Upload, Loader2, Download, RefreshCw, Mail, Phone } from 'lucide-react';
+import { Image, Upload, Loader2, Download, RefreshCw, Mail, Phone, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { imageGeneratorSchema, validateForm, isValidationError } from '@/lib/validations';
@@ -174,14 +174,25 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
           </div>
         </div>
 
-        {/* Upload section */}
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-2">
-            Sua foto (opcional - máx 5MB)
-          </label>
+        {/* Upload section with highlight suggestion */}
+        <div className="p-4 rounded-xl bg-gradient-to-r from-accent/10 via-primary/10 to-accent/10 border border-accent/30">
+          <div className="flex items-start gap-3 mb-3">
+            <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-accent" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                📸 Inclua uma foto sua ou da sua família!
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Nossa IA vai criar uma imagem personalizada de vocês no destino. Quanto melhor a foto, mais incrível o resultado!
+              </p>
+            </div>
+          </div>
+          
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+            className="border-2 border-dashed border-accent/50 rounded-xl p-6 text-center cursor-pointer hover:border-accent hover:bg-accent/5 transition-all"
           >
             {userImage ? (
               <div className="relative">
@@ -202,9 +213,12 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
               </div>
             ) : (
               <>
-                <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground text-sm">
-                  Clique para fazer upload de uma foto
+                <Upload className="w-10 h-10 text-accent mx-auto mb-3" />
+                <p className="text-foreground font-medium text-sm mb-1">
+                  Clique para enviar sua foto
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Foto de rosto ou em família • Máx 5MB
                 </p>
               </>
             )}
