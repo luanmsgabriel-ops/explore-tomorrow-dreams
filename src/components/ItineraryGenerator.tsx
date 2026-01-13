@@ -63,13 +63,17 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
 
       if (response.error) throw response.error;
 
-      const { itinerary: generatedItinerary } = response.data;
+      const { itinerary: generatedItinerary, destination: actualDestination } = response.data;
       setItinerary(generatedItinerary);
+      
+      // Update destination name if AI returned a different one
+      const finalDestinationName = actualDestination || selectedDestinationName;
+      setSelectedDestinationName(finalDestinationName);
 
       // Save to database
       const { data: insertedData } = await supabase.from('ai_itineraries').insert({
         destination_id: selectedDestinationId,
-        destination_name: selectedDestinationName,
+        destination_name: finalDestinationName,
         user_email: email || '',
         user_whatsapp: whatsapp,
         preferences,
