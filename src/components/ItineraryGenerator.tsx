@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Loader2, Mail, Phone, Download, Send, CheckCircle } from 'lucide-react';
+import { Sparkles, Loader2, Mail, Phone, Download, Send, CheckCircle, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
@@ -13,6 +13,7 @@ interface ItineraryGeneratorProps {
 
 export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: ItineraryGeneratorProps) => {
   const [step, setStep] = useState<'contact' | 'preferences' | 'generating' | 'result' | 'quote_success'>('contact');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [preferences, setPreferences] = useState('');
@@ -23,8 +24,8 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
 
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !whatsapp) {
-      toast.error('Preencha todos os campos');
+    if (!name || !whatsapp) {
+      toast.error('Preencha o nome e WhatsApp');
       return;
     }
     setStep('preferences');
@@ -279,15 +280,15 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
         <form onSubmit={handleContactSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              E-mail *
+              Nome *
             </label>
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Seu nome completo"
                 className="w-full pl-12 pr-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
@@ -307,6 +308,22 @@ export const ItineraryGenerator = ({ destinationId, destinationName, onClose }: 
                 placeholder="(11) 99999-9999"
                 className="w-full pl-12 pr-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              E-mail (opcional)
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="seu@email.com"
+                className="w-full pl-12 pr-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
           </div>
