@@ -1,16 +1,16 @@
-import { useState } from 'react';
-import { Play, Sparkles, MessageCircle, X, Calendar } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Play, Sparkles, MessageCircle, X, Loader2 } from 'lucide-react';
 import heroImage from '@/assets/hero-noronha.jpg';
 import { QuoteFormChat } from '@/components/QuoteFormChat';
 import { ItineraryGenerator } from '@/components/ItineraryGenerator';
 import { VideoPlayer } from '@/components/VideoPlayer';
-import { getDestinationById } from '@/data/destinations';
+import { useDestinationById } from '@/hooks/useDestinations';
 
 type ModalType = 'videos' | 'itinerary' | 'quote' | null;
 
 export const HeroSection = () => {
   const [activeModal, setActiveModal] = useState<ModalType>(null);
-  const destination = getDestinationById('fernando-noronha');
+  const { destination, isLoading } = useDestinationById('fernando-noronha');
 
   return (
     <>
@@ -60,6 +60,7 @@ export const HeroSection = () => {
                 <button 
                   onClick={() => setActiveModal('videos')}
                   className="btn-primary flex items-center gap-2"
+                  disabled={isLoading}
                 >
                   <Play className="w-5 h-5" />
                   Assistir Vídeos
@@ -121,7 +122,11 @@ export const HeroSection = () => {
                   <h2 className="font-serif text-2xl font-bold text-foreground mb-6">
                     Vídeos de <span className="gradient-text-teal">Fernando de Noronha</span>
                   </h2>
-                  <VideoPlayer videos={destination.videos} destinationName={destination.name} />
+                  {destination.videos && destination.videos.length > 0 ? (
+                    <VideoPlayer videos={destination.videos} destinationName={destination.name} />
+                  ) : (
+                    <p className="text-muted-foreground text-center py-8">Nenhum vídeo disponível.</p>
+                  )}
                 </div>
               )}
               {activeModal === 'itinerary' && (
@@ -132,6 +137,13 @@ export const HeroSection = () => {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Loading Modal */}
+      {activeModal && isLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       )}
     </>
