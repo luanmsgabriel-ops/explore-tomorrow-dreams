@@ -20,6 +20,7 @@ export interface Destination {
   idealDuration: string;
   forWho: string;
   videos: DestinationVideo[];
+  isFeatured?: boolean;
 }
 
 // Transform database record to frontend format
@@ -36,6 +37,7 @@ const transformDestination = (record: any): Destination => ({
   idealDuration: record.ideal_duration,
   forWho: record.for_who,
   videos: Array.isArray(record.videos) ? record.videos : [],
+  isFeatured: record.is_featured || false,
 });
 
 export const useDestinations = (type?: 'explorar' | 'nacional' | 'internacional') => {
@@ -115,6 +117,43 @@ export const useDestinationById = (id: string) => {
 
     fetchDestination();
   }, [id]);
+
+  return { destination, isLoading, error };
+};
+
+export const useFeaturedDestination = () => {
+  const [destination, setDestination] = useState<Destination | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchFeaturedDestination = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('destinations')
+          .select('*')
+          .eq('is_featured', true)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (fetchError) throw fetchError;
+
+        if (data) {
+          setDestination(transformDestination(data));
+        } else {
+          setDestination(null);
+        }
+      } catch (err: any) {
+        console.error('Error fetching featured destination:', err);
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFeaturedDestination();
+  }, []);
 
   return { destination, isLoading, error };
 };
