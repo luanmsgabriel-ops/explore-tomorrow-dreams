@@ -9,6 +9,7 @@ import Nacional from "./pages/Nacional";
 import Internacional from "./pages/Internacional";
 import DestinationDetail from "./pages/DestinationDetail";
 import Admin from "./pages/Admin";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/internacional" element={<Internacional />} />
           <Route path="/destino/:id" element={<DestinationDetail />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

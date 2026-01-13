@@ -1,16 +1,49 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
-import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const Admin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Login logic will be implemented with backend
-    console.log('Login attempt:', { email, password });
+    setIsLoading(true);
+
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: window.location.origin,
+          },
+        });
+        if (error) throw error;
+        toast.success('Conta criada! Você já pode fazer login.');
+        setIsSignUp(false);
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+        toast.success('Login realizado com sucesso!');
+        navigate('/admin/dashboard');
+      }
+    } catch (error: any) {
+      console.error('Auth error:', error);
+      toast.error(error.message || 'Erro de autenticação');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -27,7 +60,7 @@ const Admin = () => {
               Área do <span className="gradient-text-teal">Administrador</span>
             </h1>
             <p className="text-muted-foreground">
-              Faça login para acessar o painel administrativo
+              {isSignUp ? 'Crie sua conta de administrador' : 'Faça login para acessar o painel'}
             </p>
           </div>
 
@@ -46,6 +79,7 @@ const Admin = () => {
                   placeholder="admin@tomorrowtravel.com"
                   className="w-full pl-12 pr-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   required
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -64,6 +98,8 @@ const Admin = () => {
                   placeholder="••••••••"
                   className="w-full pl-12 pr-12 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   required
+                  disabled={isLoading}
+                  minLength={6}
                 />
                 <button
                   type="button"
@@ -75,13 +111,38 @@ const Admin = () => {
               </div>
             </div>
 
-            <button type="submit" className="w-full btn-primary">
-              Entrar
+            <button 
+              type="submit" 
+              className="w-full btn-primary flex items-center justify-center gap-2"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  {isSignUp ? 'Criando conta...' : 'Entrando...'}
+                </>
+              ) : (
+                isSignUp ? 'Criar Conta' : 'Entrar'
+              )}
             </button>
           </form>
 
-          <p className="text-center text-muted-foreground text-sm mt-8">
-            Acesso restrito apenas para administradores do sistema.
+          <p className="text-center text-muted-foreground text-sm mt-6">
+            {isSignUp ? (
+              <>
+                Já tem uma conta?{' '}
+                <button onClick={() => setIsSignUp(false)} className="text-primary hover:underline">
+                  Faça login
+                </button>
+              </>
+            ) : (
+              <>
+                Primeira vez?{' '}
+                <button onClick={() => setIsSignUp(true)} className="text-primary hover:underline">
+                  Criar conta
+                </button>
+              </>
+            )}
           </p>
         </div>
       </div>
