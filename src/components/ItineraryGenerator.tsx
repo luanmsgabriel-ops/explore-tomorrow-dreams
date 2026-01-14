@@ -99,7 +99,26 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
         },
       });
 
-      if (response.error) throw response.error;
+      // Verifica erros de rate limit
+      if (response.error) {
+        const errorData = response.error as any;
+        if (errorData?.context?.body) {
+          try {
+            const body = JSON.parse(errorData.context.body);
+            if (body.code === 'RATE_LIMIT') {
+              toast.error(body.error, {
+                description: `Uso diário: ${body.usage?.daily_used}/${body.usage?.daily_limit} | Mensal: ${body.usage?.monthly_used}/${body.usage?.monthly_limit}`,
+                duration: 8000,
+              });
+              setStep('preferences');
+              return;
+            }
+          } catch {
+            // Parse failed, continue with generic error
+          }
+        }
+        throw response.error;
+      }
 
       const { itinerary: generatedItinerary, destination: actualDestination } = response.data;
       setItinerary(generatedItinerary);

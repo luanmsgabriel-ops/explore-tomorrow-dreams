@@ -1,9 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-forwarded-for, x-real-ip",
 };
+
+// Limites de uso
+const DAILY_LIMIT = 2;
+const MONTHLY_LIMIT = 4;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -12,6 +17,44 @@ serve(async (req) => {
 
   try {
     const { messages, destination } = await req.json();
+    
+    // Obtém IP do cliente
+    const forwardedFor = req.headers.get("x-forwarded-for");
+    const realIp = req.headers.get("x-real-ip");
+    const clientIp = forwardedFor?.split(",")[0]?.trim() || realIp || "unknown";
+    
+    // Inicializa Supabase com service role para verificar limites
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Verifica limite de uso
+    const { data: usageResult, error: usageError } = await supabase.rpc(
+      "check_ai_usage_limit",
+      {
+        p_ip_address: clientIp,
+        p_feature: "chat",
+        p_daily_limit: DAILY_LIMIT,
+        p_monthly_limit: MONTHLY_LIMIT,
+      }
+    );
+
+    if (usageError) {
+      console.error("Error checking usage limit:", usageError);
+    } else if (!usageResult?.allowed) {
+      const reason = usageResult.reason === "daily_limit" 
+        ? `Você atingiu o limite diário de ${DAILY_LIMIT} conversas. Tente novamente amanhã.`
+        : `Você atingiu o limite mensal de ${MONTHLY_LIMIT} conversas. Tente novamente no próximo mês.`;
+      
+      return new Response(
+        JSON.stringify({ 
+          error: reason,
+          code: "RATE_LIMIT",
+          usage: usageResult
+        }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {

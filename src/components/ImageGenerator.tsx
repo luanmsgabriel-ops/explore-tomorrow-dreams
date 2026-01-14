@@ -77,7 +77,26 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
         },
       });
 
-      if (response.error) throw response.error;
+      // Verifica erros de rate limit
+      if (response.error) {
+        const errorData = response.error as any;
+        if (errorData?.context?.body) {
+          try {
+            const body = JSON.parse(errorData.context.body);
+            if (body.code === 'RATE_LIMIT') {
+              toast.error(body.error, {
+                description: `Uso diário: ${body.usage?.daily_used}/${body.usage?.daily_limit} | Mensal: ${body.usage?.monthly_used}/${body.usage?.monthly_limit}`,
+                duration: 8000,
+              });
+              setIsLoading(false);
+              return;
+            }
+          } catch {
+            // Parse failed, continue with generic error
+          }
+        }
+        throw response.error;
+      }
 
       const { imageUrl } = response.data;
       setGeneratedImage(imageUrl);
