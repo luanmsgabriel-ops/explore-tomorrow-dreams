@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Sparkles, Loader2, Mail, Phone, Download, Send, CheckCircle, User, MapPin } from 'lucide-react';
+import { Sparkles, Loader2, Mail, Phone, Download, Send, CheckCircle, User, MapPin, Database } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import logo from '@/assets/logo.jpeg';
 import { useDestinations } from '@/hooks/useDestinations';
 import { itineraryFormSchema, validateForm, sanitizeText, isValidationError } from '@/lib/validations';
+import { getCachedItinerary, setCachedItinerary } from '@/hooks/useItineraryCache';
 
 interface ItineraryGeneratorProps {
   destinationId?: string;
@@ -28,6 +29,7 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
   const [isLoading, setIsLoading] = useState(false);
   const [isRequestingQuote, setIsRequestingQuote] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [fromCache, setFromCache] = useState(false);
 
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,10 +69,27 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
   const handleGenerate = async () => {
     setStep('generating');
     setIsLoading(true);
+    setFromCache(false);
 
     try {
       const sanitizedPreferences = sanitizeText(preferences);
       
+      // Verifica se existe no cache
+      const cached = getCachedItinerary(selectedDestinationName, sanitizedPreferences);
+      
+      if (cached) {
+        // Usa roteiro do cache
+        setItinerary(cached.itinerary);
+        setSelectedDestinationName(cached.actualDestination);
+        setFromCache(true);
+        setStep('result');
+        toast.success('Roteiro carregado do cache! 💾', {
+          description: 'Créditos economizados com cache local',
+        });
+        return;
+      }
+      
+      // Gera novo roteiro via API
       const response = await supabase.functions.invoke('generate-itinerary', {
         body: {
           destination: selectedDestinationName,
@@ -88,6 +107,14 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
       // Update destination name if AI returned a different one
       const finalDestinationName = actualDestination || selectedDestinationName;
       setSelectedDestinationName(finalDestinationName);
+      
+      // Salva no cache para uso futuro
+      setCachedItinerary(
+        selectedDestinationName,
+        sanitizedPreferences,
+        generatedItinerary,
+        finalDestinationName
+      );
 
       // Save to database - without .select() to avoid RLS SELECT restriction
       // Users can INSERT but cannot SELECT, so we save data for admin viewing
@@ -542,9 +569,17 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
   return (
     <div className="flex flex-col h-full max-h-[80vh]">
       <div className="p-6 border-b border-border">
-        <h3 className="font-serif text-xl font-bold text-foreground">
-          Seu Roteiro para {selectedDestinationName}
-        </h3>
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="font-serif text-xl font-bold text-foreground">
+            Seu Roteiro para {selectedDestinationName}
+          </h3>
+          {fromCache && (
+            <span className="flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary text-xs font-medium rounded-full">
+              <Database className="w-3 h-3" />
+              Do cache
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
