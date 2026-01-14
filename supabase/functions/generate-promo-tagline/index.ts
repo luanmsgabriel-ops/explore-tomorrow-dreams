@@ -22,23 +22,30 @@ serve(async (req: Request) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    const prompt = `Você é um copywriter especializado em viagens e turismo. Crie uma tagline promocional curta e impactante (máximo 2 frases) para a seguinte oferta de viagem:
+    const prompt = `Você é um copywriter premiado especializado em turismo de luxo. Crie uma LEGENDA IRRESISTÍVEL para aparecer no popup promocional de uma agência de viagens.
 
-Destino: ${destinationName}
-Título da oferta: ${title}
-Valor: R$ ${totalPrice}
-${cashPrice ? `Condição à vista: ${cashPrice}` : ''}
-${installments ? `Parcelamento: ${installments}` : ''}
-${inclusions ? `Incluso: ${inclusions}` : ''}
+🎯 OFERTA:
+- Destino: ${destinationName}
+- Título: ${title}
+- Valor: R$ ${totalPrice}
+${cashPrice ? `- À vista: ${cashPrice}` : ''}
+${installments ? `- Parcelamento: ${installments}` : ''}
+${inclusions ? `- Incluso: ${inclusions}` : ''}
 
-A tagline deve:
-- Ser emotiva e despertar o desejo de viajar
-- Destacar a oportunidade única
-- Criar senso de urgência
-- Ser curta e memorável (máximo 2 frases)
-- Não incluir preços ou números
+📝 INSTRUÇÕES:
+Crie uma legenda de 1-2 frases que:
+1. DESPERTE EMOÇÃO e desejo imediato de viajar
+2. Use palavras poderosas (sonho, paraíso, exclusivo, imperdível, única chance)
+3. Crie URGÊNCIA (agora, não perca, última oportunidade)
+4. Seja MEMORÁVEL e faça o cliente querer clicar em "Ver Mais"
+5. NÃO inclua preços, números ou emojis
 
-Responda APENAS com a tagline, sem aspas ou explicações.`;
+Exemplos de legendas impactantes:
+- "Seu sonho de conhecer o paraíso está a um clique. Esta é a sua chance!"
+- "Experiências assim acontecem uma vez na vida. Não deixe passar."
+- "O destino dos seus sonhos te espera. Aproveite antes que acabe!"
+
+Responda APENAS com a legenda, sem aspas, explicações ou formatação.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
