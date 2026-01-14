@@ -75,7 +75,21 @@ export const DestinationChat = ({ destinationId, destinationName }: DestinationC
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response');
+        // Tenta parsear erro de rate limit
+        try {
+          const errorData = await response.json();
+          if (errorData.code === 'RATE_LIMIT') {
+            toast.error(errorData.error, {
+              description: `Uso diário: ${errorData.usage?.daily_used}/${errorData.usage?.daily_limit} | Mensal: ${errorData.usage?.monthly_used}/${errorData.usage?.monthly_limit}`,
+              duration: 8000,
+            });
+            setIsLoading(false);
+            return;
+          }
+          throw new Error(errorData.error || 'Failed to get response');
+        } catch {
+          throw new Error('Failed to get response');
+        }
       }
 
       const reader = response.body?.getReader();

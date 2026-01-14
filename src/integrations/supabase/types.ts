@@ -92,6 +92,27 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_usage_tracking: {
+        Row: {
+          created_at: string
+          feature: string
+          id: string
+          ip_address: string
+        }
+        Insert: {
+          created_at?: string
+          feature: string
+          id?: string
+          ip_address: string
+        }
+        Update: {
+          created_at?: string
+          feature?: string
+          id?: string
+          ip_address?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
@@ -289,6 +310,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_ai_usage_limit: {
+        Args: {
+          p_daily_limit?: number
+          p_feature: string
+          p_ip_address: string
+          p_monthly_limit?: number
+        }
+        Returns: Json
+      }
+      cleanup_old_usage_tracking: { Args: never; Returns: undefined }
+      get_ai_usage_stats: {
+        Args: {
+          p_daily_limit?: number
+          p_feature: string
+          p_ip_address: string
+          p_monthly_limit?: number
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
