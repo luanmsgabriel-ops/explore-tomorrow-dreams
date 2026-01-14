@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Bot, User } from 'lucide-react';
+import { Send, Loader2, Bot, User, Phone, UserCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { chatMessageSchema, generateSecureSessionId, sanitizeText } from '@/lib/validations';
+import { chatMessageSchema, generateSecureSessionId, sanitizeText, phoneSchema, nameSchema } from '@/lib/validations';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -13,14 +14,20 @@ interface DestinationChatProps {
   destinationName: string;
 }
 
+type ChatStep = 'collect_name' | 'collect_whatsapp' | 'chatting';
+
 export const DestinationChat = ({ destinationId, destinationName }: DestinationChatProps) => {
   // Gera um ID de sessão criptograficamente seguro
   const sessionIdRef = useRef<string>(generateSecureSessionId());
   
+  const [step, setStep] = useState<ChatStep>('collect_name');
+  const [userName, setUserName] = useState('');
+  const [userWhatsapp, setUserWhatsapp] = useState('');
+  
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: `Olá! 👋 Sou o assistente virtual da Tomorrow Travel. Estou aqui para ajudar você com tudo sobre ${destinationName}! Pode me perguntar sobre:\n\n• Melhor época para visitar\n• Passeios e experiências\n• Gastronomia local\n• Dicas de hospedagem\n• Documentação necessária\n• E muito mais!\n\nComo posso ajudar?`,
+      content: `Olá! 👋 Sou o assistente virtual da Tomorrow Travel. Estou aqui para ajudar você com tudo sobre ${destinationName}!\n\nPara começarmos, qual é o seu nome?`,
     },
   ]);
   const [input, setInput] = useState('');
@@ -36,8 +43,93 @@ export const DestinationChat = ({ destinationId, destinationName }: DestinationC
     scrollToBottom();
   }, [messages]);
 
+  const createChatSession = async (name: string, whatsapp: string) => {
+    try {
+      const { error } = await supabase.from('chat_sessions').insert({
+        session_id: sessionIdRef.current,
+        destination_id: destinationId,
+        destination_name: destinationName,
+        user_name: name,
+        user_whatsapp: whatsapp,
+      });
+      
+      if (error) {
+        console.error('Error creating chat session:', error);
+      }
+    } catch (err) {
+      console.error('Error creating chat session:', err);
+    }
+  };
+
+  const handleNameSubmit = () => {
+    if (!input.trim()) return;
+    
+    const validation = nameSchema.safeParse(input.trim());
+    if (!validation.success) {
+      toast.error(validation.error.errors[0]?.message || 'Nome inválido');
+      return;
+    }
+    
+    const sanitizedName = sanitizeText(input.trim());
+    setUserName(sanitizedName);
+    
+    // Add user message with name
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', content: sanitizedName },
+      { 
+        role: 'assistant', 
+        content: `Prazer em conhecê-lo(a), ${sanitizedName}! 😊\n\nAgora, por favor, me informe seu WhatsApp para que possamos entrar em contato caso você queira uma cotação personalizada.`
+      },
+    ]);
+    
+    setInput('');
+    setStep('collect_whatsapp');
+  };
+
+  const handleWhatsappSubmit = async () => {
+    if (!input.trim()) return;
+    
+    const validation = phoneSchema.safeParse(input.trim());
+    if (!validation.success) {
+      toast.error(validation.error.errors[0]?.message || 'WhatsApp inválido');
+      return;
+    }
+    
+    const sanitizedWhatsapp = sanitizeText(input.trim());
+    setUserWhatsapp(sanitizedWhatsapp);
+    
+    // Create session in database
+    await createChatSession(userName, sanitizedWhatsapp);
+    
+    // Add user message with whatsapp and welcome to chat
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', content: sanitizedWhatsapp },
+      { 
+        role: 'assistant', 
+        content: `Obrigado, ${userName}! Agora estamos prontos para conversar! 🎉\n\nPode me perguntar sobre:\n\n• Melhor época para visitar ${destinationName}\n• Passeios e experiências\n• Gastronomia local\n• Dicas de hospedagem\n• Documentação necessária\n• E muito mais!\n\nComo posso ajudar?`
+      },
+    ]);
+    
+    setInput('');
+    setStep('chatting');
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
+
+    // Handle name collection step
+    if (step === 'collect_name') {
+      handleNameSubmit();
+      return;
+    }
+
+    // Handle whatsapp collection step
+    if (step === 'collect_whatsapp') {
+      handleWhatsappSubmit();
+      return;
+    }
 
     // Valida a mensagem antes de enviar
     const validation = chatMessageSchema.safeParse({ content: input });
@@ -65,12 +157,19 @@ export const DestinationChat = ({ destinationId, destinationName }: DestinationC
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({
-          messages: [...messages.slice(1), userMessage].map((m) => ({
+          messages: messages.slice(-10).concat(userMessage).filter(m => 
+            // Filter out the collection messages, only send actual chat messages
+            !m.content.includes('qual é o seu nome?') &&
+            !m.content.includes('me informe seu WhatsApp') &&
+            !m.content.includes('Agora estamos prontos para conversar')
+          ).map((m) => ({
             role: m.role,
             content: m.content,
           })),
           destination: destinationName,
           sessionId: sessionIdRef.current,
+          userName,
+          userWhatsapp,
         }),
       });
 
@@ -155,6 +254,18 @@ export const DestinationChat = ({ destinationId, destinationName }: DestinationC
     }
   };
 
+  const getPlaceholder = () => {
+    if (step === 'collect_name') return 'Digite seu nome...';
+    if (step === 'collect_whatsapp') return 'Ex: (11) 99999-9999';
+    return 'Pergunte sobre o destino...';
+  };
+
+  const getInputIcon = () => {
+    if (step === 'collect_name') return <UserCircle className="w-5 h-5 text-muted-foreground" />;
+    if (step === 'collect_whatsapp') return <Phone className="w-5 h-5 text-muted-foreground" />;
+    return null;
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Messages */}
@@ -201,16 +312,21 @@ export const DestinationChat = ({ destinationId, destinationName }: DestinationC
 
       {/* Input */}
       <div className="p-4 border-t border-border">
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
+          {getInputIcon() && (
+            <div className="shrink-0">
+              {getInputIcon()}
+            </div>
+          )}
           <input
-            type="text"
+            type={step === 'collect_whatsapp' ? 'tel' : 'text'}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Pergunte sobre o destino..."
+            placeholder={getPlaceholder()}
             className="flex-1 px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             disabled={isLoading}
-            maxLength={2000}
+            maxLength={step === 'collect_whatsapp' ? 20 : step === 'collect_name' ? 100 : 2000}
           />
           <button
             onClick={handleSend}

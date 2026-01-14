@@ -121,6 +121,8 @@ export type Database = {
           id: string
           role: string
           session_id: string
+          user_name: string | null
+          user_whatsapp: string | null
         }
         Insert: {
           content: string
@@ -129,6 +131,8 @@ export type Database = {
           id?: string
           role: string
           session_id: string
+          user_name?: string | null
+          user_whatsapp?: string | null
         }
         Update: {
           content?: string
@@ -137,6 +141,41 @@ export type Database = {
           id?: string
           role?: string
           session_id?: string
+          user_name?: string | null
+          user_whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      chat_sessions: {
+        Row: {
+          created_at: string
+          destination_id: string
+          destination_name: string
+          id: string
+          session_id: string
+          updated_at: string
+          user_name: string
+          user_whatsapp: string
+        }
+        Insert: {
+          created_at?: string
+          destination_id: string
+          destination_name: string
+          id?: string
+          session_id: string
+          updated_at?: string
+          user_name: string
+          user_whatsapp: string
+        }
+        Update: {
+          created_at?: string
+          destination_id?: string
+          destination_name?: string
+          id?: string
+          session_id?: string
+          updated_at?: string
+          user_name?: string
+          user_whatsapp?: string
         }
         Relationships: []
       }
