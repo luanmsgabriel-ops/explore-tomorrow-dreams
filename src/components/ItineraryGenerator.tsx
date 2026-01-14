@@ -89,8 +89,8 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
       const finalDestinationName = actualDestination || selectedDestinationName;
       setSelectedDestinationName(finalDestinationName);
 
-      // Save to database
-      const { data: insertedData } = await supabase.from('ai_itineraries').insert({
+      // Save to database - with proper error handling
+      const { data: insertedData, error: insertError } = await supabase.from('ai_itineraries').insert({
         destination_id: selectedDestinationId,
         destination_name: finalDestinationName,
         user_email: email.trim() || '',
@@ -101,13 +101,19 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
         quote_requested: false,
       }).select('id').single();
 
-      if (insertedData) {
+      if (insertError) {
+        console.error('Erro ao salvar roteiro:', insertError);
+        // Continue showing the itinerary but warn about quote limitation
+        toast.warning('Roteiro gerado! Porém, houve um erro ao salvar. A solicitação de cotação pode não funcionar.');
+        setItineraryId(null);
+      } else if (insertedData) {
         setItineraryId(insertedData.id);
       }
 
       setStep('result');
       toast.success('Roteiro gerado com sucesso!');
-    } catch {
+    } catch (error) {
+      console.error('Erro ao gerar roteiro:', error);
       toast.error('Erro ao gerar roteiro. Tente novamente.');
       setStep('preferences');
     } finally {
@@ -484,30 +490,45 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
   }
 
   const handleRequestQuote = async () => {
-    if (!itineraryId) {
-      toast.error('Erro ao solicitar cotação. Tente gerar o roteiro novamente.');
-      return;
-    }
-
     setIsRequestingQuote(true);
+    
     try {
-      const { error } = await supabase.from('ai_itineraries')
-        .update({
-          quote_requested: true,
-          quote_requested_at: new Date().toISOString(),
-        })
-        .eq('id', itineraryId);
+      // Se temos o itineraryId, atualiza o registro existente
+      if (itineraryId) {
+        const { error } = await supabase.from('ai_itineraries')
+          .update({
+            quote_requested: true,
+            quote_requested_at: new Date().toISOString(),
+          })
+          .eq('id', itineraryId);
 
-      if (error) {
-        console.error('Erro ao atualizar cotação:', error);
-        throw error;
+        if (error) {
+          console.error('Erro ao atualizar cotação:', error);
+          throw error;
+        }
+      } else {
+        // Fallback: cria uma nova solicitação de cotação diretamente
+        console.log('itineraryId não disponível, criando quote_request diretamente');
+        const { error } = await supabase.from('quote_requests').insert({
+          destination_name: selectedDestinationName,
+          destination_id: selectedDestinationId || null,
+          email: email.trim() || 'nao-informado@temp.com',
+          whatsapp: whatsapp.trim(),
+          special_requests: `Roteiro IA gerado. Preferências: ${preferences || 'Nenhuma especificada'}`,
+          status: 'pending',
+        });
+
+        if (error) {
+          console.error('Erro ao criar quote_request:', error);
+          throw error;
+        }
       }
 
       setStep('quote_success');
       toast.success('Solicitação enviada com sucesso!');
     } catch (error) {
       console.error('Erro ao solicitar cotação:', error);
-      toast.error('Erro ao solicitar cotação. Tente novamente.');
+      toast.error('Erro ao solicitar cotação. Verifique sua conexão e tente novamente.');
     } finally {
       setIsRequestingQuote(false);
     }
