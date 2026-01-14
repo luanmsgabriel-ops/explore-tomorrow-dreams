@@ -44,7 +44,7 @@ export const Header = () => {
                   <img
                     src={logo}
                     alt="Tomorrow Travel"
-                    className="h-16 w-16 rounded-lg object-cover transition-transform duration-300 group-hover:scale-110"
+                    className="h-12 w-12 rounded-lg object-cover transition-transform duration-300 group-hover:scale-110"
                   />
                 </Link>
                 <div className="hidden sm:flex flex-col gap-0.5">
@@ -140,7 +140,7 @@ export const Header = () => {
                 <img
                   src={logo}
                   alt="Tomorrow Travel"
-                  className="h-16 w-16 rounded-lg object-cover"
+                  className="h-12 w-12 rounded-lg object-cover"
                 />
               </Link>
               <button
