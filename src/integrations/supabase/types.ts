@@ -274,6 +274,7 @@ export type Database = {
           installments: number | null
           is_active: boolean
           promo_image_url: string | null
+          tagline: string | null
           title: string
           total_price: number
           updated_at: string
@@ -290,6 +291,7 @@ export type Database = {
           installments?: number | null
           is_active?: boolean
           promo_image_url?: string | null
+          tagline?: string | null
           title: string
           total_price: number
           updated_at?: string
@@ -306,6 +308,7 @@ export type Database = {
           installments?: number | null
           is_active?: boolean
           promo_image_url?: string | null
+          tagline?: string | null
           title?: string
           total_price?: number
           updated_at?: string
