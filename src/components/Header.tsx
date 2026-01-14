@@ -38,43 +38,45 @@ export const Header = () => {
         <div className="container mx-auto px-4 lg:px-8">
           <div className="flex items-center justify-between">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-3 group">
-              <img
-                src={logo}
-                alt="Tomorrow Travel"
-                className="h-10 w-10 rounded-lg object-cover transition-transform duration-300 group-hover:scale-110"
-              />
-              <div className="hidden sm:flex flex-col">
-                <div>
-                  <span className="gradient-text-teal font-serif text-xl font-bold tracking-wide">
-                    TOMORROW
-                  </span>
-                  <span className="gradient-text-gold font-serif text-xl font-bold tracking-wide ml-1">
-                    TRAVEL
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col items-center gap-1">
+                <Link to="/" className="group">
+                  <img
+                    src={logo}
+                    alt="Tomorrow Travel"
+                    className="h-10 w-10 rounded-lg object-cover transition-transform duration-300 group-hover:scale-110"
+                  />
+                </Link>
+                <div className="hidden sm:flex flex-col gap-0.5">
                   <a
-                    href="https://www.instagram.com/tomorrowtravel.br"
+                    href="https://www.instagram.com/tomorrowtravel.br?igsh=MWw1ZnJhbmJqYTc2eg=="
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:scale-110 transition-transform"
-                    aria-label="Instagram"
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:scale-105 transition-transform text-white text-[10px] font-medium"
                   >
-                    <Instagram className="w-3.5 h-3.5 text-white" />
+                    <Instagram className="w-3 h-3" />
+                    @tomorrowtravel.br
                   </a>
                   <a
-                    href="https://wa.me/5515998389220"
+                    href="https://wa.me/qr/TA3L2MLHPLXVL1"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center w-6 h-6 rounded-full bg-green-500 hover:scale-110 transition-transform"
-                    aria-label="WhatsApp"
+                    className="flex items-center justify-center gap-1 px-1.5 py-0.5 rounded-full bg-green-500 hover:scale-105 transition-transform text-white text-[10px] font-medium"
                   >
-                    <MessageCircle className="w-3.5 h-3.5 text-white" />
+                    <MessageCircle className="w-3 h-3" />
+                    WhatsApp
                   </a>
                 </div>
               </div>
-            </Link>
+              <Link to="/" className="hidden sm:block">
+                <span className="gradient-text-teal font-serif text-xl font-bold tracking-wide">
+                  TOMORROW
+                </span>
+                <span className="gradient-text-gold font-serif text-xl font-bold tracking-wide ml-1">
+                  TRAVEL
+                </span>
+              </Link>
+            </div>
 
             {/* Desktop Navigation */}
             <nav className="hidden lg:flex items-center gap-6">
