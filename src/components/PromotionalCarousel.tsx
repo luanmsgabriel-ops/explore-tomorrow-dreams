@@ -136,7 +136,12 @@ export const PromotionalCarousel = () => {
         .gte('valid_until', new Date().toISOString())
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching promotional offers:', error);
+        throw error;
+      }
+
+      console.log('Promotional offers found:', data?.length || 0);
 
       if (data && data.length > 0) {
         setOffers(data as PromotionalOffer[]);
@@ -169,14 +174,16 @@ export const PromotionalCarousel = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+      {/* Close button - Fixed top right corner */}
+      <button
+        onClick={handleClose}
+        className="fixed top-4 right-4 z-[60] p-3 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors border border-white/20 backdrop-blur-sm"
+        aria-label="Fechar"
+      >
+        <X className="w-6 h-6" />
+      </button>
+
       <div className="relative w-full max-w-lg">
-        {/* Close button */}
-        <button
-          onClick={handleClose}
-          className="absolute -top-12 right-0 z-20 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
-        >
-          <X className="w-6 h-6" />
-        </button>
 
         {/* Card */}
         <div className="relative rounded-3xl overflow-hidden shadow-2xl">
