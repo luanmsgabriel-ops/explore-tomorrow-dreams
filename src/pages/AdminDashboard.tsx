@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { DestinationManager } from '@/components/admin/DestinationManager';
+import { ChatConversationsManager } from '@/components/admin/ChatConversationsManager';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -23,11 +24,12 @@ import {
   Globe,
   Download,
   Maximize2,
-  X
+  X,
+  MessageSquare
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabType = 'overview' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations';
+type TabType = 'overview' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations';
 
 interface QuoteRequest {
   id: string;
@@ -294,6 +296,7 @@ const AdminDashboard = () => {
     { id: 'quotes' as TabType, label: 'Cotações', icon: FileText },
     { id: 'itineraries' as TabType, label: 'Roteiros IA', icon: Map },
     { id: 'images' as TabType, label: 'Imagens IA', icon: Image },
+    { id: 'conversations' as TabType, label: 'Conversas IA', icon: MessageSquare },
     { id: 'users' as TabType, label: 'Usuários', icon: Users },
   ];
 
@@ -736,6 +739,10 @@ const AdminDashboard = () => {
                         )}
                       </div>
                     </div>
+                  )}
+
+                  {activeTab === 'conversations' && (
+                    <ChatConversationsManager />
                   )}
 
                   {activeTab === 'users' && (

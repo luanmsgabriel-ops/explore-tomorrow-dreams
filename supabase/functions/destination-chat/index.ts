@@ -16,7 +16,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, destination } = await req.json();
+    const { messages, destination, sessionId, userName, userWhatsapp } = await req.json();
     
     // Obtém IP do cliente
     const forwardedFor = req.headers.get("x-forwarded-for");
@@ -61,8 +61,23 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // Save user message to database if sessionId is provided
+    if (sessionId && messages.length > 0) {
+      const lastUserMessage = messages[messages.length - 1];
+      if (lastUserMessage?.role === "user") {
+        await supabase.from("chat_messages").insert({
+          session_id: sessionId,
+          destination_id: destination,
+          role: "user",
+          content: lastUserMessage.content,
+          user_name: userName || null,
+          user_whatsapp: userWhatsapp || null,
+        });
+      }
+    }
+
     const systemPrompt = `Você é um assistente de viagens especializado da Tomorrow Travel.
-Você está ajudando um cliente que está interessado em viajar para: ${destination}
+Você está ajudando um cliente${userName ? ` chamado ${userName}` : ''} que está interessado em viajar para: ${destination}
 
 Você deve:
 - Responder perguntas sobre o destino de forma precisa e útil
@@ -71,6 +86,7 @@ Você deve:
 - Dar dicas práticas sobre documentação, moeda, idioma
 - Ser amigável, entusiasta e profissional
 - Manter respostas concisas mas informativas
+${userName ? `- Chamar o cliente pelo nome (${userName}) quando apropriado` : ''}
 
 Se o cliente perguntar sobre preços ou reservas, sugira que solicite uma cotação personalizada.`;
 
@@ -106,7 +122,67 @@ Se o cliente perguntar sobre preços ou reservas, sugira que solicite uma cotaç
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
-    return new Response(response.body, {
+    // We need to process the stream to save the assistant's response
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error("No reader available");
+    }
+
+    let assistantContent = "";
+    const decoder = new TextDecoder();
+
+    // Create a transform stream to capture and forward the response
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+
+    // Process the stream in the background
+    (async () => {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          // Forward the chunk
+          await writer.write(value);
+
+          // Parse the chunk to extract content
+          const text = decoder.decode(value, { stream: true });
+          const lines = text.split("\n");
+          
+          for (const line of lines) {
+            if (line.startsWith("data: ") && line.trim() !== "data: [DONE]") {
+              try {
+                const json = JSON.parse(line.slice(6));
+                const content = json.choices?.[0]?.delta?.content;
+                if (content) {
+                  assistantContent += content;
+                }
+              } catch {
+                // Ignore parsing errors for incomplete chunks
+              }
+            }
+          }
+        }
+
+        // Save assistant response to database after stream is complete
+        if (sessionId && assistantContent) {
+          await supabase.from("chat_messages").insert({
+            session_id: sessionId,
+            destination_id: destination,
+            role: "assistant",
+            content: assistantContent,
+            user_name: userName || null,
+            user_whatsapp: userWhatsapp || null,
+          });
+        }
+      } catch (error) {
+        console.error("Error processing stream:", error);
+      } finally {
+        await writer.close();
+      }
+    })();
+
+    return new Response(readable, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (error) {
