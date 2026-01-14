@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { X, ChevronLeft, ChevronRight, Tag, Clock, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -21,17 +21,97 @@ interface PromotionalOffer {
   };
 }
 
+interface TimeRemaining {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  expired: boolean;
+}
+
+const useCountdown = (targetDate: string): TimeRemaining => {
+  const calculateTimeRemaining = useCallback((): TimeRemaining => {
+    const now = new Date().getTime();
+    const end = new Date(targetDate).getTime();
+    const diff = end - now;
+
+    if (diff <= 0) {
+      return { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true };
+    }
+
+    return {
+      days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+      minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+      seconds: Math.floor((diff % (1000 * 60)) / 1000),
+      expired: false,
+    };
+  }, [targetDate]);
+
+  const [timeRemaining, setTimeRemaining] = useState<TimeRemaining>(calculateTimeRemaining);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeRemaining(calculateTimeRemaining());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [calculateTimeRemaining]);
+
+  return timeRemaining;
+};
+
+const CountdownTimer = ({ validUntil }: { validUntil: string }) => {
+  const { days, hours, minutes, seconds, expired } = useCountdown(validUntil);
+
+  if (expired) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-destructive/80 text-white text-sm">
+        <Clock className="w-4 h-4" />
+        Oferta expirada
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-black/60 backdrop-blur-sm text-white">
+      <Clock className="w-4 h-4 text-accent" />
+      <div className="flex items-center gap-1">
+        {days > 0 && (
+          <div className="flex flex-col items-center">
+            <span className="text-lg font-bold tabular-nums">{String(days).padStart(2, '0')}</span>
+            <span className="text-[10px] uppercase tracking-wider text-white/70">dias</span>
+          </div>
+        )}
+        {days > 0 && <span className="text-lg font-light text-white/50 mx-1">:</span>}
+        <div className="flex flex-col items-center">
+          <span className="text-lg font-bold tabular-nums">{String(hours).padStart(2, '0')}</span>
+          <span className="text-[10px] uppercase tracking-wider text-white/70">hrs</span>
+        </div>
+        <span className="text-lg font-light text-white/50 mx-1">:</span>
+        <div className="flex flex-col items-center">
+          <span className="text-lg font-bold tabular-nums">{String(minutes).padStart(2, '0')}</span>
+          <span className="text-[10px] uppercase tracking-wider text-white/70">min</span>
+        </div>
+        <span className="text-lg font-light text-white/50 mx-1">:</span>
+        <div className="flex flex-col items-center">
+          <span className="text-lg font-bold tabular-nums animate-pulse">{String(seconds).padStart(2, '0')}</span>
+          <span className="text-[10px] uppercase tracking-wider text-white/70">seg</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const PromotionalCarousel = () => {
   const [offers, setOffers] = useState<PromotionalOffer[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
-  const [hasBeenShown, setHasBeenShown] = useState(false);
 
   useEffect(() => {
     // Check if popup was already shown in this session
     const shown = sessionStorage.getItem('promo-popup-shown');
     if (shown) {
-      setHasBeenShown(true);
       return;
     }
 
@@ -62,7 +142,6 @@ export const PromotionalCarousel = () => {
         setTimeout(() => {
           setIsVisible(true);
           sessionStorage.setItem('promo-popup-shown', 'true');
-          setHasBeenShown(true);
         }, 2000);
       }
     } catch (error) {
@@ -87,20 +166,6 @@ export const PromotionalCarousel = () => {
       style: 'currency',
       currency: 'BRL',
     }).format(value);
-  };
-
-  const getTimeRemaining = (validUntil: string) => {
-    const now = new Date();
-    const end = new Date(validUntil);
-    const diff = end.getTime() - now.getTime();
-    
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    
-    if (days > 0) {
-      return `${days} dia${days > 1 ? 's' : ''} restante${days > 1 ? 's' : ''}`;
-    }
-    return `${hours} hora${hours > 1 ? 's' : ''} restante${hours > 1 ? 's' : ''}`;
   };
 
   if (!isVisible || offers.length === 0) return null;
@@ -159,9 +224,8 @@ export const PromotionalCarousel = () => {
             </div>
 
             {/* Timer */}
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 text-white text-sm">
-              <Clock className="w-4 h-4" />
-              {getTimeRemaining(currentOffer.valid_until)}
+            <div className="absolute top-4 left-1/2 -translate-x-1/2">
+              <CountdownTimer validUntil={currentOffer.valid_until} />
             </div>
           </div>
 
