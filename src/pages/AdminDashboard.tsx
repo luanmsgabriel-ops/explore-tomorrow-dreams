@@ -20,7 +20,10 @@ import {
   Trash2,
   CheckCircle,
   Send,
-  Globe
+  Globe,
+  Download,
+  Maximize2,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -88,6 +91,7 @@ const AdminDashboard = () => {
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [selectedItinerary, setSelectedItinerary] = useState<AIItinerary | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<QuoteRequest | null>(null);
+  const [selectedImage, setSelectedImage] = useState<AIImage | null>(null);
   
   // New user form state
   const [showNewUserForm, setShowNewUserForm] = useState(false);
@@ -262,6 +266,25 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Error deleting image:', error);
       toast.error('Erro ao excluir imagem');
+    }
+  };
+
+  const handleDownloadImage = async (imageUrl: string, destinationName: string) => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${destinationName.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success('Download iniciado!');
+    } catch (error) {
+      console.error('Error downloading image:', error);
+      toast.error('Erro ao baixar imagem');
     }
   };
 
@@ -600,8 +623,30 @@ const AdminDashboard = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {images.map((image) => (
                           <div key={image.id} className="rounded-2xl border border-border overflow-hidden bg-card hover:border-primary/30 transition-colors">
-                            <div className="aspect-square">
+                            <div className="aspect-square relative group cursor-pointer" onClick={() => setSelectedImage(image)}>
                               <img src={image.image_url} alt={image.destination_name} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedImage(image);
+                                  }}
+                                  className="p-3 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+                                  title="Expandir"
+                                >
+                                  <Maximize2 className="w-5 h-5 text-white" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDownloadImage(image.image_url, image.destination_name);
+                                  }}
+                                  className="p-3 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+                                  title="Download"
+                                >
+                                  <Download className="w-5 h-5 text-white" />
+                                </button>
+                              </div>
                             </div>
                             <div className="p-4 space-y-3">
                               <div>
@@ -630,7 +675,7 @@ const AdminDashboard = () => {
                                 )}
                               </div>
 
-                              {/* Status Badge */}
+                              {/* Status Badge and Download */}
                               <div className="flex items-center justify-between">
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                   image.status === 'pending' ? 'bg-accent/20 text-accent' : 
@@ -643,6 +688,13 @@ const AdminDashboard = () => {
                                    image.status === 'completed' ? 'Finalizado' :
                                    image.status}
                                 </span>
+                                <button
+                                  onClick={() => handleDownloadImage(image.image_url, image.destination_name)}
+                                  className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                                  title="Baixar imagem"
+                                >
+                                  <Download className="w-4 h-4" />
+                                </button>
                               </div>
 
                               {/* Status Actions */}
@@ -1153,6 +1205,126 @@ const AdminDashboard = () => {
             >
               ✕
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Image detail modal */}
+      {selectedImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm" onClick={() => setSelectedImage(null)}>
+          <div className="relative w-full max-w-5xl max-h-[95vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Close button */}
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors"
+            >
+              <X className="w-6 h-6 text-white" />
+            </button>
+
+            {/* Image container */}
+            <div className="flex-1 flex items-center justify-center overflow-hidden">
+              <img 
+                src={selectedImage.image_url} 
+                alt={selectedImage.destination_name} 
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+              />
+            </div>
+
+            {/* Image details */}
+            <div className="bg-card rounded-2xl p-6 mt-4 space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="font-serif text-2xl font-bold text-foreground">{selectedImage.destination_name}</h2>
+                  <p className="text-muted-foreground text-sm mt-1">{formatDate(selectedImage.created_at)}</p>
+                </div>
+                <button
+                  onClick={() => handleDownloadImage(selectedImage.image_url, selectedImage.destination_name)}
+                  className="btn-primary flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Download
+                </button>
+              </div>
+
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Prompt utilizado:</p>
+                <p className="text-foreground bg-secondary/50 p-3 rounded-lg">{selectedImage.prompt}</p>
+              </div>
+
+              {/* Contact Info */}
+              {(selectedImage.user_email || selectedImage.user_whatsapp) && (
+                <div className="flex flex-wrap gap-4 pt-4 border-t border-border">
+                  {selectedImage.user_email && (
+                    <a 
+                      href={`mailto:${selectedImage.user_email}`}
+                      className="flex items-center gap-2 text-sm text-primary hover:underline"
+                    >
+                      <Mail className="w-4 h-4" />
+                      {selectedImage.user_email}
+                    </a>
+                  )}
+                  {selectedImage.user_whatsapp && (
+                    <a 
+                      href={`https://wa.me/${selectedImage.user_whatsapp.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-primary hover:underline"
+                    >
+                      <Phone className="w-4 h-4" />
+                      {selectedImage.user_whatsapp}
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {/* Status */}
+              <div className="flex items-center justify-between pt-4 border-t border-border">
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  selectedImage.status === 'pending' ? 'bg-accent/20 text-accent' : 
+                  selectedImage.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
+                  selectedImage.status === 'completed' ? 'bg-primary/20 text-primary' :
+                  'bg-muted text-muted-foreground'
+                }`}>
+                  {selectedImage.status === 'pending' ? 'Pendente' : 
+                   selectedImage.status === 'in_progress' ? 'Em andamento' :
+                   selectedImage.status === 'completed' ? 'Finalizado' :
+                   selectedImage.status}
+                </span>
+                <div className="flex gap-2">
+                  {selectedImage.status === 'pending' && (
+                    <button
+                      onClick={() => {
+                        handleUpdateImageStatus(selectedImage.id, 'in_progress');
+                        setSelectedImage({ ...selectedImage, status: 'in_progress' });
+                      }}
+                      className="px-3 py-1.5 text-xs rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
+                    >
+                      Em Andamento
+                    </button>
+                  )}
+                  {(selectedImage.status === 'pending' || selectedImage.status === 'in_progress') && (
+                    <button
+                      onClick={() => {
+                        handleUpdateImageStatus(selectedImage.id, 'completed');
+                        setSelectedImage({ ...selectedImage, status: 'completed' });
+                      }}
+                      className="px-3 py-1.5 text-xs rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                    >
+                      Finalizado
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      handleDeleteImage(selectedImage.id);
+                      setSelectedImage(null);
+                    }}
+                    className="px-3 py-1.5 text-xs rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+                  >
+                    Excluir
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
