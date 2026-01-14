@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { DestinationManager } from '@/components/admin/DestinationManager';
 import { ChatConversationsManager } from '@/components/admin/ChatConversationsManager';
+import { PromotionalOffersManager } from '@/components/admin/PromotionalOffersManager';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -25,11 +26,12 @@ import {
   Download,
   Maximize2,
   X,
-  MessageSquare
+  MessageSquare,
+  Tag
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabType = 'overview' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations';
+type TabType = 'overview' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers';
 
 interface QuoteRequest {
   id: string;
@@ -293,6 +295,7 @@ const AdminDashboard = () => {
   const tabs = [
     { id: 'overview' as TabType, label: 'Visão Geral', icon: LayoutDashboard },
     { id: 'destinations' as TabType, label: 'Destinos', icon: Globe },
+    { id: 'offers' as TabType, label: 'Ofertas', icon: Tag },
     { id: 'quotes' as TabType, label: 'Cotações', icon: FileText },
     { id: 'itineraries' as TabType, label: 'Roteiros IA', icon: Map },
     { id: 'images' as TabType, label: 'Imagens IA', icon: Image },
@@ -450,6 +453,10 @@ const AdminDashboard = () => {
 
                   {activeTab === 'destinations' && (
                     <DestinationManager />
+                  )}
+
+                  {activeTab === 'offers' && (
+                    <PromotionalOffersManager />
                   )}
 
                   {activeTab === 'quotes' && (
