@@ -1,6 +1,7 @@
 import { Header } from '@/components/Header';
 import { HeroSection } from '@/components/HeroSection';
 import { DestinationCarousel } from '@/components/DestinationCarousel';
+import { PromotionalCarousel } from '@/components/PromotionalCarousel';
 import { Footer } from '@/components/Footer';
 import { useDestinations } from '@/hooks/useDestinations';
 import { Compass, Globe, MapPin, Sparkles, Play, MessageCircle, Loader2 } from 'lucide-react';
@@ -16,6 +17,9 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      
+      {/* Promotional Popup Carousel */}
+      <PromotionalCarousel />
       
       {/* Hero */}
       <HeroSection />

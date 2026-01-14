@@ -3,8 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
   Plus, Edit, Trash2, Loader2, Sparkles, Image as ImageIcon, 
-  Save, X, Video, MapPin, Calendar, Users, Tag, Star
+  Save, X, Video, MapPin, Calendar, Users, Tag, Star, Percent
 } from 'lucide-react';
+import { PromotionalOfferModal } from './PromotionalOfferModal';
 
 interface Video {
   id: string;
@@ -38,6 +39,7 @@ export const DestinationManager = () => {
   const [isGeneratingText, setIsGeneratingText] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [promoDestination, setPromoDestination] = useState<Destination | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -700,6 +702,13 @@ export const DestinationManager = () => {
               
               <div className="flex gap-2">
                 <button
+                  onClick={() => setPromoDestination(destination)}
+                  className="p-2 text-accent hover:bg-accent/10 rounded-lg transition-colors"
+                  title="Criar oferta promocional"
+                >
+                  <Percent className="w-4 h-4" />
+                </button>
+                <button
                   onClick={() => handleEdit(destination)}
                   className="flex-1 btn-outline text-sm flex items-center justify-center gap-1"
                 >
@@ -723,6 +732,22 @@ export const DestinationManager = () => {
           </div>
         )}
       </div>
+
+      {/* Promotional Offer Modal */}
+      {promoDestination && (
+        <PromotionalOfferModal
+          destination={{
+            id: promoDestination.id,
+            name: promoDestination.name,
+            image_url: promoDestination.image_url
+          }}
+          onClose={() => setPromoDestination(null)}
+          onSuccess={() => {
+            setPromoDestination(null);
+            toast.success('Oferta promocional criada!');
+          }}
+        />
+      )}
     </div>
   );
 };

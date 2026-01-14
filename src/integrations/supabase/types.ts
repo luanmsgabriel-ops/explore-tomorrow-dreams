@@ -263,6 +263,65 @@ export type Database = {
         }
         Relationships: []
       }
+      promotional_offers: {
+        Row: {
+          cash_price: number | null
+          created_at: string
+          destination_id: string
+          id: string
+          inclusions: string[]
+          installment_value: number | null
+          installments: number | null
+          is_active: boolean
+          promo_image_url: string | null
+          title: string
+          total_price: number
+          updated_at: string
+          valid_from: string
+          valid_until: string
+        }
+        Insert: {
+          cash_price?: number | null
+          created_at?: string
+          destination_id: string
+          id?: string
+          inclusions?: string[]
+          installment_value?: number | null
+          installments?: number | null
+          is_active?: boolean
+          promo_image_url?: string | null
+          title: string
+          total_price: number
+          updated_at?: string
+          valid_from?: string
+          valid_until: string
+        }
+        Update: {
+          cash_price?: number | null
+          created_at?: string
+          destination_id?: string
+          id?: string
+          inclusions?: string[]
+          installment_value?: number | null
+          installments?: number | null
+          is_active?: boolean
+          promo_image_url?: string | null
+          title?: string
+          total_price?: number
+          updated_at?: string
+          valid_from?: string
+          valid_until?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotional_offers_destination_id_fkey"
+            columns: ["destination_id"]
+            isOneToOne: false
+            referencedRelation: "destinations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_requests: {
         Row: {
           created_at: string
