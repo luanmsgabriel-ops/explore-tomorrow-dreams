@@ -38,7 +38,7 @@ export const Header = () => {
         <div className="container mx-auto px-4 lg:px-8">
           <div className="flex items-center justify-between">
             {/* Logo */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-start gap-3">
               <div className="flex flex-col items-center gap-1">
                 <Link to="/" className="group">
                   <img
@@ -68,7 +68,7 @@ export const Header = () => {
                   </a>
                 </div>
               </div>
-              <Link to="/" className="hidden sm:block">
+              <Link to="/" className="hidden sm:flex items-center h-10">
                 <span className="gradient-text-teal font-serif text-xl font-bold tracking-wide">
                   TOMORROW
                 </span>
