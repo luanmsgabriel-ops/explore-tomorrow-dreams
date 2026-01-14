@@ -36,7 +36,7 @@ export const Header = () => {
         }`}
       >
         <div className="container mx-auto px-4 lg:px-8">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between">
             {/* Logo */}
             <div className="flex items-start gap-3">
               <div className="flex flex-col items-center gap-1">
