@@ -1,19 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { X, ChevronLeft, ChevronRight, Tag, Clock, Check } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Clock, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface PromotionalOffer {
   id: string;
   destination_id: string;
   title: string;
+  tagline: string | null;
   total_price: number;
-  cash_price: number | null;
-  installments: number | null;
-  installment_value: number | null;
-  inclusions: string[];
   valid_until: string;
-  promo_image_url: string | null;
   destinations: {
     name: string;
     slug: string;
@@ -66,7 +62,7 @@ const CountdownTimer = ({ validUntil }: { validUntil: string }) => {
 
   if (expired) {
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-destructive/80 text-white text-sm">
+      <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-destructive/80 text-white text-sm font-medium">
         <Clock className="w-4 h-4" />
         Oferta expirada
       </div>
@@ -74,28 +70,30 @@ const CountdownTimer = ({ validUntil }: { validUntil: string }) => {
   }
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-black/60 backdrop-blur-sm text-white">
-      <Clock className="w-4 h-4 text-accent" />
+    <div className="flex items-center gap-3 px-5 py-3 rounded-xl bg-black/70 backdrop-blur-md text-white">
+      <Clock className="w-5 h-5 text-accent" />
       <div className="flex items-center gap-1">
         {days > 0 && (
-          <div className="flex flex-col items-center">
-            <span className="text-lg font-bold tabular-nums">{String(days).padStart(2, '0')}</span>
-            <span className="text-[10px] uppercase tracking-wider text-white/70">dias</span>
-          </div>
+          <>
+            <div className="flex flex-col items-center min-w-[40px]">
+              <span className="text-2xl font-bold tabular-nums">{String(days).padStart(2, '0')}</span>
+              <span className="text-[10px] uppercase tracking-wider text-white/70">dias</span>
+            </div>
+            <span className="text-2xl font-light text-white/50 mx-1">:</span>
+          </>
         )}
-        {days > 0 && <span className="text-lg font-light text-white/50 mx-1">:</span>}
-        <div className="flex flex-col items-center">
-          <span className="text-lg font-bold tabular-nums">{String(hours).padStart(2, '0')}</span>
+        <div className="flex flex-col items-center min-w-[40px]">
+          <span className="text-2xl font-bold tabular-nums">{String(hours).padStart(2, '0')}</span>
           <span className="text-[10px] uppercase tracking-wider text-white/70">hrs</span>
         </div>
-        <span className="text-lg font-light text-white/50 mx-1">:</span>
-        <div className="flex flex-col items-center">
-          <span className="text-lg font-bold tabular-nums">{String(minutes).padStart(2, '0')}</span>
+        <span className="text-2xl font-light text-white/50 mx-1">:</span>
+        <div className="flex flex-col items-center min-w-[40px]">
+          <span className="text-2xl font-bold tabular-nums">{String(minutes).padStart(2, '0')}</span>
           <span className="text-[10px] uppercase tracking-wider text-white/70">min</span>
         </div>
-        <span className="text-lg font-light text-white/50 mx-1">:</span>
-        <div className="flex flex-col items-center">
-          <span className="text-lg font-bold tabular-nums animate-pulse">{String(seconds).padStart(2, '0')}</span>
+        <span className="text-2xl font-light text-white/50 mx-1">:</span>
+        <div className="flex flex-col items-center min-w-[40px]">
+          <span className="text-2xl font-bold tabular-nums animate-pulse">{String(seconds).padStart(2, '0')}</span>
           <span className="text-[10px] uppercase tracking-wider text-white/70">seg</span>
         </div>
       </div>
@@ -109,7 +107,6 @@ export const PromotionalCarousel = () => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Check if popup was already shown in this session
     const shown = sessionStorage.getItem('promo-popup-shown');
     if (shown) {
       return;
@@ -123,7 +120,12 @@ export const PromotionalCarousel = () => {
       const { data, error } = await supabase
         .from('promotional_offers')
         .select(`
-          *,
+          id,
+          destination_id,
+          title,
+          tagline,
+          total_price,
+          valid_until,
           destinations (
             name,
             slug,
@@ -138,7 +140,6 @@ export const PromotionalCarousel = () => {
 
       if (data && data.length > 0) {
         setOffers(data as PromotionalOffer[]);
-        // Show popup after a short delay
         setTimeout(() => {
           setIsVisible(true);
           sessionStorage.setItem('promo-popup-shown', 'true');
@@ -161,151 +162,111 @@ export const PromotionalCarousel = () => {
     setCurrentIndex((prev) => (prev === offers.length - 1 ? 0 : prev + 1));
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
-
   if (!isVisible || offers.length === 0) return null;
 
   const currentOffer = offers[currentIndex];
-  const backgroundImage = currentOffer.promo_image_url || currentOffer.destinations?.image_url;
+  const destinationImage = currentOffer.destinations?.image_url;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-4xl bg-card rounded-2xl overflow-hidden shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+      <div className="relative w-full max-w-lg">
         {/* Close button */}
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+          className="absolute -top-12 right-0 z-20 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
         >
-          <X className="w-5 h-5" />
+          <X className="w-6 h-6" />
         </button>
 
-        {/* Navigation arrows */}
-        {offers.length > 1 && (
-          <>
-            <button
-              onClick={handlePrev}
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-            <button
-              onClick={handleNext}
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
-          </>
-        )}
-
-        {/* Content */}
-        <div className="relative">
+        {/* Card */}
+        <div className="relative rounded-3xl overflow-hidden shadow-2xl">
           {/* Background Image */}
-          <div className="relative h-64 md:h-80">
-            {backgroundImage ? (
+          <div className="relative aspect-[4/5] md:aspect-[3/4]">
+            {destinationImage ? (
               <img
-                src={backgroundImage}
-                alt={currentOffer.title}
+                src={destinationImage}
+                alt={currentOffer.destinations?.name}
                 className="w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-primary to-accent" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
             
-            {/* Badge */}
-            <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-sm font-medium">
-              <Tag className="w-4 h-4" />
-              Oferta Especial
-            </div>
+            {/* Gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
 
-            {/* Timer */}
-            <div className="absolute top-4 left-1/2 -translate-x-1/2">
-              <CountdownTimer validUntil={currentOffer.valid_until} />
-            </div>
-          </div>
-
-          {/* Details */}
-          <div className="p-6 md:p-8 -mt-16 relative z-10">
-            <h3 className="font-serif text-2xl md:text-3xl font-bold text-foreground mb-2">
-              {currentOffer.title}
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              {currentOffer.destinations?.name}
-            </p>
-
-            {/* Pricing */}
-            <div className="flex flex-wrap items-end gap-4 mb-6">
-              <div>
-                <span className="text-sm text-muted-foreground">A partir de</span>
-                <p className="text-3xl md:text-4xl font-bold gradient-text-gold">
-                  {formatCurrency(currentOffer.total_price)}
-                </p>
-              </div>
-              
-              {currentOffer.cash_price && (
-                <div className="px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 text-sm">
-                  À vista: {formatCurrency(currentOffer.cash_price)}
-                </div>
-              )}
-              
-              {currentOffer.installments && currentOffer.installment_value && (
-                <div className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-sm">
-                  ou {currentOffer.installments}x de {formatCurrency(currentOffer.installment_value)}
-                </div>
-              )}
-            </div>
-
-            {/* Inclusions */}
-            {currentOffer.inclusions && currentOffer.inclusions.length > 0 && (
-              <div className="mb-6">
-                <p className="text-sm font-medium text-foreground mb-2">Incluso no pacote:</p>
-                <div className="flex flex-wrap gap-2">
-                  {currentOffer.inclusions.map((inclusion, idx) => (
-                    <span
-                      key={idx}
-                      className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-secondary text-sm text-foreground"
-                    >
-                      <Check className="w-3 h-3 text-primary" />
-                      {inclusion}
-                    </span>
-                  ))}
-                </div>
-              </div>
+            {/* Navigation arrows */}
+            {offers.length > 1 && (
+              <>
+                <button
+                  onClick={handlePrev}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors backdrop-blur-sm"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handleNext}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors backdrop-blur-sm"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </>
             )}
 
-            {/* CTA */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Link
-                to={`/destino/${currentOffer.destinations?.slug}`}
-                onClick={handleClose}
-                className="flex-1 btn-gold text-center"
-              >
-                Ver Destino
-              </Link>
-              <button
-                onClick={handleClose}
-                className="flex-1 px-6 py-3 rounded-xl border border-border text-foreground hover:bg-secondary transition-colors"
-              >
-                Ver depois
-              </button>
+            {/* Badge */}
+            <div className="absolute top-4 left-4 flex items-center gap-2 px-4 py-2 rounded-full bg-accent text-accent-foreground text-sm font-semibold shadow-lg">
+              <Sparkles className="w-4 h-4" />
+              Oferta Imperdível
+            </div>
+
+            {/* Content overlay */}
+            <div className="absolute inset-x-0 bottom-0 p-6 space-y-4">
+              {/* Timer */}
+              <div className="flex justify-center">
+                <CountdownTimer validUntil={currentOffer.valid_until} />
+              </div>
+
+              {/* Destination name */}
+              <h3 className="font-serif text-3xl md:text-4xl font-bold text-white text-center drop-shadow-lg">
+                {currentOffer.destinations?.name}
+              </h3>
+
+              {/* Tagline */}
+              {currentOffer.tagline && (
+                <p className="text-white/90 text-center text-lg leading-relaxed max-w-sm mx-auto">
+                  {currentOffer.tagline}
+                </p>
+              )}
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col gap-3 pt-2">
+                <Link
+                  to={`/promocao/${currentOffer.id}`}
+                  onClick={handleClose}
+                  className="w-full btn-gold text-center text-lg py-4"
+                >
+                  Ver Detalhes da Oferta
+                </Link>
+                <button
+                  onClick={handleClose}
+                  className="w-full px-6 py-3 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition-colors text-sm"
+                >
+                  Ver depois
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Pagination dots */}
         {offers.length > 1 && (
-          <div className="flex justify-center gap-2 pb-4">
+          <div className="flex justify-center gap-2 mt-4">
             {offers.map((_, idx) => (
               <button
                 key={idx}
                 onClick={() => setCurrentIndex(idx)}
-                className={`w-2 h-2 rounded-full transition-colors ${
-                  idx === currentIndex ? 'bg-primary' : 'bg-muted'
+                className={`w-2.5 h-2.5 rounded-full transition-all ${
+                  idx === currentIndex ? 'bg-white w-6' : 'bg-white/40 hover:bg-white/60'
                 }`}
               />
             ))}

@@ -17,17 +17,17 @@ interface PromotionalOfferModalProps {
 
 export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: PromotionalOfferModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isGeneratingTagline, setIsGeneratingTagline] = useState(false);
   
   const [formData, setFormData] = useState({
     title: `Oferta Especial - ${destination.name}`,
+    tagline: '',
     total_price: '',
     cash_price: '',
     installments: '',
     installment_value: '',
     inclusions: [''],
     valid_until: '',
-    promo_image_url: '',
   });
 
   const handleAddInclusion = () => {
@@ -51,13 +51,13 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
     }));
   };
 
-  const handleGenerateImage = async () => {
+  const handleGenerateTagline = async () => {
     if (!formData.total_price) {
       toast.error('Preencha o valor total primeiro');
       return;
     }
 
-    setIsGeneratingImage(true);
+    setIsGeneratingTagline(true);
     try {
       const inclusionsText = formData.inclusions.filter(i => i.trim()).join(', ');
       const cashText = formData.cash_price ? `À vista: R$ ${formData.cash_price}` : '';
@@ -65,39 +65,29 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
         ? `${formData.installments}x de R$ ${formData.installment_value}` 
         : '';
 
-      const prompt = `Create a professional travel promotional banner image for "${destination.name}". 
-The banner should have the destination's landscape as background with a dark overlay.
-Include prominently displayed:
-- Title: "${formData.title}"
-- Price: "R$ ${formData.total_price}"
-${cashText ? `- ${cashText}` : ''}
-${installmentText ? `- ${installmentText}` : ''}
-${inclusionsText ? `- Inclusions: ${inclusionsText}` : ''}
-- "TOMORROW TRAVEL" branding at the bottom
-Style: Modern, elegant travel agency promotional material with golden accents. 
-The text should be clearly readable against the background.
-Aspect ratio: 16:9, landscape format for a promotional banner.`;
-
-      const response = await supabase.functions.invoke('generate-promo-image', {
+      const response = await supabase.functions.invoke('generate-promo-tagline', {
         body: { 
-          prompt,
           destinationName: destination.name,
-          destinationImageUrl: destination.image_url
+          title: formData.title,
+          totalPrice: formData.total_price,
+          cashPrice: cashText,
+          installments: installmentText,
+          inclusions: inclusionsText,
         }
       });
 
       if (response.error) throw response.error;
 
-      const imageUrl = response.data?.imageUrl;
-      if (imageUrl) {
-        setFormData(prev => ({ ...prev, promo_image_url: imageUrl }));
-        toast.success('Imagem promocional gerada com sucesso!');
+      const tagline = response.data?.tagline;
+      if (tagline) {
+        setFormData(prev => ({ ...prev, tagline }));
+        toast.success('Texto promocional gerado com sucesso!');
       }
     } catch (error) {
-      console.error('Error generating promo image:', error);
-      toast.error('Erro ao gerar imagem promocional');
+      console.error('Error generating tagline:', error);
+      toast.error('Erro ao gerar texto promocional');
     } finally {
-      setIsGeneratingImage(false);
+      setIsGeneratingTagline(false);
     }
   };
 
@@ -116,13 +106,13 @@ Aspect ratio: 16:9, landscape format for a promotional banner.`;
         .insert([{
           destination_id: destination.id,
           title: formData.title,
+          tagline: formData.tagline || null,
           total_price: parseFloat(formData.total_price),
           cash_price: formData.cash_price ? parseFloat(formData.cash_price) : null,
           installments: formData.installments ? parseInt(formData.installments) : null,
           installment_value: formData.installment_value ? parseFloat(formData.installment_value) : null,
           inclusions: formData.inclusions.filter(i => i.trim()),
           valid_until: new Date(formData.valid_until).toISOString(),
-          promo_image_url: formData.promo_image_url || null,
           is_active: true,
         }]);
 
@@ -267,48 +257,30 @@ Aspect ratio: 16:9, landscape format for a promotional banner.`;
             </div>
           </div>
 
-          {/* Generate Image */}
+          {/* Tagline - Promotional Text */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-foreground">Imagem Promocional</label>
+              <label className="block text-sm font-medium text-foreground">Texto Chamativo (Tagline)</label>
               <button
                 type="button"
-                onClick={handleGenerateImage}
-                disabled={isGeneratingImage || !formData.total_price}
+                onClick={handleGenerateTagline}
+                disabled={isGeneratingTagline || !formData.total_price}
                 className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 disabled:opacity-50"
               >
-                {isGeneratingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                {isGeneratingTagline ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 Gerar com IA
               </button>
             </div>
-            
-            {formData.promo_image_url ? (
-              <div className="relative rounded-xl overflow-hidden">
-                <img 
-                  src={formData.promo_image_url} 
-                  alt="Preview da oferta" 
-                  className="w-full h-48 object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, promo_image_url: '' }))}
-                  className="absolute top-2 right-2 p-2 rounded-full bg-background/80 hover:bg-background"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <div className="w-full h-32 rounded-xl bg-secondary border border-dashed border-border flex items-center justify-center text-muted-foreground text-sm">
-                {isGeneratingImage ? (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Gerando imagem...
-                  </div>
-                ) : (
-                  'Clique em "Gerar com IA" para criar a imagem'
-                )}
-              </div>
-            )}
+            <textarea
+              value={formData.tagline}
+              onChange={(e) => setFormData(prev => ({ ...prev, tagline: e.target.value }))}
+              placeholder="Ex: Realize o sonho de conhecer as Maldivas! Pacote completo com desconto imperdível."
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground resize-none"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Este texto será exibido no popup promocional para chamar atenção do cliente.
+            </p>
           </div>
 
           {/* Actions */}
