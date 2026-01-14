@@ -485,23 +485,29 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
 
   const handleRequestQuote = async () => {
     if (!itineraryId) {
-      toast.error('Erro ao solicitar cotação');
+      toast.error('Erro ao solicitar cotação. Tente gerar o roteiro novamente.');
       return;
     }
 
     setIsRequestingQuote(true);
     try {
-      await supabase.from('ai_itineraries')
+      const { error } = await supabase.from('ai_itineraries')
         .update({
           quote_requested: true,
           quote_requested_at: new Date().toISOString(),
         })
         .eq('id', itineraryId);
 
+      if (error) {
+        console.error('Erro ao atualizar cotação:', error);
+        throw error;
+      }
+
       setStep('quote_success');
       toast.success('Solicitação enviada com sucesso!');
-    } catch {
-      toast.error('Erro ao solicitar cotação');
+    } catch (error) {
+      console.error('Erro ao solicitar cotação:', error);
+      toast.error('Erro ao solicitar cotação. Tente novamente.');
     } finally {
       setIsRequestingQuote(false);
     }
