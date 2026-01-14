@@ -24,7 +24,7 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
   const [whatsapp, setWhatsapp] = useState('');
   const [preferences, setPreferences] = useState('');
   const [itinerary, setItinerary] = useState('');
-  const [itineraryId, setItineraryId] = useState<string | null>(null);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [isRequestingQuote, setIsRequestingQuote] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -89,8 +89,9 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
       const finalDestinationName = actualDestination || selectedDestinationName;
       setSelectedDestinationName(finalDestinationName);
 
-      // Save to database - with proper error handling
-      const { data: insertedData, error: insertError } = await supabase.from('ai_itineraries').insert({
+      // Save to database - without .select() to avoid RLS SELECT restriction
+      // Users can INSERT but cannot SELECT, so we save data for admin viewing
+      const { error: insertError } = await supabase.from('ai_itineraries').insert({
         destination_id: selectedDestinationId,
         destination_name: finalDestinationName,
         user_email: email.trim() || '',
@@ -99,16 +100,15 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
         itinerary_content: generatedItinerary,
         status: 'pending',
         quote_requested: false,
-      }).select('id').single();
+      });
 
       if (insertError) {
-        console.error('Erro ao salvar roteiro:', insertError);
-        // Continue showing the itinerary but warn about quote limitation
-        toast.warning('Roteiro gerado! Porém, houve um erro ao salvar. A solicitação de cotação pode não funcionar.');
-        setItineraryId(null);
-      } else if (insertedData) {
-        setItineraryId(insertedData.id);
+        console.error('Erro ao salvar roteiro no ai_itineraries:', insertError);
+        // Continue - the itinerary was generated successfully, just couldn't save
       }
+      
+      // We don't rely on itineraryId anymore since we can't SELECT after INSERT
+      // Quote requests will go directly to quote_requests table
 
       setStep('result');
       toast.success('Roteiro gerado com sucesso!');
@@ -493,35 +493,19 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
     setIsRequestingQuote(true);
     
     try {
-      // Se temos o itineraryId, atualiza o registro existente
-      if (itineraryId) {
-        const { error } = await supabase.from('ai_itineraries')
-          .update({
-            quote_requested: true,
-            quote_requested_at: new Date().toISOString(),
-          })
-          .eq('id', itineraryId);
+      // Always create quote request directly - avoids RLS issues with UPDATE
+      const { error } = await supabase.from('quote_requests').insert({
+        destination_name: selectedDestinationName,
+        destination_id: selectedDestinationId || null,
+        email: email.trim() || 'nao-informado@temp.com',
+        whatsapp: whatsapp.trim(),
+        special_requests: `Roteiro IA gerado. Preferências: ${preferences || 'Nenhuma especificada'}. Roteiro: ${itinerary?.substring(0, 500) || 'Não gerado'}`,
+        status: 'pending',
+      });
 
-        if (error) {
-          console.error('Erro ao atualizar cotação:', error);
-          throw error;
-        }
-      } else {
-        // Fallback: cria uma nova solicitação de cotação diretamente
-        console.log('itineraryId não disponível, criando quote_request diretamente');
-        const { error } = await supabase.from('quote_requests').insert({
-          destination_name: selectedDestinationName,
-          destination_id: selectedDestinationId || null,
-          email: email.trim() || 'nao-informado@temp.com',
-          whatsapp: whatsapp.trim(),
-          special_requests: `Roteiro IA gerado. Preferências: ${preferences || 'Nenhuma especificada'}`,
-          status: 'pending',
-        });
-
-        if (error) {
-          console.error('Erro ao criar quote_request:', error);
-          throw error;
-        }
+      if (error) {
+        console.error('Erro ao criar quote_request:', error);
+        throw error;
       }
 
       setStep('quote_success');
