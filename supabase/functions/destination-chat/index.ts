@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Limites de uso
-const DAILY_LIMIT = 2;
-const MONTHLY_LIMIT = 4;
+const DAILY_LIMIT = 5;
+const MONTHLY_LIMIT = 5;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
