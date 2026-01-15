@@ -6,9 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-forwarded-for, x-real-ip",
 };
 
-// Limites de uso
-const DAILY_LIMIT = 10;
-const MONTHLY_LIMIT = 30;
+// Limites de uso - apenas 2 conversas por mês
+const DAILY_LIMIT = 2;
+const MONTHLY_LIMIT = 2;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -42,15 +42,42 @@ serve(async (req) => {
     if (usageError) {
       console.error("Error checking usage limit:", usageError);
     } else if (!usageResult?.allowed) {
-      const reason = usageResult.reason === "daily_limit" 
-        ? `Você atingiu o limite diário de ${DAILY_LIMIT} conversas. Tente novamente amanhã.`
-        : `Você atingiu o limite mensal de ${MONTHLY_LIMIT} conversas. Tente novamente no próximo mês.`;
-      
+      // Busca conversas anteriores do cache para usar como resposta
+      const { data: cachedMessages } = await supabase
+        .from("chat_messages")
+        .select("content, role")
+        .eq("destination_id", "travel-advisor")
+        .eq("role", "assistant")
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      // Seleciona uma resposta aleatória do cache ou usa uma mensagem padrão
+      const cachedResponses = cachedMessages?.filter(m => 
+        m.content && 
+        m.content.length > 50 && 
+        !m.content.includes("nome") &&
+        !m.content.includes("WhatsApp")
+      ) || [];
+
+      const randomCachedResponse = cachedResponses.length > 0
+        ? cachedResponses[Math.floor(Math.random() * cachedResponses.length)]?.content
+        : null;
+
+      const whatsappMessage = encodeURIComponent("Olá! Vim pelo site e gostaria de informações sobre destinos de viagem.");
+      const whatsappLink = `https://wa.me/5511999999999?text=${whatsappMessage}`;
+
       return new Response(
         JSON.stringify({ 
-          error: reason,
-          code: "RATE_LIMIT",
-          usage: usageResult
+          error: "Limite de conversas atingido",
+          code: "RATE_LIMIT_REDIRECT",
+          usage: usageResult,
+          cachedResponse: randomCachedResponse,
+          whatsappLink,
+          message: `Opa, ${userName || 'viajante'}! 😅 Eu já tô cansadinho por hoje (muitas viagens pra planejar, sabe como é! ✈️). 
+
+Mas relaxa que a nossa equipe INCRÍVEL tá no WhatsApp pronta pra te atender! 
+
+👉 Clique no botão abaixo e fala direto com nossos especialistas humanos - eles são tão legais quanto eu (quase! 😜)`
         }),
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
