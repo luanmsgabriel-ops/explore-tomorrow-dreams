@@ -70,31 +70,34 @@ const CountdownTimer = ({ validUntil }: { validUntil: string }) => {
   }
 
   return (
-    <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-2 sm:py-3 rounded-xl bg-black/70 backdrop-blur-md text-white">
-      <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
-      <div className="flex items-center gap-0.5 sm:gap-1">
-        {days > 0 && (
-          <>
-            <div className="flex flex-col items-center min-w-[32px] sm:min-w-[40px]">
-              <span className="text-lg sm:text-2xl font-bold tabular-nums">{String(days).padStart(2, '0')}</span>
-              <span className="text-[8px] sm:text-[10px] uppercase tracking-wider text-white/70">dias</span>
-            </div>
-            <span className="text-lg sm:text-2xl font-light text-white/50 mx-0.5 sm:mx-1">:</span>
-          </>
-        )}
-        <div className="flex flex-col items-center min-w-[32px] sm:min-w-[40px]">
-          <span className="text-lg sm:text-2xl font-bold tabular-nums">{String(hours).padStart(2, '0')}</span>
-          <span className="text-[8px] sm:text-[10px] uppercase tracking-wider text-white/70">hrs</span>
-        </div>
-        <span className="text-lg sm:text-2xl font-light text-white/50 mx-0.5 sm:mx-1">:</span>
-        <div className="flex flex-col items-center min-w-[32px] sm:min-w-[40px]">
-          <span className="text-lg sm:text-2xl font-bold tabular-nums">{String(minutes).padStart(2, '0')}</span>
-          <span className="text-[8px] sm:text-[10px] uppercase tracking-wider text-white/70">min</span>
-        </div>
-        <span className="text-lg sm:text-2xl font-light text-white/50 mx-0.5 sm:mx-1">:</span>
-        <div className="flex flex-col items-center min-w-[32px] sm:min-w-[40px]">
-          <span className="text-lg sm:text-2xl font-bold tabular-nums animate-pulse">{String(seconds).padStart(2, '0')}</span>
-          <span className="text-[8px] sm:text-[10px] uppercase tracking-wider text-white/70">seg</span>
+    <div className="flex flex-col items-center gap-1">
+      <span className="text-xs sm:text-sm text-white/80 font-medium">Oferta expira em:</span>
+      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-2 sm:py-3 rounded-xl bg-black/70 backdrop-blur-md text-white">
+        <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
+        <div className="flex items-center gap-0.5 sm:gap-1">
+          {days > 0 && (
+            <>
+              <div className="flex flex-col items-center min-w-[32px] sm:min-w-[40px]">
+                <span className="text-lg sm:text-2xl font-bold tabular-nums">{String(days).padStart(2, '0')}</span>
+                <span className="text-[8px] sm:text-[10px] uppercase tracking-wider text-white/70">dias</span>
+              </div>
+              <span className="text-lg sm:text-2xl font-light text-white/50 mx-0.5 sm:mx-1">:</span>
+            </>
+          )}
+          <div className="flex flex-col items-center min-w-[32px] sm:min-w-[40px]">
+            <span className="text-lg sm:text-2xl font-bold tabular-nums">{String(hours).padStart(2, '0')}</span>
+            <span className="text-[8px] sm:text-[10px] uppercase tracking-wider text-white/70">hrs</span>
+          </div>
+          <span className="text-lg sm:text-2xl font-light text-white/50 mx-0.5 sm:mx-1">:</span>
+          <div className="flex flex-col items-center min-w-[32px] sm:min-w-[40px]">
+            <span className="text-lg sm:text-2xl font-bold tabular-nums">{String(minutes).padStart(2, '0')}</span>
+            <span className="text-[8px] sm:text-[10px] uppercase tracking-wider text-white/70">min</span>
+          </div>
+          <span className="text-lg sm:text-2xl font-light text-white/50 mx-0.5 sm:mx-1">:</span>
+          <div className="flex flex-col items-center min-w-[32px] sm:min-w-[40px]">
+            <span className="text-lg sm:text-2xl font-bold tabular-nums animate-pulse">{String(seconds).padStart(2, '0')}</span>
+            <span className="text-[8px] sm:text-[10px] uppercase tracking-wider text-white/70">seg</span>
+          </div>
         </div>
       </div>
     </div>

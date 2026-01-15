@@ -73,12 +73,15 @@ const OfferCountdown = ({ validUntil }: { validUntil: string }) => {
   }
 
   return (
-    <div className="flex items-center gap-1.5 text-xs">
-      <Clock className="w-3 h-3 text-accent" />
-      <span className="font-medium text-foreground">
-        {days > 0 && `${days}d `}
-        {String(hours).padStart(2, '0')}:{String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-      </span>
+    <div className="flex flex-col items-start gap-0.5">
+      <span className="text-[10px] text-white/70">Oferta expira em:</span>
+      <div className="flex items-center gap-1.5 text-xs">
+        <Clock className="w-3 h-3 text-accent" />
+        <span className="font-medium text-white">
+          {days > 0 && `${days}d `}
+          {String(hours).padStart(2, '0')}:{String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+        </span>
+      </div>
     </div>
   );
 };
