@@ -10,6 +10,22 @@ interface Message {
   content: string;
 }
 
+// Teo mascot phrases that appear randomly
+const TEO_PHRASES = [
+  "Eiiii! 👋",
+  "Oiiiii! 🌟",
+  "Olha aquiiii! 👀",
+  "Owwww! 🤗",
+  "Fala comigoo! 💬",
+  "😂😂",
+  "😭😭",
+  "Ta calor ai?? 🥵",
+  "Ta frio ai?? 🥶",
+  "Bora viajar?? ✈️",
+  "Psiu! 🤫",
+  "E aí?? 🤙",
+];
+
 interface QuizAnswers {
   travelStyle?: string;
   climate?: string;
@@ -333,20 +349,133 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
     return null;
   };
 
+  // Teo mascot state
+  const [showMascot, setShowMascot] = useState(false);
+  const [currentPhrase, setCurrentPhrase] = useState('');
+  const mascotIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Mascot animation effect - appears every 4-8 seconds with random phrases
+  useEffect(() => {
+    if (isOpen) {
+      if (mascotIntervalRef.current) {
+        clearInterval(mascotIntervalRef.current);
+      }
+      setShowMascot(false);
+      return;
+    }
+
+    const showMascotWithPhrase = () => {
+      const randomPhrase = TEO_PHRASES[Math.floor(Math.random() * TEO_PHRASES.length)];
+      setCurrentPhrase(randomPhrase);
+      setShowMascot(true);
+      
+      // Hide mascot after 3 seconds
+      setTimeout(() => {
+        setShowMascot(false);
+      }, 3000);
+    };
+
+    // Show first time after 2 seconds
+    const initialTimeout = setTimeout(() => {
+      showMascotWithPhrase();
+    }, 2000);
+
+    // Then show every 5-10 seconds
+    mascotIntervalRef.current = setInterval(() => {
+      showMascotWithPhrase();
+    }, 5000 + Math.random() * 5000);
+
+    return () => {
+      clearTimeout(initialTimeout);
+      if (mascotIntervalRef.current) {
+        clearInterval(mascotIntervalRef.current);
+      }
+    };
+  }, [isOpen]);
+
   if (!isOpen) {
     return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-24 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 animate-fade-in group"
-        aria-label="Abrir consultor de viagens"
-      >
-        <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
-        <span className="font-medium text-sm whitespace-nowrap">Qual seu destino ideal?</span>
-        <MessageCircle className="w-5 h-5" />
-        
-        {/* Pulse animation */}
-        <span className="absolute inset-0 rounded-full bg-gradient-to-r from-primary to-accent animate-ping opacity-20" />
-      </button>
+      <div className="fixed bottom-24 right-6 z-50">
+        {/* Teo Mascot Character */}
+        <div 
+          className={`absolute -top-20 -left-4 transition-all duration-500 ${
+            showMascot 
+              ? 'opacity-100 translate-y-0 scale-100' 
+              : 'opacity-0 translate-y-8 scale-75 pointer-events-none'
+          }`}
+        >
+          {/* Speech bubble */}
+          <div className="relative mb-2">
+            <div className="bg-white text-foreground px-3 py-2 rounded-xl shadow-lg text-sm font-medium animate-bounce whitespace-nowrap">
+              {currentPhrase}
+            </div>
+            {/* Bubble arrow */}
+            <div className="absolute -bottom-2 left-6 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-white" />
+          </div>
+          
+          {/* Teo character - animated mascot */}
+          <div className="relative w-16 h-16 animate-bounce" style={{ animationDuration: '2s' }}>
+            {/* Body */}
+            <div className="absolute inset-0 bg-gradient-to-b from-primary to-accent rounded-full shadow-lg">
+              {/* Face */}
+              <div className="absolute inset-2 bg-amber-100 rounded-full flex items-center justify-center">
+                {/* Eyes */}
+                <div className="flex gap-2 relative -top-1">
+                  <div className="w-2.5 h-3 bg-gray-800 rounded-full relative">
+                    <div className="absolute top-0.5 left-0.5 w-1 h-1 bg-white rounded-full" />
+                  </div>
+                  <div className="w-2.5 h-3 bg-gray-800 rounded-full relative">
+                    <div className="absolute top-0.5 left-0.5 w-1 h-1 bg-white rounded-full" />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Smile */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-4 h-2 border-b-2 border-gray-800 rounded-b-full" />
+              
+              {/* Waving hand */}
+              <div 
+                className="absolute -right-3 top-2 origin-bottom-left"
+                style={{
+                  animation: showMascot ? 'wave 0.5s ease-in-out infinite' : 'none'
+                }}
+              >
+                <div className="w-5 h-5 bg-amber-100 rounded-full shadow-md flex items-center justify-center text-xs">
+                  👋
+                </div>
+              </div>
+              
+              {/* Travel hat */}
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <div className="w-10 h-3 bg-amber-400 rounded-t-full" />
+                <div className="w-14 h-1.5 bg-amber-500 rounded-full -mt-0.5 -ml-2" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main button */}
+        <button
+          onClick={() => setIsOpen(true)}
+          className="flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 animate-fade-in group relative"
+          aria-label="Abrir consultor de viagens"
+        >
+          <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
+          <span className="font-medium text-sm whitespace-nowrap">Qual seu destino ideal?</span>
+          <MessageCircle className="w-5 h-5" />
+          
+          {/* Pulse animation */}
+          <span className="absolute inset-0 rounded-full bg-gradient-to-r from-primary to-accent animate-ping opacity-20" />
+        </button>
+
+        {/* CSS for wave animation */}
+        <style>{`
+          @keyframes wave {
+            0%, 100% { transform: rotate(-15deg); }
+            50% { transform: rotate(25deg); }
+          }
+        `}</style>
+      </div>
     );
   }
 
