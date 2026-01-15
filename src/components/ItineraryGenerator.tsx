@@ -234,7 +234,9 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
       );
 
       // Save to database with mood
+      const generatedItineraryId = crypto.randomUUID();
       const itineraryData = {
+        id: generatedItineraryId,
         destination_id: selectedDestinationId,
         destination_name: finalDestinationName,
         user_email: email.trim() || '',
@@ -247,15 +249,14 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
         selected_activities: [],
       };
       
-      const { data: insertData, error: insertError } = await supabase.from('ai_itineraries')
-        .insert(itineraryData)
-        .select('id')
-        .single();
+      const { error: insertError } = await supabase.from('ai_itineraries')
+        .insert(itineraryData);
 
       if (insertError) {
         console.error('Erro ao salvar roteiro:', insertError);
-      } else if (insertData) {
-        setItineraryId(insertData.id);
+      } else {
+        setItineraryId(generatedItineraryId);
+        console.log('Roteiro salvo com sucesso, ID:', generatedItineraryId);
         
         // Envia notificação por e-mail para o admin
         try {
@@ -264,7 +265,7 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
               type: 'ai_itinerary',
               data: {
                 ...itineraryData,
-                id: insertData.id,
+                id: generatedItineraryId,
               },
             },
           });
