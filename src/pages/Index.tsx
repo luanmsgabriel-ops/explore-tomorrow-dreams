@@ -2,6 +2,7 @@ import { Header } from '@/components/Header';
 import { HeroSection } from '@/components/HeroSection';
 import { DestinationCarousel } from '@/components/DestinationCarousel';
 import { PromotionalCarousel } from '@/components/PromotionalCarousel';
+import { ActiveOffersCarousel } from '@/components/ActiveOffersCarousel';
 import { Footer } from '@/components/Footer';
 import { useDestinations } from '@/hooks/useDestinations';
 import { Compass, Globe, MapPin, Sparkles, Play, MessageCircle, Loader2 } from 'lucide-react';
@@ -24,7 +25,8 @@ const Index = () => {
       {/* Hero */}
       <HeroSection />
 
-      {/* Section Title - Between Hero and Carousels */}
+      {/* Active Offers Carousel */}
+      <ActiveOffersCarousel />
       <section className="py-16 md:py-20">
         <div className="container mx-auto px-4 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
