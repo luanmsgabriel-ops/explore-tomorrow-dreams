@@ -131,7 +131,7 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
       const finalDestinationName = formData.destination_choice || destinationName;
       const otherDestination = formData.other_destination;
       
-      const { error } = await supabase.from('quote_requests').insert({
+      const insertData = {
         travel_date: formData.travel_date,
         num_people: formData.num_people,
         travel_type: formData.travel_type,
@@ -148,9 +148,19 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
         preferred_contact_channel: formData.preferred_contact_channel,
         destination_id: destinationId || null,
         destination_name: finalDestinationName,
-      });
+      };
+      
+      const { error } = await supabase.from('quote_requests').insert(insertData);
 
       if (error) throw error;
+
+      // Envia notificação por e-mail para o admin
+      supabase.functions.invoke('send-admin-notification', {
+        body: {
+          type: 'quote_request',
+          data: insertData,
+        },
+      }).catch(err => console.error('Erro ao enviar notificação:', err));
 
       setIsComplete(true);
       toast.success('Solicitação enviada com sucesso! Entraremos em contato em breve.');

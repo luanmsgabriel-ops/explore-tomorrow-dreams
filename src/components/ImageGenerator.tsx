@@ -102,14 +102,24 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
       setGeneratedImage(imageUrl);
 
       // Save to database with user info
-      await supabase.from('ai_generated_images').insert({
+      const imageData = {
         destination_id: destinationId,
         destination_name: destinationName,
         prompt: `Imagem gerada para ${destinationName}`,
         image_url: imageUrl,
         user_email: email.trim(),
         user_whatsapp: whatsapp.trim(),
-      });
+      };
+      
+      await supabase.from('ai_generated_images').insert(imageData);
+
+      // Envia notificação por e-mail para o admin
+      supabase.functions.invoke('send-admin-notification', {
+        body: {
+          type: 'ai_image',
+          data: imageData,
+        },
+      }).catch(err => console.error('Erro ao enviar notificação:', err));
 
       toast.success('Imagem gerada com sucesso!');
     } catch {
