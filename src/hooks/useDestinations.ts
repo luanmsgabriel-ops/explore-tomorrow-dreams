@@ -30,22 +30,37 @@ export interface Destination {
 }
 
 // Transform database record to frontend format
-const transformDestination = (record: any): Destination => ({
-  id: record.slug, // Use slug as ID for URLs
-  slug: record.slug,
-  name: record.name,
-  location: record.location,
-  image: record.image_url || '/placeholder.svg',
-  category: record.category,
-  type: record.type,
-  description: record.description,
-  bestTime: record.best_time,
-  idealDuration: record.ideal_duration,
-  forWho: record.for_who,
-  videos: Array.isArray(record.videos) ? record.videos : [],
-  isFeatured: record.is_featured || false,
-  bestPricePeriods: Array.isArray(record.best_price_periods) ? record.best_price_periods : [],
-});
+const transformDestination = (record: any): Destination => {
+  // Handle category that might be stored as JSON array
+  let categoryValue = record.category;
+  if (typeof categoryValue === 'string' && categoryValue.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(categoryValue);
+      categoryValue = Array.isArray(parsed) ? parsed[0] : categoryValue;
+    } catch {
+      // Keep original if parse fails
+    }
+  } else if (Array.isArray(categoryValue)) {
+    categoryValue = categoryValue[0];
+  }
+
+  return {
+    id: record.slug, // Use slug as ID for URLs
+    slug: record.slug,
+    name: record.name,
+    location: record.location,
+    image: record.image_url || '/placeholder.svg',
+    category: categoryValue || 'Destino',
+    type: record.type,
+    description: record.description,
+    bestTime: record.best_time,
+    idealDuration: record.ideal_duration,
+    forWho: record.for_who,
+    videos: Array.isArray(record.videos) ? record.videos : [],
+    isFeatured: record.is_featured || false,
+    bestPricePeriods: Array.isArray(record.best_price_periods) ? record.best_price_periods : [],
+  };
+};
 
 export const useDestinations = (type?: 'explorar' | 'nacional' | 'internacional') => {
   const [destinations, setDestinations] = useState<Destination[]>([]);
