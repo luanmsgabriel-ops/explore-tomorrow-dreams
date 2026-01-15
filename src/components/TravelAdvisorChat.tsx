@@ -1,0 +1,435 @@
+import { useState, useRef, useEffect } from 'react';
+import { Send, Loader2, Bot, User, Phone, UserCircle, X, Sparkles, MessageCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import { chatMessageSchema, generateSecureSessionId, sanitizeText, phoneSchema, nameSchema } from '@/lib/validations';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+interface QuizAnswers {
+  travelStyle?: string;
+  climate?: string;
+  experience?: string;
+  budget?: string;
+  companion?: string;
+}
+
+type ChatStep = 'collect_name' | 'collect_whatsapp' | 'chatting';
+
+export const TravelAdvisorChat = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const sessionIdRef = useRef<string>(generateSecureSessionId());
+  
+  const [step, setStep] = useState<ChatStep>('collect_name');
+  const [userName, setUserName] = useState('');
+  const [userWhatsapp, setUserWhatsapp] = useState('');
+  const [quizAnswers, setQuizAnswers] = useState<QuizAnswers>({});
+  
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      role: 'assistant',
+      content: `E aí, viajante! 🌍✨ Eu sou o Teo, seu novo melhor amigo quando o assunto é VIAJAR! 🎉
+
+Tô aqui pra te ajudar a descobrir o destino PERFEITO pros seus sonhos (e pro seu bolso também, haha! 💸)
+
+Bora começar essa aventura? Me conta, qual é o seu nome? 🙋‍♂️`,
+    },
+  ]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/travel-advisor-chat`;
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const createChatSession = async (name: string, whatsapp: string) => {
+    try {
+      const { error } = await supabase.from('chat_sessions').insert({
+        session_id: sessionIdRef.current,
+        destination_id: 'travel-advisor',
+        destination_name: 'Consultor de Viagens IA',
+        user_name: name,
+        user_whatsapp: whatsapp,
+      });
+      
+      if (error) {
+        console.error('Error creating chat session:', error);
+      }
+    } catch (err) {
+      console.error('Error creating chat session:', err);
+    }
+  };
+
+  const handleNameSubmit = () => {
+    if (!input.trim()) return;
+    
+    const validation = nameSchema.safeParse(input.trim());
+    if (!validation.success) {
+      toast.error(validation.error.errors[0]?.message || 'Nome inválido');
+      return;
+    }
+    
+    const sanitizedName = sanitizeText(input.trim());
+    setUserName(sanitizedName);
+    
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', content: sanitizedName },
+      { 
+        role: 'assistant', 
+        content: `${sanitizedName}! Que nome INCRÍVEL! 🎊 Prazer em te conhecer!
+
+Agora me passa seu WhatsApp rapidinho - prometo que não vou ficar mandando meme de bom dia! 😂 
+
+É só pra gente poder te mandar as melhores ofertas de viagem depois! 📱✨`
+      },
+    ]);
+    
+    setInput('');
+    setStep('collect_whatsapp');
+  };
+
+  const handleWhatsappSubmit = async () => {
+    if (!input.trim()) return;
+    
+    const validation = phoneSchema.safeParse(input.trim());
+    if (!validation.success) {
+      toast.error(validation.error.errors[0]?.message || 'WhatsApp inválido');
+      return;
+    }
+    
+    const sanitizedWhatsapp = sanitizeText(input.trim());
+    setUserWhatsapp(sanitizedWhatsapp);
+    
+    await createChatSession(userName, sanitizedWhatsapp);
+    
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', content: sanitizedWhatsapp },
+      { 
+        role: 'assistant', 
+        content: `Show de bola, ${userName}! 🙌 Agora sim, tamos conectados!
+
+Bora pro que interessa: descobrir a viagem dos seus SONHOS! 🌟
+
+Pensa comigo: quando você viaja, o que te faz mais feliz? 🤔
+
+🏖️ **Relaxar** - Praia, piscina, drinks... vida boa!
+🏔️ **Aventura** - Trilhas, esportes radicais, adrenalina!
+🏛️ **Cultura** - Museus, história, gastronomia local!
+🎉 **Festa** - Baladas, shows, agito total!
+
+Me conta aí! 👇`
+      },
+    ]);
+    
+    setInput('');
+    setStep('chatting');
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+
+    if (step === 'collect_name') {
+      handleNameSubmit();
+      return;
+    }
+
+    if (step === 'collect_whatsapp') {
+      handleWhatsappSubmit();
+      return;
+    }
+
+    const validation = chatMessageSchema.safeParse({ content: input });
+    if (!validation.success) {
+      const error = validation.error.errors[0];
+      toast.error(error?.message || 'Mensagem inválida');
+      return;
+    }
+
+    const sanitizedInput = sanitizeText(input);
+    
+    // Try to extract quiz answers from user input
+    const lowerInput = sanitizedInput.toLowerCase();
+    const newQuizAnswers = { ...quizAnswers };
+    
+    if (lowerInput.includes('relax') || lowerInput.includes('praia') || lowerInput.includes('descanso')) {
+      newQuizAnswers.travelStyle = 'relaxamento';
+    } else if (lowerInput.includes('aventura') || lowerInput.includes('trilha') || lowerInput.includes('radical')) {
+      newQuizAnswers.travelStyle = 'aventura';
+    } else if (lowerInput.includes('cultura') || lowerInput.includes('museu') || lowerInput.includes('história')) {
+      newQuizAnswers.travelStyle = 'cultura';
+    } else if (lowerInput.includes('festa') || lowerInput.includes('balada') || lowerInput.includes('agito')) {
+      newQuizAnswers.travelStyle = 'festa';
+    }
+    
+    if (lowerInput.includes('tropical') || lowerInput.includes('calor') || lowerInput.includes('quente')) {
+      newQuizAnswers.climate = 'tropical';
+    } else if (lowerInput.includes('frio') || lowerInput.includes('neve') || lowerInput.includes('inverno')) {
+      newQuizAnswers.climate = 'frio';
+    }
+    
+    if (lowerInput.includes('econômic') || lowerInput.includes('barato') || lowerInput.includes('budget')) {
+      newQuizAnswers.budget = 'econômico';
+    } else if (lowerInput.includes('premium') || lowerInput.includes('luxo') || lowerInput.includes('5 estrelas')) {
+      newQuizAnswers.budget = 'premium';
+    }
+    
+    if (lowerInput.includes('sozinho') || lowerInput.includes('solo')) {
+      newQuizAnswers.companion = 'sozinho';
+    } else if (lowerInput.includes('casal') || lowerInput.includes('namorad') || lowerInput.includes('lua de mel')) {
+      newQuizAnswers.companion = 'casal';
+    } else if (lowerInput.includes('família') || lowerInput.includes('filho') || lowerInput.includes('criança')) {
+      newQuizAnswers.companion = 'família';
+    } else if (lowerInput.includes('amigo')) {
+      newQuizAnswers.companion = 'amigos';
+    }
+    
+    setQuizAnswers(newQuizAnswers);
+    
+    const userMessage: Message = { role: 'user', content: sanitizedInput };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    let assistantContent = '';
+
+    try {
+      const response = await fetch(CHAT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          messages: messages.slice(-10).concat(userMessage).filter(m => 
+            !m.content.includes('qual é o seu nome?') &&
+            !m.content.includes('Me conta, qual é o seu nome?') &&
+            !m.content.includes('me passa seu WhatsApp')
+          ).map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+          sessionId: sessionIdRef.current,
+          userName,
+          userWhatsapp,
+          quizAnswers: newQuizAnswers,
+        }),
+      });
+
+      if (!response.ok) {
+        try {
+          const errorData = await response.json();
+          if (errorData.code === 'RATE_LIMIT') {
+            toast.error(errorData.error, {
+              description: `Uso diário: ${errorData.usage?.daily_used}/${errorData.usage?.daily_limit} | Mensal: ${errorData.usage?.monthly_used}/${errorData.usage?.monthly_limit}`,
+              duration: 8000,
+            });
+            setIsLoading(false);
+            return;
+          }
+          throw new Error(errorData.error || 'Failed to get response');
+        } catch {
+          throw new Error('Failed to get response');
+        }
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) throw new Error('No reader available');
+
+      setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+
+      let textBuffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (line.startsWith(':') || line.trim() === '') continue;
+          if (!line.startsWith('data: ')) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              assistantContent += content;
+              setMessages((prev) => {
+                const newMessages = [...prev];
+                newMessages[newMessages.length - 1] = {
+                  role: 'assistant',
+                  content: assistantContent,
+                };
+                return newMessages;
+              });
+            }
+          } catch {
+            textBuffer = line + '\n' + textBuffer;
+            break;
+          }
+        }
+      }
+    } catch {
+      toast.error('Erro ao enviar mensagem. Tente novamente.');
+      setMessages((prev) => prev.slice(0, -1));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const getPlaceholder = () => {
+    if (step === 'collect_name') return 'Digite seu nome...';
+    if (step === 'collect_whatsapp') return 'Ex: (11) 99999-9999';
+    return 'Digite sua mensagem...';
+  };
+
+  const getInputIcon = () => {
+    if (step === 'collect_name') return <UserCircle className="w-5 h-5 text-muted-foreground" />;
+    if (step === 'collect_whatsapp') return <Phone className="w-5 h-5 text-muted-foreground" />;
+    return null;
+  };
+
+  if (!isOpen) {
+    return (
+      <button
+        onClick={() => setIsOpen(true)}
+        className="fixed bottom-24 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 animate-fade-in group"
+        aria-label="Abrir consultor de viagens"
+      >
+        <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
+        <span className="font-medium text-sm whitespace-nowrap">Qual seu destino ideal?</span>
+        <MessageCircle className="w-5 h-5" />
+        
+        {/* Pulse animation */}
+        <span className="absolute inset-0 rounded-full bg-gradient-to-r from-primary to-accent animate-ping opacity-20" />
+      </button>
+    );
+  }
+
+  return (
+    <div className="fixed bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-3rem)] h-[500px] max-h-[calc(100vh-8rem)] rounded-2xl shadow-2xl border border-border bg-background flex flex-col animate-scale-in overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-primary/10 to-accent/10 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-foreground text-sm">Teo - Consultor de Viagens</h3>
+            <p className="text-xs text-muted-foreground">Descubra seu destino ideal! ✨</p>
+          </div>
+        </div>
+        <button
+          onClick={() => setIsOpen(false)}
+          className="p-2 rounded-full hover:bg-secondary transition-colors"
+        >
+          <X className="w-5 h-5 text-muted-foreground" />
+        </button>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((message, index) => (
+          <div
+            key={index}
+            className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
+          >
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                message.role === 'user' 
+                  ? 'bg-primary' 
+                  : 'bg-gradient-to-r from-primary to-accent'
+              }`}
+            >
+              {message.role === 'user' ? (
+                <User className="w-4 h-4 text-primary-foreground" />
+              ) : (
+                <Sparkles className="w-4 h-4 text-white" />
+              )}
+            </div>
+            <div
+              className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                message.role === 'user'
+                  ? 'bg-primary text-primary-foreground rounded-tr-sm'
+                  : 'bg-secondary text-foreground rounded-tl-sm'
+              }`}
+            >
+              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+            </div>
+          </div>
+        ))}
+        {isLoading && messages[messages.length - 1]?.role === 'user' && (
+          <div className="flex gap-3">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-white animate-pulse" />
+            </div>
+            <div className="bg-secondary rounded-2xl rounded-tl-sm px-4 py-3">
+              <div className="flex items-center gap-1">
+                <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="p-4 border-t border-border shrink-0">
+        <div className="flex gap-3 items-center">
+          {getInputIcon() && (
+            <div className="shrink-0">
+              {getInputIcon()}
+            </div>
+          )}
+          <input
+            type={step === 'collect_whatsapp' ? 'tel' : 'text'}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={getPlaceholder()}
+            className="flex-1 px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+            disabled={isLoading}
+            maxLength={step === 'collect_whatsapp' ? 20 : step === 'collect_name' ? 100 : 2000}
+          />
+          <button
+            onClick={handleSend}
+            disabled={!input.trim() || isLoading}
+            className="p-3 rounded-xl bg-gradient-to-r from-primary to-accent text-white disabled:opacity-50 hover:shadow-lg transition-all"
+          >
+            <Send className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
