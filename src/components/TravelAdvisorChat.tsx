@@ -351,21 +351,31 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
   const [currentPhrase, setCurrentPhrase] = useState('');
   const [currentExpression, setCurrentExpression] = useState<'happy' | 'wink' | 'surprised' | 'laugh' | 'cool'>('happy');
   const mascotIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mascotTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Expression types for more realistic animations
   const expressions = ['happy', 'wink', 'surprised', 'laugh', 'cool'] as const;
 
   // Mascot animation effect - appears every 4-8 seconds with random phrases and expressions
   useEffect(() => {
+    // Clear all timers when chat opens
     if (isOpen) {
       if (mascotIntervalRef.current) {
         clearInterval(mascotIntervalRef.current);
+        mascotIntervalRef.current = null;
+      }
+      if (mascotTimeoutRef.current) {
+        clearTimeout(mascotTimeoutRef.current);
+        mascotTimeoutRef.current = null;
       }
       setShowMascot(false);
       return;
     }
 
     const showMascotWithPhrase = () => {
+      // Don't show if chat is open
+      if (isOpen) return;
+      
       const randomPhrase = TEO_PHRASES[Math.floor(Math.random() * TEO_PHRASES.length)];
       const randomExpression = expressions[Math.floor(Math.random() * expressions.length)];
       setCurrentPhrase(randomPhrase);
@@ -373,25 +383,37 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
       setShowMascot(true);
       
       // Hide mascot after 3 seconds
-      setTimeout(() => {
+      if (mascotTimeoutRef.current) {
+        clearTimeout(mascotTimeoutRef.current);
+      }
+      mascotTimeoutRef.current = setTimeout(() => {
         setShowMascot(false);
       }, 3000);
     };
 
     // Show first time after 2 seconds
     const initialTimeout = setTimeout(() => {
-      showMascotWithPhrase();
+      if (!isOpen) {
+        showMascotWithPhrase();
+      }
     }, 2000);
 
     // Then show every 5-10 seconds
     mascotIntervalRef.current = setInterval(() => {
-      showMascotWithPhrase();
+      if (!isOpen) {
+        showMascotWithPhrase();
+      }
     }, 5000 + Math.random() * 5000);
 
     return () => {
       clearTimeout(initialTimeout);
       if (mascotIntervalRef.current) {
         clearInterval(mascotIntervalRef.current);
+        mascotIntervalRef.current = null;
+      }
+      if (mascotTimeoutRef.current) {
+        clearTimeout(mascotTimeoutRef.current);
+        mascotTimeoutRef.current = null;
       }
     };
   }, [isOpen]);
