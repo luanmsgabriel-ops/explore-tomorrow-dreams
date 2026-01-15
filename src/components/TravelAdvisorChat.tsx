@@ -10,7 +10,7 @@ interface Message {
   content: string;
 }
 
-// Teo mascot phrases that appear randomly - exactly as specified
+// Téo mascot phrases that appear randomly - exactly as specified
 const TEO_PHRASES = [
   "Eiiii",
   "Oiiiii",
@@ -45,7 +45,7 @@ export const TravelAdvisorChat = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: `E aí, viajante! 🌍✨ Eu sou o Teo, seu novo melhor amigo quando o assunto é VIAJAR! 🎉
+      content: `E aí, viajante! 🌍✨ Eu sou o Téo, seu novo melhor amigo quando o assunto é VIAJAR! 🎉
 
 Tô aqui pra te ajudar a descobrir o destino PERFEITO pros seus sonhos (e pro seu bolso também, haha! 💸)
 
@@ -346,7 +346,7 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
     return null;
   };
 
-  // Teo mascot state
+  // Téo mascot state
   const [showMascot, setShowMascot] = useState(false);
   const [currentPhrase, setCurrentPhrase] = useState('');
   const mascotIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -393,7 +393,7 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
   if (!isOpen) {
     return (
       <div className="fixed bottom-24 right-6 z-50">
-        {/* Teo Mascot Character - Cartoon Human Man */}
+        {/* Téo Mascot Character - Cartoon Human Man */}
         <div 
           className={`absolute -top-48 -left-10 transition-all duration-500 ${
             showMascot 
@@ -403,14 +403,14 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
         >
           {/* Speech bubble - 2x bigger */}
           <div className="relative mb-4">
-            <div className="bg-white text-foreground px-8 py-5 rounded-3xl shadow-2xl text-2xl font-bold whitespace-nowrap border-2 border-primary/20" style={{ animation: 'pulse-bubble 2s ease-in-out infinite' }}>
+            <div className="bg-white text-black px-8 py-5 rounded-3xl shadow-2xl text-2xl font-bold whitespace-nowrap border-2 border-primary/20" style={{ animation: 'pulse-bubble 2s ease-in-out infinite' }}>
               {currentPhrase}
             </div>
             {/* Bubble arrow */}
             <div className="absolute -bottom-4 left-12 w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[14px] border-t-white drop-shadow-sm" />
           </div>
           
-          {/* Teo character - Cartoon Human Man */}
+          {/* Téo character - Cartoon Human Man */}
           <div className="relative w-24 h-32" style={{ animation: 'float 3s ease-in-out infinite' }}>
             {/* Hair */}
             <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-18 h-7 bg-amber-800 rounded-t-full" style={{ width: '72px' }} />
@@ -520,7 +520,7 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-foreground text-sm">Teo - Consultor de Viagens</h3>
+            <h3 className="font-semibold text-foreground text-sm">Téo - Consultor de Viagens</h3>
             <p className="text-xs text-muted-foreground">Descubra seu destino ideal! ✨</p>
           </div>
         </div>
