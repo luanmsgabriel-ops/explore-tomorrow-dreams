@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, Menu, X, FileText, Sparkles, Instagram, MessageCircle } from 'lucide-react';
+import { User, Menu, X, FileText, Sparkles } from 'lucide-react';
 import logo from '@/assets/logo.jpeg';
 import { QuoteFormChat } from './QuoteFormChat';
 import { DestinationSearch } from './DestinationSearch';
@@ -39,35 +39,13 @@ export const Header = () => {
           <div className="flex items-start justify-between">
             {/* Logo */}
             <div className="flex items-start gap-3">
-              <div className="flex flex-col items-center gap-1">
-                <Link to="/" className="group">
-                  <img
-                    src={logo}
-                    alt="Tomorrow Travel"
-                    className="h-12 w-12 rounded-lg object-cover transition-transform duration-300 group-hover:scale-110"
-                  />
-                </Link>
-                <div className="hidden sm:flex flex-col gap-0.5">
-                  <a
-                    href="https://www.instagram.com/tomorrowtravel.br?igsh=MWw1ZnJhbmJqYTc2eg=="
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:scale-105 transition-transform text-white text-[10px] font-medium"
-                  >
-                    <Instagram className="w-3 h-3" />
-                    @tomorrowtravel.br
-                  </a>
-                  <a
-                    href="https://wa.me/qr/TA3L2MLHPLXVL1"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1 px-1.5 py-0.5 rounded-full bg-green-500 hover:scale-105 transition-transform text-white text-[10px] font-medium"
-                  >
-                    <MessageCircle className="w-3 h-3" />
-                    WhatsApp
-                  </a>
-                </div>
-              </div>
+              <Link to="/" className="group">
+                <img
+                  src={logo}
+                  alt="Tomorrow Travel"
+                  className="h-12 w-12 rounded-lg object-cover transition-transform duration-300 group-hover:scale-110"
+                />
+              </Link>
               <Link to="/" className="hidden sm:flex items-center h-10">
                 <span className="gradient-text-teal font-serif text-xl font-bold tracking-wide">
                   TOMORROW
