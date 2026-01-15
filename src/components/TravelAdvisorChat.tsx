@@ -59,7 +59,9 @@ export const TravelAdvisorChat = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: `E aí, viajante! 🌍✨ Eu sou o Téo, seu novo melhor amigo quando o assunto é VIAJAR! 🎉
+      content: `Ufaa, venci no cansaço kkkkkkkk 😅
+
+E aí, viajante! 🌍✨ Eu sou o Téo, seu novo melhor amigo quando o assunto é VIAJAR! 🎉
 
 Tô aqui pra te ajudar a descobrir o destino PERFEITO pros seus sonhos (e pro seu bolso também, haha! 💸)
 
