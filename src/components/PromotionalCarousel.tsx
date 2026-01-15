@@ -70,31 +70,31 @@ const CountdownTimer = ({ validUntil }: { validUntil: string }) => {
   }
 
   return (
-    <div className="flex items-center gap-3 px-5 py-3 rounded-xl bg-black/70 backdrop-blur-md text-white">
-      <Clock className="w-5 h-5 text-accent" />
-      <div className="flex items-center gap-1">
+    <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-2 sm:py-3 rounded-xl bg-black/70 backdrop-blur-md text-white">
+      <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
+      <div className="flex items-center gap-0.5 sm:gap-1">
         {days > 0 && (
           <>
-            <div className="flex flex-col items-center min-w-[40px]">
-              <span className="text-2xl font-bold tabular-nums">{String(days).padStart(2, '0')}</span>
-              <span className="text-[10px] uppercase tracking-wider text-white/70">dias</span>
+            <div className="flex flex-col items-center min-w-[32px] sm:min-w-[40px]">
+              <span className="text-lg sm:text-2xl font-bold tabular-nums">{String(days).padStart(2, '0')}</span>
+              <span className="text-[8px] sm:text-[10px] uppercase tracking-wider text-white/70">dias</span>
             </div>
-            <span className="text-2xl font-light text-white/50 mx-1">:</span>
+            <span className="text-lg sm:text-2xl font-light text-white/50 mx-0.5 sm:mx-1">:</span>
           </>
         )}
-        <div className="flex flex-col items-center min-w-[40px]">
-          <span className="text-2xl font-bold tabular-nums">{String(hours).padStart(2, '0')}</span>
-          <span className="text-[10px] uppercase tracking-wider text-white/70">hrs</span>
+        <div className="flex flex-col items-center min-w-[32px] sm:min-w-[40px]">
+          <span className="text-lg sm:text-2xl font-bold tabular-nums">{String(hours).padStart(2, '0')}</span>
+          <span className="text-[8px] sm:text-[10px] uppercase tracking-wider text-white/70">hrs</span>
         </div>
-        <span className="text-2xl font-light text-white/50 mx-1">:</span>
-        <div className="flex flex-col items-center min-w-[40px]">
-          <span className="text-2xl font-bold tabular-nums">{String(minutes).padStart(2, '0')}</span>
-          <span className="text-[10px] uppercase tracking-wider text-white/70">min</span>
+        <span className="text-lg sm:text-2xl font-light text-white/50 mx-0.5 sm:mx-1">:</span>
+        <div className="flex flex-col items-center min-w-[32px] sm:min-w-[40px]">
+          <span className="text-lg sm:text-2xl font-bold tabular-nums">{String(minutes).padStart(2, '0')}</span>
+          <span className="text-[8px] sm:text-[10px] uppercase tracking-wider text-white/70">min</span>
         </div>
-        <span className="text-2xl font-light text-white/50 mx-1">:</span>
-        <div className="flex flex-col items-center min-w-[40px]">
-          <span className="text-2xl font-bold tabular-nums animate-pulse">{String(seconds).padStart(2, '0')}</span>
-          <span className="text-[10px] uppercase tracking-wider text-white/70">seg</span>
+        <span className="text-lg sm:text-2xl font-light text-white/50 mx-0.5 sm:mx-1">:</span>
+        <div className="flex flex-col items-center min-w-[32px] sm:min-w-[40px]">
+          <span className="text-lg sm:text-2xl font-bold tabular-nums animate-pulse">{String(seconds).padStart(2, '0')}</span>
+          <span className="text-[8px] sm:text-[10px] uppercase tracking-wider text-white/70">seg</span>
         </div>
       </div>
     </div>
@@ -145,10 +145,8 @@ export const PromotionalCarousel = () => {
 
       if (data && data.length > 0) {
         setOffers(data as PromotionalOffer[]);
-        setTimeout(() => {
-          setIsVisible(true);
-          sessionStorage.setItem('promo-popup-shown', 'true');
-        }, 2000);
+        setIsVisible(true);
+        sessionStorage.setItem('promo-popup-shown', 'true');
       }
     } catch (error) {
       console.error('Error fetching offers:', error);
@@ -173,22 +171,22 @@ export const PromotionalCarousel = () => {
   const destinationImage = currentOffer.destinations?.image_url;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
       {/* Close button - Fixed top right corner */}
       <button
         onClick={handleClose}
-        className="fixed top-4 right-4 z-[60] p-3 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors border border-white/20 backdrop-blur-sm"
+        className="fixed top-2 right-2 sm:top-4 sm:right-4 z-[60] p-2 sm:p-3 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors border border-white/20 backdrop-blur-sm"
         aria-label="Fechar"
       >
-        <X className="w-6 h-6" />
+        <X className="w-5 h-5 sm:w-6 sm:h-6" />
       </button>
 
-      <div className="relative w-full max-w-lg">
+      <div className="relative w-full max-w-lg max-h-[95vh] overflow-y-auto">
 
         {/* Card */}
-        <div className="relative rounded-3xl overflow-hidden shadow-2xl">
+        <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl">
           {/* Background Image */}
-          <div className="relative aspect-[4/5] md:aspect-[3/4]">
+          <div className="relative min-h-[70vh] sm:min-h-0 sm:aspect-[3/4]">
             {destinationImage ? (
               <img
                 src={destinationImage}
@@ -221,42 +219,42 @@ export const PromotionalCarousel = () => {
             )}
 
             {/* Badge */}
-            <div className="absolute top-4 left-4 flex items-center gap-2 px-4 py-2 rounded-full bg-accent text-accent-foreground text-sm font-semibold shadow-lg">
-              <Sparkles className="w-4 h-4" />
+            <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-accent text-accent-foreground text-xs sm:text-sm font-semibold shadow-lg">
+              <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" />
               Oferta Imperdível
             </div>
 
             {/* Content overlay */}
-            <div className="absolute inset-x-0 bottom-0 p-6 space-y-4">
+            <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 space-y-3 sm:space-y-4">
               {/* Timer */}
               <div className="flex justify-center">
                 <CountdownTimer validUntil={currentOffer.valid_until} />
               </div>
 
               {/* Destination name */}
-              <h3 className="font-serif text-3xl md:text-4xl font-bold text-white text-center drop-shadow-lg">
+              <h3 className="font-serif text-2xl sm:text-3xl md:text-4xl font-bold text-white text-center drop-shadow-lg">
                 {currentOffer.destinations?.name}
               </h3>
 
               {/* Tagline */}
               {currentOffer.tagline && (
-                <p className="text-white/90 text-center text-lg leading-relaxed max-w-sm mx-auto">
+                <p className="text-white/90 text-center text-sm sm:text-lg leading-relaxed max-w-sm mx-auto line-clamp-3">
                   {currentOffer.tagline}
                 </p>
               )}
 
               {/* CTA Buttons */}
-              <div className="flex flex-col gap-3 pt-2">
+              <div className="flex flex-col gap-2 sm:gap-3 pt-1 sm:pt-2">
                 <Link
                   to={`/promocao/${currentOffer.id}`}
                   onClick={handleClose}
-                  className="w-full btn-gold text-center text-lg py-4"
+                  className="w-full btn-gold text-center text-base sm:text-lg py-3 sm:py-4"
                 >
                   Ver Detalhes da Oferta
                 </Link>
                 <button
                   onClick={handleClose}
-                  className="w-full px-6 py-3 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition-colors text-sm"
+                  className="w-full px-6 py-2 sm:py-3 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition-colors text-xs sm:text-sm"
                 >
                   Ver depois
                 </button>
