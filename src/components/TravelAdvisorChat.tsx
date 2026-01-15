@@ -349,9 +349,13 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
   // Téo mascot state
   const [showMascot, setShowMascot] = useState(false);
   const [currentPhrase, setCurrentPhrase] = useState('');
+  const [currentExpression, setCurrentExpression] = useState<'happy' | 'wink' | 'surprised' | 'laugh' | 'cool'>('happy');
   const mascotIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Mascot animation effect - appears every 4-8 seconds with random phrases
+  // Expression types for more realistic animations
+  const expressions = ['happy', 'wink', 'surprised', 'laugh', 'cool'] as const;
+
+  // Mascot animation effect - appears every 4-8 seconds with random phrases and expressions
   useEffect(() => {
     if (isOpen) {
       if (mascotIntervalRef.current) {
@@ -363,7 +367,9 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
 
     const showMascotWithPhrase = () => {
       const randomPhrase = TEO_PHRASES[Math.floor(Math.random() * TEO_PHRASES.length)];
+      const randomExpression = expressions[Math.floor(Math.random() * expressions.length)];
       setCurrentPhrase(randomPhrase);
+      setCurrentExpression(randomExpression);
       setShowMascot(true);
       
       // Hide mascot after 3 seconds
@@ -390,89 +396,185 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
     };
   }, [isOpen]);
 
+  // Render expression-based eyes
+  const renderEyes = () => {
+    switch (currentExpression) {
+      case 'wink':
+        return (
+          <>
+            {/* Left eye - winking */}
+            <div className="absolute top-4 left-2 w-2.5 h-0.5 bg-amber-900 rounded-full transform rotate-3" />
+            {/* Right eye - open */}
+            <div className="absolute top-3.5 right-2 w-2.5 h-2.5 bg-white rounded-full border border-gray-400 shadow-inner">
+              <div className="absolute top-0.5 left-0.5 w-1.5 h-1.5 bg-amber-900 rounded-full">
+                <div className="absolute top-0 left-0.5 w-0.5 h-0.5 bg-white rounded-full" />
+              </div>
+            </div>
+          </>
+        );
+      case 'surprised':
+        return (
+          <>
+            {/* Wide open eyes */}
+            <div className="absolute top-3 left-1.5 w-3 h-3 bg-white rounded-full border border-gray-400 shadow-inner">
+              <div className="absolute top-0.5 left-0.5 w-2 h-2 bg-amber-900 rounded-full">
+                <div className="absolute top-0 left-0.5 w-0.5 h-0.5 bg-white rounded-full" />
+              </div>
+            </div>
+            <div className="absolute top-3 right-1.5 w-3 h-3 bg-white rounded-full border border-gray-400 shadow-inner">
+              <div className="absolute top-0.5 left-0.5 w-2 h-2 bg-amber-900 rounded-full">
+                <div className="absolute top-0 left-0.5 w-0.5 h-0.5 bg-white rounded-full" />
+              </div>
+            </div>
+          </>
+        );
+      case 'laugh':
+        return (
+          <>
+            {/* Closed happy eyes */}
+            <div className="absolute top-4 left-2 w-2 h-1 border-t-2 border-amber-900 rounded-t-full" />
+            <div className="absolute top-4 right-2 w-2 h-1 border-t-2 border-amber-900 rounded-t-full" />
+          </>
+        );
+      case 'cool':
+        return (
+          <>
+            {/* Sunglasses */}
+            <div className="absolute top-3 left-1 w-3 h-2 bg-gray-800 rounded-sm" />
+            <div className="absolute top-3 right-1 w-3 h-2 bg-gray-800 rounded-sm" />
+            <div className="absolute top-3.5 left-1/2 -translate-x-1/2 w-2 h-0.5 bg-gray-800" />
+          </>
+        );
+      default: // happy
+        return (
+          <>
+            <div className="absolute top-3.5 left-2 w-2.5 h-2.5 bg-white rounded-full border border-gray-400 shadow-inner">
+              <div className="absolute top-0.5 left-0.5 w-1.5 h-1.5 bg-amber-900 rounded-full" style={{ animation: 'blink 4s infinite' }}>
+                <div className="absolute top-0 left-0.5 w-0.5 h-0.5 bg-white rounded-full" />
+              </div>
+            </div>
+            <div className="absolute top-3.5 right-2 w-2.5 h-2.5 bg-white rounded-full border border-gray-400 shadow-inner">
+              <div className="absolute top-0.5 left-0.5 w-1.5 h-1.5 bg-amber-900 rounded-full" style={{ animation: 'blink 4s infinite' }}>
+                <div className="absolute top-0 left-0.5 w-0.5 h-0.5 bg-white rounded-full" />
+              </div>
+            </div>
+          </>
+        );
+    }
+  };
+
+  // Render expression-based mouth
+  const renderMouth = () => {
+    switch (currentExpression) {
+      case 'surprised':
+        return <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-2 h-2.5 bg-amber-900 rounded-full" />;
+      case 'laugh':
+        return (
+          <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-2.5 bg-amber-900 rounded-b-full overflow-hidden">
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-1 bg-pink-400 rounded-t-full" />
+          </div>
+        );
+      default: // happy, wink, cool
+        return <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-2 border-b-2 border-amber-800 rounded-b-full" />;
+    }
+  };
+
   if (!isOpen) {
     return (
       <div className="fixed bottom-24 right-6 z-50">
-        {/* Téo Mascot Character - Cartoon Human Man */}
+        {/* Téo Mascot Character - Realistic Cartoon Human Man - Smaller size */}
         <div 
-          className={`absolute -top-48 -left-10 transition-all duration-500 ${
+          className={`absolute -top-32 -left-6 transition-all duration-500 ${
             showMascot 
               ? 'opacity-100 translate-y-0 scale-100' 
               : 'opacity-0 translate-y-8 scale-75 pointer-events-none'
           }`}
         >
-          {/* Speech bubble - 2x bigger */}
-          <div className="relative mb-4">
-            <div className="bg-white text-black px-8 py-5 rounded-3xl shadow-2xl text-2xl font-bold whitespace-nowrap border-2 border-primary/20" style={{ animation: 'pulse-bubble 2s ease-in-out infinite' }}>
+          {/* Speech bubble - kept same size */}
+          <div className="relative mb-2">
+            <div className="bg-white text-black px-6 py-3 rounded-2xl shadow-xl text-lg font-bold whitespace-nowrap border-2 border-primary/20" style={{ animation: 'pulse-bubble 2s ease-in-out infinite' }}>
               {currentPhrase}
             </div>
             {/* Bubble arrow */}
-            <div className="absolute -bottom-4 left-12 w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[14px] border-t-white drop-shadow-sm" />
+            <div className="absolute -bottom-2 left-8 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[10px] border-t-white drop-shadow-sm" />
           </div>
           
-          {/* Téo character - Cartoon Human Man */}
-          <div className="relative w-24 h-32" style={{ animation: 'float 3s ease-in-out infinite' }}>
-            {/* Hair */}
-            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-18 h-7 bg-amber-800 rounded-t-full" style={{ width: '72px' }} />
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-14 h-5 bg-amber-900 rounded-t-full" />
+          {/* Téo character - Smaller, more realistic */}
+          <div className="relative w-16 h-20" style={{ animation: 'float 3s ease-in-out infinite' }}>
+            {/* Hair - more detailed */}
+            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-12 h-4 bg-gradient-to-b from-amber-700 to-amber-800 rounded-t-full" />
+            <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-10 h-3 bg-gradient-to-r from-amber-800 via-amber-700 to-amber-800 rounded-t-full" />
+            {/* Hair strands */}
+            <div className="absolute -top-2.5 left-4 w-1 h-2 bg-amber-700 rounded-full transform -rotate-12" />
+            <div className="absolute -top-2.5 right-4 w-1 h-2 bg-amber-700 rounded-full transform rotate-12" />
             
-            {/* Head */}
-            <div className="absolute top-2 left-1/2 -translate-x-1/2 w-16 h-16 bg-amber-200 rounded-[40%] shadow-lg">
-              {/* Eyebrows */}
-              <div className="absolute top-3 left-2.5 w-3.5 h-1 bg-amber-800 rounded-full transform -rotate-6" />
-              <div className="absolute top-3 right-2.5 w-3.5 h-1 bg-amber-800 rounded-full transform rotate-6" />
+            {/* Head - more realistic shape */}
+            <div className="absolute top-1 left-1/2 -translate-x-1/2 w-11 h-11 bg-gradient-to-b from-amber-100 to-amber-200 rounded-[45%] shadow-lg border border-amber-200/50">
+              {/* Eyebrows - animated */}
+              <div 
+                className="absolute top-2 left-1.5 w-2.5 h-0.5 bg-amber-800 rounded-full"
+                style={{ 
+                  transform: currentExpression === 'surprised' ? 'translateY(-2px) rotate(-10deg)' : 'rotate(-8deg)',
+                  transition: 'transform 0.3s'
+                }}
+              />
+              <div 
+                className="absolute top-2 right-1.5 w-2.5 h-0.5 bg-amber-800 rounded-full"
+                style={{ 
+                  transform: currentExpression === 'surprised' ? 'translateY(-2px) rotate(10deg)' : 'rotate(8deg)',
+                  transition: 'transform 0.3s'
+                }}
+              />
               
-              {/* Eyes */}
-              <div className="absolute top-5 left-3 w-4 h-4 bg-white rounded-full border border-gray-300 shadow-inner">
-                <div className="absolute top-0.5 left-0.5 w-2.5 h-2.5 bg-amber-900 rounded-full">
-                  <div className="absolute top-0.5 left-0.5 w-1 h-1 bg-white rounded-full" />
-                </div>
-              </div>
-              <div className="absolute top-5 right-3 w-4 h-4 bg-white rounded-full border border-gray-300 shadow-inner">
-                <div className="absolute top-0.5 left-0.5 w-2.5 h-2.5 bg-amber-900 rounded-full">
-                  <div className="absolute top-0.5 left-0.5 w-1 h-1 bg-white rounded-full" />
-                </div>
-              </div>
+              {/* Dynamic Eyes */}
+              {renderEyes()}
               
-              {/* Nose */}
-              <div className="absolute top-8 left-1/2 -translate-x-1/2 w-2 h-2.5 bg-amber-300 rounded-full" />
+              {/* Nose - subtle */}
+              <div className="absolute top-6 left-1/2 -translate-x-1/2 w-1 h-1.5 bg-amber-300/60 rounded-full" />
               
-              {/* Big Smile */}
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-7 h-3.5 border-b-[3px] border-amber-800 rounded-b-full" />
+              {/* Dynamic Mouth */}
+              {renderMouth()}
               
-              {/* Cheeks */}
-              <div className="absolute bottom-4 left-0.5 w-2.5 h-2 bg-pink-300 rounded-full opacity-50" />
-              <div className="absolute bottom-4 right-0.5 w-2.5 h-2 bg-pink-300 rounded-full opacity-50" />
+              {/* Cheeks - blush */}
+              <div className="absolute bottom-2.5 left-0.5 w-1.5 h-1 bg-pink-300 rounded-full opacity-40" />
+              <div className="absolute bottom-2.5 right-0.5 w-1.5 h-1 bg-pink-300 rounded-full opacity-40" />
+              
+              {/* Ears */}
+              <div className="absolute top-4 -left-1 w-1.5 h-2 bg-amber-200 rounded-full" />
+              <div className="absolute top-4 -right-1 w-1.5 h-2 bg-amber-200 rounded-full" />
             </div>
             
             {/* Neck */}
-            <div className="absolute top-16 left-1/2 -translate-x-1/2 w-5 h-3 bg-amber-200" />
+            <div className="absolute top-11 left-1/2 -translate-x-1/2 w-3 h-2 bg-gradient-to-b from-amber-200 to-amber-100" />
             
-            {/* Body / Shirt */}
-            <div className="absolute top-18 left-1/2 -translate-x-1/2 w-20 h-14 bg-gradient-to-b from-primary to-accent rounded-t-xl rounded-b-3xl shadow-lg" style={{ top: '72px' }}>
+            {/* Body / Shirt - more fitted */}
+            <div className="absolute left-1/2 -translate-x-1/2 w-14 h-9 bg-gradient-to-b from-primary via-primary to-accent rounded-t-lg rounded-b-2xl shadow-lg" style={{ top: '52px' }}>
               {/* Shirt collar */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-2.5 bg-white rounded-b-full" />
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-1.5 bg-white rounded-b-full" />
               
               {/* Shirt buttons */}
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 w-2 h-2 bg-white/80 rounded-full" />
-              <div className="absolute top-8 left-1/2 -translate-x-1/2 w-2 h-2 bg-white/80 rounded-full" />
+              <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-white/80 rounded-full" />
+              <div className="absolute top-5 left-1/2 -translate-x-1/2 w-1 h-1 bg-white/80 rounded-full" />
             </div>
             
             {/* Left arm */}
-            <div className="absolute -left-2 w-5 h-10 bg-gradient-to-b from-primary to-accent rounded-full origin-top" style={{ top: '76px' }} />
+            <div className="absolute -left-1.5 w-3 h-7 bg-gradient-to-b from-primary to-accent rounded-full origin-top" style={{ top: '54px' }}>
+              {/* Left hand */}
+              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-amber-200 rounded-full" />
+            </div>
             
             {/* Right arm - waving */}
             <div 
-              className="absolute -right-6 origin-bottom"
+              className="absolute -right-4 origin-bottom"
               style={{
-                top: '68px',
+                top: '50px',
                 animation: showMascot ? 'wave 0.4s ease-in-out infinite' : 'none'
               }}
             >
-              <div className="w-5 h-12 bg-gradient-to-b from-primary to-accent rounded-full" />
+              <div className="w-3 h-8 bg-gradient-to-b from-primary to-accent rounded-full" />
               {/* Hand */}
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-7 h-7 bg-amber-200 rounded-full shadow-md flex items-center justify-center">
-                <span className="text-lg">👋</span>
+              <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-5 h-5 bg-amber-200 rounded-full shadow-md flex items-center justify-center">
+                <span className="text-xs">👋</span>
               </div>
             </div>
           </div>
@@ -500,11 +602,15 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
           }
           @keyframes float {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-6px); }
+            50% { transform: translateY(-4px); }
           }
           @keyframes pulse-bubble {
             0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.03); }
+            50% { transform: scale(1.02); }
+          }
+          @keyframes blink {
+            0%, 90%, 100% { transform: scaleY(1); }
+            95% { transform: scaleY(0.1); }
           }
         `}</style>
       </div>
