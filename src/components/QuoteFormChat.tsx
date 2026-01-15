@@ -155,12 +155,21 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
       if (error) throw error;
 
       // Envia notificação por e-mail para o admin
-      supabase.functions.invoke('send-admin-notification', {
-        body: {
-          type: 'quote_request',
-          data: insertData,
-        },
-      }).catch(err => console.error('Erro ao enviar notificação:', err));
+      try {
+        const notifyResponse = await supabase.functions.invoke('send-admin-notification', {
+          body: {
+            type: 'quote_request',
+            data: insertData,
+          },
+        });
+        if (notifyResponse.error) {
+          console.error('Erro ao enviar notificação:', notifyResponse.error);
+        } else {
+          console.log('Notificação enviada com sucesso');
+        }
+      } catch (err) {
+        console.error('Erro ao enviar notificação:', err);
+      }
 
       setIsComplete(true);
       toast.success('Solicitação enviada com sucesso! Entraremos em contato em breve.');
