@@ -1,4 +1,4 @@
-import { Instagram, Facebook, Mail, Phone, MapPin } from 'lucide-react';
+import { Instagram, Facebook, Mail, Phone, MapPin, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import logo from '@/assets/logo.jpeg';
 
@@ -70,9 +70,14 @@ export const Footer = () => {
                 <Mail className="w-4 h-4 text-primary" />
                 contato@tomorrowtravel.com
               </li>
-              <li className="flex items-center gap-2 text-muted-foreground text-sm">
-                <Phone className="w-4 h-4 text-primary" />
-                +55 (11) 99999-9999
+              <li>
+                <a 
+                  href="tel:+5515998389220" 
+                  className="flex items-center gap-2 text-muted-foreground text-sm hover:text-primary transition-colors"
+                >
+                  <Phone className="w-4 h-4 text-primary" />
+                  +55 (15) 99838-9220
+                </a>
               </li>
               <li className="flex items-center gap-2 text-muted-foreground text-sm">
                 <MapPin className="w-4 h-4 text-primary" />
@@ -83,11 +88,22 @@ export const Footer = () => {
             {/* Social */}
             <div className="flex items-center gap-4 mt-6">
               <a
-                href="#"
+                href="https://www.instagram.com/tomorrowtravel"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="p-2 rounded-full bg-muted hover:bg-primary/20 transition-colors"
                 aria-label="Instagram"
               >
                 <Instagram className="w-5 h-5 text-foreground" />
+              </a>
+              <a
+                href="https://wa.me/5515998389220"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-full bg-muted hover:bg-[#25D366]/20 transition-colors"
+                aria-label="WhatsApp"
+              >
+                <MessageCircle className="w-5 h-5 text-foreground" />
               </a>
               <a
                 href="#"
