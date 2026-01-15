@@ -114,12 +114,21 @@ export const ImageGenerator = ({ destinationId, destinationName }: ImageGenerato
       await supabase.from('ai_generated_images').insert(imageData);
 
       // Envia notificação por e-mail para o admin
-      supabase.functions.invoke('send-admin-notification', {
-        body: {
-          type: 'ai_image',
-          data: imageData,
-        },
-      }).catch(err => console.error('Erro ao enviar notificação:', err));
+      try {
+        const notifyResponse = await supabase.functions.invoke('send-admin-notification', {
+          body: {
+            type: 'ai_image',
+            data: imageData,
+          },
+        });
+        if (notifyResponse.error) {
+          console.error('Erro ao enviar notificação:', notifyResponse.error);
+        } else {
+          console.log('Notificação de imagem enviada com sucesso');
+        }
+      } catch (err) {
+        console.error('Erro ao enviar notificação:', err);
+      }
 
       toast.success('Imagem gerada com sucesso!');
     } catch {

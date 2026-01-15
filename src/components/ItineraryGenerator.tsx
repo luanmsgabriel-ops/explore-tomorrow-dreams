@@ -258,15 +258,24 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
         setItineraryId(insertData.id);
         
         // Envia notificação por e-mail para o admin
-        supabase.functions.invoke('send-admin-notification', {
-          body: {
-            type: 'ai_itinerary',
-            data: {
-              ...itineraryData,
-              id: insertData.id,
+        try {
+          const notifyResponse = await supabase.functions.invoke('send-admin-notification', {
+            body: {
+              type: 'ai_itinerary',
+              data: {
+                ...itineraryData,
+                id: insertData.id,
+              },
             },
-          },
-        }).catch(err => console.error('Erro ao enviar notificação:', err));
+          });
+          if (notifyResponse.error) {
+            console.error('Erro ao enviar notificação:', notifyResponse.error);
+          } else {
+            console.log('Notificação de roteiro enviada com sucesso');
+          }
+        } catch (err) {
+          console.error('Erro ao enviar notificação:', err);
+        }
       }
 
       setStep('result');

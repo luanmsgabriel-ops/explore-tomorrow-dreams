@@ -59,12 +59,21 @@ export const DestinationChat = ({ destinationId, destinationName }: DestinationC
         console.error('Error creating chat session:', error);
       } else {
         // Envia notificação por e-mail para o admin
-        supabase.functions.invoke('send-admin-notification', {
-          body: {
-            type: 'chat_session',
-            data: sessionData,
-          },
-        }).catch(err => console.error('Erro ao enviar notificação:', err));
+        try {
+          const notifyResponse = await supabase.functions.invoke('send-admin-notification', {
+            body: {
+              type: 'chat_session',
+              data: sessionData,
+            },
+          });
+          if (notifyResponse.error) {
+            console.error('Erro ao enviar notificação:', notifyResponse.error);
+          } else {
+            console.log('Notificação de chat enviada com sucesso');
+          }
+        } catch (err) {
+          console.error('Erro ao enviar notificação:', err);
+        }
       }
     } catch (err) {
       console.error('Error creating chat session:', err);
