@@ -181,6 +181,7 @@ export type Database = {
       }
       destinations: {
         Row: {
+          best_price_periods: Json | null
           best_time: string
           category: string
           created_at: string
@@ -199,6 +200,7 @@ export type Database = {
           videos: Json | null
         }
         Insert: {
+          best_price_periods?: Json | null
           best_time: string
           category: string
           created_at?: string
@@ -217,6 +219,7 @@ export type Database = {
           videos?: Json | null
         }
         Update: {
+          best_price_periods?: Json | null
           best_time?: string
           category?: string
           created_at?: string
