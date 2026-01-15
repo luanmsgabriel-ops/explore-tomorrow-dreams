@@ -7,6 +7,11 @@ export interface DestinationVideo {
   youtubeId: string;
 }
 
+export interface BestPricePeriod {
+  period: string;
+  reason: string;
+}
+
 export interface Destination {
   id: string;
   slug: string;
@@ -21,6 +26,7 @@ export interface Destination {
   forWho: string;
   videos: DestinationVideo[];
   isFeatured?: boolean;
+  bestPricePeriods?: BestPricePeriod[];
 }
 
 // Transform database record to frontend format
@@ -38,6 +44,7 @@ const transformDestination = (record: any): Destination => ({
   forWho: record.for_who,
   videos: Array.isArray(record.videos) ? record.videos : [],
   isFeatured: record.is_featured || false,
+  bestPricePeriods: Array.isArray(record.best_price_periods) ? record.best_price_periods : [],
 });
 
 export const useDestinations = (type?: 'explorar' | 'nacional' | 'internacional') => {

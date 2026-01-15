@@ -8,7 +8,7 @@ import { DestinationChat } from '@/components/DestinationChat';
 import { ImageGenerator } from '@/components/ImageGenerator';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { useDestinationById } from '@/hooks/useDestinations';
-import { Sparkles, MessageCircle, Image, MapPin, Calendar, Users, X, ArrowLeft, Sun, Clock, Loader2 } from 'lucide-react';
+import { Sparkles, MessageCircle, Image, MapPin, Calendar, Users, X, ArrowLeft, Sun, Clock, Loader2, TrendingDown, Plane } from 'lucide-react';
 
 type ModalType = 'quote' | 'itinerary' | 'chat' | 'image' | null;
 
@@ -115,6 +115,47 @@ const DestinationDetail = () => {
           </div>
         </div>
       </section>
+
+      {/* Best Price Periods Section */}
+      {destination.bestPricePeriods && destination.bestPricePeriods.length > 0 && (
+        <section className="py-8 border-b border-border bg-gradient-to-r from-green-500/5 via-transparent to-green-500/5">
+          <div className="container mx-auto px-4 lg:px-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 rounded-full bg-green-500/20">
+                <TrendingDown className="w-5 h-5 text-green-500" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground flex items-center gap-2">
+                  <Plane className="w-4 h-4" />
+                  Melhores Períodos para Passagens Aéreas
+                </h3>
+                <p className="text-xs text-muted-foreground">Baseado em dados históricos de preços</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {destination.bestPricePeriods.map((period, index) => (
+                <div 
+                  key={index} 
+                  className="flex items-start gap-4 p-4 rounded-xl bg-card border border-green-500/20 hover:border-green-500/40 transition-colors"
+                >
+                  <div className="p-2 rounded-lg bg-green-500/10 shrink-0">
+                    <Calendar className="w-5 h-5 text-green-500" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground text-lg">{period.period}</p>
+                    <p className="text-sm text-muted-foreground">{period.reason}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <p className="mt-4 text-xs text-muted-foreground text-center italic">
+              💡 Dica: Reserve com antecedência para garantir os melhores preços nestes períodos
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* Action buttons */}
       <section className="py-8 border-b border-border sticky top-16 z-30 glass">
