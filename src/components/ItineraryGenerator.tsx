@@ -234,7 +234,7 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
       );
 
       // Save to database with mood
-      const { data: insertData, error: insertError } = await supabase.from('ai_itineraries').insert({
+      const itineraryData = {
         destination_id: selectedDestinationId,
         destination_name: finalDestinationName,
         user_email: email.trim() || '',
@@ -245,12 +245,28 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
         quote_requested: false,
         travel_mood: selectedMood,
         selected_activities: [],
-      }).select('id').single();
+      };
+      
+      const { data: insertData, error: insertError } = await supabase.from('ai_itineraries')
+        .insert(itineraryData)
+        .select('id')
+        .single();
 
       if (insertError) {
         console.error('Erro ao salvar roteiro:', insertError);
       } else if (insertData) {
         setItineraryId(insertData.id);
+        
+        // Envia notificação por e-mail para o admin
+        supabase.functions.invoke('send-admin-notification', {
+          body: {
+            type: 'ai_itinerary',
+            data: {
+              ...itineraryData,
+              id: insertData.id,
+            },
+          },
+        }).catch(err => console.error('Erro ao enviar notificação:', err));
       }
 
       setStep('result');

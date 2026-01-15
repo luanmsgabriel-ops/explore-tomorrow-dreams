@@ -45,16 +45,26 @@ export const DestinationChat = ({ destinationId, destinationName }: DestinationC
 
   const createChatSession = async (name: string, whatsapp: string) => {
     try {
-      const { error } = await supabase.from('chat_sessions').insert({
+      const sessionData = {
         session_id: sessionIdRef.current,
         destination_id: destinationId,
         destination_name: destinationName,
         user_name: name,
         user_whatsapp: whatsapp,
-      });
+      };
+      
+      const { error } = await supabase.from('chat_sessions').insert(sessionData);
       
       if (error) {
         console.error('Error creating chat session:', error);
+      } else {
+        // Envia notificação por e-mail para o admin
+        supabase.functions.invoke('send-admin-notification', {
+          body: {
+            type: 'chat_session',
+            data: sessionData,
+          },
+        }).catch(err => console.error('Erro ao enviar notificação:', err));
       }
     } catch (err) {
       console.error('Error creating chat session:', err);
