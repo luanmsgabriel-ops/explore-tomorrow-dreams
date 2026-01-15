@@ -34,6 +34,10 @@ interface QuizAnswers {
 type ChatStep = 'collect_name' | 'collect_whatsapp' | 'chatting' | 'limit_reached';
 
 export const TravelAdvisorChat = () => {
+  // Check if user has already interacted with Téo this session
+  const [hasInteracted, setHasInteracted] = useState(() => {
+    return sessionStorage.getItem('teo_interacted') === 'true';
+  });
   const [isOpen, setIsOpen] = useState(false);
   const sessionIdRef = useRef<string>(generateSecureSessionId());
   
@@ -357,7 +361,14 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
   const expressions = ['happy', 'wink', 'surprised', 'laugh', 'cool'] as const;
 
   // Mascot animation effect - appears every 4-8 seconds with random phrases and expressions
+  // Only if user hasn't interacted with Téo yet
   useEffect(() => {
+    // Don't show mascot if user has already interacted
+    if (hasInteracted) {
+      setShowMascot(false);
+      return;
+    }
+    
     // Clear all timers when chat opens
     if (isOpen) {
       if (mascotIntervalRef.current) {
@@ -373,8 +384,8 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
     }
 
     const showMascotWithPhrase = () => {
-      // Don't show if chat is open
-      if (isOpen) return;
+      // Don't show if chat is open or user has interacted
+      if (isOpen || hasInteracted) return;
       
       const randomPhrase = TEO_PHRASES[Math.floor(Math.random() * TEO_PHRASES.length)];
       const randomExpression = expressions[Math.floor(Math.random() * expressions.length)];
@@ -393,14 +404,14 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
 
     // Show first time after 2 seconds
     const initialTimeout = setTimeout(() => {
-      if (!isOpen) {
+      if (!isOpen && !hasInteracted) {
         showMascotWithPhrase();
       }
     }, 2000);
 
     // Then show every 5-10 seconds
     mascotIntervalRef.current = setInterval(() => {
-      if (!isOpen) {
+      if (!isOpen && !hasInteracted) {
         showMascotWithPhrase();
       }
     }, 5000 + Math.random() * 5000);
@@ -416,7 +427,7 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
         mascotTimeoutRef.current = null;
       }
     };
-  }, [isOpen]);
+  }, [isOpen, hasInteracted]);
 
   // Render realistic expression-based eyes
   const renderEyes = () => {
@@ -695,7 +706,13 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
 
         {/* Main button */}
         <button
-          onClick={() => setIsOpen(true)}
+          onClick={() => {
+            // Mark that user has interacted with Téo
+            setHasInteracted(true);
+            sessionStorage.setItem('teo_interacted', 'true');
+            setShowMascot(false);
+            setIsOpen(true);
+          }}
           className="flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 animate-fade-in group relative"
           aria-label="Abrir consultor de viagens"
         >
