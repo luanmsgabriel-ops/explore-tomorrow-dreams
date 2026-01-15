@@ -10,20 +10,17 @@ interface Message {
   content: string;
 }
 
-// Teo mascot phrases that appear randomly
+// Teo mascot phrases that appear randomly - exactly as specified
 const TEO_PHRASES = [
-  "Eiiii! 👋",
-  "Oiiiii! 🌟",
-  "Olha aquiiii! 👀",
-  "Owwww! 🤗",
-  "Fala comigoo! 💬",
+  "Eiiii",
+  "Oiiiii",
+  "Olha aquiiii",
+  "Owwww",
+  "Fala comigoo",
   "😂😂",
   "😭😭",
-  "Ta calor ai?? 🥵",
-  "Ta frio ai?? 🥶",
-  "Bora viajar?? ✈️",
-  "Psiu! 🤫",
-  "E aí?? 🤙",
+  "ta calor ai??🥵",
+  "Ta frio aii??🥶",
 ];
 
 interface QuizAnswers {
@@ -396,59 +393,86 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
   if (!isOpen) {
     return (
       <div className="fixed bottom-24 right-6 z-50">
-        {/* Teo Mascot Character */}
+        {/* Teo Mascot Character - Cartoon Human Man */}
         <div 
-          className={`absolute -top-20 -left-4 transition-all duration-500 ${
+          className={`absolute -top-48 -left-10 transition-all duration-500 ${
             showMascot 
               ? 'opacity-100 translate-y-0 scale-100' 
               : 'opacity-0 translate-y-8 scale-75 pointer-events-none'
           }`}
         >
-          {/* Speech bubble */}
-          <div className="relative mb-2">
-            <div className="bg-white text-foreground px-3 py-2 rounded-xl shadow-lg text-sm font-medium animate-bounce whitespace-nowrap">
+          {/* Speech bubble - 2x bigger */}
+          <div className="relative mb-4">
+            <div className="bg-white text-foreground px-8 py-5 rounded-3xl shadow-2xl text-2xl font-bold whitespace-nowrap border-2 border-primary/20" style={{ animation: 'pulse-bubble 2s ease-in-out infinite' }}>
               {currentPhrase}
             </div>
             {/* Bubble arrow */}
-            <div className="absolute -bottom-2 left-6 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-white" />
+            <div className="absolute -bottom-4 left-12 w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[14px] border-t-white drop-shadow-sm" />
           </div>
           
-          {/* Teo character - animated mascot */}
-          <div className="relative w-16 h-16 animate-bounce" style={{ animationDuration: '2s' }}>
-            {/* Body */}
-            <div className="absolute inset-0 bg-gradient-to-b from-primary to-accent rounded-full shadow-lg">
-              {/* Face */}
-              <div className="absolute inset-2 bg-amber-100 rounded-full flex items-center justify-center">
-                {/* Eyes */}
-                <div className="flex gap-2 relative -top-1">
-                  <div className="w-2.5 h-3 bg-gray-800 rounded-full relative">
-                    <div className="absolute top-0.5 left-0.5 w-1 h-1 bg-white rounded-full" />
-                  </div>
-                  <div className="w-2.5 h-3 bg-gray-800 rounded-full relative">
-                    <div className="absolute top-0.5 left-0.5 w-1 h-1 bg-white rounded-full" />
-                  </div>
+          {/* Teo character - Cartoon Human Man */}
+          <div className="relative w-24 h-32" style={{ animation: 'float 3s ease-in-out infinite' }}>
+            {/* Hair */}
+            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-18 h-7 bg-amber-800 rounded-t-full" style={{ width: '72px' }} />
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-14 h-5 bg-amber-900 rounded-t-full" />
+            
+            {/* Head */}
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 w-16 h-16 bg-amber-200 rounded-[40%] shadow-lg">
+              {/* Eyebrows */}
+              <div className="absolute top-3 left-2.5 w-3.5 h-1 bg-amber-800 rounded-full transform -rotate-6" />
+              <div className="absolute top-3 right-2.5 w-3.5 h-1 bg-amber-800 rounded-full transform rotate-6" />
+              
+              {/* Eyes */}
+              <div className="absolute top-5 left-3 w-4 h-4 bg-white rounded-full border border-gray-300 shadow-inner">
+                <div className="absolute top-0.5 left-0.5 w-2.5 h-2.5 bg-amber-900 rounded-full">
+                  <div className="absolute top-0.5 left-0.5 w-1 h-1 bg-white rounded-full" />
+                </div>
+              </div>
+              <div className="absolute top-5 right-3 w-4 h-4 bg-white rounded-full border border-gray-300 shadow-inner">
+                <div className="absolute top-0.5 left-0.5 w-2.5 h-2.5 bg-amber-900 rounded-full">
+                  <div className="absolute top-0.5 left-0.5 w-1 h-1 bg-white rounded-full" />
                 </div>
               </div>
               
-              {/* Smile */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-4 h-2 border-b-2 border-gray-800 rounded-b-full" />
+              {/* Nose */}
+              <div className="absolute top-8 left-1/2 -translate-x-1/2 w-2 h-2.5 bg-amber-300 rounded-full" />
               
-              {/* Waving hand */}
-              <div 
-                className="absolute -right-3 top-2 origin-bottom-left"
-                style={{
-                  animation: showMascot ? 'wave 0.5s ease-in-out infinite' : 'none'
-                }}
-              >
-                <div className="w-5 h-5 bg-amber-100 rounded-full shadow-md flex items-center justify-center text-xs">
-                  👋
-                </div>
-              </div>
+              {/* Big Smile */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-7 h-3.5 border-b-[3px] border-amber-800 rounded-b-full" />
               
-              {/* Travel hat */}
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <div className="w-10 h-3 bg-amber-400 rounded-t-full" />
-                <div className="w-14 h-1.5 bg-amber-500 rounded-full -mt-0.5 -ml-2" />
+              {/* Cheeks */}
+              <div className="absolute bottom-4 left-0.5 w-2.5 h-2 bg-pink-300 rounded-full opacity-50" />
+              <div className="absolute bottom-4 right-0.5 w-2.5 h-2 bg-pink-300 rounded-full opacity-50" />
+            </div>
+            
+            {/* Neck */}
+            <div className="absolute top-16 left-1/2 -translate-x-1/2 w-5 h-3 bg-amber-200" />
+            
+            {/* Body / Shirt */}
+            <div className="absolute top-18 left-1/2 -translate-x-1/2 w-20 h-14 bg-gradient-to-b from-primary to-accent rounded-t-xl rounded-b-3xl shadow-lg" style={{ top: '72px' }}>
+              {/* Shirt collar */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-2.5 bg-white rounded-b-full" />
+              
+              {/* Shirt buttons */}
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 w-2 h-2 bg-white/80 rounded-full" />
+              <div className="absolute top-8 left-1/2 -translate-x-1/2 w-2 h-2 bg-white/80 rounded-full" />
+            </div>
+            
+            {/* Left arm */}
+            <div className="absolute -left-2 w-5 h-10 bg-gradient-to-b from-primary to-accent rounded-full origin-top" style={{ top: '76px' }} />
+            
+            {/* Right arm - waving */}
+            <div 
+              className="absolute -right-6 origin-bottom"
+              style={{
+                top: '68px',
+                animation: showMascot ? 'wave 0.4s ease-in-out infinite' : 'none'
+              }}
+            >
+              <div className="w-5 h-12 bg-gradient-to-b from-primary to-accent rounded-full" />
+              {/* Hand */}
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-7 h-7 bg-amber-200 rounded-full shadow-md flex items-center justify-center">
+                <span className="text-lg">👋</span>
               </div>
             </div>
           </div>
@@ -468,11 +492,19 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
           <span className="absolute inset-0 rounded-full bg-gradient-to-r from-primary to-accent animate-ping opacity-20" />
         </button>
 
-        {/* CSS for wave animation */}
+        {/* CSS for animations */}
         <style>{`
           @keyframes wave {
-            0%, 100% { transform: rotate(-15deg); }
-            50% { transform: rotate(25deg); }
+            0%, 100% { transform: rotate(-25deg); }
+            50% { transform: rotate(35deg); }
+          }
+          @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+          }
+          @keyframes pulse-bubble {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
           }
         `}</style>
       </div>
