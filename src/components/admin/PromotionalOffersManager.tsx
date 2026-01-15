@@ -3,8 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
   Loader2, Trash2, Edit, Clock, Calendar, 
-  DollarSign, Tag, Sparkles, MapPin, Save, X, Plus
+  DollarSign, Tag, Sparkles, MapPin, Save, X, Plus, Image
 } from 'lucide-react';
+import { BannerGenerator } from './BannerGenerator';
 
 interface PromotionalOffer {
   id: string;
@@ -30,6 +31,7 @@ export const PromotionalOffersManager = () => {
   const [offers, setOffers] = useState<PromotionalOffer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingOffer, setEditingOffer] = useState<PromotionalOffer | null>(null);
+  const [bannerOffer, setBannerOffer] = useState<PromotionalOffer | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingTagline, setIsGeneratingTagline] = useState(false);
 
@@ -368,6 +370,14 @@ export const PromotionalOffersManager = () => {
                     <Edit className="w-4 h-4" />
                     Editar
                   </button>
+
+                  <button
+                    onClick={() => setBannerOffer(offer)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 text-primary hover:from-primary/20 hover:to-accent/20 transition-colors text-sm"
+                  >
+                    <Image className="w-4 h-4" />
+                    Banner
+                  </button>
                   
                   <div className="relative group">
                     <button
@@ -612,6 +622,14 @@ export const PromotionalOffersManager = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Banner Generator Modal */}
+      {bannerOffer && (
+        <BannerGenerator 
+          offer={bannerOffer} 
+          onClose={() => setBannerOffer(null)} 
+        />
       )}
     </div>
   );
