@@ -33,11 +33,21 @@ interface QuizAnswers {
 
 type ChatStep = 'collect_name' | 'collect_whatsapp' | 'chatting' | 'limit_reached';
 
+// Check if 24 hours have passed since last interaction
+const checkTeoInteraction = (): boolean => {
+  const lastInteraction = localStorage.getItem('teo_last_interaction');
+  if (!lastInteraction) return false;
+  
+  const lastTime = parseInt(lastInteraction, 10);
+  const now = Date.now();
+  const twentyFourHours = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+  
+  return (now - lastTime) < twentyFourHours;
+};
+
 export const TravelAdvisorChat = () => {
-  // Check if user has already interacted with Téo this session
-  const [hasInteracted, setHasInteracted] = useState(() => {
-    return sessionStorage.getItem('teo_interacted') === 'true';
-  });
+  // Check if user has interacted with Téo in the last 24 hours
+  const [hasInteracted, setHasInteracted] = useState(() => checkTeoInteraction());
   const [isOpen, setIsOpen] = useState(false);
   const sessionIdRef = useRef<string>(generateSecureSessionId());
   
@@ -707,9 +717,9 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
         {/* Main button */}
         <button
           onClick={() => {
-            // Mark that user has interacted with Téo
+            // Mark that user has interacted with Téo - save timestamp for 24h check
             setHasInteracted(true);
-            sessionStorage.setItem('teo_interacted', 'true');
+            localStorage.setItem('teo_last_interaction', Date.now().toString());
             setShowMascot(false);
             setIsOpen(true);
           }}
