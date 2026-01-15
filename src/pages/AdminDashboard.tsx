@@ -27,7 +27,9 @@ import {
   Maximize2,
   X,
   MessageSquare,
-  Tag
+  Tag,
+  Heart,
+  Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -53,6 +55,12 @@ interface QuoteRequest {
   created_at: string;
 }
 
+interface SelectedActivity {
+  day: string;
+  title: string;
+  description?: string;
+}
+
 interface AIItinerary {
   id: string;
   destination_name: string;
@@ -64,6 +72,8 @@ interface AIItinerary {
   quote_requested_at: string | null;
   preferences: string | null;
   itinerary_content: string;
+  travel_mood: string | null;
+  selected_activities: SelectedActivity[] | null;
 }
 
 interface AIImage {
@@ -127,7 +137,16 @@ const AdminDashboard = () => {
       ]);
 
       if (quotesRes.data) setQuotes(quotesRes.data);
-      if (itinerariesRes.data) setItineraries(itinerariesRes.data);
+      if (itinerariesRes.data) {
+        // Cast selected_activities from Json to SelectedActivity[]
+        const typedItineraries = itinerariesRes.data.map(item => ({
+          ...item,
+          selected_activities: Array.isArray(item.selected_activities) 
+            ? (item.selected_activities as unknown as SelectedActivity[])
+            : null,
+        }));
+        setItineraries(typedItineraries);
+      }
       if (imagesRes.data) setImages(imagesRes.data);
       if (usersRes.data) setAdminUsers(usersRes.data);
     } catch (error) {
@@ -550,6 +569,8 @@ const AdminDashboard = () => {
                               <tr>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Cliente</th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Destino</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Clima</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Seleções</th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Cotação</th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Data</th>
@@ -566,6 +587,32 @@ const AdminDashboard = () => {
                                     </div>
                                   </td>
                                   <td className="px-4 py-4 text-foreground">{itinerary.destination_name}</td>
+                                  <td className="px-4 py-4">
+                                    {itinerary.travel_mood ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-pink-500/20 text-pink-400">
+                                        <Heart className="w-3 h-3" />
+                                        {itinerary.travel_mood === 'romantica' ? 'Romântica' :
+                                         itinerary.travel_mood === 'relaxante' ? 'Relaxante' :
+                                         itinerary.travel_mood === 'aventura' ? 'Aventura' :
+                                         itinerary.travel_mood === 'gastronomica' ? 'Gastronômica' :
+                                         itinerary.travel_mood === 'cultural' ? 'Cultural' :
+                                         itinerary.travel_mood === 'fotografica' ? 'Fotográfica' :
+                                         itinerary.travel_mood}
+                                      </span>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground">-</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-4">
+                                    {itinerary.selected_activities && itinerary.selected_activities.length > 0 ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary">
+                                        <Sparkles className="w-3 h-3" />
+                                        {itinerary.selected_activities.length} passeios
+                                      </span>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground">Nenhum</span>
+                                    )}
+                                  </td>
                                   <td className="px-4 py-4">
                                     {itinerary.quote_requested ? (
                                       <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-accent/20 text-accent">
@@ -1055,6 +1102,48 @@ const AdminDashboard = () => {
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Cotação Solicitada em</p>
                   <p className="text-foreground font-medium">{formatDate(selectedItinerary.quote_requested_at)}</p>
+                </div>
+              )}
+
+              {/* Clima da Viagem */}
+              {selectedItinerary.travel_mood && (
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Clima da Viagem</p>
+                  <span className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500/20 to-rose-500/20 text-pink-400 rounded-xl font-medium">
+                    <Heart className="w-4 h-4" />
+                    {selectedItinerary.travel_mood === 'romantica' ? 'Romântica' :
+                     selectedItinerary.travel_mood === 'relaxante' ? 'Relaxante' :
+                     selectedItinerary.travel_mood === 'aventura' ? 'Aventura Radical' :
+                     selectedItinerary.travel_mood === 'gastronomica' ? 'Gastronômica' :
+                     selectedItinerary.travel_mood === 'cultural' ? 'Cultural' :
+                     selectedItinerary.travel_mood === 'fotografica' ? 'Fotográfica' :
+                     selectedItinerary.travel_mood}
+                  </span>
+                </div>
+              )}
+
+              {/* Passeios Selecionados pelo Cliente */}
+              {selectedItinerary.selected_activities && selectedItinerary.selected_activities.length > 0 && (
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    Passeios Selecionados pelo Cliente ({selectedItinerary.selected_activities.length})
+                  </p>
+                  <div className="bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/30 rounded-xl p-4 space-y-2">
+                    {selectedItinerary.selected_activities.map((activity, index) => (
+                      <div key={index} className="flex items-start gap-3 p-2 bg-background/50 rounded-lg">
+                        <CheckCircle className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                        <div>
+                          <p className="font-medium text-foreground text-sm">
+                            <span className="text-primary">{activity.day}</span> - {activity.title}
+                          </p>
+                          {activity.description && (
+                            <p className="text-xs text-muted-foreground">{activity.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 

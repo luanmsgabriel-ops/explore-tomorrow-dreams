@@ -60,7 +60,9 @@ export type Database = {
           preferences: string | null
           quote_requested: boolean
           quote_requested_at: string | null
+          selected_activities: Json | null
           status: string
+          travel_mood: string | null
           user_email: string
           user_whatsapp: string
         }
@@ -73,7 +75,9 @@ export type Database = {
           preferences?: string | null
           quote_requested?: boolean
           quote_requested_at?: string | null
+          selected_activities?: Json | null
           status?: string
+          travel_mood?: string | null
           user_email: string
           user_whatsapp: string
         }
@@ -86,7 +90,9 @@ export type Database = {
           preferences?: string | null
           quote_requested?: boolean
           quote_requested_at?: string | null
+          selected_activities?: Json | null
           status?: string
+          travel_mood?: string | null
           user_email?: string
           user_whatsapp?: string
         }
