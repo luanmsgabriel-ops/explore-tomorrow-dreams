@@ -15,6 +15,7 @@ import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { FloatingWhatsApp } from "./components/FloatingWhatsApp";
+import { TravelAdvisorChat } from "./components/TravelAdvisorChat";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
         </Routes>
         <InstallPrompt />
         <FloatingWhatsApp />
+        <TravelAdvisorChat />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
