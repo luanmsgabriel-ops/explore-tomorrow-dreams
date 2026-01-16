@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
   Loader2, Image, Download, Copy, Check, 
-  Smartphone, MessageCircle, X, Sparkles 
+  Smartphone, MessageCircle, X, Sparkles,
+  History, Trash2, Clock
 } from 'lucide-react';
 
 interface PromotionalOffer {
@@ -25,6 +26,17 @@ interface PromotionalOffer {
   } | null;
 }
 
+interface BannerHistoryItem {
+  id: string;
+  offer_id: string;
+  offer_title: string;
+  destination_name: string;
+  format: string;
+  image_url: string;
+  caption: string | null;
+  created_at: string;
+}
+
 interface BannerGeneratorProps {
   offer: PromotionalOffer;
   onClose: () => void;
@@ -39,6 +51,35 @@ export const BannerGenerator = ({ offer, onClose }: BannerGeneratorProps) => {
   const [caption, setCaption] = useState<string>('');
   const [isCopied, setIsCopied] = useState(false);
   const [isGeneratingCaption, setIsGeneratingCaption] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<BannerHistoryItem[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (showHistory) {
+      loadHistory();
+    }
+  }, [showHistory, offer.id]);
+
+  const loadHistory = async () => {
+    setIsLoadingHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from('banner_history')
+        .select('*')
+        .eq('offer_id', offer.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setHistory(data || []);
+    } catch (error) {
+      console.error('Error loading history:', error);
+      toast.error('Erro ao carregar histórico');
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
 
   const formatPrice = (value: number) => {
     return value.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -95,6 +136,64 @@ DESIGN REQUIREMENTS:
       toast.error('Erro ao gerar banner. Tente novamente.');
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const saveBannerToHistory = async () => {
+    if (!generatedImage) return;
+    
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('banner_history')
+        .insert({
+          offer_id: offer.id,
+          offer_title: offer.title,
+          destination_name: offer.destinations?.name || 'Destino',
+          format,
+          image_url: generatedImage,
+          caption: caption || null
+        });
+
+      if (error) throw error;
+      
+      toast.success('Banner salvo no histórico!');
+      if (showHistory) {
+        loadHistory();
+      }
+    } catch (error) {
+      console.error('Error saving banner:', error);
+      toast.error('Erro ao salvar banner');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const loadFromHistory = (item: BannerHistoryItem) => {
+    setGeneratedImage(item.image_url);
+    setFormat(item.format as BannerFormat);
+    if (item.caption) {
+      setCaption(item.caption);
+    }
+    setShowHistory(false);
+    toast.success('Banner carregado do histórico');
+  };
+
+  const deleteFromHistory = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const { error } = await supabase
+        .from('banner_history')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      setHistory(prev => prev.filter(item => item.id !== id));
+      toast.success('Banner removido do histórico');
+    } catch (error) {
+      console.error('Error deleting banner:', error);
+      toast.error('Erro ao remover banner');
     }
   };
 
@@ -168,152 +267,241 @@ ${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
           <X className="w-5 h-5" />
         </button>
 
-        <h2 className="font-serif text-2xl font-bold text-foreground mb-2">
-          Gerar Banner Promocional
-        </h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="font-serif text-2xl font-bold text-foreground">
+            Gerar Banner Promocional
+          </h2>
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+              showHistory 
+                ? 'bg-primary text-primary-foreground' 
+                : 'bg-secondary hover:bg-muted text-foreground'
+            }`}
+          >
+            <History className="w-4 h-4" />
+            Histórico
+          </button>
+        </div>
         <p className="text-muted-foreground mb-6">
           {offer.destinations?.name} - {offer.title}
         </p>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Left Column - Controls */}
-          <div className="space-y-6">
-            {/* Format Selection */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-3">
-                Formato do Banner
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setFormat('stories')}
-                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
-                    format === 'stories'
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-secondary hover:border-primary/50'
-                  }`}
-                >
-                  <Smartphone className="w-8 h-8" />
-                  <span className="font-medium">Stories</span>
-                  <span className="text-xs text-muted-foreground">9:16 Vertical</span>
-                </button>
-                <button
-                  onClick={() => setFormat('whatsapp')}
-                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
-                    format === 'whatsapp'
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-secondary hover:border-primary/50'
-                  }`}
-                >
-                  <MessageCircle className="w-8 h-8" />
-                  <span className="font-medium">WhatsApp</span>
-                  <span className="text-xs text-muted-foreground">1:1 Quadrado</span>
-                </button>
+        {showHistory ? (
+          // History View
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-foreground">Banners Salvos</h3>
+              <button
+                onClick={() => setShowHistory(false)}
+                className="text-sm text-primary hover:text-primary/80"
+              >
+                ← Voltar
+              </button>
+            </div>
+
+            {isLoadingHistory ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : history.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <History className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>Nenhum banner salvo ainda</p>
+                <p className="text-sm">Gere um banner e salve para reutilizar depois</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {history.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => loadFromHistory(item)}
+                    className="group relative bg-secondary rounded-xl overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                  >
+                    <div className={`${item.format === 'stories' ? 'aspect-[9/16]' : 'aspect-square'}`}>
+                      <img 
+                        src={item.image_url} 
+                        alt={item.offer_title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute bottom-0 left-0 right-0 p-3">
+                        <p className="text-white text-sm font-medium truncate">{item.offer_title}</p>
+                        <div className="flex items-center gap-2 text-white/70 text-xs mt-1">
+                          <Clock className="w-3 h-3" />
+                          {new Date(item.created_at).toLocaleDateString('pt-BR')}
+                          <span className="uppercase">{item.format}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => deleteFromHistory(item.id, e)}
+                      className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          // Generator View
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Left Column - Controls */}
+            <div className="space-y-6">
+              {/* Format Selection */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-3">
+                  Formato do Banner
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setFormat('stories')}
+                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                      format === 'stories'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border bg-secondary hover:border-primary/50'
+                    }`}
+                  >
+                    <Smartphone className="w-8 h-8" />
+                    <span className="font-medium">Stories</span>
+                    <span className="text-xs text-muted-foreground">9:16 Vertical</span>
+                  </button>
+                  <button
+                    onClick={() => setFormat('whatsapp')}
+                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                      format === 'whatsapp'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border bg-secondary hover:border-primary/50'
+                    }`}
+                  >
+                    <MessageCircle className="w-8 h-8" />
+                    <span className="font-medium">WhatsApp</span>
+                    <span className="text-xs text-muted-foreground">1:1 Quadrado</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Generate Banner Button */}
+              <button
+                onClick={generateBanner}
+                disabled={isGenerating}
+                className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Gerando Banner...
+                  </>
+                ) : (
+                  <>
+                    <Image className="w-5 h-5" />
+                    Gerar Banner
+                  </>
+                )}
+              </button>
+
+              {/* Caption Section */}
+              <div className="border-t border-border pt-6">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-medium text-foreground">
+                    Legenda para WhatsApp
+                  </label>
+                  <button
+                    onClick={generateCaption}
+                    disabled={isGeneratingCaption}
+                    className="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
+                  >
+                    {isGeneratingCaption ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4" />
+                    )}
+                    Gerar Legenda
+                  </button>
+                </div>
+                
+                {caption && (
+                  <div className="space-y-3">
+                    <div className="bg-secondary rounded-xl p-4 max-h-64 overflow-y-auto">
+                      <pre className="whitespace-pre-wrap text-sm text-foreground font-sans">
+                        {caption}
+                      </pre>
+                    </div>
+                    <button
+                      onClick={copyCaption}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+                    >
+                      {isCopied ? (
+                        <>
+                          <Check className="w-4 h-4" />
+                          Copiado!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          Copiar Legenda
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Generate Banner Button */}
-            <button
-              onClick={generateBanner}
-              disabled={isGenerating}
-              className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Gerando Banner...
-                </>
-              ) : (
-                <>
-                  <Image className="w-5 h-5" />
-                  Gerar Banner
-                </>
-              )}
-            </button>
-
-            {/* Caption Section */}
-            <div className="border-t border-border pt-6">
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-medium text-foreground">
-                  Legenda para WhatsApp
-                </label>
-                <button
-                  onClick={generateCaption}
-                  disabled={isGeneratingCaption}
-                  className="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
-                >
-                  {isGeneratingCaption ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-4 h-4" />
-                  )}
-                  Gerar Legenda
-                </button>
-              </div>
+            {/* Right Column - Preview */}
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-foreground">
+                Preview do Banner
+              </label>
               
-              {caption && (
-                <div className="space-y-3">
-                  <div className="bg-secondary rounded-xl p-4 max-h-64 overflow-y-auto">
-                    <pre className="whitespace-pre-wrap text-sm text-foreground font-sans">
-                      {caption}
-                    </pre>
+              <div 
+                className={`bg-secondary rounded-xl overflow-hidden flex items-center justify-center ${
+                  format === 'stories' ? 'aspect-[9/16]' : 'aspect-square'
+                }`}
+              >
+                {generatedImage ? (
+                  <img 
+                    src={generatedImage} 
+                    alt="Banner gerado" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="text-center text-muted-foreground p-8">
+                    <Image className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                    <p>Clique em "Gerar Banner" para criar sua imagem promocional</p>
                   </div>
+                )}
+              </div>
+
+              {generatedImage && (
+                <div className="flex gap-3">
                   <button
-                    onClick={copyCaption}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+                    onClick={saveBannerToHistory}
+                    disabled={isSaving}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-secondary hover:bg-muted text-foreground transition-colors disabled:opacity-50"
                   >
-                    {isCopied ? (
-                      <>
-                        <Check className="w-4 h-4" />
-                        Copiado!
-                      </>
+                    {isSaving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <>
-                        <Copy className="w-4 h-4" />
-                        Copiar Legenda
-                      </>
+                      <History className="w-4 h-4" />
                     )}
+                    Salvar
+                  </button>
+                  <button
+                    onClick={downloadImage}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent text-accent-foreground hover:bg-accent/90 transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    Baixar
                   </button>
                 </div>
               )}
             </div>
           </div>
-
-          {/* Right Column - Preview */}
-          <div className="space-y-4">
-            <label className="block text-sm font-medium text-foreground">
-              Preview do Banner
-            </label>
-            
-            <div 
-              className={`bg-secondary rounded-xl overflow-hidden flex items-center justify-center ${
-                format === 'stories' ? 'aspect-[9/16]' : 'aspect-square'
-              }`}
-            >
-              {generatedImage ? (
-                <img 
-                  src={generatedImage} 
-                  alt="Banner gerado" 
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="text-center text-muted-foreground p-8">
-                  <Image className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                  <p>Clique em "Gerar Banner" para criar sua imagem promocional</p>
-                </div>
-              )}
-            </div>
-
-            {generatedImage && (
-              <button
-                onClick={downloadImage}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent text-accent-foreground hover:bg-accent/90 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                Baixar Banner
-              </button>
-            )}
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
