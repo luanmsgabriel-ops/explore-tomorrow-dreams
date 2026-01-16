@@ -26,48 +26,27 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    // Use the destination image as a reference if available
-    const messages: any[] = [];
-    
-    if (destinationImageUrl) {
-      messages.push({
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: `Based on this destination image, create a professional promotional travel banner. ${prompt}
-            
-Make it look like a premium travel agency advertisement with:
-- The destination landscape as the main visual
-- Professional typography with the pricing and offer details
-- Golden/amber accents for the pricing
-- "TOMORROW TRAVEL" branding
-- Dark elegant overlay for text readability
-- Modern, luxurious feel`
-          },
-          {
-            type: "image_url",
-            image_url: {
-              url: destinationImageUrl
-            }
-          }
-        ]
-      });
-    } else {
-      messages.push({
-        role: "user",
-        content: `${prompt}
+    // Build a clear prompt that forces image generation
+    const imagePrompt = `Generate an image: Create a professional promotional travel banner.
 
-Make it look like a premium travel agency advertisement with:
+${prompt}
+
+REQUIREMENTS:
 - Beautiful destination landscape as the main visual
-- Professional typography with the pricing and offer details
-- Golden/amber accents for the pricing
+- Professional typography with the pricing and offer details clearly visible
+- Golden/amber accents for pricing
 - "TOMORROW TRAVEL" branding at the bottom
 - Dark elegant overlay for text readability
-- Modern, luxurious feel
-- 16:9 landscape format`
-      });
-    }
+- Modern, luxurious travel agency advertisement style
+
+DO NOT describe what you will do. Generate the image directly.`;
+
+    const messages: any[] = [
+      {
+        role: "user",
+        content: imagePrompt
+      }
+    ];
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
