@@ -306,17 +306,17 @@ ${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
     // Encode the caption for URL
     const encodedCaption = encodeURIComponent(caption);
     
-    // Open WhatsApp Web with the caption
-    const whatsappUrl = `https://web.whatsapp.com/send?text=${encodedCaption}`;
+    // Open WhatsApp using wa.me (works on both mobile and desktop)
+    const whatsappUrl = `https://wa.me/?text=${encodedCaption}`;
     window.open(whatsappUrl, '_blank');
     
     // If there's an image, download it so user can attach
     if (generatedImage) {
-      toast.info('O WhatsApp Web foi aberto. Baixe o banner para anexar à mensagem.', {
+      toast.info('O WhatsApp foi aberto. Baixe o banner para anexar à mensagem.', {
         duration: 5000
       });
     } else {
-      toast.success('WhatsApp Web aberto!');
+      toast.success('WhatsApp aberto!');
     }
   };
 
@@ -577,7 +577,7 @@ ${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#25D366] text-white hover:bg-[#128C7E] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <ExternalLink className="w-4 h-4" />
-                    Compartilhar no WhatsApp Web
+                    Compartilhar no WhatsApp
                   </button>
                   {!caption && generatedImage && (
                     <p className="text-xs text-center text-muted-foreground">
