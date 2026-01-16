@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callGemini } from "../_shared/gemini-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -57,11 +58,6 @@ serve(async (req) => {
         );
       }
     }
-    
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
 
     const systemPrompt = `Você é um especialista em viagens da Tomorrow Travel, uma agência de viagens premium. 
 Sua função é criar roteiros de viagem personalizados, detalhados e inspiradores.
@@ -90,20 +86,13 @@ Preferências e/ou destino desejado pelo viajante: ${preferences || 'Não especi
 Se o viajante mencionou outro destino nas preferências, crie o roteiro para esse destino.
 O roteiro deve ter entre 5-7 dias e ser detalhado.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-      }),
-    });
+    const response = await callGemini(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      { model: "google/gemini-3-flash-preview" }
+    );
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -118,7 +107,7 @@ O roteiro deve ter entre 5-7 dias e ser detalhado.`;
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      throw new Error(`AI gateway error: ${response.status}`);
+      throw new Error(`AI error: ${response.status}`);
     }
 
     const data = await response.json();

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callGemini } from "../_shared/gemini-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,11 +56,6 @@ serve(async (req) => {
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
 
     // Prompt construído no backend - não visível para o cliente
     const prompt = `Create a beautiful, realistic travel photograph showing a person visiting ${destination}. 
@@ -71,7 +67,6 @@ MANDATORY BRANDING REQUIREMENT:
 In the bottom right corner, include a stylish logo with the letters "TT" intertwined in teal (#2DD4BF) and gold (#D4A574) colors, with a golden airplane silhouette. Below the logo, write "TOMORROW TRAVEL" in elegant gold lettering.
 
 The logo should be professional, premium-looking, and not obstruct the main travel scene.`;
-
 
     const messages: any[] = [
       {
@@ -85,18 +80,10 @@ The logo should be professional, premium-looking, and not obstruct the main trav
       }
     ];
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        messages,
-        modalities: ["image", "text"],
-      }),
-    });
+    const response = await callGemini(
+      messages,
+      { model: "google/gemini-2.5-flash-image", generateImage: true }
+    );
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -112,8 +99,8 @@ The logo should be professional, premium-looking, and not obstruct the main trav
         );
       }
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
+      console.error("AI error:", response.status, errorText);
+      throw new Error(`AI error: ${response.status}`);
     }
 
     const data = await response.json();
