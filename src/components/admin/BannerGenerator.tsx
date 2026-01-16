@@ -297,26 +297,84 @@ ${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
     toast.success('Download iniciado!');
   };
 
-  const shareToWhatsApp = async () => {
+  // Helper function to convert base64/URL to blob
+  const getImageBlob = async (): Promise<Blob | null> => {
+    if (!generatedImage) return null;
+    
+    try {
+      if (generatedImage.startsWith('data:')) {
+        // Convert base64 to blob
+        const response = await fetch(generatedImage);
+        return await response.blob();
+      } else {
+        // Fetch from URL
+        const response = await fetch(generatedImage);
+        return await response.blob();
+      }
+    } catch (error) {
+      console.error('Error converting image to blob:', error);
+      return null;
+    }
+  };
+
+  const shareWithImage = async (platform: 'whatsapp' | 'instagram') => {
     if (!caption) {
       toast.error('Gere a legenda primeiro para compartilhar');
       return;
     }
 
-    // Encode the caption for URL
-    const encodedCaption = encodeURIComponent(caption);
-    
-    // Open WhatsApp using wa.me (works on both mobile and desktop)
-    const whatsappUrl = `https://wa.me/?text=${encodedCaption}`;
-    window.open(whatsappUrl, '_blank');
-    
-    // If there's an image, download it so user can attach
-    if (generatedImage) {
-      toast.info('O WhatsApp foi aberto. Baixe o banner para anexar à mensagem.', {
-        duration: 5000
-      });
-    } else {
-      toast.success('WhatsApp aberto!');
+    // Check if Web Share API with files is supported
+    if (navigator.share && navigator.canShare && generatedImage) {
+      try {
+        const blob = await getImageBlob();
+        if (blob) {
+          const file = new File([blob], `banner-${offer.destinations?.name || 'destino'}.png`, { type: 'image/png' });
+          
+          const shareData = {
+            title: offer.title,
+            text: caption,
+            files: [file]
+          };
+
+          if (navigator.canShare(shareData)) {
+            await navigator.share(shareData);
+            toast.success('Compartilhado com sucesso!');
+            return;
+          }
+        }
+      } catch (error) {
+        // User cancelled or error - fall back to alternative
+        if ((error as Error).name !== 'AbortError') {
+          console.error('Share failed:', error);
+        }
+      }
+    }
+
+    // Fallback: open platform with just text and prompt to attach image
+    if (platform === 'whatsapp') {
+      const encodedCaption = encodeURIComponent(caption);
+      const whatsappUrl = `https://wa.me/?text=${encodedCaption}`;
+      window.open(whatsappUrl, '_blank');
+      
+      if (generatedImage) {
+        toast.info('O WhatsApp foi aberto. Baixe o banner e anexe à mensagem.', { duration: 5000 });
+      } else {
+        toast.success('WhatsApp aberto!');
+      }
+    } else if (platform === 'instagram') {
+      // Instagram doesn't have a direct share URL, so we copy caption and download image
+      await navigator.clipboard.writeText(caption);
+      toast.success('Legenda copiada! Baixe a imagem e compartilhe no Instagram.', { duration: 5000 });
+      
+      if (generatedImage) {
+        // Auto-download the image for Instagram
+        const link = document.createElement('a');
+        link.href = generatedImage;
+        link.download = `instagram-${offer.destinations?.name || 'destino'}-${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     }
   };
 
@@ -570,15 +628,25 @@ ${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
                     </button>
                   </div>
                   
-                  {/* WhatsApp Share Button */}
-                  <button
-                    onClick={shareToWhatsApp}
-                    disabled={!caption}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#25D366] text-white hover:bg-[#128C7E] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    Compartilhar no WhatsApp
-                  </button>
+                  {/* Share Buttons */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => shareWithImage('whatsapp')}
+                      disabled={!caption}
+                      className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#25D366] text-white hover:bg-[#128C7E] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      WhatsApp
+                    </button>
+                    <button
+                      onClick={() => shareWithImage('instagram')}
+                      disabled={!caption}
+                      className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Instagram
+                    </button>
+                  </div>
                   {!caption && generatedImage && (
                     <p className="text-xs text-center text-muted-foreground">
                       Gere a legenda para habilitar o compartilhamento
