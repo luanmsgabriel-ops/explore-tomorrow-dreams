@@ -91,29 +91,23 @@ export const BannerGenerator = ({ offer, onClose }: BannerGeneratorProps) => {
       const aspectRatio = format === 'stories' ? '9:16 (vertical, Stories/Reels format)' : '1:1 (square, WhatsApp format)';
       const dimensions = format === 'stories' ? '1080x1920' : '1080x1080';
       
-      const prompt = `Create a professional promotional travel banner for ${offer.destinations?.name || 'destination'}.
+      // Prompt genérico SEM preços ou detalhes da oferta para reutilização
+      const prompt = `Create a stunning travel destination banner for ${offer.destinations?.name || 'destination'}.
 
 📍 DESTINATION: ${offer.destinations?.name}
-💰 PRICE: R$ ${formatPrice(offer.total_price)}
-${offer.cash_price ? `💵 CASH PRICE: R$ ${formatPrice(offer.cash_price)}` : ''}
-${offer.installments ? `📦 INSTALLMENTS: ${offer.installments}x R$ ${formatPrice(offer.installment_value || 0)}` : ''}
-
-📝 OFFER TITLE: ${offer.title}
-${offer.tagline ? `✨ TAGLINE: ${offer.tagline}` : ''}
 
 FORMAT: ${aspectRatio}
 DIMENSIONS: ${dimensions}
 
 DESIGN REQUIREMENTS:
-- Beautiful destination landscape as main visual
-- CLEAR price display with "R$ ${formatPrice(offer.total_price)}" prominently shown
-- ${offer.installments ? `Show "${offer.installments}x de R$ ${formatPrice(offer.installment_value || 0)}" as payment option` : ''}
-- "TOMORROW TRAVEL" branding
-- Golden/amber accents for pricing
-- Dark elegant overlay for text readability
-- Professional travel agency style
-- URGENCY element: "Oferta por tempo limitado" or similar
-- Make it scroll-stopping and conversion-focused`;
+- Beautiful, inspiring ${offer.destinations?.name} landscape as the main visual
+- "TOMORROW TRAVEL" elegant branding at the bottom
+- Subtle dark gradient overlay for elegance
+- NO PRICES, NO TEXT about offers or promotions
+- NO dates, NO "limited time" messages
+- Just the destination beauty with minimal branding
+- Professional, luxurious travel photography style
+- Make it visually stunning and timeless for reuse`;
 
       const response = await supabase.functions.invoke('generate-promo-image', {
         body: { 
