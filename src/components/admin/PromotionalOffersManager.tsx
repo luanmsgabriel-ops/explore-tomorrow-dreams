@@ -24,6 +24,7 @@ interface PromotionalOffer {
   destinations: {
     name: string;
     image_url: string | null;
+    description: string | null;
   } | null;
 }
 
@@ -61,7 +62,8 @@ export const PromotionalOffersManager = () => {
           *,
           destinations (
             name,
-            image_url
+            image_url,
+            description
           )
         `)
         .order('created_at', { ascending: false });
