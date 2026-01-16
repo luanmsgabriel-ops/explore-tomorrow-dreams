@@ -248,6 +248,9 @@ Focus on creating a breathtaking photo composition with elegant golden decorativ
         ? fullDescription.substring(0, 150).replace(/\s+\S*$/, '') + '...'
         : fullDescription;
 
+      // Link para a página de detalhes da oferta
+      const offerLink = `https://explore-tomorrow-dreams.lovable.app/promocao/${offer.id}`;
+
       const captionText = `🌴 *${offer.destinations?.name?.toUpperCase()}* 🌴
 
 ${briefDescription ? `✨ ${briefDescription}\n\n` : ''}${offer.title}
@@ -260,9 +263,11 @@ ${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
 ⏰ *Oferta por tempo limitado!*
 📅 Válido até ${new Date(offer.valid_until).toLocaleDateString('pt-BR')}
 
+🔗 *Veja todos os detalhes:* ${offerLink}
+
 📲 Entre em contato agora e garanta sua viagem dos sonhos!
 
-🔗 *Tomorrow Travel - Realizando Sonhos*`;
+✈️ *Tomorrow Travel - Realizando Sonhos*`;
 
       setCaption(captionText);
       toast.success('Legenda gerada!');
