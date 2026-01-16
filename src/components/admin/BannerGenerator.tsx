@@ -56,6 +56,7 @@ export const BannerGenerator = ({ offer, onClose }: BannerGeneratorProps) => {
   const [history, setHistory] = useState<BannerHistoryItem[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [offerLink, setOfferLink] = useState<string>('');
 
   useEffect(() => {
     if (showHistory) {
@@ -248,10 +249,7 @@ Focus on creating a breathtaking photo composition with elegant golden decorativ
         ? fullDescription.substring(0, 150).replace(/\s+\S*$/, '') + '...'
         : fullDescription;
 
-      // Link para a página de detalhes da oferta
-      const offerLink = `https://explore-tomorrow-dreams.lovable.app/promocao/${offer.id}`;
-
-      const captionText = `🌴 *${offer.destinations?.name?.toUpperCase()}* 🌴
+      let captionText = `🌴 *${offer.destinations?.name?.toUpperCase()}* 🌴
 
 ${briefDescription ? `✨ ${briefDescription}\n\n` : ''}${offer.title}
 
@@ -261,9 +259,14 @@ ${offer.installments ? `📦 Ou ${offer.installments}x de R$ ${formatPrice(offer
 
 ${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
 ⏰ *Oferta por tempo limitado!*
-📅 Válido até ${new Date(offer.valid_until).toLocaleDateString('pt-BR')}
+📅 Válido até ${new Date(offer.valid_until).toLocaleDateString('pt-BR')}`;
 
-🔗 *Veja todos os detalhes:* ${offerLink}
+      // Adiciona o link apenas se foi preenchido
+      if (offerLink.trim()) {
+        captionText += `\n\n🔗 *Veja todos os detalhes:* ${offerLink.trim()}`;
+      }
+
+      captionText += `
 
 📲 Entre em contato agora e garanta sua viagem dos sonhos!
 
@@ -589,6 +592,24 @@ ${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
 
               {/* Caption Section */}
               <div className="border-t border-border pt-6">
+                {/* Link Input */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    <ExternalLink className="w-4 h-4 inline mr-1" />
+                    Link da Oferta (opcional)
+                  </label>
+                  <input
+                    type="url"
+                    value={offerLink}
+                    onChange={(e) => setOfferLink(e.target.value)}
+                    placeholder="https://exemplo.com/oferta"
+                    className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Insira o link que será incluído na legenda gerada
+                  </p>
+                </div>
+
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-sm font-medium text-foreground">
                     Legenda para WhatsApp
