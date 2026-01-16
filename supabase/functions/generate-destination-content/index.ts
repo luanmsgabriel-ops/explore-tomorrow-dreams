@@ -26,8 +26,9 @@ serve(async (req) => {
       - bestTime: melhor época para visitar (ex: "Março a Outubro")
       - idealDuration: duração ideal da viagem (ex: "5 a 7 dias")
       - forWho: público ideal (ex: "Casais e aventureiros")
-      - category: categoria do destino (ex: "Praia", "Aventura", "Cultural", "Natureza", "Histórico", "Romântico", "Luxo")
+      - category: UMA ÚNICA categoria principal do destino, escolha entre: "Praia", "Aventura", "Cultural", "Natureza", "Histórico", "Romântico", "Luxo", "Neve"
       
+      IMPORTANTE: O campo category deve ser uma STRING simples, não um array.
       Responda APENAS com o JSON válido, sem markdown ou formatação adicional.`;
     }
 

@@ -122,13 +122,18 @@ export const DestinationManager = () => {
       if (content) {
         try {
           const parsed = JSON.parse(content);
+          // Handle category - it may come as an array, take the first value
+          let category = formData.category;
+          if (parsed.category) {
+            category = Array.isArray(parsed.category) ? parsed.category[0] : parsed.category;
+          }
           setFormData(prev => ({
             ...prev,
             description: parsed.description || prev.description,
             best_time: parsed.bestTime || prev.best_time,
             ideal_duration: parsed.idealDuration || prev.ideal_duration,
             for_who: parsed.forWho || prev.for_who,
-            category: parsed.category || prev.category,
+            category: category,
           }));
           toast.success('Conteúdo gerado com sucesso!');
         } catch {
@@ -429,6 +434,7 @@ export const DestinationManager = () => {
                     <option value="Histórico">Histórico</option>
                     <option value="Romântico">Romântico</option>
                     <option value="Luxo">Luxo</option>
+                    <option value="Neve">Neve</option>
                   </select>
                 </div>
                 <div>
