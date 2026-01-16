@@ -30,10 +30,10 @@ serve(async (req) => {
     const isStoriesFormat = prompt.includes('9:16') || prompt.includes('1080x1920') || prompt.toLowerCase().includes('stories');
     const aspectRatio = isStoriesFormat ? '9:16 VERTICAL (portrait mode, 1080x1920 pixels)' : '1:1 SQUARE (1080x1080 pixels)';
     
-    // Build a clear prompt that forces image generation with correct dimensions
+    // Build a clear prompt for generic, reusable destination images
     const imagePrompt = `Generate an image with EXACT aspect ratio: ${aspectRatio}
 
-Create a professional promotional travel banner.
+Create a stunning, reusable travel destination banner.
 
 ${prompt}
 
@@ -43,12 +43,14 @@ ${isStoriesFormat ? '- This is for Instagram Stories/Reels - MUST be TALL and VE
 - The image MUST respect the specified aspect ratio exactly
 
 VISUAL REQUIREMENTS:
-- Beautiful destination landscape as the main visual
-- Professional typography with the pricing and offer details clearly visible
-- Golden/amber accents for pricing
-- "TOMORROW TRAVEL" branding at the bottom
-- Dark elegant overlay for text readability
-- Modern, luxurious travel agency advertisement style
+- Beautiful, inspiring destination landscape as the main visual
+- Elegant "TOMORROW TRAVEL" branding at the bottom
+- Subtle dark gradient overlay for elegance
+- NO PRICES or promotional text
+- NO dates or "limited time" messages
+- Just stunning destination photography with minimal branding
+- Professional, luxurious travel photography style
+- Timeless and reusable for multiple campaigns
 
 DO NOT describe what you will do. Generate the image directly with the correct ${isStoriesFormat ? 'VERTICAL 9:16' : 'SQUARE 1:1'} format.`;
 
