@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { callGemini } from "../_shared/gemini-client.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,16 +20,6 @@ serve(async (req) => {
         JSON.stringify({ error: 'Prompt and destination name are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-    }
-
-    // Primeiro tenta usar a API key do usuário, depois o Lovable AI
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    
-    const useDirectGemini = !!GEMINI_API_KEY;
-    
-    if (!GEMINI_API_KEY && !LOVABLE_API_KEY) {
-      throw new Error('Nenhuma API key configurada (GEMINI_API_KEY ou LOVABLE_API_KEY)');
     }
 
     // Parse format from the prompt to determine aspect ratio
@@ -73,87 +64,29 @@ ABSOLUTELY DO NOT INCLUDE:
 
 Generate the image directly with the correct ${isStoriesFormat ? 'VERTICAL 9:16' : 'SQUARE 1:1'} format.`;
 
-    let imageUrl: string | null = null;
+    const response = await callGemini(
+      [{ role: "user", content: imagePrompt }],
+      { model: "google/gemini-2.5-flash-image-preview", generateImage: true }
+    );
 
-    if (useDirectGemini) {
-      // Usar API do Gemini diretamente
-      console.log('Usando API do Gemini diretamente');
-      
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${GEMINI_API_KEY}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: imagePrompt
-            }]
-          }],
-          generationConfig: {
-            responseModalities: ["TEXT", "IMAGE"]
-          }
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Gemini API error:', errorText);
-        throw new Error(`Gemini API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      // Extrair a imagem da resposta do Gemini
-      const candidates = data.candidates;
-      if (candidates && candidates[0]?.content?.parts) {
-        for (const part of candidates[0].content.parts) {
-          if (part.inlineData?.mimeType?.startsWith('image/')) {
-            // Converter base64 para data URL
-            imageUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-            break;
-          }
-        }
-      }
-    } else {
-      // Usar Lovable AI Gateway
-      console.log('Usando Lovable AI Gateway');
-      
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash-image-preview",
-          messages: [{
-            role: "user",
-            content: imagePrompt
-          }],
-          modalities: ["image", "text"]
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('AI Gateway error:', errorText);
-        throw new Error(`AI Gateway error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('AI error:', errorText);
+      throw new Error(`AI error: ${response.status}`);
     }
+
+    const data = await response.json();
+    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     
     if (!imageUrl) {
+      console.error('No image in response:', JSON.stringify(data));
       throw new Error('No image generated');
     }
 
     return new Response(
       JSON.stringify({ 
         imageUrl,
-        message: 'Promotional image generated successfully',
-        source: useDirectGemini ? 'gemini-direct' : 'lovable-ai'
+        message: 'Promotional image generated successfully'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

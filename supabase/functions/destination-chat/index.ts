@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callGemini, transformGeminiStreamToSSE } from "../_shared/gemini-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,11 +56,6 @@ serve(async (req) => {
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
 
     // Save user message to database if sessionId is provided
     if (sessionId && messages.length > 0) {
@@ -90,21 +86,13 @@ ${userName ? `- Chamar o cliente pelo nome (${userName}) quando apropriado` : ''
 
 Se o cliente perguntar sobre preços ou reservas, sugira que solicite uma cotação personalizada.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages,
-        ],
-        stream: true,
-      }),
-    });
+    const response = await callGemini(
+      [
+        { role: "system", content: systemPrompt },
+        ...messages,
+      ],
+      { model: "google/gemini-3-flash-preview", stream: true }
+    );
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -119,11 +107,21 @@ Se o cliente perguntar sobre preços ou reservas, sugira que solicite uma cotaç
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      throw new Error(`AI gateway error: ${response.status}`);
+      throw new Error(`AI error: ${response.status}`);
+    }
+
+    // Verifica se é resposta do Gemini direto (precisa transformar) ou Lovable AI (já é SSE)
+    const contentType = response.headers.get("content-type") || "";
+    const isGeminiDirect = !contentType.includes("text/event-stream");
+    
+    let streamBody = response.body;
+    if (isGeminiDirect && streamBody) {
+      // Transforma o stream do Gemini para SSE compatível
+      streamBody = transformGeminiStreamToSSE(streamBody);
     }
 
     // We need to process the stream to save the assistant's response
-    const reader = response.body?.getReader();
+    const reader = streamBody?.getReader();
     if (!reader) {
       throw new Error("No reader available");
     }
