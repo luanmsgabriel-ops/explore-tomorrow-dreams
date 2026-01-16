@@ -262,8 +262,7 @@ ${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
 
 📲 Entre em contato agora e garanta sua viagem dos sonhos!
 
-🔗 *Tomorrow Travel - Realizando Sonhos*
-#TomorrowTravel #Viagem #${offer.destinations?.name?.replace(/\s+/g, '')} #Promoção`;
+🔗 *Tomorrow Travel - Realizando Sonhos*`;
 
       setCaption(captionText);
       toast.success('Legenda gerada!');
