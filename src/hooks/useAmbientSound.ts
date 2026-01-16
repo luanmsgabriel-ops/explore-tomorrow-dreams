@@ -9,13 +9,35 @@ interface UseAmbientSoundOptions {
 // Ocean waves ambient sound (royalty-free)
 const OCEAN_SOUND_URL = 'https://cdn.freesound.org/previews/527/527602_2861639-lq.mp3';
 
+// Check if category contains "Praia" - handles both string and array formats
+const checkIsBeachCategory = (category: string): boolean => {
+  if (!category) return false;
+  
+  const categoryLower = category.toLowerCase();
+  
+  // Check if it's a JSON array string
+  if (categoryLower.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(category);
+      if (Array.isArray(parsed)) {
+        return parsed.some((cat: string) => cat.toLowerCase() === 'praia');
+      }
+    } catch {
+      // Not valid JSON, continue with string check
+    }
+  }
+  
+  // Simple string comparison
+  return categoryLower === 'praia' || categoryLower.includes('praia');
+};
+
 export const useAmbientSound = ({ category, autoPlay = true, volume = 0.3 }: UseAmbientSoundOptions) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
-  const isBeachCategory = category?.toLowerCase() === 'praia';
+  const isBeachCategory = checkIsBeachCategory(category);
 
   useEffect(() => {
     if (!isBeachCategory) {
