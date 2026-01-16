@@ -119,6 +119,47 @@ export type Database = {
         }
         Relationships: []
       }
+      banner_history: {
+        Row: {
+          caption: string | null
+          created_at: string
+          destination_name: string
+          format: string
+          id: string
+          image_url: string
+          offer_id: string
+          offer_title: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          destination_name: string
+          format: string
+          id?: string
+          image_url: string
+          offer_id: string
+          offer_title: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          destination_name?: string
+          format?: string
+          id?: string
+          image_url?: string
+          offer_id?: string
+          offer_title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banner_history_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "promotional_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           content: string
