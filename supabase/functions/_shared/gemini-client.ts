@@ -79,15 +79,48 @@ export async function callGemini(
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
-  const useDirectGemini = !!GEMINI_API_KEY;
-  
   if (!GEMINI_API_KEY && !LOVABLE_API_KEY) {
     throw new Error("Nenhuma API key configurada (GEMINI_API_KEY ou LOVABLE_API_KEY)");
   }
 
   const model = options.model || "google/gemini-3-flash-preview";
   
-  if (useDirectGemini) {
+  // Função para chamar via Lovable AI Gateway
+  const callLovableGateway = async () => {
+    console.log("Usando Lovable AI Gateway");
+    
+    const body: any = {
+      model,
+      messages: messages.map(m => ({
+        role: m.role,
+        content: m.content
+      })),
+    };
+    
+    if (options.stream) {
+      body.stream = true;
+    }
+    
+    if (options.generateImage) {
+      body.modalities = ["image", "text"];
+    }
+    
+    if (options.maxTokens) {
+      body.max_tokens = options.maxTokens;
+    }
+
+    return fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  };
+  
+  // Função para chamar Gemini diretamente
+  const callDirectGemini = async () => {
     console.log("Usando API do Gemini diretamente");
     
     // Mapeia o modelo para o nome do Gemini nativo
@@ -126,7 +159,8 @@ export async function callGemini(
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Gemini API error:", errorText);
-      throw new Error(`Gemini API error: ${response.status}`);
+      // Retorna null para indicar que deve fazer fallback
+      return null;
     }
 
     // Se é streaming, retorna a resposta diretamente para ser transformada
@@ -168,38 +202,29 @@ export async function callGemini(
     return new Response(JSON.stringify(openAIResponse), {
       headers: { "Content-Type": "application/json" }
     });
-  } else {
-    console.log("Usando Lovable AI Gateway");
-    
-    const body: any = {
-      model,
-      messages: messages.map(m => ({
-        role: m.role,
-        content: m.content
-      })),
-    };
-    
-    if (options.stream) {
-      body.stream = true;
+  };
+  
+  // Tenta usar Gemini direto primeiro, com fallback para Lovable Gateway
+  if (GEMINI_API_KEY) {
+    try {
+      const directResponse = await callDirectGemini();
+      if (directResponse) {
+        return directResponse;
+      }
+      // Se retornou null (erro), faz fallback
+      console.log("Gemini direto falhou, tentando Lovable AI Gateway como fallback...");
+    } catch (error) {
+      console.error("Erro no Gemini direto:", error);
+      console.log("Tentando Lovable AI Gateway como fallback...");
     }
-    
-    if (options.generateImage) {
-      body.modalities = ["image", "text"];
-    }
-    
-    if (options.maxTokens) {
-      body.max_tokens = options.maxTokens;
-    }
-
-    return fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
   }
+  
+  // Usa Lovable AI Gateway como fallback ou se não tiver GEMINI_API_KEY
+  if (LOVABLE_API_KEY) {
+    return callLovableGateway();
+  }
+  
+  throw new Error("Falha ao chamar API de IA");
 }
 
 // Helper para transformar stream do Gemini para SSE compatível com OpenAI
