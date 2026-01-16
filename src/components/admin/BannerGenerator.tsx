@@ -104,9 +104,10 @@ EXACT VISUAL STYLE REQUIRED:
 - ELEGANT GOLDEN BORDER: thin elegant golden/amber rectangular decorative frame around the edges
 - SEMI-TRANSPARENT DARK GRADIENT OVERLAY at bottom third for future text overlay
 - Single thin horizontal golden decorative line at bottom area
+- 3D GOLDEN AIRPLANE: Include a beautiful 3D rendered golden/metallic airplane icon flying across the image, positioned elegantly (top corner or side), with realistic metallic gold texture and subtle shadow
 - Small elegant golden compass rose or star icon centered at bottom
 - COLOR PALETTE: Rich destination colors, golden/amber accents, dark navy overlay gradient
-- Professional travel magazine aesthetic
+- Professional travel magazine aesthetic with luxury feel
 
 CRITICAL - DO NOT INCLUDE ANY TEXT:
 - NO words, letters, or numbers of any kind
@@ -115,10 +116,10 @@ CRITICAL - DO NOT INCLUDE ANY TEXT:
 - NO dates or time periods
 - NO logos with text
 - NO watermarks
-- ONLY visual elements: photo, border, gradient, decorative line, small icon
+- ONLY visual elements: photo, border, gradient, decorative line, 3D golden airplane, small icon
 
 The image should be purely visual - all text will be added later in post-production.
-Focus on creating a breathtaking photo composition with elegant golden decorative elements.`;
+Focus on creating a breathtaking photo composition with elegant golden decorative elements and the striking 3D golden airplane.`;
 
       const response = await supabase.functions.invoke('generate-promo-image', {
         body: { 
@@ -367,17 +368,19 @@ ${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
                 {history.map((item) => (
                   <div
                     key={item.id}
-                    onClick={() => loadFromHistory(item)}
-                    className="group relative bg-secondary rounded-xl overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                    className="group relative bg-secondary rounded-xl overflow-hidden"
                   >
-                    <div className={`${item.format === 'stories' ? 'aspect-[9/16]' : 'aspect-square'}`}>
+                    <div 
+                      onClick={() => loadFromHistory(item)}
+                      className={`cursor-pointer hover:opacity-90 transition-opacity ${item.format === 'stories' ? 'aspect-[9/16]' : 'aspect-square'}`}
+                    >
                       <img 
                         src={item.image_url} 
                         alt={item.offer_title}
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none">
                       <div className="absolute bottom-0 left-0 right-0 p-3">
                         <p className="text-white text-sm font-medium truncate">{item.offer_title}</p>
                         <div className="flex items-center gap-2 text-white/70 text-xs mt-1">
@@ -387,11 +390,13 @@ ${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
                         </div>
                       </div>
                     </div>
+                    {/* Botão de excluir sempre visível */}
                     <button
                       onClick={(e) => deleteFromHistory(item.id, e)}
-                      className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                      className="absolute top-2 right-2 p-2 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors shadow-lg"
+                      title="Excluir banner"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
