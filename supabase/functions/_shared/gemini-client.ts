@@ -76,155 +76,44 @@ export async function callGemini(
     maxTokens?: number;
   } = {}
 ): Promise<Response> {
-  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
-  if (!GEMINI_API_KEY && !LOVABLE_API_KEY) {
-    throw new Error("Nenhuma API key configurada (GEMINI_API_KEY ou LOVABLE_API_KEY)");
+  if (!LOVABLE_API_KEY) {
+    throw new Error("LOVABLE_API_KEY não configurada");
   }
 
   const model = options.model || "google/gemini-3-flash-preview";
   
-  // Função para chamar via Lovable AI Gateway
-  const callLovableGateway = async () => {
-    console.log("Usando Lovable AI Gateway");
-    
-    const body: any = {
-      model,
-      messages: messages.map(m => ({
-        role: m.role,
-        content: m.content
-      })),
-    };
-    
-    if (options.stream) {
-      body.stream = true;
-    }
-    
-    if (options.generateImage) {
-      body.modalities = ["image", "text"];
-    }
-    
-    if (options.maxTokens) {
-      body.max_tokens = options.maxTokens;
-    }
-
-    return fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+  console.log("Usando Lovable AI Gateway com modelo:", model);
+  
+  const body: any = {
+    model,
+    messages: messages.map(m => ({
+      role: m.role,
+      content: m.content
+    })),
   };
   
-  // Função para chamar Gemini diretamente
-  const callDirectGemini = async () => {
-    console.log("Usando API do Gemini diretamente");
-    
-    // Mapeia o modelo para o nome do Gemini nativo
-    const geminiModel = MODEL_MAP[model] || "gemini-2.0-flash";
-    
-    const { contents, systemInstruction } = convertToGeminiFormat(messages);
-    
-    const body: any = {
-      contents,
-      generationConfig: {}
-    };
-    
-    if (systemInstruction) {
-      body.systemInstruction = { parts: [{ text: systemInstruction }] };
-    }
-    
-    if (options.generateImage) {
-      body.generationConfig.responseModalities = ["TEXT", "IMAGE"];
-    }
-    
-    if (options.maxTokens) {
-      body.generationConfig.maxOutputTokens = options.maxTokens;
-    }
-
-    // Streaming ou não
-    const endpoint = options.stream 
-      ? `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:streamGenerateContent?key=${GEMINI_API_KEY}&alt=sse`
-      : `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${GEMINI_API_KEY}`;
-
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Gemini API error:", errorText);
-      // Retorna null para indicar que deve fazer fallback
-      return null;
-    }
-
-    // Se é streaming, retorna a resposta diretamente para ser transformada
-    if (options.stream) {
-      return response;
-    }
-
-    // Para não-streaming, transforma a resposta para o formato OpenAI-like
-    const data = await response.json();
-    const candidates = data.candidates;
-    
-    let textContent = "";
-    let imageUrl: string | null = null;
-    
-    if (candidates && candidates[0]?.content?.parts) {
-      for (const part of candidates[0].content.parts) {
-        if (part.text) {
-          textContent += part.text;
-        }
-        if (part.inlineData?.mimeType?.startsWith("image/")) {
-          imageUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-        }
-      }
-    }
-
-    // Retorna no formato OpenAI-like
-    const openAIResponse = {
-      choices: [{
-        message: {
-          role: "assistant",
-          content: textContent,
-          ...(imageUrl && {
-            images: [{ image_url: { url: imageUrl } }]
-          })
-        }
-      }]
-    };
-
-    return new Response(JSON.stringify(openAIResponse), {
-      headers: { "Content-Type": "application/json" }
-    });
-  };
-  
-  // Tenta usar Gemini direto primeiro, com fallback para Lovable Gateway
-  if (GEMINI_API_KEY) {
-    try {
-      const directResponse = await callDirectGemini();
-      if (directResponse) {
-        return directResponse;
-      }
-      // Se retornou null (erro), faz fallback
-      console.log("Gemini direto falhou, tentando Lovable AI Gateway como fallback...");
-    } catch (error) {
-      console.error("Erro no Gemini direto:", error);
-      console.log("Tentando Lovable AI Gateway como fallback...");
-    }
+  if (options.stream) {
+    body.stream = true;
   }
   
-  // Usa Lovable AI Gateway como fallback ou se não tiver GEMINI_API_KEY
-  if (LOVABLE_API_KEY) {
-    return callLovableGateway();
+  if (options.generateImage) {
+    body.modalities = ["image", "text"];
   }
   
-  throw new Error("Falha ao chamar API de IA");
+  if (options.maxTokens) {
+    body.max_tokens = options.maxTokens;
+  }
+
+  return fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
 }
 
 // Helper para transformar stream do Gemini para SSE compatível com OpenAI
