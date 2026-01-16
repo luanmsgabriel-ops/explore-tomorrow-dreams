@@ -91,35 +91,42 @@ export const BannerGenerator = ({ offer, onClose }: BannerGeneratorProps) => {
       const aspectRatio = format === 'stories' ? '9:16 (vertical, Stories/Reels format)' : '1:1 (square, WhatsApp format)';
       const dimensions = format === 'stories' ? '1080x1920' : '1080x1080';
       
-      // Prompt SEM TEXTO - apenas visual puro para evitar erros de escrita da IA
-      const prompt = `Create a stunning travel promotional banner for ${offer.destinations?.name || 'destination'}.
+      // Prompt com nome do destino em texto elegante
+      const destinationName = offer.destinations?.name || 'Destino';
+      const prompt = `Create a stunning travel promotional banner for ${destinationName}.
 
-📍 DESTINATION: ${offer.destinations?.name}
+📍 DESTINATION: ${destinationName}
 
 FORMAT: ${aspectRatio}
 DIMENSIONS: ${dimensions}
 
 EXACT VISUAL STYLE REQUIRED:
-- Beautiful high-quality aerial/landscape photo of ${offer.destinations?.name} as background (beaches, nature, iconic landmarks, scenic views)
+- Beautiful high-quality aerial/landscape photo of ${destinationName} as background (beaches, nature, iconic landmarks, scenic views)
 - ELEGANT GOLDEN BORDER: thin elegant golden/amber rectangular decorative frame around the edges
-- SEMI-TRANSPARENT DARK GRADIENT OVERLAY at bottom third for future text overlay
+- SEMI-TRANSPARENT DARK GRADIENT OVERLAY at bottom third for text overlay
 - Single thin horizontal golden decorative line at bottom area
 - 3D GOLDEN AIRPLANE: Include a beautiful 3D rendered golden/metallic airplane icon flying across the image, positioned elegantly (top corner or side), with realistic metallic gold texture and subtle shadow
 - Small elegant golden compass rose or star icon centered at bottom
 - COLOR PALETTE: Rich destination colors, golden/amber accents, dark navy overlay gradient
 - Professional travel magazine aesthetic with luxury feel
 
-CRITICAL - DO NOT INCLUDE ANY TEXT:
-- NO words, letters, or numbers of any kind
-- NO destination name text
-- NO prices or currency symbols
+TEXT TO INCLUDE (ONLY THE DESTINATION NAME):
+- Write "${destinationName.toUpperCase()}" in elegant, large, bold golden/white serif typography
+- Position the destination name prominently in the center or bottom center of the image
+- Use a classic elegant serif font style (like Times New Roman, Playfair Display style)
+- Add subtle golden glow or shadow effect to make text stand out
+- Make sure the text is clearly readable against the background
+
+CRITICAL - DO NOT INCLUDE:
+- NO prices or currency symbols (R$, $, etc)
+- NO numbers for prices or dates
+- NO promotional text like "promoção", "oferta", "a partir de"
 - NO dates or time periods
 - NO logos with text
 - NO watermarks
-- ONLY visual elements: photo, border, gradient, decorative line, 3D golden airplane, small icon
+- ONLY the destination name text, photo, border, gradient, decorative line, 3D golden airplane, small icon
 
-The image should be purely visual - all text will be added later in post-production.
-Focus on creating a breathtaking photo composition with elegant golden decorative elements and the striking 3D golden airplane.`;
+Focus on creating a breathtaking photo composition with elegant golden decorative elements, the striking 3D golden airplane, and the destination name "${destinationName.toUpperCase()}" beautifully displayed.`;
 
       const response = await supabase.functions.invoke('generate-promo-image', {
         body: { 
