@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { 
   Loader2, Image, Download, Copy, Check, 
   Smartphone, MessageCircle, X, Sparkles,
-  History, Trash2, Clock
+  History, Trash2, Clock, Share2, ExternalLink
 } from 'lucide-react';
 
 interface PromotionalOffer {
@@ -254,6 +254,29 @@ ${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
     toast.success('Download iniciado!');
   };
 
+  const shareToWhatsApp = async () => {
+    if (!caption) {
+      toast.error('Gere a legenda primeiro para compartilhar');
+      return;
+    }
+
+    // Encode the caption for URL
+    const encodedCaption = encodeURIComponent(caption);
+    
+    // Open WhatsApp Web with the caption
+    const whatsappUrl = `https://web.whatsapp.com/send?text=${encodedCaption}`;
+    window.open(whatsappUrl, '_blank');
+    
+    // If there's an image, download it so user can attach
+    if (generatedImage) {
+      toast.info('O WhatsApp Web foi aberto. Baixe o banner para anexar à mensagem.', {
+        duration: 5000
+      });
+    } else {
+      toast.success('WhatsApp Web aberto!');
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm" onClick={onClose}>
       <div 
@@ -477,26 +500,43 @@ ${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
               </div>
 
               {generatedImage && (
-                <div className="flex gap-3">
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <button
+                      onClick={saveBannerToHistory}
+                      disabled={isSaving}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-secondary hover:bg-muted text-foreground transition-colors disabled:opacity-50"
+                    >
+                      {isSaving ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <History className="w-4 h-4" />
+                      )}
+                      Salvar
+                    </button>
+                    <button
+                      onClick={downloadImage}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent text-accent-foreground hover:bg-accent/90 transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      Baixar
+                    </button>
+                  </div>
+                  
+                  {/* WhatsApp Share Button */}
                   <button
-                    onClick={saveBannerToHistory}
-                    disabled={isSaving}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-secondary hover:bg-muted text-foreground transition-colors disabled:opacity-50"
+                    onClick={shareToWhatsApp}
+                    disabled={!caption}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#25D366] text-white hover:bg-[#128C7E] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isSaving ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <History className="w-4 h-4" />
-                    )}
-                    Salvar
+                    <ExternalLink className="w-4 h-4" />
+                    Compartilhar no WhatsApp Web
                   </button>
-                  <button
-                    onClick={downloadImage}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent text-accent-foreground hover:bg-accent/90 transition-colors"
-                  >
-                    <Download className="w-4 h-4" />
-                    Baixar
-                  </button>
+                  {!caption && generatedImage && (
+                    <p className="text-xs text-center text-muted-foreground">
+                      Gere a legenda para habilitar o compartilhamento
+                    </p>
+                  )}
                 </div>
               )}
             </div>
