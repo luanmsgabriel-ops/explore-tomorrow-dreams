@@ -122,31 +122,32 @@ serve(async (req) => {
       );
     }
 
-    const isStoriesFormat = prompt.includes('9:16') || prompt.includes('1080x1920') || prompt.toLowerCase().includes('stories');
-    const aspectRatio = isStoriesFormat ? '9:16 VERTICAL (portrait mode, 1080x1920 pixels)' : '1:1 SQUARE (1080x1080 pixels)';
+    // Detecta o formato baseado no prompt original
+    const isStoriesFormat = prompt.includes('9:16') || prompt.includes('1080x1920') || prompt.toLowerCase().includes('stories') || prompt.toLowerCase().includes('vertical');
     
-    const imagePrompt = `Generate a premium travel promotional banner with EXACT aspect ratio: ${aspectRatio}
+    // Usa o prompt original do frontend, apenas adiciona instruções de formato mais enfáticas
+    const formatInstruction = isStoriesFormat 
+      ? `
 
-DESTINATION: ${destinationName}
+CRITICAL IMAGE DIMENSIONS - INSTAGRAM STORIES FORMAT:
+- EXACT ASPECT RATIO: 9:16 (VERTICAL/PORTRAIT)
+- EXACT DIMENSIONS: 1080 pixels wide x 1920 pixels tall
+- The image MUST be TALL and NARROW (portrait orientation like a smartphone screen)
+- HEIGHT must be approximately 1.78x the WIDTH
+- This is for Instagram Stories - vertical full-screen format
+`
+      : `
 
-VISUAL STYLE:
-- Stunning aerial/landscape photo of ${destinationName} as background
-- Thin elegant GOLDEN/AMBER rectangular border frame around the edges
-- Semi-transparent dark navy gradient overlay at bottom
-- 3D GOLDEN AIRPLANE flying across the image (metallic gold texture, realistic shadows)
-- Small golden compass rose or star icon at bottom
-- NO TEXT AT ALL - purely visual elements only
+CRITICAL IMAGE DIMENSIONS - SQUARE FORMAT:
+- EXACT ASPECT RATIO: 1:1 (SQUARE)
+- EXACT DIMENSIONS: 1080 pixels x 1080 pixels
+- The image MUST be a perfect SQUARE (equal width and height)
+`;
 
-CRITICAL REQUIREMENTS:
-- ASPECT RATIO: ${aspectRatio}
-${isStoriesFormat ? '- MUST be TALL and VERTICAL (portrait orientation)' : '- MUST be SQUARE (equal width and height)'}
-- The 3D golden airplane should be prominent but elegant
-
-COLOR PALETTE: Navy blue overlay, golden/amber accents, rich destination colors
-
-DO NOT INCLUDE: Any text, words, letters, numbers, prices, dates, or logos with text.
-
-Generate a purely visual promotional banner.`;
+    const imagePrompt = `${prompt}
+${formatInstruction}
+REMEMBER: The image MUST be ${isStoriesFormat ? 'VERTICAL (taller than wide, like a phone screen in portrait mode)' : 'SQUARE (equal width and height)'}.
+Generate the image now with the exact dimensions specified.`;
 
     // Tenta Gemini direto primeiro, depois Lovable AI como fallback
     let imageUrl = await callGeminiDirect(imagePrompt);
