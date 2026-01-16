@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { chatMessageSchema, generateSecureSessionId, sanitizeText, phoneSchema, nameSchema } from '@/lib/validations';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import teoAvatar from '@/assets/teo-avatar.png';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -602,140 +603,36 @@ Me conta aí! 👇`
   if (!isOpen) {
     return (
       <div className="fixed bottom-24 right-6 z-50">
-        {/* Téo Mascot Character - Ultra Realistic Cartoon Human */}
+        {/* Téo Mascot Character - Realistic Human */}
         <div 
-          className={`absolute -top-36 -left-8 transition-all duration-500 ${
+          className={`absolute -top-20 -left-4 transition-all duration-500 ${
             showMascot 
               ? 'opacity-100 translate-y-0 scale-100' 
               : 'opacity-0 translate-y-8 scale-75 pointer-events-none'
           }`}
         >
           {/* Speech bubble */}
-          <div className="relative mb-3">
-            <div className="bg-white text-stone-800 px-5 py-3 rounded-2xl shadow-xl text-lg font-bold whitespace-nowrap border border-stone-200" style={{ animation: 'pulse-bubble 2s ease-in-out infinite' }}>
+          <div className="relative mb-2">
+            <div className="bg-white text-stone-800 px-3 py-2 rounded-xl shadow-xl text-sm font-bold whitespace-nowrap border border-stone-200" style={{ animation: 'pulse-bubble 2s ease-in-out infinite' }}>
               {currentPhrase}
             </div>
-            <div className="absolute -bottom-2 left-10 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-white drop-shadow-sm" />
+            <div className="absolute -bottom-2 left-6 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-white drop-shadow-sm" />
           </div>
           
-          {/* Téo character - Ultra realistic */}
-          <div className="relative w-[70px] h-[90px]" style={{ animation: 'float 3s ease-in-out infinite' }}>
-            
-            {/* Hair - Realistic layered style */}
-            <div className="absolute -top-[6px] left-1/2 -translate-x-1/2 w-[54px] h-[22px] bg-gradient-to-b from-amber-700 via-amber-800 to-amber-900 rounded-t-[50%] shadow-md">
-              {/* Hair texture/highlights */}
-              <div className="absolute top-[2px] left-[8px] w-[8px] h-[12px] bg-amber-600/40 rounded-full blur-[1px]" />
-              <div className="absolute top-[2px] right-[12px] w-[6px] h-[10px] bg-amber-600/30 rounded-full blur-[1px]" />
-            </div>
-            {/* Side hair */}
-            <div className="absolute top-[8px] -left-[2px] w-[10px] h-[20px] bg-gradient-to-b from-amber-800 to-amber-900 rounded-l-full" />
-            <div className="absolute top-[8px] -right-[2px] w-[10px] h-[20px] bg-gradient-to-b from-amber-800 to-amber-900 rounded-r-full" />
-            {/* Hair strand on forehead */}
-            <div className="absolute top-[4px] left-[20px] w-[12px] h-[8px] bg-gradient-to-br from-amber-700 to-amber-800 rounded-b-full transform -rotate-6" />
-            
-            {/* Face/Head - Realistic skin tones */}
-            <div className="absolute top-[14px] left-1/2 -translate-x-1/2 w-[50px] h-[52px] bg-gradient-to-b from-[#f5d0b5] via-[#e8bc9a] to-[#daa87a] rounded-[45%] shadow-lg">
-              {/* Forehead highlight */}
-              <div className="absolute top-[2px] left-1/2 -translate-x-1/2 w-[30px] h-[10px] bg-gradient-to-b from-white/20 to-transparent rounded-full" />
-              
-              {/* Eyebrows - more realistic shape */}
-              <div 
-                className="absolute top-[10px] left-[6px] w-[14px] h-[4px] bg-gradient-to-r from-amber-800 via-amber-900 to-amber-800 rounded-full"
-                style={{ 
-                  transform: currentExpression === 'surprised' ? 'translateY(-3px) rotate(-12deg)' : 'rotate(-8deg)',
-                  transition: 'transform 0.3s ease-out'
-                }}
-              />
-              <div 
-                className="absolute top-[10px] right-[6px] w-[14px] h-[4px] bg-gradient-to-r from-amber-800 via-amber-900 to-amber-800 rounded-full"
-                style={{ 
-                  transform: currentExpression === 'surprised' ? 'translateY(-3px) rotate(12deg)' : 'rotate(8deg)',
-                  transition: 'transform 0.3s ease-out'
-                }}
-              />
-              
-              {/* Dynamic Eyes */}
-              {renderEyes()}
-              
-              {/* Nose - realistic shape */}
-              <div className="absolute top-[28px] left-1/2 -translate-x-1/2">
-                <div className="w-[8px] h-[12px] bg-gradient-to-b from-transparent via-[#d4a574]/30 to-[#c99660]/50 rounded-full" />
-                {/* Nostrils hint */}
-                <div className="absolute bottom-0 left-0 w-[3px] h-[2px] bg-[#b8956a]/40 rounded-full" />
-                <div className="absolute bottom-0 right-0 w-[3px] h-[2px] bg-[#b8956a]/40 rounded-full" />
-              </div>
-              
-              {/* Dynamic Mouth */}
-              {renderMouth()}
-              
-              {/* Cheeks - natural blush */}
-              <div className="absolute bottom-[14px] left-[2px] w-[10px] h-[6px] bg-gradient-to-r from-rose-300/50 to-transparent rounded-full blur-[2px]" />
-              <div className="absolute bottom-[14px] right-[2px] w-[10px] h-[6px] bg-gradient-to-l from-rose-300/50 to-transparent rounded-full blur-[2px]" />
-              
-              {/* Jaw shadow */}
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[40px] h-[8px] bg-gradient-to-t from-[#c99660]/30 to-transparent rounded-b-full" />
-            </div>
-            
-            {/* Ears - realistic */}
-            <div className="absolute top-[24px] -left-[4px] w-[8px] h-[14px] bg-gradient-to-r from-[#daa87a] to-[#e8bc9a] rounded-[50%] shadow-sm">
-              <div className="absolute top-[3px] left-[2px] w-[4px] h-[8px] bg-[#c99660]/30 rounded-full" />
-            </div>
-            <div className="absolute top-[24px] -right-[4px] w-[8px] h-[14px] bg-gradient-to-l from-[#daa87a] to-[#e8bc9a] rounded-[50%] shadow-sm">
-              <div className="absolute top-[3px] right-[2px] w-[4px] h-[8px] bg-[#c99660]/30 rounded-full" />
-            </div>
-            
-            {/* Neck */}
-            <div className="absolute top-[62px] left-1/2 -translate-x-1/2 w-[16px] h-[10px] bg-gradient-to-b from-[#e8bc9a] to-[#daa87a]">
-              {/* Adam's apple hint */}
-              <div className="absolute top-[3px] left-1/2 -translate-x-1/2 w-[4px] h-[4px] bg-[#d4a574]/40 rounded-full" />
-            </div>
-            
-            {/* Shoulders & Shirt */}
-            <div className="absolute top-[68px] left-1/2 -translate-x-1/2 w-[60px] h-[24px] bg-gradient-to-b from-primary via-primary to-accent rounded-t-[30%] rounded-b-2xl shadow-lg">
-              {/* Shirt collar - V-neck style */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2">
-                <div className="w-0 h-0 border-l-[8px] border-l-white border-r-[8px] border-r-white border-b-[10px] border-b-transparent" />
-              </div>
-              {/* Collar shadow */}
-              <div className="absolute top-[8px] left-1/2 -translate-x-1/2 w-[6px] h-[6px] bg-black/10 rounded-full" />
-              
-              {/* Shirt wrinkles */}
-              <div className="absolute top-[12px] left-[10px] w-[8px] h-[1px] bg-black/10 rounded-full" />
-              <div className="absolute top-[14px] right-[10px] w-[6px] h-[1px] bg-black/10 rounded-full" />
-            </div>
-            
-            {/* Left arm */}
-            <div className="absolute -left-[6px] w-[14px] h-[28px] bg-gradient-to-b from-primary to-accent rounded-full shadow-md" style={{ top: '70px' }}>
-              {/* Arm crease */}
-              <div className="absolute top-[12px] left-1/2 -translate-x-1/2 w-[8px] h-[1px] bg-black/10 rounded-full" />
-              {/* Hand */}
-              <div className="absolute -bottom-[4px] left-1/2 -translate-x-1/2 w-[12px] h-[12px] bg-gradient-to-b from-[#f5d0b5] to-[#e8bc9a] rounded-full shadow-sm">
-                {/* Fingers hint */}
-                <div className="absolute bottom-0 left-[2px] w-[2px] h-[4px] bg-[#daa87a] rounded-full" />
-                <div className="absolute bottom-0 left-[5px] w-[2px] h-[5px] bg-[#daa87a] rounded-full" />
-                <div className="absolute bottom-0 right-[2px] w-[2px] h-[4px] bg-[#daa87a] rounded-full" />
-              </div>
-            </div>
-            
-            {/* Right arm - waving */}
-            <div 
-              className="absolute -right-[14px] origin-bottom"
-              style={{
-                top: '64px',
-                animation: showMascot ? 'wave 0.4s ease-in-out infinite' : 'none'
-              }}
+          {/* Téo character - Realistic image */}
+          <div className="relative w-[45px] h-[45px]" style={{ animation: 'float 3s ease-in-out infinite' }}>
+            <img 
+              src={teoAvatar} 
+              alt="Téo - Consultor de Viagens" 
+              className="w-full h-full rounded-full object-cover shadow-lg border-2 border-white"
+            />
+            {/* Waving hand emoji */}
+            <span 
+              className="absolute -right-2 -top-1 text-lg"
+              style={{ animation: showMascot ? 'wave 0.4s ease-in-out infinite' : 'none' }}
             >
-              <div className="w-[14px] h-[32px] bg-gradient-to-b from-primary to-accent rounded-full shadow-md">
-                <div className="absolute top-[14px] left-1/2 -translate-x-1/2 w-[8px] h-[1px] bg-black/10 rounded-full" />
-              </div>
-              {/* Waving hand with fingers */}
-              <div className="absolute -top-[6px] left-1/2 -translate-x-1/2 w-[18px] h-[18px] bg-gradient-to-b from-[#f5d0b5] to-[#e8bc9a] rounded-full shadow-md">
-                {/* Palm highlight */}
-                <div className="absolute top-[3px] left-[3px] w-[6px] h-[6px] bg-white/20 rounded-full" />
-                {/* Waving emoji overlay for extra life */}
-                <span className="absolute inset-0 flex items-center justify-center text-sm">👋</span>
-              </div>
-            </div>
+              👋
+            </span>
           </div>
         </div>
 
