@@ -31,7 +31,7 @@ interface QuizAnswers {
   companion?: string;
 }
 
-type ChatStep = 'collect_name' | 'collect_whatsapp' | 'chatting' | 'destination_chosen' | 'limit_reached';
+type ChatStep = 'collect_name' | 'collect_whatsapp' | 'chatting' | 'destination_chosen';
 
 // Check if 24 hours have passed since last interaction
 const checkTeoInteraction = (): boolean => {
@@ -259,34 +259,8 @@ Me conta aí! 👇`
       });
 
       if (!response.ok) {
-        try {
-          const errorData = await response.json();
-          if (errorData.code === 'RATE_LIMIT_REDIRECT' || errorData.code === 'RATE_LIMIT') {
-            // Mostra mensagem do Teo explicando o limite
-            const limitMessage = errorData.message || `Eita, ${userName || 'viajante'}! 😅 Parece que já conversamos bastante esse mês!
-
-Mas calma que a nossa equipe INCRÍVEL está esperando você no WhatsApp! 💬✨
-
-Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
-            
-            setMessages((prev) => [
-              ...prev,
-              { role: 'assistant', content: limitMessage },
-            ]);
-            
-            // Salva o link do WhatsApp para mostrar o botão
-            setWhatsappRedirectLink(errorData.whatsappLink || 'https://wa.me/5511999999999');
-            setStep('limit_reached');
-            setIsLoading(false);
-            return;
-          }
-          throw new Error(errorData.error || 'Failed to get response');
-        } catch (e) {
-          if (e instanceof Error && e.message.includes('Failed to get response')) {
-            throw e;
-          }
-          throw new Error('Failed to get response');
-        }
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to get response');
       }
 
       const reader = response.body?.getReader();
@@ -879,9 +853,9 @@ Fala com eles que eles são ótimos (quase tão bons quanto eu, haha! 😜)`;
 
       {/* Input or WhatsApp redirect */}
       <div className="p-4 border-t border-border shrink-0">
-        {(step === 'limit_reached' || step === 'destination_chosen') && whatsappRedirectLink ? (
+        {step === 'destination_chosen' && whatsappRedirectLink ? (
           <div className="space-y-3">
-            {step === 'destination_chosen' && chosenDestination && (
+            {chosenDestination && (
               <div className="bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl p-3 mb-2">
                 <p className="text-sm text-center font-medium text-foreground">
                   🎉 Destino escolhido: <span className="text-primary">{chosenDestination}</span>
