@@ -23,6 +23,7 @@ interface PromotionalOffer {
   destinations: {
     name: string;
     image_url: string | null;
+    description: string | null;
   } | null;
 }
 
@@ -241,9 +242,15 @@ Focus on creating a breathtaking photo composition with elegant golden decorativ
         ? offer.inclusions.map(inc => `✅ ${inc}`).join('\n')
         : '';
 
+      // Cria uma breve descrição do destino (primeiras 2 frases ou 150 caracteres)
+      const fullDescription = offer.destinations?.description || '';
+      const briefDescription = fullDescription.length > 150 
+        ? fullDescription.substring(0, 150).replace(/\s+\S*$/, '') + '...'
+        : fullDescription;
+
       const captionText = `🌴 *${offer.destinations?.name?.toUpperCase()}* 🌴
 
-${offer.title}
+${briefDescription ? `✨ ${briefDescription}\n\n` : ''}${offer.title}
 
 💰 *A partir de R$ ${formatPrice(offer.total_price)}*
 ${offer.cash_price ? `💵 À vista: R$ ${formatPrice(offer.cash_price)}` : ''}
