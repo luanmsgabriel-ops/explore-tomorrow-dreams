@@ -1,12 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
-interface UseAmbientSoundOptions {
-  category: string;
-  autoPlay?: boolean;
-  volume?: number;
-}
-
-// Ocean waves ambient sound (royalty-free)
+// Ocean waves ambient sound (royalty-free, loopable)
 const OCEAN_SOUND_URL = 'https://cdn.freesound.org/previews/527/527602_2861639-lq.mp3';
 
 // Check if category contains "Praia" - handles both string and array formats
@@ -31,22 +25,14 @@ const checkIsBeachCategory = (category: string): boolean => {
   return categoryLower === 'praia' || categoryLower.includes('praia');
 };
 
-export const useAmbientSound = ({ category, autoPlay = true, volume = 0.3 }: UseAmbientSoundOptions) => {
+export const useAutoAmbientSound = (category: string, volume: number = 0.2) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const hasStartedRef = useRef(false);
 
   const isBeachCategory = checkIsBeachCategory(category);
 
   useEffect(() => {
     if (!isBeachCategory) {
-      // Stop and cleanup if not a beach destination
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-        setIsPlaying(false);
-      }
       return;
     }
 
@@ -56,79 +42,42 @@ export const useAmbientSound = ({ category, autoPlay = true, volume = 0.3 }: Use
     audio.volume = volume;
     audioRef.current = audio;
 
-    // Try to autoplay
-    if (autoPlay) {
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            setIsPlaying(true);
-            setHasUserInteracted(true);
-          })
-          .catch(() => {
-            // Autoplay was prevented, wait for user interaction
-            setIsPlaying(false);
-          });
-      }
-    }
-
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-        setIsPlaying(false);
-      }
-    };
-  }, [isBeachCategory, autoPlay, volume]);
-
-  const play = () => {
-    if (audioRef.current && isBeachCategory) {
+    const startAudio = () => {
+      if (hasStartedRef.current || !audioRef.current) return;
+      
       audioRef.current.play()
         .then(() => {
-          setIsPlaying(true);
-          setHasUserInteracted(true);
+          hasStartedRef.current = true;
+          // Remove listeners once playing
+          document.removeEventListener('click', startAudio);
+          document.removeEventListener('scroll', startAudio);
+          document.removeEventListener('touchstart', startAudio);
         })
-        .catch(console.error);
-    }
-  };
+        .catch(() => {
+          // Autoplay blocked, will try again on user interaction
+        });
+    };
 
-  const pause = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    }
-  };
+    // Try to autoplay immediately
+    startAudio();
 
-  const toggle = () => {
-    if (isPlaying) {
-      pause();
-    } else {
-      play();
-    }
-  };
+    // If autoplay fails, start on first user interaction
+    document.addEventListener('click', startAudio, { once: false, passive: true });
+    document.addEventListener('scroll', startAudio, { once: false, passive: true });
+    document.addEventListener('touchstart', startAudio, { once: false, passive: true });
 
-  const toggleMute = () => {
-    if (audioRef.current) {
-      audioRef.current.muted = !audioRef.current.muted;
-      setIsMuted(!isMuted);
-    }
-  };
-
-  const setVolume = (newVolume: number) => {
-    if (audioRef.current) {
-      audioRef.current.volume = Math.max(0, Math.min(1, newVolume));
-    }
-  };
-
-  return {
-    isPlaying,
-    isMuted,
-    isBeachCategory,
-    hasUserInteracted,
-    play,
-    pause,
-    toggle,
-    toggleMute,
-    setVolume,
-  };
+    return () => {
+      // Cleanup
+      document.removeEventListener('click', startAudio);
+      document.removeEventListener('scroll', startAudio);
+      document.removeEventListener('touchstart', startAudio);
+      
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+        audioRef.current = null;
+      }
+      hasStartedRef.current = false;
+    };
+  }, [isBeachCategory, volume]);
 };

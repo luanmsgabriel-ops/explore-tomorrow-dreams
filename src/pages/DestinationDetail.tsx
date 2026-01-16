@@ -7,8 +7,8 @@ import { ItineraryGenerator } from '@/components/ItineraryGenerator';
 import { DestinationChat } from '@/components/DestinationChat';
 import { ImageGenerator } from '@/components/ImageGenerator';
 import { VideoPlayer } from '@/components/VideoPlayer';
-import { AmbientSoundControl } from '@/components/AmbientSoundControl';
 import { useDestinationById } from '@/hooks/useDestinations';
+import { useAutoAmbientSound } from '@/hooks/useAmbientSound';
 import { Sparkles, MessageCircle, Image, MapPin, Calendar, Users, X, ArrowLeft, Sun, Clock, Loader2, TrendingDown, Plane } from 'lucide-react';
 
 type ModalType = 'quote' | 'itinerary' | 'chat' | 'image' | null;
@@ -18,6 +18,9 @@ const DestinationDetail = () => {
   const navigate = useNavigate();
   const { destination, isLoading } = useDestinationById(id || '');
   const [activeModal, setActiveModal] = useState<ModalType>(null);
+  
+  // Auto-play ocean sound for beach destinations
+  useAutoAmbientSound(destination?.category || '');
 
   const handleGoBack = () => {
     navigate(-1);
@@ -219,9 +222,6 @@ const DestinationDetail = () => {
       </section>
 
       <Footer />
-
-      {/* Ambient Sound Control for Beach Destinations */}
-      <AmbientSoundControl category={destination.category} />
 
       {/* Modal */}
       {activeModal && (
