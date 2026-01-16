@@ -118,9 +118,11 @@ export const DestinationManager = () => {
 
       if (response.error) throw response.error;
 
-      const content = response.data?.content;
+      let content = response.data?.content;
       if (content) {
         try {
+          // Remove markdown code block formatting if present
+          content = content.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
           const parsed = JSON.parse(content);
           // Handle category - it may come as an array, take the first value
           let category = formData.category;
