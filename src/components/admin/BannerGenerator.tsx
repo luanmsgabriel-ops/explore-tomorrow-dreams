@@ -91,23 +91,31 @@ export const BannerGenerator = ({ offer, onClose }: BannerGeneratorProps) => {
       const aspectRatio = format === 'stories' ? '9:16 (vertical, Stories/Reels format)' : '1:1 (square, WhatsApp format)';
       const dimensions = format === 'stories' ? '1080x1920' : '1080x1080';
       
-      // Prompt genérico SEM preços ou detalhes da oferta para reutilização
-      const prompt = `Create a stunning travel destination banner for ${offer.destinations?.name || 'destination'}.
+      // Prompt no estilo visual específico: borda dourada, título, descrição, logo - SEM preços
+      const prompt = `Create a premium travel promotional banner for ${offer.destinations?.name || 'destination'}.
 
 📍 DESTINATION: ${offer.destinations?.name}
 
 FORMAT: ${aspectRatio}
 DIMENSIONS: ${dimensions}
 
-DESIGN REQUIREMENTS:
-- Beautiful, inspiring ${offer.destinations?.name} landscape as the main visual
-- "TOMORROW TRAVEL" elegant branding at the bottom
-- Subtle dark gradient overlay for elegance
-- NO PRICES, NO TEXT about offers or promotions
-- NO dates, NO "limited time" messages
-- Just the destination beauty with minimal branding
-- Professional, luxurious travel photography style
-- Make it visually stunning and timeless for reuse`;
+EXACT VISUAL STYLE REQUIRED:
+- Beautiful aerial/landscape photo of ${offer.destinations?.name} as background (beaches, nature, iconic views)
+- ELEGANT GOLDEN BORDER: thin golden/amber rectangular frame around the content area
+- TITLE AT TOP: "Oferta Especial - ${offer.destinations?.name}" in elegant golden serif font
+- DESCRIPTION TEXT: Inspiring Portuguese text about the destination in white/cream color, centered
+- SEMI-TRANSPARENT DARK OVERLAY behind text for readability
+- LOGO AT BOTTOM: "TOMORROW TRAVEL" with compass rose icon in golden color
+- COLOR PALETTE: Dark navy blue overlay, golden/amber accents, white text
+- TYPOGRAPHY: Elegant serif fonts for titles, clean sans-serif for body
+
+DO NOT INCLUDE:
+- NO prices (R$, valores, etc.)
+- NO "Oferta por tempo limitado" ribbon
+- NO payment terms or installments
+- NO dates or validity periods
+
+The image should be reusable for multiple offers - only the destination name and inspirational text should appear.`;
 
       const response = await supabase.functions.invoke('generate-promo-image', {
         body: { 
