@@ -1,19 +1,119 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { callGemini } from "../_shared/gemini-client.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Função para chamar Gemini diretamente
+async function callGeminiDirect(prompt: string): Promise<string | null> {
+  const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!geminiApiKey) {
+    console.log("GEMINI_API_KEY não configurada, pulando Gemini direto");
+    return null;
+  }
+
+  try {
+    console.log("Tentando Gemini API diretamente...");
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${geminiApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseModalities: ["TEXT", "IMAGE"],
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Gemini direto falhou (${response.status}):`, errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    
+    for (const part of parts) {
+      if (part.inlineData?.mimeType?.startsWith("image/")) {
+        const base64 = part.inlineData.data;
+        const mimeType = part.inlineData.mimeType;
+        console.log("Imagem gerada via Gemini direto!");
+        return `data:${mimeType};base64,${base64}`;
+      }
+    }
+    
+    console.log("Nenhuma imagem encontrada na resposta do Gemini");
+    return null;
+  } catch (error) {
+    console.error("Erro no Gemini direto:", error);
+    return null;
+  }
+}
+
+// Função para chamar Lovable AI Gateway (fallback)
+async function callLovableAI(prompt: string): Promise<string | null> {
+  const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!lovableApiKey) {
+    console.error("LOVABLE_API_KEY não configurada");
+    return null;
+  }
+
+  try {
+    console.log("Usando Lovable AI Gateway como fallback...");
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${lovableApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image-preview",
+        messages: [{ role: "user", content: prompt }],
+        modalities: ["image", "text"],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Lovable AI falhou (${response.status}):`, errorText);
+      
+      if (response.status === 429) {
+        throw new Error("Limite de requisições atingido. Tente novamente em alguns minutos.");
+      }
+      if (response.status === 402) {
+        throw new Error("Créditos de IA esgotados. Adicione créditos para continuar.");
+      }
+      return null;
+    }
+
+    const data = await response.json();
+    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    
+    if (imageUrl) {
+      console.log("Imagem gerada via Lovable AI!");
+      return imageUrl;
+    }
+    
+    console.log("Nenhuma imagem na resposta do Lovable AI");
+    return null;
+  } catch (error) {
+    console.error("Erro no Lovable AI:", error);
+    throw error;
+  }
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { prompt, destinationName, destinationImageUrl } = await req.json();
+    const { prompt, destinationName } = await req.json();
 
     if (!prompt || !destinationName) {
       return new Response(
@@ -22,78 +122,55 @@ serve(async (req) => {
       );
     }
 
-    // Parse format from the prompt to determine aspect ratio
     const isStoriesFormat = prompt.includes('9:16') || prompt.includes('1080x1920') || prompt.toLowerCase().includes('stories');
     const aspectRatio = isStoriesFormat ? '9:16 VERTICAL (portrait mode, 1080x1920 pixels)' : '1:1 SQUARE (1080x1080 pixels)';
     
-    // Build a clear prompt for premium travel banners without prices
     const imagePrompt = `Generate a premium travel promotional banner with EXACT aspect ratio: ${aspectRatio}
 
-STYLE REFERENCE (match this exactly):
-- Stunning destination photo as background (aerial/landscape view)
-- Thin elegant GOLDEN/AMBER rectangular border frame around the content
-- Semi-transparent dark navy blue overlay behind text areas
-- Top: "Oferta Especial - ${destinationName}" in elegant golden serif typography
-- Center: Inspiring description text in white/cream color about the destination
-- Bottom: "TOMORROW TRAVEL" brand with compass/travel icon in golden color
+DESTINATION: ${destinationName}
 
-CRITICAL DIMENSION REQUIREMENTS:
+VISUAL STYLE:
+- Stunning aerial/landscape photo of ${destinationName} as background
+- Thin elegant GOLDEN/AMBER rectangular border frame around the edges
+- Semi-transparent dark navy gradient overlay at bottom
+- 3D GOLDEN AIRPLANE flying across the image (metallic gold texture, realistic shadows)
+- Small golden compass rose or star icon at bottom
+- NO TEXT AT ALL - purely visual elements only
+
+CRITICAL REQUIREMENTS:
 - ASPECT RATIO: ${aspectRatio}
-${isStoriesFormat ? '- This is for Instagram Stories/Reels - MUST be TALL and VERTICAL (portrait orientation, taller than wide)' : '- This is for WhatsApp - MUST be SQUARE (equal width and height)'}
+${isStoriesFormat ? '- MUST be TALL and VERTICAL (portrait orientation)' : '- MUST be SQUARE (equal width and height)'}
+- The 3D golden airplane should be prominent but elegant
 
-VISUAL ELEMENTS TO INCLUDE:
-1. BACKGROUND: Beautiful destination landscape (beach, city, nature - appropriate for ${destinationName})
-2. GOLDEN FRAME: Elegant thin golden/amber rectangular border
-3. OVERLAY: Semi-transparent dark navy blue behind text
-4. TITLE: "Oferta Especial - ${destinationName}" in elegant golden serif font at top
-5. DESCRIPTION: 2-3 lines of inspiring text in Portuguese about the destination in white/cream
-6. BRANDING: "TOMORROW TRAVEL" with compass icon at bottom in golden color
+COLOR PALETTE: Navy blue overlay, golden/amber accents, rich destination colors
 
-COLOR PALETTE:
-- Navy blue (#1a1a3e or similar dark blue)
-- Golden/Amber (#d4af37, #c9a227)
-- White/Cream for body text
-- Rich, luxurious feel
+DO NOT INCLUDE: Any text, words, letters, numbers, prices, dates, or logos with text.
 
-ABSOLUTELY DO NOT INCLUDE:
-- ANY prices, values, or R$ amounts
-- "Oferta por tempo limitado" or urgency ribbons
-- Payment terms or installments (parcelas)
-- Dates or validity periods
-- Any numerical values
+Generate a purely visual promotional banner.`;
 
-Generate the image directly with the correct ${isStoriesFormat ? 'VERTICAL 9:16' : 'SQUARE 1:1'} format.`;
-
-    const response = await callGemini(
-      [{ role: "user", content: imagePrompt }],
-      { model: "google/gemini-2.5-flash-image-preview", generateImage: true }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI error:', errorText);
-      throw new Error(`AI error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    // Tenta Gemini direto primeiro, depois Lovable AI como fallback
+    let imageUrl = await callGeminiDirect(imagePrompt);
     
     if (!imageUrl) {
-      console.error('No image in response:', JSON.stringify(data));
-      throw new Error('No image generated');
+      console.log("Gemini direto não disponível, usando Lovable AI...");
+      imageUrl = await callLovableAI(imagePrompt);
+    }
+    
+    if (!imageUrl) {
+      throw new Error('Não foi possível gerar a imagem. Tente novamente.');
     }
 
     return new Response(
       JSON.stringify({ 
         imageUrl,
-        message: 'Promotional image generated successfully'
+        message: 'Banner promocional gerado com sucesso'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error: unknown) {
     console.error('Error generating promo image:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to generate promotional image';
+    const errorMessage = error instanceof Error ? error.message : 'Falha ao gerar imagem promocional';
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
