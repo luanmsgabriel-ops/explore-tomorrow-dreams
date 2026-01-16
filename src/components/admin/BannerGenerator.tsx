@@ -128,8 +128,32 @@ The image should be reusable for multiple offers - only the destination name and
       if (response.error) throw response.error;
 
       if (response.data?.imageUrl) {
-        setGeneratedImage(response.data.imageUrl);
-        toast.success('Banner gerado com sucesso!');
+        const imageUrl = response.data.imageUrl;
+        setGeneratedImage(imageUrl);
+        
+        // Salvar automaticamente no histórico
+        try {
+          await supabase
+            .from('banner_history')
+            .insert({
+              offer_id: offer.id,
+              offer_title: offer.title,
+              destination_name: offer.destinations?.name || 'Destino',
+              format,
+              image_url: imageUrl,
+              caption: null
+            });
+          
+          toast.success('Banner gerado e salvo automaticamente!');
+          
+          // Atualizar histórico se estiver visível
+          if (showHistory) {
+            loadHistory();
+          }
+        } catch (saveError) {
+          console.error('Error auto-saving banner:', saveError);
+          toast.success('Banner gerado! (Erro ao salvar no histórico)');
+        }
       } else {
         throw new Error('Nenhuma imagem gerada');
       }
