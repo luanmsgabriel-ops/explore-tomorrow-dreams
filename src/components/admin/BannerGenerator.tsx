@@ -317,13 +317,36 @@ ${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
     }
   };
 
+  // Copy image to clipboard
+  const copyImageToClipboard = async (): Promise<boolean> => {
+    if (!generatedImage) return false;
+    
+    try {
+      const blob = await getImageBlob();
+      if (blob) {
+        // Convert to PNG blob for clipboard (required format)
+        const pngBlob = new Blob([blob], { type: 'image/png' });
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'image/png': pngBlob
+          })
+        ]);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error copying image to clipboard:', error);
+      return false;
+    }
+  };
+
   const shareWithImage = async (platform: 'whatsapp' | 'instagram') => {
     if (!caption) {
       toast.error('Gere a legenda primeiro para compartilhar');
       return;
     }
 
-    // Check if Web Share API with files is supported
+    // Check if Web Share API with files is supported (mobile devices)
     if (navigator.share && navigator.canShare && generatedImage) {
       try {
         const blob = await getImageBlob();
@@ -350,30 +373,58 @@ ${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
       }
     }
 
-    // Fallback: open platform with just text and prompt to attach image
+    // Desktop fallback: Copy image to clipboard, copy caption, then open platform
     if (platform === 'whatsapp') {
-      const encodedCaption = encodeURIComponent(caption);
-      const whatsappUrl = `https://wa.me/?text=${encodedCaption}`;
-      window.open(whatsappUrl, '_blank');
-      
       if (generatedImage) {
-        toast.info('O WhatsApp foi aberto. Baixe o banner e anexe à mensagem.', { duration: 5000 });
+        // Try to copy image to clipboard first
+        const imageCopied = await copyImageToClipboard();
+        
+        // Copy caption to clipboard as well (will override image, so we do image first for user to paste)
+        if (imageCopied) {
+          toast.success('Imagem copiada! Cole (Ctrl+V) no WhatsApp. A legenda será aberta em seguida.', { duration: 4000 });
+          
+          // Wait a moment then open WhatsApp with caption
+          setTimeout(() => {
+            const encodedCaption = encodeURIComponent(caption);
+            const whatsappUrl = `https://wa.me/?text=${encodedCaption}`;
+            window.open(whatsappUrl, '_blank');
+          }, 1500);
+        } else {
+          // Clipboard API not supported, download instead
+          const link = document.createElement('a');
+          link.href = generatedImage;
+          link.download = `whatsapp-${offer.destinations?.name || 'destino'}-${Date.now()}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          const encodedCaption = encodeURIComponent(caption);
+          const whatsappUrl = `https://wa.me/?text=${encodedCaption}`;
+          window.open(whatsappUrl, '_blank');
+          
+          toast.info('Banner baixado! Anexe ao WhatsApp.', { duration: 5000 });
+        }
       } else {
+        const encodedCaption = encodeURIComponent(caption);
+        const whatsappUrl = `https://wa.me/?text=${encodedCaption}`;
+        window.open(whatsappUrl, '_blank');
         toast.success('WhatsApp aberto!');
       }
     } else if (platform === 'instagram') {
-      // Instagram doesn't have a direct share URL, so we copy caption and download image
+      // Instagram: copy caption and download image
       await navigator.clipboard.writeText(caption);
-      toast.success('Legenda copiada! Baixe a imagem e compartilhe no Instagram.', { duration: 5000 });
       
       if (generatedImage) {
-        // Auto-download the image for Instagram
         const link = document.createElement('a');
         link.href = generatedImage;
         link.download = `instagram-${offer.destinations?.name || 'destino'}-${Date.now()}.png`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        
+        toast.success('Legenda copiada e imagem baixada! Compartilhe no Instagram.', { duration: 5000 });
+      } else {
+        toast.success('Legenda copiada!');
       }
     }
   };
