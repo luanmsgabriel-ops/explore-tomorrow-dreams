@@ -91,8 +91,8 @@ export const BannerGenerator = ({ offer, onClose }: BannerGeneratorProps) => {
       const aspectRatio = format === 'stories' ? '9:16 (vertical, Stories/Reels format)' : '1:1 (square, WhatsApp format)';
       const dimensions = format === 'stories' ? '1080x1920' : '1080x1080';
       
-      // Prompt no estilo visual específico: borda dourada, título, descrição, logo - SEM preços
-      const prompt = `Create a premium travel promotional banner for ${offer.destinations?.name || 'destination'}.
+      // Prompt SEM TEXTO - apenas visual puro para evitar erros de escrita da IA
+      const prompt = `Create a stunning travel promotional banner for ${offer.destinations?.name || 'destination'}.
 
 📍 DESTINATION: ${offer.destinations?.name}
 
@@ -100,22 +100,25 @@ FORMAT: ${aspectRatio}
 DIMENSIONS: ${dimensions}
 
 EXACT VISUAL STYLE REQUIRED:
-- Beautiful aerial/landscape photo of ${offer.destinations?.name} as background (beaches, nature, iconic views)
-- ELEGANT GOLDEN BORDER: thin golden/amber rectangular frame around the content area
-- TITLE AT TOP: "Oferta Especial - ${offer.destinations?.name}" in elegant golden serif font
-- DESCRIPTION TEXT: Inspiring Portuguese text about the destination in white/cream color, centered
-- SEMI-TRANSPARENT DARK OVERLAY behind text for readability
-- LOGO AT BOTTOM: "TOMORROW TRAVEL" with compass rose icon in golden color
-- COLOR PALETTE: Dark navy blue overlay, golden/amber accents, white text
-- TYPOGRAPHY: Elegant serif fonts for titles, clean sans-serif for body
+- Beautiful high-quality aerial/landscape photo of ${offer.destinations?.name} as background (beaches, nature, iconic landmarks, scenic views)
+- ELEGANT GOLDEN BORDER: thin elegant golden/amber rectangular decorative frame around the edges
+- SEMI-TRANSPARENT DARK GRADIENT OVERLAY at bottom third for future text overlay
+- Single thin horizontal golden decorative line at bottom area
+- Small elegant golden compass rose or star icon centered at bottom
+- COLOR PALETTE: Rich destination colors, golden/amber accents, dark navy overlay gradient
+- Professional travel magazine aesthetic
 
-DO NOT INCLUDE:
-- NO prices (R$, valores, etc.)
-- NO "Oferta por tempo limitado" ribbon
-- NO payment terms or installments
-- NO dates or validity periods
+CRITICAL - DO NOT INCLUDE ANY TEXT:
+- NO words, letters, or numbers of any kind
+- NO destination name text
+- NO prices or currency symbols
+- NO dates or time periods
+- NO logos with text
+- NO watermarks
+- ONLY visual elements: photo, border, gradient, decorative line, small icon
 
-The image should be reusable for multiple offers - only the destination name and inspirational text should appear.`;
+The image should be purely visual - all text will be added later in post-production.
+Focus on creating a breathtaking photo composition with elegant golden decorative elements.`;
 
       const response = await supabase.functions.invoke('generate-promo-image', {
         body: { 
