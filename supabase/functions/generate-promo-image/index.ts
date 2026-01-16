@@ -26,12 +26,23 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    // Build a clear prompt that forces image generation
-    const imagePrompt = `Generate an image: Create a professional promotional travel banner.
+    // Parse format from the prompt to determine aspect ratio
+    const isStoriesFormat = prompt.includes('9:16') || prompt.includes('1080x1920') || prompt.toLowerCase().includes('stories');
+    const aspectRatio = isStoriesFormat ? '9:16 VERTICAL (portrait mode, 1080x1920 pixels)' : '1:1 SQUARE (1080x1080 pixels)';
+    
+    // Build a clear prompt that forces image generation with correct dimensions
+    const imagePrompt = `Generate an image with EXACT aspect ratio: ${aspectRatio}
+
+Create a professional promotional travel banner.
 
 ${prompt}
 
-REQUIREMENTS:
+CRITICAL DIMENSION REQUIREMENTS:
+- ASPECT RATIO: ${aspectRatio}
+${isStoriesFormat ? '- This is for Instagram Stories/Reels - MUST be TALL and VERTICAL (portrait orientation)' : '- This is for WhatsApp - MUST be SQUARE'}
+- The image MUST respect the specified aspect ratio exactly
+
+VISUAL REQUIREMENTS:
 - Beautiful destination landscape as the main visual
 - Professional typography with the pricing and offer details clearly visible
 - Golden/amber accents for pricing
@@ -39,7 +50,7 @@ REQUIREMENTS:
 - Dark elegant overlay for text readability
 - Modern, luxurious travel agency advertisement style
 
-DO NOT describe what you will do. Generate the image directly.`;
+DO NOT describe what you will do. Generate the image directly with the correct ${isStoriesFormat ? 'VERTICAL 9:16' : 'SQUARE 1:1'} format.`;
 
     const messages: any[] = [
       {
