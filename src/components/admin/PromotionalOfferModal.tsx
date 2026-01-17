@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { X, Loader2, Sparkles, Plus, Trash2, Wand2, Upload, FileText } from 'lucide-react';
+import { X, Loader2, Sparkles, Plus, Trash2, Wand2, Upload, FileText, Check } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Configure PDF.js worker
@@ -14,7 +14,7 @@ interface Destination {
 }
 
 interface PromotionalOfferModalProps {
-  destination: Destination;
+  destination?: Destination;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -24,10 +24,17 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
   const [isGeneratingTagline, setIsGeneratingTagline] = useState(false);
   const [isExtractingData, setIsExtractingData] = useState(false);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfText, setPdfText] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Destination state for when creating without pre-selected destination
+  const [selectedDestination, setSelectedDestination] = useState<Destination | null>(destination || null);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [extractedDestinationName, setExtractedDestinationName] = useState<string>('');
+  const [isCreatingDestination, setIsCreatingDestination] = useState(false);
+  
   const [formData, setFormData] = useState({
-    title: `Oferta Especial - ${destination.name}`,
+    title: destination ? `Oferta Especial - ${destination.name}` : '',
     tagline: '',
     total_price: '',
     cash_price: '',
@@ -36,6 +43,21 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
     inclusions: [''],
     valid_until: '',
   });
+
+  useEffect(() => {
+    if (!destination) {
+      fetchDestinations();
+    }
+  }, [destination]);
+
+  const fetchDestinations = async () => {
+    const { data } = await supabase
+      .from('destinations')
+      .select('id, name, image_url')
+      .eq('is_active', true)
+      .order('name');
+    if (data) setDestinations(data);
+  };
 
   const handleAddInclusion = () => {
     setFormData(prev => ({
@@ -86,28 +108,59 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
     }
 
     setPdfFile(file);
+    
+    try {
+      toast.info('Lendo PDF...');
+      const text = await extractTextFromPdf(file);
+      setPdfText(text);
+      
+      if (text.length < 50) {
+        toast.error('O PDF não contém texto suficiente para extração');
+        return;
+      }
+      
+      toast.success('PDF carregado! Clique em "Extrair Dados" para processar.');
+    } catch (error) {
+      console.error('Error reading PDF:', error);
+      toast.error('Erro ao ler o PDF');
+    }
+  };
+
+  const handleExtractData = async () => {
+    if (!pdfText) {
+      toast.error('Carregue um PDF primeiro');
+      return;
+    }
+
     setIsExtractingData(true);
 
     try {
-      // Extract text from PDF
-      toast.info('Extraindo texto do PDF...');
-      const text = await extractTextFromPdf(file);
-
-      if (text.length < 50) {
-        toast.error('O PDF não contém texto suficiente para extração');
-        setIsExtractingData(false);
-        return;
-      }
-
-      // Send to AI for extraction
       toast.info('Analisando dados com IA...');
       const { data, error } = await supabase.functions.invoke('extract-quote-pdf', {
-        body: { pdfText: text }
+        body: { pdfText }
       });
 
       if (error) throw error;
 
       if (data) {
+        // Store extracted destination name
+        if (data.destination_name) {
+          setExtractedDestinationName(data.destination_name);
+          
+          // Try to find matching destination
+          const matchingDest = destinations.find(d => 
+            d.name.toLowerCase().includes(data.destination_name.toLowerCase()) ||
+            data.destination_name.toLowerCase().includes(d.name.toLowerCase())
+          );
+          
+          if (matchingDest) {
+            setSelectedDestination(matchingDest);
+            toast.success(`Destino encontrado: ${matchingDest.name}`);
+          } else {
+            toast.info(`Destino "${data.destination_name}" não encontrado. Será criado automaticamente.`);
+          }
+        }
+
         setFormData(prev => ({
           ...prev,
           title: data.title || prev.title,
@@ -157,6 +210,8 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
       return;
     }
 
+    const destName = selectedDestination?.name || destination?.name || extractedDestinationName || 'Destino';
+
     setIsGeneratingTagline(true);
     try {
       const inclusionsText = formData.inclusions.filter(i => i.trim()).join(', ');
@@ -167,7 +222,7 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
 
       const response = await supabase.functions.invoke('generate-promo-tagline', {
         body: { 
-          destinationName: destination.name,
+          destinationName: destName,
           title: formData.title,
           totalPrice: formData.total_price,
           cashPrice: cashText,
@@ -191,6 +246,48 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
     }
   };
 
+  const createDestination = async (name: string): Promise<string | null> => {
+    setIsCreatingDestination(true);
+    try {
+      // Generate slug from name
+      const slug = name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+
+      const { data, error } = await supabase
+        .from('destinations')
+        .insert({
+          name,
+          slug,
+          description: `Descubra ${name}, um destino incrível para suas próximas férias.`,
+          location: name,
+          type: 'internacional',
+          category: 'praia',
+          best_time: 'O ano todo',
+          ideal_duration: '5-7 dias',
+          for_who: 'Todos os públicos',
+          is_active: true,
+          is_featured: false,
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      
+      toast.success(`Destino "${name}" criado automaticamente!`);
+      return data.id;
+    } catch (error) {
+      console.error('Error creating destination:', error);
+      toast.error('Erro ao criar destino automaticamente');
+      return null;
+    } finally {
+      setIsCreatingDestination(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -199,12 +296,25 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
       return;
     }
 
+    let destinationId = selectedDestination?.id || destination?.id;
+
+    // If no destination selected but we have extracted name, create it
+    if (!destinationId && extractedDestinationName) {
+      destinationId = await createDestination(extractedDestinationName) || undefined;
+      if (!destinationId) return;
+    }
+
+    if (!destinationId) {
+      toast.error('Selecione ou crie um destino');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const { error } = await supabase
         .from('promotional_offers')
         .insert([{
-          destination_id: destination.id,
+          destination_id: destinationId,
           title: formData.title,
           tagline: formData.tagline || null,
           total_price: parseFloat(formData.total_price),
@@ -229,6 +339,8 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
     }
   };
 
+  const currentDestName = selectedDestination?.name || destination?.name || extractedDestinationName || '';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm" onClick={onClose}>
       <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-card border border-border rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
@@ -240,7 +352,7 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
           Nova Oferta Promocional
         </h2>
         <p className="text-muted-foreground mb-6">
-          {destination.name}
+          {currentDestName || 'Extraia os dados do PDF para começar'}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -251,57 +363,118 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
               <span className="font-medium text-foreground">Preenchimento Automático com IA</span>
             </div>
             <p className="text-sm text-muted-foreground mb-3">
-              Anexe o PDF do orçamento e a IA irá extrair automaticamente todos os dados.
+              Anexe o PDF do orçamento e clique em extrair para preencher automaticamente.
             </p>
             
             <div
               className={`border-2 border-dashed rounded-xl p-4 transition-all ${
-                isExtractingData 
+                pdfFile 
                   ? 'border-primary bg-primary/5' 
                   : 'border-border hover:border-primary/50 hover:bg-primary/5'
               }`}
               onDrop={handleDrop}
               onDragOver={handleDragOver}
             >
-              {isExtractingData ? (
-                <div className="text-center py-2">
-                  <Loader2 className="w-8 h-8 mx-auto mb-2 text-primary animate-spin" />
-                  <p className="text-sm text-foreground">Extraindo dados do PDF...</p>
-                </div>
-              ) : (
-                <div className="text-center">
-                  {pdfFile ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <FileText className="w-5 h-5 text-primary" />
-                      <span className="text-foreground text-sm">{pdfFile.name}</span>
-                    </div>
-                  ) : (
-                    <>
-                      <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Arraste o PDF aqui ou clique para selecionar
-                      </p>
-                    </>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,application/pdf"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                    id="pdf-upload-modal"
-                  />
+              <div className="text-center">
+                {pdfFile ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <FileText className="w-5 h-5 text-primary" />
+                    <span className="text-foreground text-sm">{pdfFile.name}</span>
+                    <Check className="w-4 h-4 text-green-500" />
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Arraste o PDF aqui ou clique para selecionar
+                    </p>
+                  </>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  id="pdf-upload-modal"
+                />
+                <div className="flex items-center justify-center gap-2 mt-3">
                   <label
                     htmlFor="pdf-upload-modal"
-                    className="inline-flex items-center gap-2 px-4 py-2 mt-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer text-sm"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary text-foreground hover:bg-secondary/80 transition-colors cursor-pointer text-sm"
                   >
                     <Upload className="w-4 h-4" />
-                    {pdfFile ? 'Selecionar outro PDF' : 'Selecionar PDF'}
+                    {pdfFile ? 'Trocar PDF' : 'Selecionar PDF'}
                   </label>
+                  
+                  {pdfFile && pdfText && (
+                    <button
+                      type="button"
+                      onClick={handleExtractData}
+                      disabled={isExtractingData}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm disabled:opacity-50"
+                    >
+                      {isExtractingData ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Extraindo...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4" />
+                          Extrair Dados
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
+
+            {/* Show destination status after extraction */}
+            {extractedDestinationName && !selectedDestination && !destination && (
+              <div className="mt-3 p-3 rounded-lg bg-accent/10 border border-accent/20">
+                <p className="text-sm text-foreground">
+                  <span className="font-medium">Destino detectado:</span> {extractedDestinationName}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Este destino será criado automaticamente ao salvar a oferta.
+                </p>
+              </div>
+            )}
+            
+            {selectedDestination && !destination && (
+              <div className="mt-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                <p className="text-sm text-foreground flex items-center gap-2">
+                  <Check className="w-4 h-4 text-green-500" />
+                  <span className="font-medium">Destino encontrado:</span> {selectedDestination.name}
+                </p>
+              </div>
+            )}
           </div>
+
+          {/* Destination selector (only if no pre-selected destination and no extraction yet) */}
+          {!destination && !extractedDestinationName && destinations.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Selecionar Destino</label>
+              <select
+                value={selectedDestination?.id || ''}
+                onChange={(e) => {
+                  const dest = destinations.find(d => d.id === e.target.value);
+                  setSelectedDestination(dest || null);
+                  if (dest) {
+                    setFormData(prev => ({ ...prev, title: `Oferta Especial - ${dest.name}` }));
+                  }
+                }}
+                className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground"
+              >
+                <option value="">Selecione um destino ou extraia do PDF...</option>
+                {destinations.map((dest) => (
+                  <option key={dest.id} value={dest.id}>{dest.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Title */}
           <div>
@@ -453,11 +626,11 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
             </button>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || isCreatingDestination}
               className="flex-1 btn-primary flex items-center justify-center gap-2"
             >
-              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              Criar Oferta
+              {(isLoading || isCreatingDestination) ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {isCreatingDestination ? 'Criando destino...' : 'Criar Oferta'}
             </button>
           </div>
         </form>

@@ -34,8 +34,6 @@ export const PromotionalOffersManager = () => {
   const [editingOffer, setEditingOffer] = useState<PromotionalOffer | null>(null);
   const [bannerOffer, setBannerOffer] = useState<PromotionalOffer | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [destinations, setDestinations] = useState<{ id: string; name: string; image_url: string | null }[]>([]);
-  const [selectedDestinationForCreate, setSelectedDestinationForCreate] = useState<{ id: string; name: string; image_url: string | null } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingTagline, setIsGeneratingTagline] = useState(false);
 
@@ -54,17 +52,7 @@ export const PromotionalOffersManager = () => {
 
   useEffect(() => {
     fetchOffers();
-    fetchDestinations();
   }, []);
-
-  const fetchDestinations = async () => {
-    const { data } = await supabase
-      .from('destinations')
-      .select('id, name, image_url')
-      .eq('is_active', true)
-      .order('name');
-    if (data) setDestinations(data);
-  };
 
   const fetchOffers = async () => {
     setIsLoading(true);
@@ -656,54 +644,13 @@ export const PromotionalOffersManager = () => {
         />
       )}
 
-      {/* Destination Selection Modal */}
+      {/* Create Offer Modal - Opens directly with PDF extraction */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm" onClick={() => setShowCreateModal(false)}>
-          <div className="relative w-full max-w-md bg-card border border-border rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 p-2 rounded-full bg-secondary hover:bg-muted transition-colors">
-              <X className="w-5 h-5" />
-            </button>
-
-            <h2 className="font-serif text-2xl font-bold text-foreground mb-4">
-              Selecionar Destino
-            </h2>
-            <p className="text-muted-foreground text-sm mb-6">
-              Escolha o destino para criar a oferta promocional
-            </p>
-
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {destinations.map((dest) => (
-                <button
-                  key={dest.id}
-                  onClick={() => {
-                    setSelectedDestinationForCreate(dest);
-                    setShowCreateModal(false);
-                  }}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-secondary transition-colors text-left"
-                >
-                  {dest.image_url ? (
-                    <img src={dest.image_url} alt={dest.name} className="w-12 h-12 rounded-lg object-cover" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <MapPin className="w-5 h-5 text-primary" />
-                    </div>
-                  )}
-                  <span className="font-medium text-foreground">{dest.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create Offer Modal */}
-      {selectedDestinationForCreate && (
         <PromotionalOfferModal
-          destination={selectedDestinationForCreate}
-          onClose={() => setSelectedDestinationForCreate(null)}
+          onClose={() => setShowCreateModal(false)}
           onSuccess={() => {
             fetchOffers();
-            setSelectedDestinationForCreate(null);
+            setShowCreateModal(false);
           }}
         />
       )}
