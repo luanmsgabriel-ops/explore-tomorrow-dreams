@@ -51,18 +51,31 @@ export const useAutoAmbientSound = (category: string, volume: number = 0.2) => {
     const startAudio = () => {
       if (hasStartedRef.current || !audioRef.current) return;
       
+      console.log('[AmbientSound] Attempting to play audio...');
+      
       audioRef.current.play()
         .then(() => {
+          console.log('[AmbientSound] Audio started playing successfully!');
           hasStartedRef.current = true;
           // Remove listeners once playing
           document.removeEventListener('click', startAudio);
           document.removeEventListener('scroll', startAudio);
           document.removeEventListener('touchstart', startAudio);
         })
-        .catch(() => {
-          // Autoplay blocked, will try again on user interaction
+        .catch((error) => {
+          console.log('[AmbientSound] Autoplay blocked, waiting for user interaction:', error.message);
         });
     };
+
+    // Add error and canplay listeners for debugging
+    audio.addEventListener('error', (e) => {
+      console.error('[AmbientSound] Audio error:', e);
+    });
+    
+    audio.addEventListener('canplaythrough', () => {
+      console.log('[AmbientSound] Audio loaded and ready to play');
+      startAudio();
+    });
 
     // Try to autoplay immediately
     startAudio();
