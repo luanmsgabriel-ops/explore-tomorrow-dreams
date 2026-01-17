@@ -23,7 +23,7 @@ const checkIsBeachCategory = (category: string): boolean => {
 };
 
 // Cache key for storing generated audio in localStorage
-const AMBIENT_SOUND_CACHE_KEY = 'beach_ambient_sound_v2';
+const AMBIENT_SOUND_CACHE_KEY = 'beach_ambient_sound_v3';
 
 export const useAutoAmbientSound = (category: string, volume: number = 0.15) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -82,7 +82,7 @@ export const useAutoAmbientSound = (category: string, volume: number = 0.15) => 
               Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
             },
             body: JSON.stringify({
-              prompt: "Relaxing tropical beach ambience with gentle calm ocean waves softly lapping on the shore, seagulls calling in the distance, peaceful and serene atmosphere, perfect for meditation and relaxation",
+              prompt: "Immersive tropical paradise beach soundscape: very soft and slow ocean waves gently washing onto sandy shore with a calm rhythmic pattern, multiple seagulls and tropical birds calling and singing throughout, light ocean breeze, distant sound of palm trees rustling, complete beach atmosphere for deep relaxation and meditation, ASMR quality, no harsh sounds",
               duration: 22,
             }),
           }
