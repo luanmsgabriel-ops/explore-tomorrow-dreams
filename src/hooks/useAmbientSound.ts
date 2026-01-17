@@ -30,11 +30,17 @@ export const useAutoAmbientSound = (category: string, volume: number = 0.2) => {
   const hasStartedRef = useRef(false);
 
   const isBeachCategory = checkIsBeachCategory(category);
+  
+  console.log('[AmbientSound] Category received:', category);
+  console.log('[AmbientSound] Is beach category:', isBeachCategory);
 
   useEffect(() => {
     if (!isBeachCategory) {
+      console.log('[AmbientSound] Not a beach category, skipping audio');
       return;
     }
+    
+    console.log('[AmbientSound] Beach category detected, setting up audio');
 
     // Create audio element
     const audio = new Audio(OCEAN_SOUND_URL);
