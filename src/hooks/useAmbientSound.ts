@@ -23,17 +23,35 @@ const checkIsBeachCategory = (category: string): boolean => {
 };
 
 // Cache key for storing generated audio in localStorage
-const AMBIENT_SOUND_CACHE_KEY = 'beach_ambient_sound';
+const AMBIENT_SOUND_CACHE_KEY = 'beach_ambient_sound_v2';
 
 export const useAutoAmbientSound = (category: string, volume: number = 0.15) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hasStartedRef = useRef(false);
   const isGeneratingRef = useRef(false);
+  const eventListenersRef = useRef<(() => void)[]>([]);
 
   const isBeachCategory = checkIsBeachCategory(category);
 
+  // Cleanup function to stop audio immediately
+  const stopAudio = () => {
+    // Remove all event listeners
+    eventListenersRef.current.forEach(cleanup => cleanup());
+    eventListenersRef.current = [];
+    
+    // Stop and cleanup audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.src = '';
+      audioRef.current = null;
+    }
+    hasStartedRef.current = false;
+  };
+
   useEffect(() => {
     if (!isBeachCategory) {
+      stopAudio();
       return;
     }
 
@@ -64,7 +82,7 @@ export const useAutoAmbientSound = (category: string, volume: number = 0.15) => 
               Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
             },
             body: JSON.stringify({
-              prompt: "Calm ocean waves gently rolling onto a tropical beach shore, with distant seagulls calls, peaceful and relaxing ambient sound, no wind noise, crystal clear water sounds",
+              prompt: "Relaxing tropical beach ambience with gentle calm ocean waves softly lapping on the shore, seagulls calling in the distance, peaceful and serene atmosphere, perfect for meditation and relaxation",
               duration: 22,
             }),
           }
@@ -101,6 +119,9 @@ export const useAutoAmbientSound = (category: string, volume: number = 0.15) => 
     };
 
     const playAudioFromUrl = (url: string) => {
+      // Stop any existing audio first
+      stopAudio();
+      
       const audio = new Audio(url);
       audio.loop = true;
       audio.volume = volume;
@@ -113,9 +134,9 @@ export const useAutoAmbientSound = (category: string, volume: number = 0.15) => 
           .then(() => {
             console.log('[AmbientSound] Audio started playing!');
             hasStartedRef.current = true;
-            document.removeEventListener('click', startAudio);
-            document.removeEventListener('scroll', startAudio);
-            document.removeEventListener('touchstart', startAudio);
+            // Remove interaction listeners once playing
+            eventListenersRef.current.forEach(cleanup => cleanup());
+            eventListenersRef.current = [];
           })
           .catch(() => {
             // Autoplay blocked, will try on user interaction
@@ -123,27 +144,26 @@ export const useAutoAmbientSound = (category: string, volume: number = 0.15) => 
       };
 
       audio.addEventListener('canplaythrough', startAudio);
-      startAudio();
 
-      document.addEventListener('click', startAudio, { passive: true });
-      document.addEventListener('scroll', startAudio, { passive: true });
-      document.addEventListener('touchstart', startAudio, { passive: true });
+      // Add event listeners for user interaction
+      const addListener = (event: string) => {
+        const handler = () => startAudio();
+        document.addEventListener(event, handler, { passive: true });
+        eventListenersRef.current.push(() => document.removeEventListener(event, handler));
+      };
+
+      addListener('click');
+      addListener('scroll');
+      addListener('touchstart');
+      
+      startAudio();
     };
 
     generateAndPlaySound();
 
+    // Cleanup when component unmounts or category changes
     return () => {
-      document.removeEventListener('click', () => {});
-      document.removeEventListener('scroll', () => {});
-      document.removeEventListener('touchstart', () => {});
-      
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = '';
-        audioRef.current = null;
-      }
-      hasStartedRef.current = false;
+      stopAudio();
     };
   }, [isBeachCategory, volume]);
-
 };
