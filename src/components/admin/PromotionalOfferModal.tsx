@@ -1,7 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { X, Loader2, Sparkles, Plus, Trash2, Link, Wand2 } from 'lucide-react';
+import { X, Loader2, Sparkles, Plus, Trash2, Wand2, Upload, FileText } from 'lucide-react';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 interface Destination {
   id: string;
@@ -19,7 +23,8 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingTagline, setIsGeneratingTagline] = useState(false);
   const [isExtractingData, setIsExtractingData] = useState(false);
-  const [quoteUrl, setQuoteUrl] = useState('');
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
     title: `Oferta Especial - ${destination.name}`,
@@ -53,21 +58,55 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
     }));
   };
 
-  const handleExtractFromUrl = async () => {
-    if (!quoteUrl.trim()) {
-      toast.error('Cole a URL da cotação primeiro');
+  // Extract text from PDF file
+  const extractTextFromPdf = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    
+    let fullText = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(' ');
+      fullText += pageText + '\n\n';
+    }
+    
+    return fullText.trim();
+  };
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      toast.error('Por favor, selecione um arquivo PDF');
       return;
     }
 
+    setPdfFile(file);
     setIsExtractingData(true);
+
     try {
-      const response = await supabase.functions.invoke('extract-quote-data', {
-        body: { url: quoteUrl.trim() }
+      // Extract text from PDF
+      toast.info('Extraindo texto do PDF...');
+      const text = await extractTextFromPdf(file);
+
+      if (text.length < 50) {
+        toast.error('O PDF não contém texto suficiente para extração');
+        setIsExtractingData(false);
+        return;
+      }
+
+      // Send to AI for extraction
+      toast.info('Analisando dados com IA...');
+      const { data, error } = await supabase.functions.invoke('extract-quote-pdf', {
+        body: { pdfText: text }
       });
 
-      if (response.error) throw response.error;
+      if (error) throw error;
 
-      const data = response.data;
       if (data) {
         setFormData(prev => ({
           ...prev,
@@ -84,10 +123,32 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
       }
     } catch (error: any) {
       console.error('Error extracting data:', error);
-      toast.error(error.message || 'Erro ao extrair dados da URL');
+      toast.error(error.message || 'Erro ao extrair dados do PDF');
     } finally {
       setIsExtractingData(false);
     }
+  };
+
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      toast.error('Por favor, arraste um arquivo PDF');
+      return;
+    }
+
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    if (fileInputRef.current) {
+      fileInputRef.current.files = dataTransfer.files;
+      handleFileSelect({ target: { files: dataTransfer.files } } as any);
+    }
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
   };
 
   const handleGenerateTagline = async () => {
@@ -183,44 +244,62 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* AI URL Extraction */}
+          {/* PDF Upload Extraction */}
           <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
             <div className="flex items-center gap-2 mb-3">
               <Wand2 className="w-5 h-5 text-primary" />
               <span className="font-medium text-foreground">Preenchimento Automático com IA</span>
             </div>
             <p className="text-sm text-muted-foreground mb-3">
-              Cole o link de uma cotação de viagem e a IA irá extrair automaticamente todos os dados.
+              Anexe o PDF do orçamento e a IA irá extrair automaticamente todos os dados.
             </p>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="url"
-                  value={quoteUrl}
-                  onChange={(e) => setQuoteUrl(e.target.value)}
-                  placeholder="https://exemplo.com/cotacao-viagem"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={handleExtractFromUrl}
-                disabled={isExtractingData || !quoteUrl.trim()}
-                className="px-4 py-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
-              >
-                {isExtractingData ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Extraindo...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    Extrair
-                  </>
-                )}
-              </button>
+            
+            <div
+              className={`border-2 border-dashed rounded-xl p-4 transition-all ${
+                isExtractingData 
+                  ? 'border-primary bg-primary/5' 
+                  : 'border-border hover:border-primary/50 hover:bg-primary/5'
+              }`}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+            >
+              {isExtractingData ? (
+                <div className="text-center py-2">
+                  <Loader2 className="w-8 h-8 mx-auto mb-2 text-primary animate-spin" />
+                  <p className="text-sm text-foreground">Extraindo dados do PDF...</p>
+                </div>
+              ) : (
+                <div className="text-center">
+                  {pdfFile ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <FileText className="w-5 h-5 text-primary" />
+                      <span className="text-foreground text-sm">{pdfFile.name}</span>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Arraste o PDF aqui ou clique para selecionar
+                      </p>
+                    </>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    id="pdf-upload-modal"
+                  />
+                  <label
+                    htmlFor="pdf-upload-modal"
+                    className="inline-flex items-center gap-2 px-4 py-2 mt-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer text-sm"
+                  >
+                    <Upload className="w-4 h-4" />
+                    {pdfFile ? 'Selecionar outro PDF' : 'Selecionar PDF'}
+                  </label>
+                </div>
+              )}
             </div>
           </div>
 
