@@ -1,47 +1,42 @@
-import { useState, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { 
-  Loader2, X, Upload, FileText, Save, Plus, Trash2, 
-  Sparkles, MapPin, Calendar, Users, Hotel, Plane, Check
-} from 'lucide-react';
+import { Loader2, X, Upload, FileText, Check, Sparkles } from 'lucide-react';
+import * as pdfjsLib from 'pdfjs-dist';
 
-interface ExtractedData {
-  destination_name: string | null;
-  title: string | null;
-  total_price: number | null;
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+interface ExtractedQuoteData {
+  destination_name: string;
+  title: string;
+  total_price: number;
   cash_price: number | null;
   installments: number | null;
   installment_value: number | null;
-  inclusions: string[] | null;
+  inclusions: string[];
   valid_until: string | null;
-  description: string | null;
-  tagline: string | null;
-  travel_dates?: {
+  description: string;
+  tagline: string;
+  travel_dates: {
     start: string | null;
     end: string | null;
   };
-  travelers?: {
+  travelers: {
     adults: number | null;
     children: number | null;
   };
-  hotel?: {
+  hotel: {
     name: string | null;
     room_type: string | null;
     meal_plan: string | null;
   };
-  flights?: {
+  flights: {
     origin: string | null;
     destination: string | null;
     airline: string | null;
   };
-  additional_services?: string[];
-}
-
-interface Destination {
-  id: string;
-  name: string;
-  image_url: string | null;
+  additional_services: string[];
 }
 
 interface CreateOfferFromQuoteProps {
@@ -50,327 +45,238 @@ interface CreateOfferFromQuoteProps {
 }
 
 export const CreateOfferFromQuote = ({ onClose, onSuccess }: CreateOfferFromQuoteProps) => {
-  const [step, setStep] = useState<'upload' | 'review' | 'save'>('upload');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
-  const [pdfText, setPdfText] = useState('');
-  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [step, setStep] = useState<'upload' | 'review' | 'saving'>('upload');
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractedData, setExtractedData] = useState<ExtractedQuoteData | null>(null);
   const [selectedDestinationId, setSelectedDestinationId] = useState<string>('');
-  
-  // Form data for editing
-  const [formData, setFormData] = useState({
-    title: '',
-    tagline: '',
-    total_price: '',
-    cash_price: '',
-    installments: '',
-    installment_value: '',
-    inclusions: [''],
-    valid_until: '',
-  });
+  const [destinations, setDestinations] = useState<{ id: string; name: string }[]>([]);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleExtract = useCallback(async () => {
-    if (!pdfText.trim() || pdfText.length < 50) {
-      toast.error('Cole o conteúdo do orçamento (mínimo 50 caracteres)');
-      return;
-    }
-
-    setIsProcessing(true);
-    toast.loading('Extraindo dados com IA...');
-
-    try {
-      const { data, error } = await supabase.functions.invoke('extract-quote-pdf', {
-        body: { pdfText }
-      });
-
-      toast.dismiss();
-
-      if (error) {
-        console.error('Error extracting data:', error);
-        toast.error('Erro ao extrair dados');
-        return;
-      }
-
-      if (data.error) {
-        toast.error(data.error);
-        return;
-      }
-
-      setExtractedData(data);
-      
-      setFormData({
-        title: data.title || '',
-        tagline: data.tagline || '',
-        total_price: data.total_price?.toString() || '',
-        cash_price: data.cash_price?.toString() || '',
-        installments: data.installments?.toString() || '',
-        installment_value: data.installment_value?.toString() || '',
-        inclusions: data.inclusions?.length > 0 ? data.inclusions : [''],
-        valid_until: data.valid_until || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
-      });
-
-      await loadDestinations(data.destination_name);
-      setStep('review');
-      toast.success('Dados extraídos com sucesso!');
-
-    } catch (error) {
-      toast.dismiss();
-      console.error('Error:', error);
-      toast.error('Erro ao extrair dados');
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [pdfText]);
-
-  const loadDestinations = async (suggestedName?: string) => {
-    const { data, error } = await supabase
+  // Fetch destinations for selection
+  const fetchDestinations = async () => {
+    const { data } = await supabase
       .from('destinations')
-      .select('id, name, image_url')
+      .select('id, name')
       .eq('is_active', true)
       .order('name');
+    if (data) setDestinations(data);
+  };
 
-    if (error) {
-      console.error('Error loading destinations:', error);
+  // Extract text from PDF file
+  const extractTextFromPdf = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    
+    let fullText = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(' ');
+      fullText += pageText + '\n\n';
+    }
+    
+    return fullText.trim();
+  };
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      toast.error('Por favor, selecione um arquivo PDF');
       return;
     }
 
-    setDestinations(data || []);
+    setPdfFile(file);
+    setIsExtracting(true);
 
-    // Try to auto-match destination
-    if (suggestedName && data) {
-      const normalizedSuggestion = suggestedName.toLowerCase().trim();
-      const match = data.find(d => 
-        d.name.toLowerCase().includes(normalizedSuggestion) ||
-        normalizedSuggestion.includes(d.name.toLowerCase())
-      );
-      if (match) {
-        setSelectedDestinationId(match.id);
+    try {
+      // Extract text from PDF
+      toast.info('Extraindo texto do PDF...');
+      const text = await extractTextFromPdf(file);
+
+      if (text.length < 50) {
+        toast.error('O PDF não contém texto suficiente para extração');
+        setIsExtracting(false);
+        return;
       }
+
+      // Send to AI for extraction
+      toast.info('Analisando dados com IA...');
+      const { data, error } = await supabase.functions.invoke('extract-quote-pdf', {
+        body: { pdfText: text }
+      });
+
+      if (error) throw error;
+
+      setExtractedData(data);
+      await fetchDestinations();
+      setStep('review');
+      toast.success('Dados extraídos com sucesso!');
+    } catch (error) {
+      console.error('Error extracting quote:', error);
+      toast.error('Erro ao extrair dados do PDF');
+    } finally {
+      setIsExtracting(false);
     }
   };
 
-  const handleAddInclusion = () => {
-    setFormData(prev => ({
-      ...prev,
-      inclusions: [...prev.inclusions, '']
-    }));
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      toast.error('Por favor, arraste um arquivo PDF');
+      return;
+    }
+
+    // Create a DataTransfer to set the file input
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    if (fileInputRef.current) {
+      fileInputRef.current.files = dataTransfer.files;
+      handleFileSelect({ target: { files: dataTransfer.files } } as any);
+    }
   };
 
-  const handleRemoveInclusion = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      inclusions: prev.inclusions.filter((_, i) => i !== index)
-    }));
-  };
-
-  const handleInclusionChange = (index: number, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      inclusions: prev.inclusions.map((inc, i) => i === index ? value : inc)
-    }));
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
   };
 
   const handleSave = async () => {
-    if (!selectedDestinationId) {
-      toast.error('Selecione um destino');
+    if (!extractedData || !selectedDestinationId) {
+      toast.error('Selecione um destino para continuar');
       return;
     }
 
-    if (!formData.title || !formData.total_price) {
-      toast.error('Título e valor total são obrigatórios');
-      return;
-    }
+    setStep('saving');
 
-    setIsSaving(true);
     try {
+      // Calculate valid_until if not present (default to 30 days from now)
+      const validUntil = extractedData.valid_until 
+        ? new Date(extractedData.valid_until).toISOString()
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
       const { error } = await supabase
         .from('promotional_offers')
         .insert({
           destination_id: selectedDestinationId,
-          title: formData.title,
-          tagline: formData.tagline || null,
-          total_price: parseFloat(formData.total_price),
-          cash_price: formData.cash_price ? parseFloat(formData.cash_price) : null,
-          installments: formData.installments ? parseInt(formData.installments) : null,
-          installment_value: formData.installment_value ? parseFloat(formData.installment_value) : null,
-          inclusions: formData.inclusions.filter(i => i.trim()),
-          valid_from: new Date().toISOString(),
-          valid_until: formData.valid_until ? new Date(formData.valid_until).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          title: extractedData.title,
+          tagline: extractedData.tagline,
+          total_price: extractedData.total_price,
+          cash_price: extractedData.cash_price,
+          installments: extractedData.installments,
+          installment_value: extractedData.installment_value,
+          inclusions: extractedData.inclusions,
+          valid_until: validUntil,
           is_active: true,
         });
 
       if (error) throw error;
-      
+
       toast.success('Oferta criada com sucesso!');
       onSuccess();
       onClose();
     } catch (error) {
       console.error('Error saving offer:', error);
       toast.error('Erro ao salvar oferta');
-    } finally {
-      setIsSaving(false);
+      setStep('review');
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm" onClick={onClose}>
-      <div 
-        className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-card border border-border rounded-2xl p-6" 
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button 
-          onClick={onClose} 
-          className="absolute top-4 right-4 p-2 rounded-full bg-secondary hover:bg-muted transition-colors"
-        >
+      <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-card border border-border rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full bg-secondary hover:bg-muted transition-colors">
           <X className="w-5 h-5" />
         </button>
 
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20">
+          <div className="p-3 rounded-xl bg-gradient-to-r from-primary/20 to-accent/20">
             <FileText className="w-6 h-6 text-primary" />
           </div>
           <div>
             <h2 className="font-serif text-2xl font-bold text-foreground">
-              Nova Oferta via PDF
+              Criar Oferta de Orçamento
             </h2>
-            <p className="text-sm text-muted-foreground">
-              Extraia dados automaticamente de um orçamento PDF
+            <p className="text-muted-foreground text-sm">
+              Faça upload do PDF para extrair automaticamente os dados
             </p>
           </div>
         </div>
 
-        {/* Step indicator */}
-        <div className="flex items-center gap-2 mb-6">
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${step === 'upload' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
-            <Upload className="w-4 h-4" />
-            Upload
-          </div>
-          <div className="w-8 h-px bg-border" />
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${step === 'review' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
-            <FileText className="w-4 h-4" />
-            Revisar
-          </div>
-          <div className="w-8 h-px bg-border" />
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${step === 'save' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
-            <Check className="w-4 h-4" />
-            Salvar
-          </div>
-        </div>
-
-        {/* Upload Step */}
         {step === 'upload' && (
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Cole o conteúdo do orçamento (PDF/texto)
-              </label>
-              <textarea
-                value={pdfText}
-                onChange={(e) => setPdfText(e.target.value)}
-                placeholder="Abra o PDF do orçamento, selecione todo o texto (Ctrl+A), copie (Ctrl+C) e cole aqui..."
-                rows={10}
-                className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground resize-none font-mono text-sm"
-                disabled={isProcessing}
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                Mínimo 50 caracteres • {pdfText.length} caracteres
-              </p>
-            </div>
-
-            <button
-              onClick={handleExtract}
-              disabled={isProcessing || pdfText.length < 50}
-              className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50"
+          <div className="space-y-4">
+            <div
+              className={`border-2 border-dashed rounded-2xl p-8 transition-all ${
+                isExtracting 
+                  ? 'border-primary bg-primary/5' 
+                  : 'border-border hover:border-primary/50 hover:bg-primary/5'
+              }`}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
             >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Extraindo com IA...
-                </>
+              {isExtracting ? (
+                <div className="text-center">
+                  <Loader2 className="w-12 h-12 mx-auto mb-4 text-primary animate-spin" />
+                  <p className="text-foreground font-medium">Processando PDF...</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Extraindo texto e analisando com IA
+                  </p>
+                </div>
               ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  Extrair Dados com IA
-                </>
+                <div className="text-center">
+                  <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-foreground font-medium mb-2">
+                    Arraste o PDF aqui ou clique para selecionar
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Aceita arquivos PDF de cotações de viagem
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    id="pdf-upload"
+                  />
+                  <label
+                    htmlFor="pdf-upload"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Selecionar PDF
+                  </label>
+                </div>
               )}
-            </button>
-
-            <div className="p-4 rounded-xl bg-secondary/50 border border-border">
-              <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-primary" />
-                O que será extraído automaticamente:
-              </h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Destino da viagem</li>
-                <li>• Valores (total, à vista, parcelado)</li>
-                <li>• O que está incluso (hotel, aéreo, transfer, etc.)</li>
-                <li>• Datas e informações do hotel</li>
-              </ul>
             </div>
+
+            {pdfFile && !isExtracting && (
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary">
+                <FileText className="w-5 h-5 text-primary" />
+                <span className="text-foreground">{pdfFile.name}</span>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Review Step */}
         {step === 'review' && extractedData && (
           <div className="space-y-6">
-            {/* Extracted Summary */}
-            {(extractedData.hotel || extractedData.flights || extractedData.travelers) && (
-              <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-3">
-                <h4 className="font-medium text-foreground flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-primary" />
-                  Informações Detectadas
-                </h4>
-                
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  {extractedData.destination_name && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <MapPin className="w-4 h-4 text-primary" />
-                      <span>{extractedData.destination_name}</span>
-                    </div>
-                  )}
-                  
-                  {extractedData.travel_dates?.start && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Calendar className="w-4 h-4 text-primary" />
-                      <span>{extractedData.travel_dates.start} a {extractedData.travel_dates.end}</span>
-                    </div>
-                  )}
-                  
-                  {extractedData.travelers?.adults && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Users className="w-4 h-4 text-primary" />
-                      <span>
-                        {extractedData.travelers.adults} adulto(s)
-                        {extractedData.travelers.children ? `, ${extractedData.travelers.children} criança(s)` : ''}
-                      </span>
-                    </div>
-                  )}
-                  
-                  {extractedData.hotel?.name && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Hotel className="w-4 h-4 text-primary" />
-                      <span>{extractedData.hotel.name}</span>
-                    </div>
-                  )}
-                  
-                  {extractedData.flights?.airline && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Plane className="w-4 h-4 text-primary" />
-                      <span>
-                        {extractedData.flights.airline}
-                        {extractedData.flights.origin && ` (${extractedData.flights.origin} → ${extractedData.flights.destination})`}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            {/* Success indicator */}
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/10 border border-primary/20">
+              <Check className="w-5 h-5 text-primary" />
+              <span className="text-foreground">Dados extraídos com sucesso! Revise e confirme.</span>
+            </div>
 
             {/* Destination Selection */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
-                Vincular ao Destino *
+                Vincular a Destino <span className="text-destructive">*</span>
               </label>
               <select
                 value={selectedDestinationId}
@@ -384,150 +290,121 @@ export const CreateOfferFromQuote = ({ onClose, onSuccess }: CreateOfferFromQuot
                   </option>
                 ))}
               </select>
-              {extractedData.destination_name && !selectedDestinationId && (
-                <p className="mt-1 text-xs text-amber-500">
-                  Destino detectado: "{extractedData.destination_name}" - selecione o destino correspondente
+              <p className="text-xs text-muted-foreground mt-1">
+                Destino detectado: <span className="font-medium">{extractedData.destination_name}</span>
+              </p>
+            </div>
+
+            {/* Extracted Data Preview */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-xl bg-secondary/50">
+                <p className="text-sm text-muted-foreground mb-1">Título</p>
+                <p className="text-foreground font-medium">{extractedData.title}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-secondary/50">
+                <p className="text-sm text-muted-foreground mb-1">Valor Total</p>
+                <p className="text-foreground font-medium">
+                  R$ {extractedData.total_price?.toLocaleString('pt-BR')}
                 </p>
+              </div>
+              {extractedData.cash_price && (
+                <div className="p-4 rounded-xl bg-secondary/50">
+                  <p className="text-sm text-muted-foreground mb-1">Valor à Vista</p>
+                  <p className="text-foreground font-medium">
+                    R$ {extractedData.cash_price?.toLocaleString('pt-BR')}
+                  </p>
+                </div>
+              )}
+              {extractedData.installments && (
+                <div className="p-4 rounded-xl bg-secondary/50">
+                  <p className="text-sm text-muted-foreground mb-1">Parcelamento</p>
+                  <p className="text-foreground font-medium">
+                    {extractedData.installments}x de R$ {extractedData.installment_value?.toLocaleString('pt-BR')}
+                  </p>
+                </div>
               )}
             </div>
 
-            {/* Title */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Título da Oferta *</label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground"
-                placeholder="Ex: 7 noites em João Pessoa + Aéreo + Transfer"
-              />
-            </div>
-
             {/* Tagline */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Legenda Chamativa</label>
-              <textarea
-                value={formData.tagline}
-                onChange={(e) => setFormData(prev => ({ ...prev, tagline: e.target.value }))}
-                placeholder="Ex: Realize o sonho de conhecer o paraíso!"
-                rows={2}
-                className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground resize-none"
-              />
-            </div>
-
-            {/* Prices */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Valor Total (R$) *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.total_price}
-                  onChange={(e) => setFormData(prev => ({ ...prev, total_price: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground"
-                />
+            {extractedData.tagline && (
+              <div className="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <p className="text-sm text-muted-foreground">Legenda Sugerida</p>
+                </div>
+                <p className="text-foreground italic">"{extractedData.tagline}"</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Valor à Vista (R$)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.cash_price}
-                  onChange={(e) => setFormData(prev => ({ ...prev, cash_price: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground"
-                />
-              </div>
-            </div>
-
-            {/* Installments */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Número de Parcelas</label>
-                <input
-                  type="number"
-                  value={formData.installments}
-                  onChange={(e) => setFormData(prev => ({ ...prev, installments: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Valor da Parcela (R$)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.installment_value}
-                  onChange={(e) => setFormData(prev => ({ ...prev, installment_value: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground"
-                />
-              </div>
-            </div>
-
-            {/* Validity */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Válido até</label>
-              <input
-                type="datetime-local"
-                value={formData.valid_until}
-                onChange={(e) => setFormData(prev => ({ ...prev, valid_until: e.target.value }))}
-                className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground"
-              />
-            </div>
+            )}
 
             {/* Inclusions */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-foreground">O que está incluso</label>
-                <button
-                  type="button"
-                  onClick={handleAddInclusion}
-                  className="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
-                >
-                  <Plus className="w-4 h-4" />
-                  Adicionar
-                </button>
+            {extractedData.inclusions?.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-foreground mb-2">O que está incluso</p>
+                <div className="flex flex-wrap gap-2">
+                  {extractedData.inclusions.map((item, index) => (
+                    <span key={index} className="px-3 py-1 rounded-full bg-secondary text-sm text-foreground">
+                      {item}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <div className="space-y-2">
-                {formData.inclusions.map((inclusion, index) => (
-                  <div key={index} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={inclusion}
-                      onChange={(e) => handleInclusionChange(index, e.target.value)}
-                      placeholder="Ex: Passagem aérea, Hotel 5 estrelas..."
-                      className="flex-1 px-4 py-3 rounded-xl bg-secondary border border-border text-foreground"
-                    />
-                    {formData.inclusions.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveInclusion(index)}
-                        className="p-3 rounded-xl bg-destructive/10 hover:bg-destructive/20 text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
+            )}
+
+            {/* Hotel & Flight info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {extractedData.hotel?.name && (
+                <div className="p-4 rounded-xl bg-secondary/50">
+                  <p className="text-sm text-muted-foreground mb-1">Hospedagem</p>
+                  <p className="text-foreground font-medium">{extractedData.hotel.name}</p>
+                  {extractedData.hotel.room_type && (
+                    <p className="text-sm text-muted-foreground">{extractedData.hotel.room_type}</p>
+                  )}
+                  {extractedData.hotel.meal_plan && (
+                    <p className="text-sm text-muted-foreground">{extractedData.hotel.meal_plan}</p>
+                  )}
+                </div>
+              )}
+              {extractedData.flights?.airline && (
+                <div className="p-4 rounded-xl bg-secondary/50">
+                  <p className="text-sm text-muted-foreground mb-1">Voo</p>
+                  <p className="text-foreground font-medium">{extractedData.flights.airline}</p>
+                  {extractedData.flights.origin && extractedData.flights.destination && (
+                    <p className="text-sm text-muted-foreground">
+                      {extractedData.flights.origin} → {extractedData.flights.destination}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-3 pt-4 border-t border-border">
               <button
-                type="button"
-                onClick={() => setStep('upload')}
+                onClick={() => {
+                  setStep('upload');
+                  setPdfFile(null);
+                  setExtractedData(null);
+                }}
                 className="flex-1 px-6 py-3 rounded-xl border border-border text-foreground hover:bg-secondary transition-colors"
               >
                 Voltar
               </button>
               <button
                 onClick={handleSave}
-                disabled={isSaving || !selectedDestinationId}
-                className="flex-1 btn-primary flex items-center justify-center gap-2 disabled:opacity-50"
+                disabled={!selectedDestinationId}
+                className="flex-1 btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <Check className="w-4 h-4" />
                 Criar Oferta
               </button>
             </div>
+          </div>
+        )}
+
+        {step === 'saving' && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+            <p className="text-foreground font-medium">Salvando oferta...</p>
           </div>
         )}
       </div>
