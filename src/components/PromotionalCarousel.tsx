@@ -197,7 +197,7 @@ export const PromotionalCarousel = () => {
 
   const handleViewAllOffers = () => {
     handleClose();
-    navigate('/explorar?ofertas=true');
+    navigate('/ofertas');
   };
 
   const handleClose = () => {
