@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { X, Loader2, Sparkles, Plus, Trash2 } from 'lucide-react';
+import { X, Loader2, Sparkles, Plus, Trash2, Link, Wand2 } from 'lucide-react';
 
 interface Destination {
   id: string;
@@ -18,6 +18,8 @@ interface PromotionalOfferModalProps {
 export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: PromotionalOfferModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingTagline, setIsGeneratingTagline] = useState(false);
+  const [isExtractingData, setIsExtractingData] = useState(false);
+  const [quoteUrl, setQuoteUrl] = useState('');
   
   const [formData, setFormData] = useState({
     title: `Oferta Especial - ${destination.name}`,
@@ -49,6 +51,43 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
       ...prev,
       inclusions: prev.inclusions.map((inc, i) => i === index ? value : inc)
     }));
+  };
+
+  const handleExtractFromUrl = async () => {
+    if (!quoteUrl.trim()) {
+      toast.error('Cole a URL da cotação primeiro');
+      return;
+    }
+
+    setIsExtractingData(true);
+    try {
+      const response = await supabase.functions.invoke('extract-quote-data', {
+        body: { url: quoteUrl.trim() }
+      });
+
+      if (response.error) throw response.error;
+
+      const data = response.data;
+      if (data) {
+        setFormData(prev => ({
+          ...prev,
+          title: data.title || prev.title,
+          tagline: data.tagline || prev.tagline,
+          total_price: data.total_price ? String(data.total_price) : prev.total_price,
+          cash_price: data.cash_price ? String(data.cash_price) : prev.cash_price,
+          installments: data.installments ? String(data.installments) : prev.installments,
+          installment_value: data.installment_value ? String(data.installment_value) : prev.installment_value,
+          inclusions: data.inclusions?.length > 0 ? data.inclusions : prev.inclusions,
+          valid_until: data.valid_until ? data.valid_until.split('T')[0] + 'T23:59' : prev.valid_until,
+        }));
+        toast.success('Dados extraídos com sucesso! Revise e ajuste se necessário.');
+      }
+    } catch (error: any) {
+      console.error('Error extracting data:', error);
+      toast.error(error.message || 'Erro ao extrair dados da URL');
+    } finally {
+      setIsExtractingData(false);
+    }
   };
 
   const handleGenerateTagline = async () => {
@@ -144,6 +183,47 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* AI URL Extraction */}
+          <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+            <div className="flex items-center gap-2 mb-3">
+              <Wand2 className="w-5 h-5 text-primary" />
+              <span className="font-medium text-foreground">Preenchimento Automático com IA</span>
+            </div>
+            <p className="text-sm text-muted-foreground mb-3">
+              Cole o link de uma cotação de viagem e a IA irá extrair automaticamente todos os dados.
+            </p>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="url"
+                  value={quoteUrl}
+                  onChange={(e) => setQuoteUrl(e.target.value)}
+                  placeholder="https://exemplo.com/cotacao-viagem"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleExtractFromUrl}
+                disabled={isExtractingData || !quoteUrl.trim()}
+                className="px-4 py-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {isExtractingData ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Extraindo...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Extrair
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">Título da Oferta *</label>

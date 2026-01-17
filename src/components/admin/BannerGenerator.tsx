@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { 
   Loader2, Image, Download, Copy, Check, 
   Smartphone, MessageCircle, X, Sparkles,
-  History, Trash2, Clock, Share2, ExternalLink
+  History, Trash2, Clock, Share2, ExternalLink, Link, Wand2
 } from 'lucide-react';
 
 interface PromotionalOffer {
@@ -57,6 +57,9 @@ export const BannerGenerator = ({ offer, onClose }: BannerGeneratorProps) => {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [offerLink, setOfferLink] = useState<string>('');
+  const [quoteUrl, setQuoteUrl] = useState('');
+  const [isExtractingQuote, setIsExtractingQuote] = useState(false);
+  const [extractedQuoteData, setExtractedQuoteData] = useState<any>(null);
 
   useEffect(() => {
     if (showHistory) {
@@ -85,6 +88,35 @@ export const BannerGenerator = ({ offer, onClose }: BannerGeneratorProps) => {
 
   const formatPrice = (value: number) => {
     return value.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  };
+
+  const handleExtractQuoteData = async () => {
+    if (!quoteUrl.trim()) {
+      toast.error('Cole a URL da cotação primeiro');
+      return;
+    }
+
+    setIsExtractingQuote(true);
+    try {
+      const response = await supabase.functions.invoke('extract-quote-data', {
+        body: { url: quoteUrl.trim() }
+      });
+
+      if (response.error) throw response.error;
+
+      const data = response.data;
+      if (data) {
+        setExtractedQuoteData(data);
+        // Set the offer link to use in caption
+        setOfferLink(quoteUrl.trim());
+        toast.success('Dados da cotação extraídos! Use para gerar a legenda.');
+      }
+    } catch (error: any) {
+      console.error('Error extracting quote data:', error);
+      toast.error(error.message || 'Erro ao extrair dados da URL');
+    } finally {
+      setIsExtractingQuote(false);
+    }
   };
 
   const generateBanner = async () => {
@@ -239,27 +271,38 @@ Focus on creating a breathtaking photo composition with elegant golden decorativ
   const generateCaption = async () => {
     setIsGeneratingCaption(true);
     try {
-      const inclusionsList = offer.inclusions.length > 0 
-        ? offer.inclusions.map(inc => `✅ ${inc}`).join('\n')
+      // Use extracted data if available, otherwise use offer data
+      const dataSource = extractedQuoteData || offer;
+      const destinationName = extractedQuoteData?.destination_name || offer.destinations?.name || 'Destino';
+      const title = extractedQuoteData?.title || offer.title;
+      const totalPrice = extractedQuoteData?.total_price || offer.total_price;
+      const cashPrice = extractedQuoteData?.cash_price || offer.cash_price;
+      const installments = extractedQuoteData?.installments || offer.installments;
+      const installmentValue = extractedQuoteData?.installment_value || offer.installment_value;
+      const inclusions = extractedQuoteData?.inclusions || offer.inclusions;
+      const description = extractedQuoteData?.description || offer.destinations?.description || '';
+      const validUntil = extractedQuoteData?.valid_until || offer.valid_until;
+
+      const inclusionsList = inclusions && inclusions.length > 0 
+        ? inclusions.map((inc: string) => `✅ ${inc}`).join('\n')
         : '';
 
       // Cria uma breve descrição do destino (primeiras 2 frases ou 150 caracteres)
-      const fullDescription = offer.destinations?.description || '';
-      const briefDescription = fullDescription.length > 150 
-        ? fullDescription.substring(0, 150).replace(/\s+\S*$/, '') + '...'
-        : fullDescription;
+      const briefDescription = description.length > 150 
+        ? description.substring(0, 150).replace(/\s+\S*$/, '') + '...'
+        : description;
 
-      let captionText = `🌴 *${offer.destinations?.name?.toUpperCase()}* 🌴
+      let captionText = `🌴 *${destinationName.toUpperCase()}* 🌴
 
-${briefDescription ? `✨ ${briefDescription}\n\n` : ''}${offer.title}
+${briefDescription ? `✨ ${briefDescription}\n\n` : ''}${title}
 
-💰 *A partir de R$ ${formatPrice(offer.total_price)}*
-${offer.cash_price ? `💵 À vista: R$ ${formatPrice(offer.cash_price)}` : ''}
-${offer.installments ? `📦 Ou ${offer.installments}x de R$ ${formatPrice(offer.installment_value || 0)}` : ''}
+💰 *A partir de R$ ${formatPrice(totalPrice)}*
+${cashPrice ? `💵 À vista: R$ ${formatPrice(cashPrice)}` : ''}
+${installments ? `📦 Ou ${installments}x de R$ ${formatPrice(installmentValue || 0)}` : ''}
 
 ${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
 ⏰ *Oferta por tempo limitado!*
-📅 Válido até ${new Date(offer.valid_until).toLocaleDateString('pt-BR')}`;
+📅 Válido até ${new Date(validUntil).toLocaleDateString('pt-BR')}`;
 
       // Adiciona o link apenas se foi preenchido
       if (offerLink.trim()) {
@@ -538,6 +581,49 @@ ${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
           <div className="grid md:grid-cols-2 gap-6">
             {/* Left Column - Controls */}
             <div className="space-y-6">
+              {/* AI URL Extraction for Caption Data */}
+              <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <Wand2 className="w-5 h-5 text-primary" />
+                  <span className="font-medium text-foreground">Extrair Dados de Cotação</span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Cole o link de uma cotação para preencher automaticamente os dados da legenda.
+                </p>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input
+                      type="url"
+                      value={quoteUrl}
+                      onChange={(e) => setQuoteUrl(e.target.value)}
+                      placeholder="https://exemplo.com/cotacao-viagem"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground text-sm"
+                    />
+                  </div>
+                  <button
+                    onClick={handleExtractQuoteData}
+                    disabled={isExtractingQuote || !quoteUrl.trim()}
+                    className="px-4 py-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2 text-sm"
+                  >
+                    {isExtractingQuote ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4" />
+                    )}
+                    Extrair
+                  </button>
+                </div>
+                {extractedQuoteData && (
+                  <div className="mt-3 p-3 rounded-lg bg-accent/10 border border-accent/20">
+                    <p className="text-xs text-accent font-medium mb-1">✓ Dados extraídos:</p>
+                    <p className="text-xs text-muted-foreground">
+                      {extractedQuoteData.destination_name} - R$ {extractedQuoteData.total_price?.toLocaleString('pt-BR')}
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* Format Selection */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-3">
