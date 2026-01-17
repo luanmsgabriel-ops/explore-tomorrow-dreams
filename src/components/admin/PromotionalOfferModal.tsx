@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { X, Loader2, Sparkles, Plus, Trash2, Wand2, Upload, FileText, Check } from 'lucide-react';
+import { X, Loader2, Sparkles, Plus, Trash2, Wand2, Upload, FileText, Check, PlusCircle } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Configure PDF.js worker with proper version
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString();
 
 interface Destination {
   id: string;
@@ -32,6 +35,8 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [extractedDestinationName, setExtractedDestinationName] = useState<string>('');
   const [isCreatingDestination, setIsCreatingDestination] = useState(false);
+  const [showNewDestinationForm, setShowNewDestinationForm] = useState(false);
+  const [newDestinationName, setNewDestinationName] = useState('');
   
   const [formData, setFormData] = useState({
     title: destination ? `Oferta Especial - ${destination.name}` : '',
@@ -80,22 +85,27 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
     }));
   };
 
-  // Extract text from PDF file
+  // Extract text from PDF file using pdfjs-dist
   const extractTextFromPdf = async (file: File): Promise<string> => {
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    
-    let fullText = '';
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(' ');
-      fullText += pageText + '\n\n';
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      
+      let fullText = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
+        fullText += pageText + '\n\n';
+      }
+      
+      return fullText.trim();
+    } catch (error) {
+      console.error('PDF.js extraction error:', error);
+      throw new Error('Falha ao extrair texto do PDF');
     }
-    
-    return fullText.trim();
   };
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -398,81 +408,129 @@ export const PromotionalOfferModal = ({ destination, onClose, onSuccess }: Promo
                   className="hidden"
                   id="pdf-upload-modal"
                 />
-                <div className="flex items-center justify-center gap-2 mt-3">
-                  <label
-                    htmlFor="pdf-upload-modal"
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary text-foreground hover:bg-secondary/80 transition-colors cursor-pointer text-sm"
-                  >
-                    <Upload className="w-4 h-4" />
-                    {pdfFile ? 'Trocar PDF' : 'Selecionar PDF'}
-                  </label>
-                  
-                  {pdfFile && pdfText && (
-                    <button
-                      type="button"
-                      onClick={handleExtractData}
-                      disabled={isExtractingData}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm disabled:opacity-50"
-                    >
-                      {isExtractingData ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Extraindo...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-4 h-4" />
-                          Extrair Dados
-                        </>
-                      )}
-                    </button>
-                  )}
-                </div>
+                <label
+                  htmlFor="pdf-upload-modal"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary text-foreground hover:bg-secondary/80 transition-colors cursor-pointer text-sm mt-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  {pdfFile ? 'Trocar PDF' : 'Selecionar PDF'}
+                </label>
               </div>
             </div>
-
-            {/* Show destination status after extraction */}
-            {extractedDestinationName && !selectedDestination && !destination && (
-              <div className="mt-3 p-3 rounded-lg bg-accent/10 border border-accent/20">
-                <p className="text-sm text-foreground">
-                  <span className="font-medium">Destino detectado:</span> {extractedDestinationName}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Este destino será criado automaticamente ao salvar a oferta.
-                </p>
-              </div>
-            )}
             
-            {selectedDestination && !destination && (
-              <div className="mt-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-                <p className="text-sm text-foreground flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-500" />
-                  <span className="font-medium">Destino encontrado:</span> {selectedDestination.name}
-                </p>
-              </div>
+            {/* Extract Button - Below PDF upload, always visible when PDF is loaded */}
+            {pdfFile && pdfText && (
+              <button
+                type="button"
+                onClick={handleExtractData}
+                disabled={isExtractingData}
+                className="w-full mt-3 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium disabled:opacity-50"
+              >
+                {isExtractingData ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Extraindo dados com IA...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Extrair Dados do Orçamento com IA
+                  </>
+                )}
+              </button>
             )}
           </div>
 
-          {/* Destination selector (only if no pre-selected destination and no extraction yet) */}
-          {!destination && !extractedDestinationName && destinations.length > 0 && (
+          {/* Destination selector (only if no pre-selected destination) */}
+          {!destination && (
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Selecionar Destino</label>
-              <select
-                value={selectedDestination?.id || ''}
-                onChange={(e) => {
-                  const dest = destinations.find(d => d.id === e.target.value);
-                  setSelectedDestination(dest || null);
-                  if (dest) {
-                    setFormData(prev => ({ ...prev, title: `Oferta Especial - ${dest.name}` }));
-                  }
-                }}
-                className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground"
-              >
-                <option value="">Selecione um destino ou extraia do PDF...</option>
-                {destinations.map((dest) => (
-                  <option key={dest.id} value={dest.id}>{dest.name}</option>
-                ))}
-              </select>
+              <label className="block text-sm font-medium text-foreground mb-2">Destino</label>
+              
+              {!showNewDestinationForm ? (
+                <div className="space-y-2">
+                  <select
+                    value={selectedDestination?.id || ''}
+                    onChange={(e) => {
+                      if (e.target.value === 'new') {
+                        setShowNewDestinationForm(true);
+                        setSelectedDestination(null);
+                      } else {
+                        const dest = destinations.find(d => d.id === e.target.value);
+                        setSelectedDestination(dest || null);
+                        setExtractedDestinationName('');
+                        if (dest) {
+                          setFormData(prev => ({ ...prev, title: `Oferta Especial - ${dest.name}` }));
+                        }
+                      }
+                    }}
+                    className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground"
+                  >
+                    <option value="">Selecione um destino ou extraia do PDF...</option>
+                    {destinations.map((dest) => (
+                      <option key={dest.id} value={dest.id}>{dest.name}</option>
+                    ))}
+                    <option value="new">➕ Cadastrar novo destino...</option>
+                  </select>
+                  
+                  {extractedDestinationName && !selectedDestination && (
+                    <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
+                      <p className="text-sm text-foreground">
+                        <span className="font-medium">Destino do PDF:</span> {extractedDestinationName}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Será criado automaticamente ao salvar.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newDestinationName}
+                      onChange={(e) => setNewDestinationName(e.target.value)}
+                      placeholder="Nome do novo destino"
+                      className="flex-1 px-4 py-3 rounded-xl bg-secondary border border-border text-foreground"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!newDestinationName.trim()) {
+                          toast.error('Digite o nome do destino');
+                          return;
+                        }
+                        const destId = await createDestination(newDestinationName.trim());
+                        if (destId) {
+                          await fetchDestinations();
+                          const newDest = { id: destId, name: newDestinationName.trim(), image_url: null };
+                          setSelectedDestination(newDest);
+                          setFormData(prev => ({ ...prev, title: `Oferta Especial - ${newDestinationName.trim()}` }));
+                          setNewDestinationName('');
+                          setShowNewDestinationForm(false);
+                        }
+                      }}
+                      disabled={isCreatingDestination}
+                      className="px-4 py-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    >
+                      {isCreatingDestination ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowNewDestinationForm(false);
+                        setNewDestinationName('');
+                      }}
+                      className="px-4 py-3 rounded-xl bg-secondary text-foreground hover:bg-secondary/80 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    O destino será salvo na aba Destinos após confirmação.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
