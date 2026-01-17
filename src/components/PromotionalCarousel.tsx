@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { X, ChevronLeft, ChevronRight, Clock, Sparkles } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 interface PromotionalOffer {
   id: string;
@@ -106,8 +106,10 @@ const CountdownTimer = ({ validUntil }: { validUntil: string }) => {
 
 export const PromotionalCarousel = () => {
   const [offers, setOffers] = useState<PromotionalOffer[]>([]);
+  const [totalOffers, setTotalOffers] = useState(0);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const shown = sessionStorage.getItem('promo-popup-shown');
@@ -120,6 +122,20 @@ export const PromotionalCarousel = () => {
 
   const fetchOffers = async () => {
     try {
+      // First get total count of active offers
+      const { count, error: countError } = await supabase
+        .from('promotional_offers')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .gte('valid_until', new Date().toISOString());
+
+      if (countError) {
+        console.error('Error counting offers:', countError);
+      } else {
+        setTotalOffers(count || 0);
+      }
+
+      // Then fetch only the 3 most recent
       const { data, error } = await supabase
         .from('promotional_offers')
         .select(`
@@ -137,14 +153,15 @@ export const PromotionalCarousel = () => {
         `)
         .eq('is_active', true)
         .gte('valid_until', new Date().toISOString())
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(3);
 
       if (error) {
         console.error('Error fetching promotional offers:', error);
         throw error;
       }
 
-      console.log('Promotional offers found:', data?.length || 0);
+      console.log('Promotional offers found:', data?.length || 0, 'of', count || 0, 'total');
 
       if (data && data.length > 0) {
         setOffers(data as PromotionalOffer[]);
@@ -156,6 +173,11 @@ export const PromotionalCarousel = () => {
     }
   };
 
+  const handleViewAllOffers = () => {
+    handleClose();
+    navigate('/explorar?ofertas=true');
+  };
+
   const handleClose = () => {
     setIsVisible(false);
   };
@@ -165,8 +187,15 @@ export const PromotionalCarousel = () => {
   };
 
   const handleNext = () => {
-    setCurrentIndex((prev) => (prev === offers.length - 1 ? 0 : prev + 1));
+    // If on the last offer and there are more offers, don't loop
+    if (currentIndex === offers.length - 1) {
+      return;
+    }
+    setCurrentIndex((prev) => prev + 1);
   };
+
+  const isLastOffer = currentIndex === offers.length - 1;
+  const hasMoreOffers = totalOffers > 3;
 
   if (!isVisible || offers.length === 0) return null;
 
@@ -206,19 +235,34 @@ export const PromotionalCarousel = () => {
             {/* Navigation arrows */}
             {offers.length > 1 && (
               <>
-                <button
-                  onClick={handlePrev}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors backdrop-blur-sm"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={handleNext}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors backdrop-blur-sm"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
+                {currentIndex > 0 && (
+                  <button
+                    onClick={handlePrev}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors backdrop-blur-sm"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                )}
+                {!isLastOffer && (
+                  <button
+                    onClick={handleNext}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors backdrop-blur-sm"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                )}
               </>
+            )}
+
+            {/* View More Button - shows on last offer if there are more offers */}
+            {isLastOffer && hasMoreOffers && (
+              <button
+                onClick={handleViewAllOffers}
+                className="absolute right-3 top-1/2 -translate-y-1/2 z-20 px-3 py-2 rounded-full bg-accent hover:bg-accent/90 text-accent-foreground transition-colors backdrop-blur-sm flex items-center gap-1 text-sm font-medium shadow-lg"
+              >
+                Ver mais
+                <ChevronRight className="w-4 h-4" />
+              </button>
             )}
 
             {/* Badge */}
