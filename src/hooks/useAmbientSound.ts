@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 // Check if category contains "Praia" - handles both string and array formats
 const checkIsBeachCategory = (category: string): boolean => {
@@ -28,7 +28,7 @@ const AMBIENT_SOUND_CACHE_KEY = 'beach_ambient_sound';
 export const useAutoAmbientSound = (category: string, volume: number = 0.15) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hasStartedRef = useRef(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const isGeneratingRef = useRef(false);
 
   const isBeachCategory = checkIsBeachCategory(category);
 
@@ -38,6 +38,8 @@ export const useAutoAmbientSound = (category: string, volume: number = 0.15) => 
     }
 
     const generateAndPlaySound = async () => {
+      if (isGeneratingRef.current) return;
+      
       // Check if we have cached audio
       const cachedAudio = localStorage.getItem(AMBIENT_SOUND_CACHE_KEY);
       
@@ -48,7 +50,7 @@ export const useAutoAmbientSound = (category: string, volume: number = 0.15) => 
       }
 
       // Generate new audio using ElevenLabs
-      setIsGenerating(true);
+      isGeneratingRef.current = true;
       console.log('[AmbientSound] Generating ambient sound with ElevenLabs...');
       
       try {
@@ -94,7 +96,7 @@ export const useAutoAmbientSound = (category: string, volume: number = 0.15) => 
         // Fallback to local file
         playAudioFromUrl('/sounds/ocean-waves.mp3');
       } finally {
-        setIsGenerating(false);
+        isGeneratingRef.current = false;
       }
     };
 
@@ -144,5 +146,4 @@ export const useAutoAmbientSound = (category: string, volume: number = 0.15) => 
     };
   }, [isBeachCategory, volume]);
 
-  return { isGenerating };
 };
