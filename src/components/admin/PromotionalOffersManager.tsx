@@ -3,10 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
   Loader2, Trash2, Edit, Clock, Calendar, 
-  DollarSign, Tag, Sparkles, MapPin, Save, X, Plus, Image
+  DollarSign, Tag, Sparkles, MapPin, Save, X, Plus, Image, FileText
 } from 'lucide-react';
 import { BannerGenerator } from './BannerGenerator';
-
+import { CreateOfferFromQuote } from './CreateOfferFromQuote';
 interface PromotionalOffer {
   id: string;
   destination_id: string;
@@ -33,6 +33,7 @@ export const PromotionalOffersManager = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [editingOffer, setEditingOffer] = useState<PromotionalOffer | null>(null);
   const [bannerOffer, setBannerOffer] = useState<PromotionalOffer | null>(null);
+  const [showCreateFromQuote, setShowCreateFromQuote] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingTagline, setIsGeneratingTagline] = useState(false);
 
@@ -281,8 +282,17 @@ export const PromotionalOffersManager = () => {
         <h1 className="font-serif text-3xl font-bold text-foreground">
           Ofertas Promocionais
         </h1>
-        <div className="text-sm text-muted-foreground">
-          {offers.length} oferta{offers.length !== 1 ? 's' : ''} cadastrada{offers.length !== 1 ? 's' : ''}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowCreateFromQuote(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90 transition-opacity text-sm font-medium"
+          >
+            <FileText className="w-4 h-4" />
+            Nova Oferta (Orçamento)
+          </button>
+          <div className="text-sm text-muted-foreground">
+            {offers.length} oferta{offers.length !== 1 ? 's' : ''}
+          </div>
         </div>
       </div>
 
@@ -631,6 +641,14 @@ export const PromotionalOffersManager = () => {
         <BannerGenerator 
           offer={bannerOffer} 
           onClose={() => setBannerOffer(null)} 
+        />
+      )}
+
+      {/* Create from Quote Modal */}
+      {showCreateFromQuote && (
+        <CreateOfferFromQuote
+          onClose={() => setShowCreateFromQuote(false)}
+          onSuccess={fetchOffers}
         />
       )}
     </div>
