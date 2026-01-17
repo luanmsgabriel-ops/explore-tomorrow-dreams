@@ -3,10 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
   Loader2, Trash2, Edit, Clock, Calendar, 
-  DollarSign, Tag, Sparkles, MapPin, Save, X, Plus, Image, FileText
+  DollarSign, Tag, Sparkles, MapPin, Save, X, Plus, Image
 } from 'lucide-react';
 import { BannerGenerator } from './BannerGenerator';
-import { CreateOfferFromQuote } from './CreateOfferFromQuote';
+import { PromotionalOfferModal } from './PromotionalOfferModal';
 interface PromotionalOffer {
   id: string;
   destination_id: string;
@@ -33,7 +33,9 @@ export const PromotionalOffersManager = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [editingOffer, setEditingOffer] = useState<PromotionalOffer | null>(null);
   const [bannerOffer, setBannerOffer] = useState<PromotionalOffer | null>(null);
-  const [showCreateFromQuote, setShowCreateFromQuote] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [destinations, setDestinations] = useState<{ id: string; name: string; image_url: string | null }[]>([]);
+  const [selectedDestinationForCreate, setSelectedDestinationForCreate] = useState<{ id: string; name: string; image_url: string | null } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingTagline, setIsGeneratingTagline] = useState(false);
 
@@ -52,7 +54,17 @@ export const PromotionalOffersManager = () => {
 
   useEffect(() => {
     fetchOffers();
+    fetchDestinations();
   }, []);
+
+  const fetchDestinations = async () => {
+    const { data } = await supabase
+      .from('destinations')
+      .select('id, name, image_url')
+      .eq('is_active', true)
+      .order('name');
+    if (data) setDestinations(data);
+  };
 
   const fetchOffers = async () => {
     setIsLoading(true);
@@ -284,11 +296,11 @@ export const PromotionalOffersManager = () => {
         </h1>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setShowCreateFromQuote(true)}
+            onClick={() => setShowCreateModal(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90 transition-opacity text-sm font-medium"
           >
-            <FileText className="w-4 h-4" />
-            Nova Oferta (Orçamento)
+            <Plus className="w-4 h-4" />
+            Nova Oferta
           </button>
           <div className="text-sm text-muted-foreground">
             {offers.length} oferta{offers.length !== 1 ? 's' : ''}
@@ -644,11 +656,55 @@ export const PromotionalOffersManager = () => {
         />
       )}
 
-      {/* Create from Quote Modal */}
-      {showCreateFromQuote && (
-        <CreateOfferFromQuote
-          onClose={() => setShowCreateFromQuote(false)}
-          onSuccess={fetchOffers}
+      {/* Destination Selection Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm" onClick={() => setShowCreateModal(false)}>
+          <div className="relative w-full max-w-md bg-card border border-border rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 p-2 rounded-full bg-secondary hover:bg-muted transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+
+            <h2 className="font-serif text-2xl font-bold text-foreground mb-4">
+              Selecionar Destino
+            </h2>
+            <p className="text-muted-foreground text-sm mb-6">
+              Escolha o destino para criar a oferta promocional
+            </p>
+
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {destinations.map((dest) => (
+                <button
+                  key={dest.id}
+                  onClick={() => {
+                    setSelectedDestinationForCreate(dest);
+                    setShowCreateModal(false);
+                  }}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-secondary transition-colors text-left"
+                >
+                  {dest.image_url ? (
+                    <img src={dest.image_url} alt={dest.name} className="w-12 h-12 rounded-lg object-cover" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <MapPin className="w-5 h-5 text-primary" />
+                    </div>
+                  )}
+                  <span className="font-medium text-foreground">{dest.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Offer Modal */}
+      {selectedDestinationForCreate && (
+        <PromotionalOfferModal
+          destination={selectedDestinationForCreate}
+          onClose={() => setSelectedDestinationForCreate(null)}
+          onSuccess={() => {
+            fetchOffers();
+            setSelectedDestinationForCreate(null);
+          }}
         />
       )}
     </div>
