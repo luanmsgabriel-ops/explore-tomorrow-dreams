@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
-// Ocean waves ambient sound (royalty-free, loopable)
-const OCEAN_SOUND_URL = 'https://cdn.freesound.org/previews/527/527602_2861639-lq.mp3';
+// Local ocean waves ambient sound
+const OCEAN_SOUND_URL = '/sounds/ocean-waves.mp3';
 
 // Check if category contains "Praia" - handles both string and array formats
 const checkIsBeachCategory = (category: string): boolean => {
