@@ -22,13 +22,15 @@ const checkIsBeachCategory = (category: string): boolean => {
   return categoryLower === 'praia' || categoryLower.includes('praia');
 };
 
-// Cache key for storing generated audio in localStorage
-const AMBIENT_SOUND_CACHE_KEY = 'beach_ambient_sound_v3';
+// Beach ambient sound files
+const BEACH_SOUNDS = [
+  '/sounds/beach-ambient-1.webm',
+  '/sounds/beach-ambient-2.webm',
+];
 
 export const useAutoAmbientSound = (category: string, volume: number = 0.15) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hasStartedRef = useRef(false);
-  const isGeneratingRef = useRef(false);
   const eventListenersRef = useRef<(() => void)[]>([]);
 
   const isBeachCategory = checkIsBeachCategory(category);
@@ -55,74 +57,15 @@ export const useAutoAmbientSound = (category: string, volume: number = 0.15) => 
       return;
     }
 
-    const generateAndPlaySound = async () => {
-      if (isGeneratingRef.current) return;
-      
-      // Check if we have cached audio
-      const cachedAudio = localStorage.getItem(AMBIENT_SOUND_CACHE_KEY);
-      
-      if (cachedAudio) {
-        console.log('[AmbientSound] Using cached audio');
-        playAudioFromUrl(cachedAudio);
-        return;
-      }
-
-      // Generate new audio using ElevenLabs
-      isGeneratingRef.current = true;
-      console.log('[AmbientSound] Generating ambient sound with ElevenLabs...');
-      
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-ambient-sound`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            },
-            body: JSON.stringify({
-              prompt: "Immersive tropical paradise beach soundscape: very soft and slow ocean waves gently washing onto sandy shore with a calm rhythmic pattern, multiple seagulls and tropical birds calling and singing throughout, light ocean breeze, distant sound of palm trees rustling, complete beach atmosphere for deep relaxation and meditation, ASMR quality, no harsh sounds",
-              duration: 22,
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to generate sound: ${response.status}`);
-        }
-
-        const audioBlob = await response.blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-        
-        // Cache the audio as base64
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64 = reader.result as string;
-          try {
-            localStorage.setItem(AMBIENT_SOUND_CACHE_KEY, base64);
-            console.log('[AmbientSound] Audio cached successfully');
-          } catch (e) {
-            console.log('[AmbientSound] Could not cache audio (storage full)');
-          }
-        };
-        reader.readAsDataURL(audioBlob);
-        
-        playAudioFromUrl(audioUrl);
-      } catch (error) {
-        console.error('[AmbientSound] Error generating sound:', error);
-        // Fallback to local file
-        playAudioFromUrl('/sounds/ocean-waves.mp3');
-      } finally {
-        isGeneratingRef.current = false;
-      }
-    };
-
-    const playAudioFromUrl = (url: string) => {
+    const playBeachSound = () => {
       // Stop any existing audio first
       stopAudio();
       
-      const audio = new Audio(url);
+      // Pick a random beach sound
+      const randomSound = BEACH_SOUNDS[Math.floor(Math.random() * BEACH_SOUNDS.length)];
+      console.log('[AmbientSound] Playing beach sound:', randomSound);
+      
+      const audio = new Audio(randomSound);
       audio.loop = true;
       audio.volume = volume;
       audioRef.current = audio;
@@ -159,7 +102,7 @@ export const useAutoAmbientSound = (category: string, volume: number = 0.15) => 
       startAudio();
     };
 
-    generateAndPlaySound();
+    playBeachSound();
 
     // Cleanup when component unmounts or category changes
     return () => {
