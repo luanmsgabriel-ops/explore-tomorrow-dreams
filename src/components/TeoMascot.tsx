@@ -429,12 +429,6 @@ export const TeoMascot = ({
         {/* Mouth */}
         {renderMouth()}
 
-        {/* Aviator sunglasses on head */}
-        <ellipse cx="50" cy="30" rx="18" ry="6" fill="#1a1a2e" opacity="0.9" />
-        <ellipse cx="40" cy="30" rx="8" ry="5" fill="#87CEEB" opacity="0.6" />
-        <ellipse cx="60" cy="30" rx="8" ry="5" fill="#87CEEB" opacity="0.6" />
-        <path d="M 22 30 Q 20 35, 18 42" stroke="#1a1a2e" strokeWidth="2" fill="none" />
-        <path d="M 78 30 Q 80 35, 82 42" stroke="#1a1a2e" strokeWidth="2" fill="none" />
       </motion.svg>
     </div>
   );
