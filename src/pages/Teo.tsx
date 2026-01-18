@@ -3,7 +3,7 @@ import { Footer } from "@/components/Footer";
 import { TeoChat } from "@/components/TeoChat";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
-import teoAvatar from "@/assets/teo-avatar.png";
+import { TeoMascot } from "@/components/TeoMascot";
 
 const Teo = () => {
   return (
@@ -24,16 +24,7 @@ const Teo = () => {
           {/* Hero Section */}
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
-              <div className="relative">
-                <img 
-                  src={teoAvatar} 
-                  alt="Téo - Consultor de Viagens" 
-                  className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-primary shadow-xl"
-                />
-                <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-background flex items-center justify-center">
-                  <span className="text-white text-xs">✓</span>
-                </div>
-              </div>
+              <TeoMascot size="large" animated />
             </div>
             <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
               Conheça o Téo 🌍
