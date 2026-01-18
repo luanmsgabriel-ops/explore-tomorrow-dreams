@@ -356,36 +356,57 @@ export const TeoMascot = ({
         <ellipse cx="84" cy="52" rx="6" ry="8" fill="url(#skinGradient)" />
         <ellipse cx="83" cy="52" rx="3" ry="5" fill="#E8C4A8" />
 
-        {/* Hair - styled up */}
-        <path
-          d="M 20 45 
-             Q 20 18, 50 12 
-             Q 80 18, 80 45
-             Q 75 30, 50 28
-             Q 25 30, 20 45"
+        {/* Hair base - covers top of head */}
+        <ellipse 
+          cx="50" 
+          cy="22" 
+          rx="32" 
+          ry="18" 
           fill="url(#hairGradient)"
         />
         
-        {/* Hair highlight */}
-        <path
-          d="M 30 28 Q 45 20, 60 25"
-          stroke="#6D4C41"
-          strokeWidth="3"
-          strokeLinecap="round"
-          fill="none"
-        />
+        {/* Spiky hair - multiple tufts */}
+        <motion.g
+          animate={animated ? { rotate: [-2, 2, -2] } : {}}
+          transition={{ duration: 2, repeat: Infinity }}
+          style={{ transformOrigin: '50px 20px' }}
+        >
+          {/* Center spike */}
+          <path
+            d="M 45 18 Q 50 2, 55 18"
+            fill="url(#hairGradient)"
+          />
+          {/* Left spikes */}
+          <path
+            d="M 28 28 Q 25 12, 35 22"
+            fill="url(#hairGradient)"
+          />
+          <path
+            d="M 35 22 Q 38 8, 45 18"
+            fill="url(#hairGradient)"
+          />
+          {/* Right spikes */}
+          <path
+            d="M 55 18 Q 62 8, 65 22"
+            fill="url(#hairGradient)"
+          />
+          <path
+            d="M 65 22 Q 75 12, 72 28"
+            fill="url(#hairGradient)"
+          />
+          {/* Extra small spikes for texture */}
+          <path
+            d="M 40 16 Q 42 6, 48 14"
+            fill="#4E342E"
+          />
+          <path
+            d="M 52 14 Q 58 6, 60 16"
+            fill="#4E342E"
+          />
+        </motion.g>
         
-        {/* Hair tuft */}
-        <motion.path
-          d="M 45 14 Q 50 6, 55 14 M 40 18 Q 45 10, 50 18 M 50 18 Q 55 10, 60 18"
-          stroke="url(#hairGradient)"
-          strokeWidth="4"
-          strokeLinecap="round"
-          fill="none"
-          animate={animated ? { rotate: [-3, 3, -3] } : {}}
-          transition={{ duration: 1.5, repeat: Infinity }}
-          style={{ transformOrigin: '50px 14px' }}
-        />
+        {/* Hair highlight/shine */}
+        <ellipse cx="42" cy="20" rx="6" ry="3" fill="#6D4C41" opacity="0.5" />
 
         {/* Eyebrows */}
         <motion.path
