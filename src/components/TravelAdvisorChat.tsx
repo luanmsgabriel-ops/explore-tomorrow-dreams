@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { chatMessageSchema, generateSecureSessionId, sanitizeText, phoneSchema, nameSchema } from '@/lib/validations';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import teoAvatar from '@/assets/teo-avatar.png';
+import { TeoMascot } from './TeoMascot';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -611,29 +611,14 @@ Me conta aí! 👇`
               : 'opacity-0 translate-y-8 scale-75 pointer-events-none'
           }`}
         >
-          {/* Speech bubble */}
-          <div className="relative mb-2">
-            <div className="bg-white text-stone-800 px-3 py-2 rounded-xl shadow-xl text-sm font-bold whitespace-nowrap border border-stone-200" style={{ animation: 'pulse-bubble 2s ease-in-out infinite' }}>
-              {currentPhrase}
-            </div>
-            <div className="absolute -bottom-2 left-6 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-white drop-shadow-sm" />
-          </div>
-          
-          {/* Téo character - Realistic image */}
-          <div className="relative w-[45px] h-[45px]" style={{ animation: 'float 3s ease-in-out infinite' }}>
-            <img 
-              src={teoAvatar} 
-              alt="Téo - Consultor de Viagens" 
-              className="w-full h-full rounded-full object-cover shadow-lg border-2 border-white"
-            />
-            {/* Waving hand emoji */}
-            <span 
-              className="absolute -right-2 -top-1 text-lg"
-              style={{ animation: showMascot ? 'wave 0.4s ease-in-out infinite' : 'none' }}
-            >
-              👋
-            </span>
-          </div>
+          {/* Téo Mascot with speech bubble */}
+          <TeoMascot 
+            size="medium" 
+            animated 
+            showSpeechBubble 
+            speechText={currentPhrase}
+            bubblePosition="top"
+          />
         </div>
 
         {/* Main button */}
