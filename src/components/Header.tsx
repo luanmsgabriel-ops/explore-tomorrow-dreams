@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, Menu, X, FileText, Sparkles } from 'lucide-react';
+import { User, Menu, X, FileText, Sparkles, Bot } from 'lucide-react';
 import logo from '@/assets/logo.jpeg';
 import { QuoteFormChat } from './QuoteFormChat';
 import { DestinationSearch } from './DestinationSearch';
@@ -11,6 +11,7 @@ const navItems = [
   { label: 'Explorar', path: '/explorar' },
   { label: 'Nacional', path: '/nacional' },
   { label: 'Internacional', path: '/internacional' },
+  { label: 'Téo', path: '/teo' },
 ];
 
 export const Header = () => {
