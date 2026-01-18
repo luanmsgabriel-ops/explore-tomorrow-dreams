@@ -1,19 +1,51 @@
+import { useState, useEffect } from 'react';
 import { MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { TeoMascot } from './TeoMascot';
 
 export const FloatingWhatsApp = () => {
   const whatsappNumber = '5515998389220';
   const message = 'Olá! Vim pelo site e gostaria de saber mais sobre os pacotes de viagem.';
+  const [showTeo, setShowTeo] = useState(false);
   
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
 
+  // Teo appears and hides periodically
+  useEffect(() => {
+    // Initial appearance after 2 seconds
+    const initialTimeout = setTimeout(() => {
+      setShowTeo(true);
+    }, 2000);
+
+    // Toggle visibility every 8 seconds
+    const interval = setInterval(() => {
+      setShowTeo(prev => !prev);
+    }, 8000);
+
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 items-end">
-      {/* Téo Animated Mascot - positioned above WhatsApp */}
-      <Link to="/teo" className="group relative">
-        <TeoMascot size="medium" animated showSpeechBubble />
-      </Link>
+    <div className="fixed bottom-6 right-6 z-50 flex items-end gap-3">
+      {/* Téo Animated Mascot - appears/hides to the left */}
+      <AnimatePresence>
+        {showTeo && (
+          <motion.div
+            initial={{ x: 50, opacity: 0, scale: 0.5 }}
+            animate={{ x: 0, opacity: 1, scale: 1 }}
+            exit={{ x: 50, opacity: 0, scale: 0.5 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          >
+            <Link to="/teo" className="block">
+              <TeoMascot size="medium" animated showSpeechBubble />
+            </Link>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* WhatsApp Button */}
       <a
