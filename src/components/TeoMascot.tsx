@@ -7,6 +7,7 @@ interface TeoMascotProps {
   onClick?: () => void;
   showSpeechBubble?: boolean;
   speechText?: string;
+  bubblePosition?: 'left' | 'top'; // Position of speech bubble
 }
 
 const TEO_PHRASES = [
@@ -23,7 +24,8 @@ export const TeoMascot = ({
   animated = true, 
   onClick,
   showSpeechBubble = false,
-  speechText
+  speechText,
+  bubblePosition = 'left'
 }: TeoMascotProps) => {
   const [expression, setExpression] = useState<'happy' | 'wink' | 'surprised' | 'laugh'>('happy');
   const [isBlinking, setIsBlinking] = useState(false);
@@ -239,20 +241,28 @@ export const TeoMascot = ({
     }
   };
 
+  const bubbleClasses = bubblePosition === 'top' 
+    ? "absolute -top-10 left-1/2 -translate-x-1/2 bg-white rounded-xl px-3 py-1.5 shadow-lg border-2 border-primary/30 whitespace-nowrap z-20"
+    : "absolute right-full mr-2 bg-white rounded-xl px-3 py-1.5 shadow-lg border-2 border-primary/30 whitespace-nowrap z-20";
+
+  const bubbleTailClasses = bubblePosition === 'top'
+    ? "absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-white"
+    : "absolute top-1/2 -right-2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[8px] border-l-white";
+
   return (
     <div className="relative inline-flex items-center justify-center" onClick={onClick}>
-      {/* Speech Bubble - positioned to the left */}
+      {/* Speech Bubble */}
       <AnimatePresence>
         {(showBubble || speechText) && showSpeechBubble && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.5, x: 10 }}
-            animate={{ opacity: 1, scale: 1, x: 0 }}
-            exit={{ opacity: 0, scale: 0.5, x: 10 }}
-            className="absolute right-full mr-2 bg-white rounded-xl px-3 py-1.5 shadow-lg border-2 border-primary/30 whitespace-nowrap z-20"
+            initial={{ opacity: 0, scale: 0.5, y: bubblePosition === 'top' ? 10 : 0, x: bubblePosition === 'left' ? 10 : 0 }}
+            animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, scale: 0.5, y: bubblePosition === 'top' ? 10 : 0, x: bubblePosition === 'left' ? 10 : 0 }}
+            className={bubbleClasses}
           >
             <span className="text-xs font-medium text-gray-800">{speechText || currentPhrase}</span>
-            {/* Bubble tail pointing right */}
-            <div className="absolute top-1/2 -right-2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[8px] border-l-white" />
+            {/* Bubble tail */}
+            <div className={bubbleTailClasses} />
           </motion.div>
         )}
       </AnimatePresence>
