@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { chatMessageSchema, generateSecureSessionId, sanitizeText, phoneSchema, nameSchema } from '@/lib/validations';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import teoAvatar from '@/assets/teo-avatar.png';
+import { TeoMascot } from '@/components/TeoMascot';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -367,11 +367,7 @@ Me conta aí! 👇`
       {/* Header */}
       <div className="flex items-center gap-3 p-4 border-b bg-gradient-to-r from-primary/10 to-secondary/10">
         <div className="relative">
-          <img 
-            src={teoAvatar} 
-            alt="Téo" 
-            className="w-12 h-12 rounded-full object-cover border-2 border-primary shadow-md"
-          />
+          <TeoMascot size="small" animated />
           <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background" />
         </div>
         <div>
@@ -395,11 +391,9 @@ Me conta aí! 👇`
             }`}
           >
             {message.role === 'assistant' ? (
-              <img 
-                src={teoAvatar} 
-                alt="Téo" 
-                className="w-8 h-8 rounded-full object-cover border border-primary/20 shadow-sm flex-shrink-0"
-              />
+              <div className="w-8 h-8 flex-shrink-0">
+                <TeoMascot size="small" animated={false} />
+              </div>
             ) : (
               <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
                 <User className="w-4 h-4 text-primary-foreground" />
@@ -419,11 +413,9 @@ Me conta aí! 👇`
         
         {isLoading && (
           <div className="flex items-start gap-3">
-            <img 
-              src={teoAvatar} 
-              alt="Téo" 
-              className="w-8 h-8 rounded-full object-cover border border-primary/20 shadow-sm"
-            />
+            <div className="w-8 h-8 flex-shrink-0">
+              <TeoMascot size="small" animated />
+            </div>
             <div className="bg-muted p-3 rounded-2xl rounded-bl-md">
               <Loader2 className="w-5 h-5 animate-spin text-primary" />
             </div>
