@@ -10,9 +10,9 @@ export const FloatingWhatsApp = () => {
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 items-end">
-      {/* Téo Animated Mascot */}
-      <Link to="/teo" className="group">
-        <TeoMascot size="small" animated showSpeechBubble />
+      {/* Téo Animated Mascot - positioned above WhatsApp */}
+      <Link to="/teo" className="group relative">
+        <TeoMascot size="medium" animated showSpeechBubble />
       </Link>
       
       {/* WhatsApp Button */}
