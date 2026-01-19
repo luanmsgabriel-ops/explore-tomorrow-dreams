@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
   Plus, Edit, Trash2, Loader2, Sparkles, Image as ImageIcon, 
-  Save, X, Video, MapPin, Calendar, Users, Tag, Star, Percent
+  Save, X, Video, MapPin, Calendar, Users, Tag, Star, Percent, Upload
 } from 'lucide-react';
 import { PromotionalOfferModal } from './PromotionalOfferModal';
 
@@ -38,6 +38,7 @@ export const DestinationManager = () => {
   const [editingDestination, setEditingDestination] = useState<Destination | null>(null);
   const [isGeneratingText, setIsGeneratingText] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [promoDestination, setPromoDestination] = useState<Destination | null>(null);
 
@@ -179,6 +180,48 @@ export const DestinationManager = () => {
       toast.error('Erro ao gerar imagem');
     } finally {
       setIsGeneratingImage(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Por favor, selecione apenas arquivos de imagem');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 5MB');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${formData.slug || 'destination'}.${fileExt}`;
+      const filePath = `destinations/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('destination-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('destination-images')
+        .getPublicUrl(filePath);
+
+      setFormData(prev => ({ ...prev, image_url: publicUrl }));
+      toast.success('Imagem enviada com sucesso!');
+    } catch (error: any) {
+      console.error('Error uploading image:', error);
+      toast.error(error.message || 'Erro ao enviar imagem');
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -518,32 +561,55 @@ export const DestinationManager = () => {
                 </div>
               </div>
 
-              {/* Image with AI */}
+              {/* Image with AI or Upload */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-foreground">
                     <ImageIcon className="w-4 h-4 inline mr-1" />
                     Imagem
                   </label>
-                  <button
-                    type="button"
-                    onClick={handleGenerateImage}
-                    disabled={isGeneratingImage || !formData.name}
-                    className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 disabled:opacity-50"
-                  >
-                    {isGeneratingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                    Gerar com IA
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 cursor-pointer">
+                      {isUploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                      Enviar Imagem
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={isUploadingImage}
+                        className="hidden"
+                      />
+                    </label>
+                    <span className="text-muted-foreground">ou</span>
+                    <button
+                      type="button"
+                      onClick={handleGenerateImage}
+                      disabled={isGeneratingImage || !formData.name}
+                      className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 disabled:opacity-50"
+                    >
+                      {isGeneratingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                      Gerar com IA
+                    </button>
+                  </div>
                 </div>
                 <input
                   type="text"
                   value={formData.image_url}
                   onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
-                  placeholder="URL da imagem"
+                  placeholder="URL da imagem ou envie/gere uma acima"
                   className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground"
                 />
                 {formData.image_url && (
-                  <img src={formData.image_url} alt="Preview" className="mt-2 h-32 w-full object-cover rounded-xl" />
+                  <div className="relative mt-2">
+                    <img src={formData.image_url} alt="Preview" className="h-40 w-full object-cover rounded-xl" />
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, image_url: '' }))}
+                      className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/80 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 )}
               </div>
 
