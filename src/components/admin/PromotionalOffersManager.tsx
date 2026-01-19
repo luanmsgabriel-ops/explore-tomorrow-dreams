@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
   Loader2, Trash2, Edit, Clock, Calendar, 
-  DollarSign, Tag, Sparkles, MapPin, Save, X, Plus, Image
+  DollarSign, Tag, Sparkles, MapPin, Save, X, Plus, Image, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { BannerGenerator } from './BannerGenerator';
 import { PromotionalOfferModal } from './PromotionalOfferModal';
@@ -19,6 +19,8 @@ interface PromotionalOffer {
   inclusions: string[];
   valid_from: string;
   valid_until: string;
+  departure_date: string | null;
+  return_date: string | null;
   is_active: boolean;
   created_at: string;
   destinations: {
@@ -47,6 +49,8 @@ export const PromotionalOffersManager = () => {
     installment_value: '',
     inclusions: [''],
     valid_until: '',
+    departure_date: '',
+    return_date: '',
     is_active: true,
   });
 
@@ -90,6 +94,8 @@ export const PromotionalOffersManager = () => {
       installment_value: offer.installment_value?.toString() || '',
       inclusions: offer.inclusions.length > 0 ? offer.inclusions : [''],
       valid_until: new Date(offer.valid_until).toISOString().slice(0, 16),
+      departure_date: offer.departure_date || '',
+      return_date: offer.return_date || '',
       is_active: offer.is_active,
     });
   };
@@ -203,6 +209,8 @@ export const PromotionalOffersManager = () => {
           installment_value: formData.installment_value ? parseFloat(formData.installment_value) : null,
           inclusions: formData.inclusions.filter(i => i.trim()),
           valid_until: new Date(formData.valid_until).toISOString(),
+          departure_date: formData.departure_date || null,
+          return_date: formData.return_date || null,
           is_active: formData.is_active,
         })
         .eq('id', editingOffer.id);
@@ -238,6 +246,19 @@ export const PromotionalOffersManager = () => {
       ...prev,
       inclusions: prev.inclusions.map((inc, i) => i === index ? value : inc)
     }));
+  };
+
+  const handleMoveInclusion = (index: number, direction: 'up' | 'down') => {
+    setFormData(prev => {
+      const newInclusions = [...prev.inclusions];
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      
+      if (targetIndex < 0 || targetIndex >= newInclusions.length) return prev;
+      
+      [newInclusions[index], newInclusions[targetIndex]] = [newInclusions[targetIndex], newInclusions[index]];
+      
+      return { ...prev, inclusions: newInclusions };
+    });
   };
 
   const formatDate = (dateStr: string) => {
@@ -551,6 +572,28 @@ export const PromotionalOffersManager = () => {
                 </div>
               </div>
 
+              {/* Travel Dates */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Data de Ida</label>
+                  <input
+                    type="date"
+                    value={formData.departure_date}
+                    onChange={(e) => setFormData(prev => ({ ...prev, departure_date: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Data de Volta</label>
+                  <input
+                    type="date"
+                    value={formData.return_date}
+                    onChange={(e) => setFormData(prev => ({ ...prev, return_date: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground"
+                  />
+                </div>
+              </div>
+
               {/* Validity */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Válido até</label>
@@ -575,9 +618,30 @@ export const PromotionalOffersManager = () => {
                     Adicionar
                   </button>
                 </div>
+                <p className="text-xs text-muted-foreground mb-2">Use as setas para reordenar os itens</p>
                 <div className="space-y-2">
                   {formData.inclusions.map((inclusion, index) => (
-                    <div key={index} className="flex gap-2">
+                    <div key={index} className="flex gap-2 items-center">
+                      <div className="flex flex-col gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleMoveInclusion(index, 'up')}
+                          disabled={index === 0}
+                          className="p-1 rounded hover:bg-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          title="Mover para cima"
+                        >
+                          <ArrowUp className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveInclusion(index, 'down')}
+                          disabled={index === formData.inclusions.length - 1}
+                          className="p-1 rounded hover:bg-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          title="Mover para baixo"
+                        >
+                          <ArrowDown className="w-3 h-3" />
+                        </button>
+                      </div>
                       <input
                         type="text"
                         value={inclusion}
