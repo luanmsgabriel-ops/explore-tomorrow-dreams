@@ -317,6 +317,7 @@ export type Database = {
         Row: {
           cash_price: number | null
           created_at: string
+          departure_date: string | null
           destination_id: string
           id: string
           inclusions: string[]
@@ -324,6 +325,7 @@ export type Database = {
           installments: number | null
           is_active: boolean
           promo_image_url: string | null
+          return_date: string | null
           tagline: string | null
           title: string
           total_price: number
@@ -334,6 +336,7 @@ export type Database = {
         Insert: {
           cash_price?: number | null
           created_at?: string
+          departure_date?: string | null
           destination_id: string
           id?: string
           inclusions?: string[]
@@ -341,6 +344,7 @@ export type Database = {
           installments?: number | null
           is_active?: boolean
           promo_image_url?: string | null
+          return_date?: string | null
           tagline?: string | null
           title: string
           total_price: number
@@ -351,6 +355,7 @@ export type Database = {
         Update: {
           cash_price?: number | null
           created_at?: string
+          departure_date?: string | null
           destination_id?: string
           id?: string
           inclusions?: string[]
@@ -358,6 +363,7 @@ export type Database = {
           installments?: number | null
           is_active?: boolean
           promo_image_url?: string | null
+          return_date?: string | null
           tagline?: string | null
           title?: string
           total_price?: number
