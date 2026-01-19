@@ -84,7 +84,7 @@ Bora começar essa aventura? Me conta, qual é o seu nome? 🙋‍♂️`,
     scrollToBottom();
   }, [messages]);
 
-  const createChatSession = async (name: string, whatsapp: string) => {
+  const createChatSession = async (name: string, whatsapp: string, currentMessages: Message[]) => {
     try {
       const { error } = await supabase.from('chat_sessions').insert({
         session_id: sessionIdRef.current,
@@ -96,6 +96,27 @@ Bora começar essa aventura? Me conta, qual é o seu nome? 🙋‍♂️`,
       
       if (error) {
         console.error('Error creating chat session:', error);
+        return;
+      }
+
+      // Save all previous messages (name collection, whatsapp collection) to the database
+      if (currentMessages.length > 0) {
+        const messagesToInsert = currentMessages.map((msg) => ({
+          session_id: sessionIdRef.current,
+          destination_id: 'travel-advisor',
+          role: msg.role,
+          content: msg.content,
+          user_name: name,
+          user_whatsapp: whatsapp,
+        }));
+
+        const { error: messagesError } = await supabase
+          .from('chat_messages')
+          .insert(messagesToInsert);
+
+        if (messagesError) {
+          console.error('Error saving initial messages:', messagesError);
+        }
       }
     } catch (err) {
       console.error('Error creating chat session:', err);
@@ -143,10 +164,9 @@ Agora me passa seu WhatsApp rapidinho - prometo que não vou ficar mandando meme
     const sanitizedWhatsapp = sanitizeText(input.trim());
     setUserWhatsapp(sanitizedWhatsapp);
     
-    await createChatSession(userName, sanitizedWhatsapp);
-    
-    setMessages((prev) => [
-      ...prev,
+    // Include all messages up to now (including the whatsapp the user just entered)
+    const allMessagesUpToNow: Message[] = [
+      ...messages,
       { role: 'user', content: sanitizedWhatsapp },
       { 
         role: 'assistant', 
@@ -163,7 +183,11 @@ Pensa comigo: quando você viaja, o que te faz mais feliz? 🤔
 
 Me conta aí! 👇`
       },
-    ]);
+    ];
+    
+    await createChatSession(userName, sanitizedWhatsapp, allMessagesUpToNow);
+    
+    setMessages(allMessagesUpToNow);
     
     setInput('');
     setStep('chatting');
