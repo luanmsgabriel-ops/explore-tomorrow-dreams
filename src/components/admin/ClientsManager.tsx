@@ -116,8 +116,6 @@ export const ClientsManager = () => {
 
     setIsCreating(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
       const response = await supabase.functions.invoke('create-user', {
         body: { email, password, full_name: fullName }
       });
@@ -126,28 +124,19 @@ export const ClientsManager = () => {
         throw new Error(response.error.message || 'Erro ao criar usuário');
       }
 
-      const newUserId = response.data.user.id;
+      // Check if response.data has an error field (edge function returned error in body)
+      if (response.data?.error) {
+        const errorMsg = response.data.error;
+        if (errorMsg.includes('already been registered') || errorMsg.includes('email_exists')) {
+          throw new Error('Este e-mail já está cadastrado no sistema');
+        }
+        throw new Error(errorMsg);
+      }
 
-      // Create profile for the new user
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          user_id: newUserId,
-          email,
-          full_name: fullName
-        });
-
-      if (profileError) throw profileError;
-
-      // Assign 'user' role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: newUserId,
-          role: 'user'
-        });
-
-      if (roleError) throw roleError;
+      // The database trigger handle_new_user automatically creates:
+      // - Profile entry with user_id, email, full_name
+      // - User role entry with 'user' role
+      // So we don't need to create them manually here
 
       toast.success('Cliente criado com sucesso!', {
         description: `Email: ${email} | Senha: ${password}`
