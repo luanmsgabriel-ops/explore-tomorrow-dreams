@@ -51,7 +51,7 @@ export const ClientVouchers = ({ tripId, tripName }: ClientVouchersProps) => {
         .from('trip_documents')
         .select('*')
         .eq('trip_id', tripId)
-        .in('document_type', ['voucher_passeio', 'voucher_transfer', 'voucher_carro'])
+        .in('document_type', ['voucher_passeio', 'voucher_transfer', 'voucher_carro', 'outro'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -81,6 +81,8 @@ export const ClientVouchers = ({ tripId, tripName }: ClientVouchersProps) => {
         return <Bus className="w-4 h-4" />;
       case 'carro':
         return <Car className="w-4 h-4" />;
+      case 'outros':
+        return <FileText className="w-4 h-4" />;
       default:
         return <FileText className="w-4 h-4" />;
     }
@@ -94,6 +96,8 @@ export const ClientVouchers = ({ tripId, tripName }: ClientVouchersProps) => {
         return 'Transfer';
       case 'carro':
         return 'Aluguel de Carro';
+      case 'outros':
+        return 'Outros';
       default:
         return category;
     }
@@ -107,6 +111,8 @@ export const ClientVouchers = ({ tripId, tripName }: ClientVouchersProps) => {
         return 'voucher_transfer';
       case 'carro':
         return 'voucher_carro';
+      case 'outros':
+        return 'outro';
       default:
         return '';
     }
@@ -120,7 +126,7 @@ export const ClientVouchers = ({ tripId, tripName }: ClientVouchersProps) => {
     return fileType.startsWith('image/');
   };
 
-  const categories = ['passeios', 'transfer', 'carro'];
+  const categories = ['passeios', 'transfer', 'carro', 'outros'];
 
   if (isLoading) {
     return (
@@ -142,7 +148,7 @@ export const ClientVouchers = ({ tripId, tripName }: ClientVouchersProps) => {
       </div>
 
       <Tabs value={activeCategory} onValueChange={setActiveCategory}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           {categories.map((category) => (
             <TabsTrigger key={category} value={category} className="flex items-center gap-2">
               {getCategoryIcon(category)}
