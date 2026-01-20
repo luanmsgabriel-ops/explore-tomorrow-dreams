@@ -120,17 +120,18 @@ export const ClientsManager = () => {
         body: { email, password, full_name: fullName }
       });
 
-      if (response.error) {
-        throw new Error(response.error.message || 'Erro ao criar usuário');
+      // Check for errors - can come from response.error or response.data.error
+      const errorMessage = response.error?.message || response.data?.error;
+      
+      if (errorMessage) {
+        if (errorMessage.includes('already been registered') || errorMessage.includes('email_exists')) {
+          throw new Error('Este e-mail já está cadastrado no sistema. Use um e-mail diferente.');
+        }
+        throw new Error(errorMessage);
       }
 
-      // Check if response.data has an error field (edge function returned error in body)
-      if (response.data?.error) {
-        const errorMsg = response.data.error;
-        if (errorMsg.includes('already been registered') || errorMsg.includes('email_exists')) {
-          throw new Error('Este e-mail já está cadastrado no sistema');
-        }
-        throw new Error(errorMsg);
+      if (!response.data?.success) {
+        throw new Error('Erro inesperado ao criar usuário');
       }
 
       // The database trigger handle_new_user automatically creates:
