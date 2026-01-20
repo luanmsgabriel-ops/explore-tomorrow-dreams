@@ -260,13 +260,19 @@ export type Database = {
           destination_id: string | null
           destination_name: string
           flight_departure_time: string | null
+          flight_locator: string | null
           flight_number: string | null
+          flight_return_time: string | null
           hotel_address: string | null
+          hotel_checkin_time: string | null
+          hotel_checkout_time: string | null
+          hotel_link: string | null
           hotel_name: string | null
           id: string
           notes: string | null
           return_date: string
           trip_status: string
+          trip_tips: string | null
           updated_at: string
           user_id: string
         }
@@ -276,13 +282,19 @@ export type Database = {
           destination_id?: string | null
           destination_name: string
           flight_departure_time?: string | null
+          flight_locator?: string | null
           flight_number?: string | null
+          flight_return_time?: string | null
           hotel_address?: string | null
+          hotel_checkin_time?: string | null
+          hotel_checkout_time?: string | null
+          hotel_link?: string | null
           hotel_name?: string | null
           id?: string
           notes?: string | null
           return_date: string
           trip_status?: string
+          trip_tips?: string | null
           updated_at?: string
           user_id: string
         }
@@ -292,13 +304,19 @@ export type Database = {
           destination_id?: string | null
           destination_name?: string
           flight_departure_time?: string | null
+          flight_locator?: string | null
           flight_number?: string | null
+          flight_return_time?: string | null
           hotel_address?: string | null
+          hotel_checkin_time?: string | null
+          hotel_checkout_time?: string | null
+          hotel_link?: string | null
           hotel_name?: string | null
           id?: string
           notes?: string | null
           return_date?: string
           trip_status?: string
+          trip_tips?: string | null
           updated_at?: string
           user_id?: string
         }

@@ -44,8 +44,14 @@ interface Trip {
   return_date: string;
   flight_number: string | null;
   flight_departure_time: string | null;
+  flight_return_time: string | null;
+  flight_locator: string | null;
   hotel_name: string | null;
   hotel_address: string | null;
+  hotel_link: string | null;
+  hotel_checkin_time: string | null;
+  hotel_checkout_time: string | null;
+  trip_tips: string | null;
   notes: string | null;
   trip_status: string;
   created_at: string;
@@ -99,8 +105,14 @@ export const TripManager = () => {
   const [returnDate, setReturnDate] = useState('');
   const [flightNumber, setFlightNumber] = useState('');
   const [flightTime, setFlightTime] = useState('');
+  const [flightReturnTime, setFlightReturnTime] = useState('');
+  const [flightLocator, setFlightLocator] = useState('');
   const [hotelName, setHotelName] = useState('');
   const [hotelAddress, setHotelAddress] = useState('');
+  const [hotelLink, setHotelLink] = useState('');
+  const [hotelCheckinTime, setHotelCheckinTime] = useState('14:00');
+  const [hotelCheckoutTime, setHotelCheckoutTime] = useState('12:00');
+  const [tripTips, setTripTips] = useState('');
   const [notes, setNotes] = useState('');
   
   // New contact form
@@ -203,8 +215,14 @@ export const TripManager = () => {
           return_date: returnDate,
           flight_number: flightNumber || null,
           flight_departure_time: flightTime ? new Date(flightTime).toISOString() : null,
+          flight_return_time: flightReturnTime ? new Date(flightReturnTime).toISOString() : null,
+          flight_locator: flightLocator || null,
           hotel_name: hotelName || null,
           hotel_address: hotelAddress || null,
+          hotel_link: hotelLink || null,
+          hotel_checkin_time: hotelCheckinTime || '14:00',
+          hotel_checkout_time: hotelCheckoutTime || '12:00',
+          trip_tips: tripTips || null,
           notes: notes || null,
           trip_status: 'confirmed'
         })
@@ -251,8 +269,14 @@ export const TripManager = () => {
     setReturnDate('');
     setFlightNumber('');
     setFlightTime('');
+    setFlightReturnTime('');
+    setFlightLocator('');
     setHotelName('');
     setHotelAddress('');
+    setHotelLink('');
+    setHotelCheckinTime('14:00');
+    setHotelCheckoutTime('12:00');
+    setTripTips('');
     setNotes('');
   };
 
@@ -521,11 +545,29 @@ export const TripManager = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>Horário do Voo</Label>
+                  <Label>Horário do Voo de Ida</Label>
                   <Input
                     type="datetime-local"
                     value={flightTime}
                     onChange={(e) => setFlightTime(e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Horário do Voo de Volta</Label>
+                  <Input
+                    type="datetime-local"
+                    value={flightReturnTime}
+                    onChange={(e) => setFlightReturnTime(e.target.value)}
+                  />
+                </div>
+                
+                <div className="col-span-2 space-y-2">
+                  <Label>Localizador da Reserva</Label>
+                  <Input
+                    value={flightLocator}
+                    onChange={(e) => setFlightLocator(e.target.value.toUpperCase())}
+                    placeholder="Ex: ABC123"
                   />
                 </div>
                 
@@ -548,12 +590,49 @@ export const TripManager = () => {
                 </div>
                 
                 <div className="col-span-2 space-y-2">
-                  <Label>Observações</Label>
+                  <Label>Link do Hotel (para fotos)</Label>
+                  <Input
+                    value={hotelLink}
+                    onChange={(e) => setHotelLink(e.target.value)}
+                    placeholder="https://hotel.com"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Horário Check-in</Label>
+                  <Input
+                    type="time"
+                    value={hotelCheckinTime}
+                    onChange={(e) => setHotelCheckinTime(e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Horário Check-out</Label>
+                  <Input
+                    type="time"
+                    value={hotelCheckoutTime}
+                    onChange={(e) => setHotelCheckoutTime(e.target.value)}
+                  />
+                </div>
+                
+                <div className="col-span-2 space-y-2">
+                  <Label>Dicas para o Cliente</Label>
+                  <Textarea
+                    value={tripTips}
+                    onChange={(e) => setTripTips(e.target.value)}
+                    placeholder="Dicas personalizadas que aparecerão na aba Informações do cliente"
+                    rows={3}
+                  />
+                </div>
+                
+                <div className="col-span-2 space-y-2">
+                  <Label>Observações Internas</Label>
                   <Textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Notas adicionais sobre a viagem"
-                    rows={3}
+                    placeholder="Notas internas (não visíveis ao cliente)"
+                    rows={2}
                   />
                 </div>
               </div>

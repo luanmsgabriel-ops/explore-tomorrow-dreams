@@ -2,27 +2,22 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
-import { ClientTripsList } from '@/components/client/ClientTripsList';
-import { ClientTripDetails } from '@/components/client/ClientTripDetails';
-import { ClientExploreDestination } from '@/components/client/ClientExploreDestination';
+import { ClientFlightInfo } from '@/components/client/ClientFlightInfo';
+import { ClientAccommodationInfo } from '@/components/client/ClientAccommodationInfo';
 import { ClientChecklist } from '@/components/client/ClientChecklist';
-import { ClientEmergencyContacts } from '@/components/client/ClientEmergencyContacts';
-import { ClientAITools } from '@/components/client/ClientAITools';
+import { ClientTripTips } from '@/components/client/ClientTripTips';
 import { 
   Plane, 
   LogOut, 
   Loader2, 
-  FileText, 
-  Map, 
+  Hotel, 
   CheckSquare, 
-  Phone,
-  Sparkles,
-  Bell,
-  User
+  Info,
+  Bell
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabType = 'trips' | 'documents' | 'explore' | 'checklist' | 'contacts' | 'ai-tools';
+type TabType = 'flight' | 'accommodation' | 'checklist' | 'info';
 
 interface ClientTrip {
   id: string;
@@ -32,9 +27,15 @@ interface ClientTrip {
   return_date: string;
   flight_number: string | null;
   flight_departure_time: string | null;
+  flight_return_time: string | null;
+  flight_locator: string | null;
   hotel_name: string | null;
   hotel_address: string | null;
+  hotel_link: string | null;
+  hotel_checkin_time: string | null;
+  hotel_checkout_time: string | null;
   trip_status: string;
+  trip_tips: string | null;
   notes: string | null;
   created_at: string;
 }
@@ -42,7 +43,7 @@ interface ClientTrip {
 const ClientDashboard = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabType>('trips');
+  const [activeTab, setActiveTab] = useState<TabType>('flight');
   const [trips, setTrips] = useState<ClientTrip[]>([]);
   const [selectedTrip, setSelectedTrip] = useState<ClientTrip | null>(null);
   const [userName, setUserName] = useState('');
@@ -61,6 +62,20 @@ const ClientDashboard = () => {
         return;
       }
 
+      // Check if user is admin - if so, redirect them
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (roleData?.role === 'admin') {
+        toast.error('Área exclusiva para clientes');
+        await supabase.auth.signOut();
+        navigate('/admin');
+        return;
+      }
+
       // Get user profile
       const { data: profile } = await supabase
         .from('profiles')
@@ -76,6 +91,7 @@ const ClientDashboard = () => {
       const { data: tripsData, error } = await supabase
         .from('client_trips')
         .select('*')
+        .eq('user_id', session.user.id)
         .order('departure_date', { ascending: true });
 
       if (error) throw error;
@@ -120,12 +136,10 @@ const ClientDashboard = () => {
   };
 
   const tabs = [
-    { id: 'trips' as TabType, label: 'Minhas Viagens', icon: Plane },
-    { id: 'documents' as TabType, label: 'Documentos', icon: FileText },
-    { id: 'explore' as TabType, label: 'Explorar Destino', icon: Map },
+    { id: 'flight' as TabType, label: 'Aéreo', icon: Plane },
+    { id: 'accommodation' as TabType, label: 'Hospedagem', icon: Hotel },
     { id: 'checklist' as TabType, label: 'Checklist', icon: CheckSquare },
-    { id: 'contacts' as TabType, label: 'Contatos', icon: Phone },
-    { id: 'ai-tools' as TabType, label: 'Ferramentas IA', icon: Sparkles },
+    { id: 'info' as TabType, label: 'Informações', icon: Info },
   ];
 
   const getHoursUntilFlight = (flightTime: string) => {
@@ -246,37 +260,33 @@ const ClientDashboard = () => {
                     Seu consultor de viagens irá cadastrar sua próxima aventura em breve!
                   </p>
                 </div>
-              ) : (
-                <>
-                  {activeTab === 'trips' && (
-                    <ClientTripsList 
-                      trips={trips} 
-                      selectedTrip={selectedTrip}
-                      onSelectTrip={setSelectedTrip}
+              ) : selectedTrip && (
+                <div className="glass rounded-2xl p-6">
+                  {activeTab === 'flight' && (
+                    <ClientFlightInfo 
+                      tripId={selectedTrip.id} 
+                      tripData={selectedTrip}
                     />
                   )}
-                  {activeTab === 'documents' && selectedTrip && (
-                    <ClientTripDetails tripId={selectedTrip.id} tripName={selectedTrip.destination_name} />
-                  )}
-                  {activeTab === 'explore' && selectedTrip && (
-                    <ClientExploreDestination 
-                      destinationId={selectedTrip.destination_id} 
-                      destinationName={selectedTrip.destination_name}
+                  {activeTab === 'accommodation' && (
+                    <ClientAccommodationInfo 
+                      tripId={selectedTrip.id} 
+                      tripData={selectedTrip}
                     />
                   )}
-                  {activeTab === 'checklist' && selectedTrip && (
-                    <ClientChecklist tripId={selectedTrip.id} tripName={selectedTrip.destination_name} />
-                  )}
-                  {activeTab === 'contacts' && selectedTrip && (
-                    <ClientEmergencyContacts tripId={selectedTrip.id} tripName={selectedTrip.destination_name} />
-                  )}
-                  {activeTab === 'ai-tools' && selectedTrip && (
-                    <ClientAITools 
-                      destinationId={selectedTrip.destination_id || ''} 
-                      destinationName={selectedTrip.destination_name}
+                  {activeTab === 'checklist' && (
+                    <ClientChecklist 
+                      tripId={selectedTrip.id} 
+                      tripName={selectedTrip.destination_name}
                     />
                   )}
-                </>
+                  {activeTab === 'info' && (
+                    <ClientTripTips 
+                      tripId={selectedTrip.id} 
+                      tripData={selectedTrip}
+                    />
+                  )}
+                </div>
               )}
             </main>
           </div>
