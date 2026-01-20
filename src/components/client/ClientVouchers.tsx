@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -13,6 +14,9 @@ import {
   Car, 
   Map,
   Bus,
+  Eye,
+  X,
+  FileImage,
   ExternalLink
 } from 'lucide-react';
 
@@ -35,6 +39,7 @@ export const ClientVouchers = ({ tripId, tripName }: ClientVouchersProps) => {
   const [documents, setDocuments] = useState<TripDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('passeios');
+  const [previewDoc, setPreviewDoc] = useState<TripDocument | null>(null);
 
   useEffect(() => {
     fetchDocuments();
@@ -107,6 +112,14 @@ export const ClientVouchers = ({ tripId, tripName }: ClientVouchersProps) => {
     }
   };
 
+  const isPdfOrImage = (fileType: string) => {
+    return fileType === 'application/pdf' || fileType.startsWith('image/');
+  };
+
+  const isImage = (fileType: string) => {
+    return fileType.startsWith('image/');
+  };
+
   const categories = ['passeios', 'transfer', 'carro'];
 
   if (isLoading) {
@@ -169,7 +182,11 @@ export const ClientVouchers = ({ tripId, tripName }: ClientVouchersProps) => {
                         >
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                              <FileText className="w-5 h-5 text-primary" />
+                              {isImage(doc.file_type) ? (
+                                <FileImage className="w-5 h-5 text-primary" />
+                              ) : (
+                                <FileText className="w-5 h-5 text-primary" />
+                              )}
                             </div>
                             <div>
                               <p className="font-medium text-foreground">{doc.document_name}</p>
@@ -180,6 +197,17 @@ export const ClientVouchers = ({ tripId, tripName }: ClientVouchersProps) => {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
+                            {isPdfOrImage(doc.file_type) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPreviewDoc(doc)}
+                                className="flex items-center gap-2"
+                              >
+                                <Eye className="w-4 h-4" />
+                                <span className="hidden sm:inline">Preview</span>
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
@@ -187,7 +215,7 @@ export const ClientVouchers = ({ tripId, tripName }: ClientVouchersProps) => {
                               className="flex items-center gap-2"
                             >
                               <ExternalLink className="w-4 h-4" />
-                              <span className="hidden sm:inline">Visualizar</span>
+                              <span className="hidden sm:inline">Abrir</span>
                             </Button>
                             <Button
                               variant="default"
@@ -215,6 +243,61 @@ export const ClientVouchers = ({ tripId, tripName }: ClientVouchersProps) => {
           );
         })}
       </Tabs>
+
+      {/* Preview Dialog */}
+      <Dialog open={!!previewDoc} onOpenChange={(open) => !open && setPreviewDoc(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="flex items-center justify-between pr-8">
+              <span className="truncate">{previewDoc?.document_name}</span>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-hidden rounded-lg border bg-muted/30 min-h-[60vh]">
+            {previewDoc && (
+              isImage(previewDoc.file_type) ? (
+                <div className="w-full h-full flex items-center justify-center p-4">
+                  <img 
+                    src={previewDoc.file_url} 
+                    alt={previewDoc.document_name}
+                    className="max-w-full max-h-full object-contain rounded-lg"
+                  />
+                </div>
+              ) : (
+                <iframe 
+                  src={`${previewDoc.file_url}#toolbar=1&navpanes=0`}
+                  className="w-full h-full min-h-[60vh]"
+                  title={previewDoc.document_name}
+                />
+              )
+            )}
+          </div>
+
+          <div className="flex-shrink-0 flex justify-end gap-2 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setPreviewDoc(null)}
+            >
+              <X className="w-4 h-4 mr-2" />
+              Fechar
+            </Button>
+            <Button
+              onClick={() => {
+                if (previewDoc) {
+                  const link = document.createElement('a');
+                  link.href = previewDoc.file_url;
+                  link.download = previewDoc.document_name;
+                  link.target = '_blank';
+                  link.click();
+                }
+              }}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Baixar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
