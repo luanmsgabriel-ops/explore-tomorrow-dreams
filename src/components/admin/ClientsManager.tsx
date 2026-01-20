@@ -120,8 +120,25 @@ export const ClientsManager = () => {
         body: { email, password, full_name: fullName }
       });
 
-      // Check for errors - can come from response.error or response.data.error
-      const errorMessage = response.error?.message || response.data?.error;
+      // Check for errors - can come from response.error.message, response.error.context, or response.data.error
+      let errorMessage = '';
+      if (response.error) {
+        // FunctionsHttpError includes context with the response body
+        errorMessage = response.error.message || '';
+        // Try to parse the context if it contains JSON error
+        try {
+          const context = (response.error as any).context;
+          if (context?.body) {
+            const bodyText = await context.body.text?.() || context.body;
+            const parsed = typeof bodyText === 'string' ? JSON.parse(bodyText) : bodyText;
+            if (parsed.error) errorMessage = parsed.error;
+          }
+        } catch {
+          // Use original message
+        }
+      } else if (response.data?.error) {
+        errorMessage = response.data.error;
+      }
       
       if (errorMessage) {
         if (errorMessage.includes('already been registered') || errorMessage.includes('email_exists')) {
