@@ -1016,7 +1016,7 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
                               Nenhum voucher cadastrado para esta viagem
                             </p>
                           ) : (
-                            <div className="space-y-2">
+                            <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
                               {voucherDocuments.map((doc) => (
                                 <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border bg-background">
                                   <div className="flex items-center gap-3">
