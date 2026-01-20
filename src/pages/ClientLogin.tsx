@@ -25,7 +25,8 @@ const ClientLogin = () => {
           .single();
 
         if (roleData?.role === 'admin') {
-          navigate('/admin/dashboard');
+          // Se for admin, redireciona para login do admin
+          navigate('/admin');
         } else {
           navigate('/minha-area');
         }
@@ -53,13 +54,16 @@ const ClientLogin = () => {
         .eq('user_id', data.user.id)
         .single();
 
-      toast.success('Login realizado com sucesso!');
-      
+      // Se for admin, não permite login pela área do cliente
       if (roleData?.role === 'admin') {
-        navigate('/admin/dashboard');
-      } else {
-        navigate('/minha-area');
+        await supabase.auth.signOut();
+        toast.error('Acesso negado. Use a área de administração para fazer login.');
+        setIsLoading(false);
+        return;
       }
+
+      toast.success('Login realizado com sucesso!');
+      navigate('/minha-area');
     } catch (error: any) {
       console.error('Auth error:', error);
       toast.error(error.message || 'E-mail ou senha incorretos');
