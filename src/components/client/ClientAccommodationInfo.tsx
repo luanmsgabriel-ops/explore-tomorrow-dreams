@@ -7,7 +7,8 @@ import {
   MapPin, 
   Download, 
   Loader2,
-  ExternalLink
+  ExternalLink,
+  Navigation
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -185,9 +186,18 @@ export const ClientAccommodationInfo = ({ tripId, tripData }: ClientAccommodatio
           {tripData.hotel_address && (
             <div className="flex items-start gap-3 mb-4">
               <MapPin className="w-5 h-5 text-muted-foreground mt-1 shrink-0" />
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium text-muted-foreground">Endereço</p>
-                <p className="text-foreground">{tripData.hotel_address}</p>
+                <p className="text-foreground mb-2">{tripData.hotel_address}</p>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(tripData.hotel_address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary text-foreground hover:bg-secondary/80 transition-colors text-sm font-medium"
+                >
+                  <Navigation className="w-4 h-4" />
+                  Como Chegar
+                </a>
               </div>
             </div>
           )}
