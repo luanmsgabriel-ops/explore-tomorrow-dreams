@@ -105,17 +105,19 @@ export const StandaloneBannerGenerator = () => {
     try {
       const pdfjsLib = await import('pdfjs-dist');
       
-      // Use jsdelivr CDN which has better CORS support
-      const version = pdfjsLib.version;
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
+      // Disable worker completely - process on main thread
+      // This is slower but works in all environments without CORS/CSP issues
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
       
-      console.log('[PDF Extract] Loading PDF with CDN worker version:', version);
+      console.log('[PDF Extract] Loading PDF without worker (main thread)');
       
       const arrayBuffer = await file.arrayBuffer();
       
       const loadingTask = pdfjsLib.getDocument({
         data: arrayBuffer,
-        useSystemFonts: true
+        useSystemFonts: true,
+        isEvalSupported: false,
+        disableFontFace: true
       });
       
       const pdf = await loadingTask.promise;
