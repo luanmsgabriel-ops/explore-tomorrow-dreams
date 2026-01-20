@@ -89,6 +89,13 @@ export const Header = () => {
             {/* Right side actions */}
             <div className="flex items-center gap-4">
               <Link
+                to="/cliente"
+                className="hidden sm:flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors duration-300"
+              >
+                <User className="w-5 h-5" />
+                <span className="text-sm font-medium">Cliente</span>
+              </Link>
+              <Link
                 to="/admin"
                 className="hidden sm:flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors duration-300"
               >
@@ -178,9 +185,17 @@ export const Header = () => {
                 </div>
                 
                 <Link
-                  to="/admin"
+                  to="/cliente"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 text-muted-foreground hover:text-foreground mt-4"
+                >
+                  <User className="w-5 h-5" />
+                  <span className="text-base font-medium">Área do Cliente</span>
+                </Link>
+                <Link
+                  to="/admin"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
                 >
                   <User className="w-5 h-5" />
                   <span className="text-base font-medium">Admin</span>
