@@ -13,7 +13,7 @@ const ClientLogin = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if already logged in
+    // Only redirect if user is already logged in AND has client role
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
@@ -25,9 +25,11 @@ const ClientLogin = () => {
           .single();
 
         if (roleData?.role === 'admin') {
-          // Se for admin, redireciona para login do admin
-          navigate('/admin');
-        } else {
+          // Se for admin, faz logout e mantém na página de login
+          await supabase.auth.signOut();
+          toast.info('Faça login com uma conta de cliente');
+        } else if (roleData?.role === 'user') {
+          // Apenas redireciona se for um cliente válido
           navigate('/minha-area');
         }
       }
