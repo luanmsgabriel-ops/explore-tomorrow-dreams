@@ -5,6 +5,9 @@ import { Header } from '@/components/Header';
 import { DestinationManager } from '@/components/admin/DestinationManager';
 import { ChatConversationsManager } from '@/components/admin/ChatConversationsManager';
 import { PromotionalOffersManager } from '@/components/admin/PromotionalOffersManager';
+import { ClientsManager } from '@/components/admin/ClientsManager';
+import { TripManager } from '@/components/admin/TripManager';
+import { DefaultChecklistManager } from '@/components/admin/DefaultChecklistManager';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -29,11 +32,13 @@ import {
   MessageSquare,
   Tag,
   Heart,
-  Sparkles
+  Sparkles,
+  Plane,
+  ListChecks
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabType = 'overview' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers';
+type TabType = 'overview' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'clients' | 'trips' | 'checklist';
 
 interface QuoteRequest {
   id: string;
@@ -313,13 +318,16 @@ const AdminDashboard = () => {
 
   const tabs = [
     { id: 'overview' as TabType, label: 'Visão Geral', icon: LayoutDashboard },
+    { id: 'clients' as TabType, label: 'Clientes', icon: Users },
+    { id: 'trips' as TabType, label: 'Viagens', icon: Plane },
+    { id: 'checklist' as TabType, label: 'Checklist Padrão', icon: ListChecks },
     { id: 'destinations' as TabType, label: 'Destinos', icon: Globe },
     { id: 'offers' as TabType, label: 'Ofertas', icon: Tag },
     { id: 'quotes' as TabType, label: 'Cotações', icon: FileText },
     { id: 'itineraries' as TabType, label: 'Roteiros IA', icon: Map },
     { id: 'images' as TabType, label: 'Imagens IA', icon: Image },
     { id: 'conversations' as TabType, label: 'Conversas IA', icon: MessageSquare },
-    { id: 'users' as TabType, label: 'Usuários', icon: Users },
+    { id: 'users' as TabType, label: 'Admins', icon: UserPlus },
   ];
 
   return (
