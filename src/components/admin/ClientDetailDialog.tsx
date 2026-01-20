@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Plane,
   Hotel,
@@ -26,7 +27,11 @@ import {
   MapPin,
   Calendar,
   Eye,
-  ExternalLink
+  ExternalLink,
+  Edit,
+  Save,
+  X,
+  Clock
 } from 'lucide-react';
 
 interface ClientProfile {
@@ -52,6 +57,7 @@ interface ClientTrip {
   hotel_checkin_time: string | null;
   hotel_checkout_time: string | null;
   trip_status: string;
+  trip_tips: string | null;
 }
 
 interface TripDocument {
@@ -116,6 +122,24 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
   // View states
   const [viewingItinerary, setViewingItinerary] = useState<AIItinerary | null>(null);
   const [viewingImage, setViewingImage] = useState<AIImage | null>(null);
+  
+  // Edit trip state
+  const [isEditingTrip, setIsEditingTrip] = useState(false);
+  const [editTripData, setEditTripData] = useState({
+    departure_date: '',
+    return_date: '',
+    flight_number: '',
+    flight_locator: '',
+    flight_departure_time: '',
+    flight_return_time: '',
+    hotel_name: '',
+    hotel_address: '',
+    hotel_link: '',
+    hotel_checkin_time: '',
+    hotel_checkout_time: '',
+    trip_tips: '',
+    trip_status: ''
+  });
 
   useEffect(() => {
     if (client && open) {
@@ -294,6 +318,81 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
     }
   };
 
+  const startEditingTrip = () => {
+    if (!selectedTrip) return;
+    setEditTripData({
+      departure_date: selectedTrip.departure_date || '',
+      return_date: selectedTrip.return_date || '',
+      flight_number: selectedTrip.flight_number || '',
+      flight_locator: selectedTrip.flight_locator || '',
+      flight_departure_time: selectedTrip.flight_departure_time ? format(new Date(selectedTrip.flight_departure_time), "yyyy-MM-dd'T'HH:mm") : '',
+      flight_return_time: selectedTrip.flight_return_time ? format(new Date(selectedTrip.flight_return_time), "yyyy-MM-dd'T'HH:mm") : '',
+      hotel_name: selectedTrip.hotel_name || '',
+      hotel_address: selectedTrip.hotel_address || '',
+      hotel_link: selectedTrip.hotel_link || '',
+      hotel_checkin_time: selectedTrip.hotel_checkin_time || '14:00',
+      hotel_checkout_time: selectedTrip.hotel_checkout_time || '12:00',
+      trip_tips: selectedTrip.trip_tips || '',
+      trip_status: selectedTrip.trip_status || 'confirmed'
+    });
+    setIsEditingTrip(true);
+  };
+
+  const cancelEditingTrip = () => {
+    setIsEditingTrip(false);
+    setEditTripData({
+      departure_date: '',
+      return_date: '',
+      flight_number: '',
+      flight_locator: '',
+      flight_departure_time: '',
+      flight_return_time: '',
+      hotel_name: '',
+      hotel_address: '',
+      hotel_link: '',
+      hotel_checkin_time: '',
+      hotel_checkout_time: '',
+      trip_tips: '',
+      trip_status: ''
+    });
+  };
+
+  const handleSaveTrip = async () => {
+    if (!selectedTrip) return;
+
+    try {
+      const updateData: any = {
+        departure_date: editTripData.departure_date,
+        return_date: editTripData.return_date,
+        flight_number: editTripData.flight_number || null,
+        flight_locator: editTripData.flight_locator || null,
+        flight_departure_time: editTripData.flight_departure_time ? new Date(editTripData.flight_departure_time).toISOString() : null,
+        flight_return_time: editTripData.flight_return_time ? new Date(editTripData.flight_return_time).toISOString() : null,
+        hotel_name: editTripData.hotel_name || null,
+        hotel_address: editTripData.hotel_address || null,
+        hotel_link: editTripData.hotel_link || null,
+        hotel_checkin_time: editTripData.hotel_checkin_time || null,
+        hotel_checkout_time: editTripData.hotel_checkout_time || null,
+        trip_tips: editTripData.trip_tips || null,
+        trip_status: editTripData.trip_status
+      };
+
+      const { error } = await supabase
+        .from('client_trips')
+        .update(updateData)
+        .eq('id', selectedTrip.id);
+
+      if (error) throw error;
+
+      toast.success('Viagem atualizada com sucesso!');
+      setIsEditingTrip(false);
+      fetchClientData();
+    } catch (error: any) {
+      console.error('Error updating trip:', error);
+      toast.error(error.message || 'Erro ao atualizar viagem');
+    }
+  };
+
   const getDocumentTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
       voucher_voo: 'Voucher de Voo',
@@ -391,32 +490,227 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
 
                     {selectedTrip && (
                       <div className="space-y-4">
-                        {/* Trip Info */}
-                        <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-secondary/50 border">
-                          <div className="flex items-center gap-2">
+                        {/* Trip Info Header with Edit Button */}
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium flex items-center gap-2">
                             <MapPin className="w-4 h-4 text-primary" />
-                            <span className="font-medium">{selectedTrip.destination_name}</span>
-                            {getStatusBadge(selectedTrip.trip_status)}
-                          </div>
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Calendar className="w-4 h-4" />
-                            <span>
-                              {format(new Date(selectedTrip.departure_date), 'dd/MM', { locale: ptBR })} - {format(new Date(selectedTrip.return_date), 'dd/MM/yyyy', { locale: ptBR })}
-                            </span>
-                          </div>
-                          {selectedTrip.flight_locator && (
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Plane className="w-4 h-4" />
-                              <span>Localizador: {selectedTrip.flight_locator}</span>
-                            </div>
-                          )}
-                          {selectedTrip.hotel_name && (
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Hotel className="w-4 h-4" />
-                              <span>{selectedTrip.hotel_name}</span>
+                            Informações da Viagem
+                          </h4>
+                          {!isEditingTrip ? (
+                            <Button variant="outline" size="sm" onClick={startEditingTrip}>
+                              <Edit className="w-4 h-4 mr-2" />
+                              Editar
+                            </Button>
+                          ) : (
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" onClick={cancelEditingTrip}>
+                                <X className="w-4 h-4 mr-2" />
+                                Cancelar
+                              </Button>
+                              <Button size="sm" onClick={handleSaveTrip}>
+                                <Save className="w-4 h-4 mr-2" />
+                                Salvar
+                              </Button>
                             </div>
                           )}
                         </div>
+
+                        {/* Trip Info Display / Edit Form */}
+                        {!isEditingTrip ? (
+                          <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-secondary/50 border">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4 text-primary" />
+                              <span className="font-medium">{selectedTrip.destination_name}</span>
+                              {getStatusBadge(selectedTrip.trip_status)}
+                            </div>
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Calendar className="w-4 h-4" />
+                              <span>
+                                {format(new Date(selectedTrip.departure_date), 'dd/MM', { locale: ptBR })} - {format(new Date(selectedTrip.return_date), 'dd/MM/yyyy', { locale: ptBR })}
+                              </span>
+                            </div>
+                            {selectedTrip.flight_locator && (
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Plane className="w-4 h-4" />
+                                <span>Localizador: {selectedTrip.flight_locator}</span>
+                              </div>
+                            )}
+                            {selectedTrip.flight_number && (
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Plane className="w-4 h-4" />
+                                <span>Voo: {selectedTrip.flight_number}</span>
+                              </div>
+                            )}
+                            {selectedTrip.flight_departure_time && (
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Clock className="w-4 h-4" />
+                                <span>Ida: {format(new Date(selectedTrip.flight_departure_time), 'dd/MM HH:mm', { locale: ptBR })}</span>
+                              </div>
+                            )}
+                            {selectedTrip.flight_return_time && (
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Clock className="w-4 h-4" />
+                                <span>Volta: {format(new Date(selectedTrip.flight_return_time), 'dd/MM HH:mm', { locale: ptBR })}</span>
+                              </div>
+                            )}
+                            {selectedTrip.hotel_name && (
+                              <div className="flex items-center gap-2 text-muted-foreground col-span-2">
+                                <Hotel className="w-4 h-4" />
+                                <span>{selectedTrip.hotel_name}</span>
+                                {selectedTrip.hotel_checkin_time && selectedTrip.hotel_checkout_time && (
+                                  <span className="text-xs">
+                                    (Check-in: {selectedTrip.hotel_checkin_time} | Check-out: {selectedTrip.hotel_checkout_time})
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="p-4 rounded-lg bg-secondary/50 border space-y-4">
+                            {/* Status */}
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label className="text-xs">Status</Label>
+                                <Select value={editTripData.trip_status} onValueChange={(v) => setEditTripData({...editTripData, trip_status: v})}>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="confirmed">Confirmada</SelectItem>
+                                    <SelectItem value="pending">Pendente</SelectItem>
+                                    <SelectItem value="completed">Concluída</SelectItem>
+                                    <SelectItem value="cancelled">Cancelada</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+
+                            {/* Dates */}
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label className="text-xs">Data de Ida</Label>
+                                <Input
+                                  type="date"
+                                  value={editTripData.departure_date}
+                                  onChange={(e) => setEditTripData({...editTripData, departure_date: e.target.value})}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-xs">Data de Volta</Label>
+                                <Input
+                                  type="date"
+                                  value={editTripData.return_date}
+                                  onChange={(e) => setEditTripData({...editTripData, return_date: e.target.value})}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Flight Info */}
+                            <div className="pt-2 border-t">
+                              <h5 className="font-medium text-sm mb-3 flex items-center gap-2">
+                                <Plane className="w-4 h-4" />
+                                Informações do Voo
+                              </h5>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label className="text-xs">Número do Voo</Label>
+                                  <Input
+                                    placeholder="Ex: LA3456"
+                                    value={editTripData.flight_number}
+                                    onChange={(e) => setEditTripData({...editTripData, flight_number: e.target.value})}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-xs">Código Localizador</Label>
+                                  <Input
+                                    placeholder="Ex: ABC123"
+                                    value={editTripData.flight_locator}
+                                    onChange={(e) => setEditTripData({...editTripData, flight_locator: e.target.value})}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-xs">Data/Hora Partida</Label>
+                                  <Input
+                                    type="datetime-local"
+                                    value={editTripData.flight_departure_time}
+                                    onChange={(e) => setEditTripData({...editTripData, flight_departure_time: e.target.value})}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-xs">Data/Hora Retorno</Label>
+                                  <Input
+                                    type="datetime-local"
+                                    value={editTripData.flight_return_time}
+                                    onChange={(e) => setEditTripData({...editTripData, flight_return_time: e.target.value})}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Hotel Info */}
+                            <div className="pt-2 border-t">
+                              <h5 className="font-medium text-sm mb-3 flex items-center gap-2">
+                                <Hotel className="w-4 h-4" />
+                                Informações da Hospedagem
+                              </h5>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label className="text-xs">Nome do Hotel</Label>
+                                  <Input
+                                    placeholder="Nome do hotel ou pousada"
+                                    value={editTripData.hotel_name}
+                                    onChange={(e) => setEditTripData({...editTripData, hotel_name: e.target.value})}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-xs">Link de Reserva</Label>
+                                  <Input
+                                    placeholder="https://..."
+                                    value={editTripData.hotel_link}
+                                    onChange={(e) => setEditTripData({...editTripData, hotel_link: e.target.value})}
+                                  />
+                                </div>
+                                <div className="space-y-2 col-span-2">
+                                  <Label className="text-xs">Endereço</Label>
+                                  <Input
+                                    placeholder="Endereço completo"
+                                    value={editTripData.hotel_address}
+                                    onChange={(e) => setEditTripData({...editTripData, hotel_address: e.target.value})}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-xs">Horário Check-in</Label>
+                                  <Input
+                                    type="time"
+                                    value={editTripData.hotel_checkin_time}
+                                    onChange={(e) => setEditTripData({...editTripData, hotel_checkin_time: e.target.value})}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-xs">Horário Check-out</Label>
+                                  <Input
+                                    type="time"
+                                    value={editTripData.hotel_checkout_time}
+                                    onChange={(e) => setEditTripData({...editTripData, hotel_checkout_time: e.target.value})}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Trip Tips */}
+                            <div className="pt-2 border-t">
+                              <div className="space-y-2">
+                                <Label className="text-xs">Dicas da Viagem</Label>
+                                <Textarea
+                                  placeholder="Dicas personalizadas para esta viagem..."
+                                  value={editTripData.trip_tips}
+                                  onChange={(e) => setEditTripData({...editTripData, trip_tips: e.target.value})}
+                                  rows={3}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Documents Section */}
                         <div className="space-y-3">
