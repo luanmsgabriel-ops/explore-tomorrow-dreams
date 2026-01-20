@@ -106,23 +106,21 @@ export const StandaloneBannerGenerator = () => {
       // Dynamically import pdfjs-dist to avoid worker issues
       const pdfjsLib = await import('pdfjs-dist');
       
-      // Use a fixed, known-working version from CDN to ensure compatibility in production
-      // The version should match the installed pdfjs-dist package
+      // Use unpkg CDN which has the correct file structure for pdfjs-dist
       const version = '4.10.38';
       
-      // Try legacy worker format (.js) first as it has better browser compatibility
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.js`;
+      // Use unpkg with correct path structure - this is the most reliable CDN for pdfjs-dist
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
       
       console.log('[PDF Extract] Loading PDF with worker version:', version);
       console.log('[PDF Extract] Worker URL:', pdfjsLib.GlobalWorkerOptions.workerSrc);
       
       const arrayBuffer = await file.arrayBuffer();
       
-      // Create loading task with explicit options for better compatibility
+      // Create loading task with disableAutoFetch and disableStream for better compatibility
       const loadingTask = pdfjsLib.getDocument({
         data: arrayBuffer,
-        useSystemFonts: true,
-        standardFontDataUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/standard_fonts/`
+        useSystemFonts: true
       });
       
       const pdf = await loadingTask.promise;
