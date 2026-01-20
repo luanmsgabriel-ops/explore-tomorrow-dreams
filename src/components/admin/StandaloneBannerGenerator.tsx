@@ -1,10 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
   Loader2, Image, Download, Copy, Check, 
   Smartphone, MessageCircle, Sparkles,
-  FileUp, Wand2, X, Share2, Link, Calendar
+  FileUp, Wand2, X, Share2, Link, MapPin
 } from 'lucide-react';
 
 type BannerFormat = 'stories' | 'whatsapp';
@@ -30,6 +30,12 @@ interface ExtractedQuoteData {
   };
 }
 
+interface Destination {
+  id: string;
+  name: string;
+  image_url: string | null;
+}
+
 export const StandaloneBannerGenerator = () => {
   const [format, setFormat] = useState<BannerFormat>('stories');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -43,8 +49,45 @@ export const StandaloneBannerGenerator = () => {
   const [isGeneratingCaption, setIsGeneratingCaption] = useState(false);
   const [quoteUrl, setQuoteUrl] = useState('');
   const [isExtractingUrl, setIsExtractingUrl] = useState(false);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [selectedDestination, setSelectedDestination] = useState<Destination | null>(null);
+  const [isLoadingDestinations, setIsLoadingDestinations] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load destinations from database
+  useEffect(() => {
+    const loadDestinations = async () => {
+      setIsLoadingDestinations(true);
+      try {
+        const { data, error } = await supabase
+          .from('destinations')
+          .select('id, name, image_url')
+          .eq('is_active', true)
+          .order('name');
+        
+        if (error) throw error;
+        setDestinations(data || []);
+      } catch (error) {
+        console.error('Error loading destinations:', error);
+      } finally {
+        setIsLoadingDestinations(false);
+      }
+    };
+    loadDestinations();
+  }, []);
+
+  // Auto-select destination when extracted data changes
+  useEffect(() => {
+    if (extractedData?.destination_name && destinations.length > 0) {
+      const matchedDestination = destinations.find(
+        d => d.name.toLowerCase() === extractedData.destination_name?.toLowerCase()
+      );
+      if (matchedDestination) {
+        setSelectedDestination(matchedDestination);
+      }
+    }
+  }, [extractedData?.destination_name, destinations]);
 
   const formatPrice = (value: number) => {
     return value.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -160,35 +203,38 @@ export const StandaloneBannerGenerator = () => {
       return;
     }
 
+    // Check if we have a destination image
+    const backgroundImageUrl = selectedDestination?.image_url;
+    if (!backgroundImageUrl) {
+      toast.error('Selecione um destino com imagem cadastrada ou cadastre uma imagem para este destino');
+      return;
+    }
+
     setIsGenerating(true);
     try {
       const aspectRatio = format === 'stories' ? '9:16 (vertical, Stories/Reels format)' : '1:1 (square, WhatsApp format)';
       const dimensions = format === 'stories' ? '1080x1920' : '1080x1080';
       
       const destinationName = extractedData.destination_name;
-      const prompt = `Create a stunning travel promotional banner for ${destinationName}.
+      const prompt = `Edit this travel destination photo to create a stunning promotional banner for ${destinationName}.
 
 📍 DESTINATION: ${destinationName}
 
 FORMAT: ${aspectRatio}
 DIMENSIONS: ${dimensions}
 
-EXACT VISUAL STYLE REQUIRED:
-- Beautiful high-quality aerial/landscape photo of ${destinationName} as background (beaches, nature, iconic landmarks, scenic views)
+KEEP THE ORIGINAL PHOTO AS BACKGROUND - just add these overlay elements:
 - ELEGANT GOLDEN BORDER: thin elegant golden/amber rectangular decorative frame around the edges
-- SEMI-TRANSPARENT DARK GRADIENT OVERLAY at bottom third for text overlay
+- SEMI-TRANSPARENT DARK GRADIENT OVERLAY at bottom third for text readability
 - Single thin horizontal golden decorative line at bottom area
 - 3D GOLDEN AIRPLANE: Include a beautiful 3D rendered golden/metallic airplane icon flying across the image, positioned elegantly (top corner or side), with realistic metallic gold texture and subtle shadow
 - Small elegant golden compass rose or star icon centered at bottom
-- COLOR PALETTE: Rich destination colors, golden/amber accents, dark navy overlay gradient
-- Professional travel magazine aesthetic with luxury feel
 
 TEXT TO INCLUDE (ONLY THE DESTINATION NAME):
 - Write "${destinationName.toUpperCase()}" in elegant, large, bold golden/white serif typography
 - Position the destination name prominently in the center or bottom center of the image
 - Use a classic elegant serif font style (like Times New Roman, Playfair Display style)
 - Add subtle golden glow or shadow effect to make text stand out
-- Make sure the text is clearly readable against the background
 
 CRITICAL - DO NOT INCLUDE:
 - NO prices or currency symbols (R$, $, etc)
@@ -197,14 +243,15 @@ CRITICAL - DO NOT INCLUDE:
 - NO dates or time periods
 - NO logos with text
 - NO watermarks
-- ONLY the destination name text, photo, border, gradient, decorative line, 3D golden airplane, small icon
+- ONLY the destination name text, golden overlays, border, 3D golden airplane
 
-Focus on creating a breathtaking photo composition with elegant golden decorative elements, the striking 3D golden airplane, and the destination name "${destinationName.toUpperCase()}" beautifully displayed.`;
+The background photo should remain clearly visible - just add the elegant overlays and text.`;
 
       const response = await supabase.functions.invoke('generate-promo-image', {
         body: { 
           prompt,
-          destinationName
+          destinationName,
+          backgroundImageUrl
         }
       });
 
@@ -709,6 +756,69 @@ ${valid_until ? `📅 Válido até ${formatDate(valid_until)}` : ''}`;
           )}
         </div>
       </div>
+
+      {/* Destination Image Selection */}
+      {extractedData && (
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-primary" />
+            Imagem do Destino para o Banner
+          </h3>
+          
+          {isLoadingDestinations ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              <span className="ml-2 text-muted-foreground">Carregando destinos...</span>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {selectedDestination?.image_url ? (
+                <div className="space-y-3">
+                  <div className="relative aspect-video rounded-xl overflow-hidden border border-border">
+                    <img 
+                      src={selectedDestination.image_url} 
+                      alt={selectedDestination.name}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+                      <p className="text-white font-medium">{selectedDestination.name}</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-primary flex items-center gap-2">
+                    ✅ Esta imagem será usada como fundo do banner
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-amber-500/10 text-amber-600 rounded-xl p-4 text-sm">
+                  ⚠️ O destino "{extractedData.destination_name}" não possui imagem cadastrada ou não foi encontrado. 
+                  Selecione um destino abaixo ou cadastre uma imagem para este destino.
+                </div>
+              )}
+              
+              <div>
+                <label className="block text-xs text-muted-foreground mb-2">
+                  Selecionar destino diferente:
+                </label>
+                <select
+                  value={selectedDestination?.id || ''}
+                  onChange={(e) => {
+                    const dest = destinations.find(d => d.id === e.target.value);
+                    setSelectedDestination(dest || null);
+                  }}
+                  className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">Selecione um destino...</option>
+                  {destinations.filter(d => d.image_url).map(dest => (
+                    <option key={dest.id} value={dest.id}>
+                      {dest.name} {dest.image_url ? '✓' : '(sem imagem)'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Banner Format Selection */}
       {extractedData && (
