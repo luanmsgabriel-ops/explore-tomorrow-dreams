@@ -11,6 +11,7 @@ const navItems = [
   { label: 'Explorar', path: '/explorar' },
   { label: 'Nacional', path: '/nacional' },
   { label: 'Internacional', path: '/internacional' },
+  { label: 'Ofertas', path: '/ofertas' },
   { label: 'Téo', path: '/teo' },
 ];
 
@@ -37,9 +38,9 @@ export const Header = () => {
         }`}
       >
         <div className="container mx-auto px-4 lg:px-8">
-          <div className="flex items-start justify-between">
+          <div className="flex items-center justify-between w-full">
             {/* Logo */}
-            <div className="flex items-start gap-3">
+            <div className="flex items-center gap-3">
               <Link to="/" className="group">
                 <img
                   src={logo}
@@ -47,7 +48,7 @@ export const Header = () => {
                   className="h-12 w-12 rounded-lg object-cover transition-transform duration-300 group-hover:scale-110"
                 />
               </Link>
-              <Link to="/" className="hidden sm:flex items-center h-10">
+              <Link to="/" className="hidden sm:flex items-center">
                 <span className="gradient-text-teal font-serif text-xl font-bold tracking-wide">
                   TOMORROW
                 </span>
