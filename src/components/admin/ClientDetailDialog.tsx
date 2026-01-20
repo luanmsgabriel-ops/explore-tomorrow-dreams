@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -35,7 +36,8 @@ import {
   Ticket,
   Car,
   Map,
-  Bus
+  Bus,
+  Info
 } from 'lucide-react';
 
 interface ClientProfile {
@@ -677,149 +679,176 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
                             )}
                           </div>
                         ) : (
-                          <div className="p-4 rounded-lg bg-secondary/50 border space-y-4">
-                            {/* Status */}
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label className="text-xs">Status</Label>
-                                <Select value={editTripData.trip_status} onValueChange={(v) => setEditTripData({...editTripData, trip_status: v})}>
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="confirmed">Confirmada</SelectItem>
-                                    <SelectItem value="pending">Pendente</SelectItem>
-                                    <SelectItem value="completed">Concluída</SelectItem>
-                                    <SelectItem value="cancelled">Cancelada</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
+                          <div className="p-4 rounded-lg bg-secondary/50 border">
+                            <Accordion type="multiple" defaultValue={["status", "flight", "hotel"]} className="space-y-2">
+                              {/* Status & Dates */}
+                              <AccordionItem value="status" className="border rounded-lg px-4">
+                                <AccordionTrigger className="hover:no-underline py-3">
+                                  <div className="flex items-center gap-2 text-sm font-medium">
+                                    <Calendar className="w-4 h-4 text-primary" />
+                                    Status e Datas
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="pb-4">
+                                  <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div className="space-y-2">
+                                        <Label className="text-xs">Status</Label>
+                                        <Select value={editTripData.trip_status} onValueChange={(v) => setEditTripData({...editTripData, trip_status: v})}>
+                                          <SelectTrigger>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="confirmed">Confirmada</SelectItem>
+                                            <SelectItem value="pending">Pendente</SelectItem>
+                                            <SelectItem value="completed">Concluída</SelectItem>
+                                            <SelectItem value="cancelled">Cancelada</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div className="space-y-2">
+                                        <Label className="text-xs">Data de Ida</Label>
+                                        <Input
+                                          type="date"
+                                          value={editTripData.departure_date}
+                                          onChange={(e) => setEditTripData({...editTripData, departure_date: e.target.value})}
+                                        />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label className="text-xs">Data de Volta</Label>
+                                        <Input
+                                          type="date"
+                                          value={editTripData.return_date}
+                                          onChange={(e) => setEditTripData({...editTripData, return_date: e.target.value})}
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                </AccordionContent>
+                              </AccordionItem>
 
-                            {/* Dates */}
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label className="text-xs">Data de Ida</Label>
-                                <Input
-                                  type="date"
-                                  value={editTripData.departure_date}
-                                  onChange={(e) => setEditTripData({...editTripData, departure_date: e.target.value})}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label className="text-xs">Data de Volta</Label>
-                                <Input
-                                  type="date"
-                                  value={editTripData.return_date}
-                                  onChange={(e) => setEditTripData({...editTripData, return_date: e.target.value})}
-                                />
-                              </div>
-                            </div>
+                              {/* Flight Info */}
+                              <AccordionItem value="flight" className="border rounded-lg px-4">
+                                <AccordionTrigger className="hover:no-underline py-3">
+                                  <div className="flex items-center gap-2 text-sm font-medium">
+                                    <Plane className="w-4 h-4 text-primary" />
+                                    Informações do Voo
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="pb-4">
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                      <Label className="text-xs">Número do Voo</Label>
+                                      <Input
+                                        placeholder="Ex: LA3456"
+                                        value={editTripData.flight_number}
+                                        onChange={(e) => setEditTripData({...editTripData, flight_number: e.target.value})}
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label className="text-xs">Código Localizador</Label>
+                                      <Input
+                                        placeholder="Ex: ABC123"
+                                        value={editTripData.flight_locator}
+                                        onChange={(e) => setEditTripData({...editTripData, flight_locator: e.target.value})}
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label className="text-xs">Data/Hora Partida</Label>
+                                      <Input
+                                        type="datetime-local"
+                                        value={editTripData.flight_departure_time}
+                                        onChange={(e) => setEditTripData({...editTripData, flight_departure_time: e.target.value})}
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label className="text-xs">Data/Hora Retorno</Label>
+                                      <Input
+                                        type="datetime-local"
+                                        value={editTripData.flight_return_time}
+                                        onChange={(e) => setEditTripData({...editTripData, flight_return_time: e.target.value})}
+                                      />
+                                    </div>
+                                  </div>
+                                </AccordionContent>
+                              </AccordionItem>
 
-                            {/* Flight Info */}
-                            <div className="pt-2 border-t">
-                              <h5 className="font-medium text-sm mb-3 flex items-center gap-2">
-                                <Plane className="w-4 h-4" />
-                                Informações do Voo
-                              </h5>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                  <Label className="text-xs">Número do Voo</Label>
-                                  <Input
-                                    placeholder="Ex: LA3456"
-                                    value={editTripData.flight_number}
-                                    onChange={(e) => setEditTripData({...editTripData, flight_number: e.target.value})}
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label className="text-xs">Código Localizador</Label>
-                                  <Input
-                                    placeholder="Ex: ABC123"
-                                    value={editTripData.flight_locator}
-                                    onChange={(e) => setEditTripData({...editTripData, flight_locator: e.target.value})}
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label className="text-xs">Data/Hora Partida</Label>
-                                  <Input
-                                    type="datetime-local"
-                                    value={editTripData.flight_departure_time}
-                                    onChange={(e) => setEditTripData({...editTripData, flight_departure_time: e.target.value})}
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label className="text-xs">Data/Hora Retorno</Label>
-                                  <Input
-                                    type="datetime-local"
-                                    value={editTripData.flight_return_time}
-                                    onChange={(e) => setEditTripData({...editTripData, flight_return_time: e.target.value})}
-                                  />
-                                </div>
-                              </div>
-                            </div>
+                              {/* Hotel Info */}
+                              <AccordionItem value="hotel" className="border rounded-lg px-4">
+                                <AccordionTrigger className="hover:no-underline py-3">
+                                  <div className="flex items-center gap-2 text-sm font-medium">
+                                    <Hotel className="w-4 h-4 text-primary" />
+                                    Informações da Hospedagem
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="pb-4">
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                      <Label className="text-xs">Nome do Hotel</Label>
+                                      <Input
+                                        placeholder="Nome do hotel ou pousada"
+                                        value={editTripData.hotel_name}
+                                        onChange={(e) => setEditTripData({...editTripData, hotel_name: e.target.value})}
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label className="text-xs">Link de Reserva</Label>
+                                      <Input
+                                        placeholder="https://..."
+                                        value={editTripData.hotel_link}
+                                        onChange={(e) => setEditTripData({...editTripData, hotel_link: e.target.value})}
+                                      />
+                                    </div>
+                                    <div className="space-y-2 col-span-2">
+                                      <Label className="text-xs">Endereço</Label>
+                                      <Input
+                                        placeholder="Endereço completo"
+                                        value={editTripData.hotel_address}
+                                        onChange={(e) => setEditTripData({...editTripData, hotel_address: e.target.value})}
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label className="text-xs">Horário Check-in</Label>
+                                      <Input
+                                        type="time"
+                                        value={editTripData.hotel_checkin_time}
+                                        onChange={(e) => setEditTripData({...editTripData, hotel_checkin_time: e.target.value})}
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label className="text-xs">Horário Check-out</Label>
+                                      <Input
+                                        type="time"
+                                        value={editTripData.hotel_checkout_time}
+                                        onChange={(e) => setEditTripData({...editTripData, hotel_checkout_time: e.target.value})}
+                                      />
+                                    </div>
+                                  </div>
+                                </AccordionContent>
+                              </AccordionItem>
 
-                            {/* Hotel Info */}
-                            <div className="pt-2 border-t">
-                              <h5 className="font-medium text-sm mb-3 flex items-center gap-2">
-                                <Hotel className="w-4 h-4" />
-                                Informações da Hospedagem
-                              </h5>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                  <Label className="text-xs">Nome do Hotel</Label>
-                                  <Input
-                                    placeholder="Nome do hotel ou pousada"
-                                    value={editTripData.hotel_name}
-                                    onChange={(e) => setEditTripData({...editTripData, hotel_name: e.target.value})}
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label className="text-xs">Link de Reserva</Label>
-                                  <Input
-                                    placeholder="https://..."
-                                    value={editTripData.hotel_link}
-                                    onChange={(e) => setEditTripData({...editTripData, hotel_link: e.target.value})}
-                                  />
-                                </div>
-                                <div className="space-y-2 col-span-2">
-                                  <Label className="text-xs">Endereço</Label>
-                                  <Input
-                                    placeholder="Endereço completo"
-                                    value={editTripData.hotel_address}
-                                    onChange={(e) => setEditTripData({...editTripData, hotel_address: e.target.value})}
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label className="text-xs">Horário Check-in</Label>
-                                  <Input
-                                    type="time"
-                                    value={editTripData.hotel_checkin_time}
-                                    onChange={(e) => setEditTripData({...editTripData, hotel_checkin_time: e.target.value})}
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label className="text-xs">Horário Check-out</Label>
-                                  <Input
-                                    type="time"
-                                    value={editTripData.hotel_checkout_time}
-                                    onChange={(e) => setEditTripData({...editTripData, hotel_checkout_time: e.target.value})}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Trip Tips */}
-                            <div className="pt-2 border-t">
-                              <div className="space-y-2">
-                                <Label className="text-xs">Dicas da Viagem</Label>
-                                <Textarea
-                                  placeholder="Dicas personalizadas para esta viagem..."
-                                  value={editTripData.trip_tips}
-                                  onChange={(e) => setEditTripData({...editTripData, trip_tips: e.target.value})}
-                                  rows={3}
-                                />
-                              </div>
-                            </div>
+                              {/* Trip Tips */}
+                              <AccordionItem value="tips" className="border rounded-lg px-4">
+                                <AccordionTrigger className="hover:no-underline py-3">
+                                  <div className="flex items-center gap-2 text-sm font-medium">
+                                    <Info className="w-4 h-4 text-primary" />
+                                    Dicas da Viagem
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="pb-4">
+                                  <div className="space-y-2">
+                                    <Textarea
+                                      placeholder="Dicas personalizadas para esta viagem..."
+                                      value={editTripData.trip_tips}
+                                      onChange={(e) => setEditTripData({...editTripData, trip_tips: e.target.value})}
+                                      rows={4}
+                                    />
+                                  </div>
+                                </AccordionContent>
+                              </AccordionItem>
+                            </Accordion>
                           </div>
                         )}
 
