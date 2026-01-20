@@ -562,7 +562,7 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
               </TabsTrigger>
             </TabsList>
 
-            <ScrollArea className="flex-1 mt-4 pr-4" style={{ maxHeight: 'calc(90vh - 180px)' }}>
+            <div className="flex-1 mt-4 pr-4 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 180px)' }}>
               {/* Trips & Documents Tab */}
               <TabsContent value="trips" className="mt-0 space-y-4">
                 {trips.length === 0 ? (
@@ -1259,7 +1259,7 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
                   </DialogContent>
                 </Dialog>
               </TabsContent>
-            </ScrollArea>
+            </div>
           </Tabs>
         )}
       </DialogContent>
