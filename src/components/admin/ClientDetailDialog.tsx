@@ -241,6 +241,11 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!selectedTrip || !e.target.files?.length) return;
     
+    if (!customDocumentName.trim()) {
+      toast.error('Digite um nome para o documento');
+      return;
+    }
+    
     const file = e.target.files[0];
     setIsUploading(true);
 
@@ -265,7 +270,7 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
         .from('trip_documents')
         .insert({
           trip_id: selectedTrip.id,
-          document_name: file.name,
+          document_name: customDocumentName.trim(),
           document_type: documentType,
           file_url: publicUrl,
           file_type: file.type,
@@ -276,12 +281,14 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
       if (docError) throw docError;
 
       toast.success('Documento enviado!');
+      setCustomDocumentName('');
       fetchTripDetails(selectedTrip.id);
     } catch (error: any) {
       console.error('Error uploading file:', error);
       toast.error(error.message || 'Erro ao enviar documento');
     } finally {
       setIsUploading(false);
+      e.target.value = '';
     }
   };
 
@@ -826,45 +833,59 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
                           </div>
 
                           {/* Upload Form */}
-                          <div className="flex items-end gap-2 p-3 rounded-lg bg-secondary/30 border">
-                            <div className="flex-1 space-y-1">
-                              <Label className="text-xs">Tipo do Documento</Label>
-                              <Select value={documentType} onValueChange={setDocumentType}>
-                                <SelectTrigger className="h-9">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="voucher_voo">Voucher de Voo</SelectItem>
-                                  <SelectItem value="voucher_hotel">Voucher de Hotel</SelectItem>
-                                  <SelectItem value="voucher_traslado">Voucher de Traslado</SelectItem>
-                                  <SelectItem value="voucher_passeio">Voucher de Passeio</SelectItem>
-                                  <SelectItem value="voucher_transfer">Voucher de Transfer</SelectItem>
-                                  <SelectItem value="voucher_carro">Voucher Aluguel Carro</SelectItem>
-                                  <SelectItem value="seguro">Seguro Viagem</SelectItem>
-                                  <SelectItem value="outro">Outro</SelectItem>
-                                </SelectContent>
-                              </Select>
+                          <div className="p-3 rounded-lg bg-secondary/30 border space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Nome do Documento</Label>
+                                <Input
+                                  placeholder="Ex: Voucher Hotel Copacabana"
+                                  value={customDocumentName}
+                                  onChange={(e) => setCustomDocumentName(e.target.value)}
+                                  className="h-9"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Tipo do Documento</Label>
+                                <Select value={documentType} onValueChange={setDocumentType}>
+                                  <SelectTrigger className="h-9">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="voucher_voo">Voucher de Voo</SelectItem>
+                                    <SelectItem value="voucher_hotel">Voucher de Hotel</SelectItem>
+                                    <SelectItem value="voucher_traslado">Voucher de Traslado</SelectItem>
+                                    <SelectItem value="voucher_passeio">Voucher de Passeio</SelectItem>
+                                    <SelectItem value="voucher_transfer">Voucher de Transfer</SelectItem>
+                                    <SelectItem value="voucher_carro">Voucher Aluguel Carro</SelectItem>
+                                    <SelectItem value="seguro">Seguro Viagem</SelectItem>
+                                    <SelectItem value="outro">Outro</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </div>
-                            <Button
-                              variant="outline"
-                              className="relative"
-                              disabled={isUploading}
-                            >
-                              {isUploading ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <>
-                                  <Upload className="w-4 h-4 mr-2" />
-                                  Enviar
-                                </>
-                              )}
-                              <input
-                                type="file"
-                                className="absolute inset-0 opacity-0 cursor-pointer"
-                                onChange={handleFileUpload}
-                                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                              />
-                            </Button>
+                            <div className="flex justify-end">
+                              <Button
+                                variant="outline"
+                                className="relative"
+                                disabled={isUploading || !customDocumentName.trim()}
+                              >
+                                {isUploading ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Upload className="w-4 h-4 mr-2" />
+                                    Selecionar Arquivo
+                                  </>
+                                )}
+                                <input
+                                  type="file"
+                                  className="absolute inset-0 opacity-0 cursor-pointer"
+                                  onChange={handleFileUpload}
+                                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                                  disabled={!customDocumentName.trim()}
+                                />
+                              </Button>
+                            </div>
                           </div>
 
                           {/* Documents List */}
