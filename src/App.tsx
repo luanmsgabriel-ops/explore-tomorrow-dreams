@@ -13,6 +13,8 @@ import Ofertas from "./pages/Ofertas";
 import Teo from "./pages/Teo";
 import Admin from "./pages/Admin";
 import AdminDashboard from "./pages/AdminDashboard";
+import ClientLogin from "./pages/ClientLogin";
+import ClientDashboard from "./pages/ClientDashboard";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 import { InstallPrompt } from "./components/InstallPrompt";
@@ -38,6 +40,8 @@ const App = () => (
           <Route path="/teo" element={<Teo />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/cliente" element={<ClientLogin />} />
+          <Route path="/minha-area" element={<ClientDashboard />} />
           <Route path="/install" element={<Install />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
