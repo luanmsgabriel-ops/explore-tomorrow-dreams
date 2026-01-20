@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import Explorar from "./pages/Explorar";
 import Nacional from "./pages/Nacional";
@@ -22,6 +22,22 @@ import { FloatingWhatsApp } from "./components/FloatingWhatsApp";
 import { TravelAdvisorChat } from "./components/TravelAdvisorChat";
 
 const queryClient = new QueryClient();
+
+// Floating buttons that hide on client/admin areas
+const FloatingButtons = () => {
+  const location = useLocation();
+  const hideOnRoutes = ['/cliente', '/minha-area', '/admin', '/admin/dashboard'];
+  const shouldHide = hideOnRoutes.some(route => location.pathname.startsWith(route));
+  
+  if (shouldHide) return null;
+  
+  return (
+    <>
+      <FloatingWhatsApp />
+      <TravelAdvisorChat />
+    </>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -46,8 +62,7 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
         <InstallPrompt />
-        <FloatingWhatsApp />
-        <TravelAdvisorChat />
+        <FloatingButtons />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
