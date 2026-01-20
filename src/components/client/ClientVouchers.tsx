@@ -40,10 +40,45 @@ export const ClientVouchers = ({ tripId, tripName }: ClientVouchersProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('passeios');
   const [previewDoc, setPreviewDoc] = useState<TripDocument | null>(null);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchDocuments();
   }, [tripId]);
+
+  // Extract file path from stored URL
+  const extractFilePath = (fileUrl: string): string => {
+    // URL format: https://.../storage/v1/object/public/trip-documents/path/to/file.pdf
+    const match = fileUrl.match(/\/trip-documents\/(.+)$/);
+    return match ? match[1] : '';
+  };
+
+  // Generate signed URL for private bucket files
+  const getSignedUrl = async (doc: TripDocument): Promise<string> => {
+    // Check if we already have a cached signed URL
+    if (signedUrls[doc.id]) {
+      return signedUrls[doc.id];
+    }
+
+    const filePath = extractFilePath(doc.file_url);
+    if (!filePath) {
+      console.error('Could not extract file path from URL:', doc.file_url);
+      return doc.file_url;
+    }
+
+    const { data, error } = await supabase.storage
+      .from('trip-documents')
+      .createSignedUrl(filePath, 3600); // 1 hour expiry
+
+    if (error) {
+      console.error('Error creating signed URL:', error);
+      return doc.file_url;
+    }
+
+    // Cache the signed URL
+    setSignedUrls(prev => ({ ...prev, [doc.id]: data.signedUrl }));
+    return data.signedUrl;
+  };
 
   const fetchDocuments = async () => {
     try {
@@ -55,7 +90,14 @@ export const ClientVouchers = ({ tripId, tripName }: ClientVouchersProps) => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setDocuments(data || []);
+      
+      const docs = data || [];
+      setDocuments(docs);
+
+      // Pre-generate signed URLs for all documents
+      for (const doc of docs) {
+        await getSignedUrl(doc);
+      }
     } catch (error) {
       console.error('Error fetching vouchers:', error);
     } finally {
@@ -217,7 +259,10 @@ export const ClientVouchers = ({ tripId, tripName }: ClientVouchersProps) => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => window.open(doc.file_url, '_blank')}
+                              onClick={async () => {
+                                const url = await getSignedUrl(doc);
+                                window.open(url, '_blank');
+                              }}
                               className="flex items-center gap-2"
                             >
                               <ExternalLink className="w-4 h-4" />
@@ -226,9 +271,10 @@ export const ClientVouchers = ({ tripId, tripName }: ClientVouchersProps) => {
                             <Button
                               variant="default"
                               size="sm"
-                              onClick={() => {
+                              onClick={async () => {
+                                const url = await getSignedUrl(doc);
                                 const link = document.createElement('a');
-                                link.href = doc.file_url;
+                                link.href = url;
                                 link.download = doc.document_name;
                                 link.target = '_blank';
                                 link.click();
@@ -260,22 +306,27 @@ export const ClientVouchers = ({ tripId, tripName }: ClientVouchersProps) => {
           </DialogHeader>
           
           <div className="flex-1 overflow-hidden rounded-lg border bg-muted/30 min-h-[60vh]">
-            {previewDoc && (
+            {previewDoc && signedUrls[previewDoc.id] && (
               isImage(previewDoc.file_type) ? (
                 <div className="w-full h-full flex items-center justify-center p-4">
                   <img 
-                    src={previewDoc.file_url} 
+                    src={signedUrls[previewDoc.id]} 
                     alt={previewDoc.document_name}
                     className="max-w-full max-h-full object-contain rounded-lg"
                   />
                 </div>
               ) : (
                 <iframe 
-                  src={`${previewDoc.file_url}#toolbar=1&navpanes=0`}
+                  src={`${signedUrls[previewDoc.id]}#toolbar=1&navpanes=0`}
                   className="w-full h-full min-h-[60vh]"
                   title={previewDoc.document_name}
                 />
               )
+            )}
+            {previewDoc && !signedUrls[previewDoc.id] && (
+              <div className="w-full h-full flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
             )}
           </div>
 
@@ -288,10 +339,11 @@ export const ClientVouchers = ({ tripId, tripName }: ClientVouchersProps) => {
               Fechar
             </Button>
             <Button
-              onClick={() => {
+              onClick={async () => {
                 if (previewDoc) {
+                  const url = await getSignedUrl(previewDoc);
                   const link = document.createElement('a');
-                  link.href = previewDoc.file_url;
+                  link.href = url;
                   link.download = previewDoc.document_name;
                   link.target = '_blank';
                   link.click();
