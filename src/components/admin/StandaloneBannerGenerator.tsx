@@ -553,60 +553,157 @@ ${valid_until ? `📅 Válido até ${formatDate(valid_until)}` : ''}`;
 
           {extractedData && (
             <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
-              <h4 className="font-medium text-primary mb-3">✅ Dados Extraídos</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-medium text-primary flex items-center gap-2">
+                  ✅ Dados Extraídos
+                  <span className="text-xs font-normal text-muted-foreground">(editável)</span>
+                </h4>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Destino */}
                 <div>
-                  <span className="text-muted-foreground">Destino:</span>
-                  <span className="ml-2 text-foreground font-medium">{extractedData.destination_name || 'N/A'}</span>
+                  <label className="block text-xs text-muted-foreground mb-1">Destino *</label>
+                  <input
+                    type="text"
+                    value={extractedData.destination_name || ''}
+                    onChange={(e) => setExtractedData({ ...extractedData, destination_name: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Nome do destino"
+                  />
                 </div>
+
+                {/* Título */}
                 <div>
-                  <span className="text-muted-foreground">Valor Total:</span>
-                  <span className="ml-2 text-foreground font-medium">
-                    {extractedData.total_price ? `R$ ${formatPrice(extractedData.total_price)}` : 'N/A'}
-                  </span>
+                  <label className="block text-xs text-muted-foreground mb-1">Título</label>
+                  <input
+                    type="text"
+                    value={extractedData.title || ''}
+                    onChange={(e) => setExtractedData({ ...extractedData, title: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Título do pacote"
+                  />
                 </div>
-                {extractedData.cash_price && (
-                  <div>
-                    <span className="text-muted-foreground">À Vista:</span>
-                    <span className="ml-2 text-foreground">R$ {formatPrice(extractedData.cash_price)}</span>
-                  </div>
-                )}
-                {extractedData.installments && (
-                  <div>
-                    <span className="text-muted-foreground">Parcelamento:</span>
-                    <span className="ml-2 text-foreground">
-                      {extractedData.installments}x de R$ {formatPrice(extractedData.installment_value || 0)}
-                    </span>
-                  </div>
-                )}
-                {(extractedData.departure_date || extractedData.travel_dates?.start) && (
-                  <div>
-                    <span className="text-muted-foreground">Data Ida:</span>
-                    <span className="ml-2 text-foreground">
-                      {formatDate(extractedData.departure_date || extractedData.travel_dates?.start || '')}
-                    </span>
-                  </div>
-                )}
-                {(extractedData.return_date || extractedData.travel_dates?.end) && (
-                  <div>
-                    <span className="text-muted-foreground">Data Volta:</span>
-                    <span className="ml-2 text-foreground">
-                      {formatDate(extractedData.return_date || extractedData.travel_dates?.end || '')}
-                    </span>
-                  </div>
-                )}
-                {extractedData.hotel_name && (
-                  <div>
-                    <span className="text-muted-foreground">Hotel:</span>
-                    <span className="ml-2 text-foreground">{extractedData.hotel_name}</span>
-                  </div>
-                )}
-                {extractedData.inclusions && extractedData.inclusions.length > 0 && (
-                  <div className="col-span-full">
-                    <span className="text-muted-foreground">Incluso:</span>
-                    <span className="ml-2 text-foreground">{extractedData.inclusions.join(', ')}</span>
-                  </div>
-                )}
+
+                {/* Valor Total */}
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">Valor Total (R$)</label>
+                  <input
+                    type="number"
+                    value={extractedData.total_price || ''}
+                    onChange={(e) => setExtractedData({ ...extractedData, total_price: parseFloat(e.target.value) || null })}
+                    className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                {/* Valor à Vista */}
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">Valor à Vista (R$)</label>
+                  <input
+                    type="number"
+                    value={extractedData.cash_price || ''}
+                    onChange={(e) => setExtractedData({ ...extractedData, cash_price: parseFloat(e.target.value) || null })}
+                    className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                {/* Parcelas */}
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">Nº de Parcelas</label>
+                  <input
+                    type="number"
+                    value={extractedData.installments || ''}
+                    onChange={(e) => setExtractedData({ ...extractedData, installments: parseInt(e.target.value) || null })}
+                    className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="12"
+                  />
+                </div>
+
+                {/* Valor Parcela */}
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">Valor da Parcela (R$)</label>
+                  <input
+                    type="number"
+                    value={extractedData.installment_value || ''}
+                    onChange={(e) => setExtractedData({ ...extractedData, installment_value: parseFloat(e.target.value) || null })}
+                    className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                {/* Data de Ida */}
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">Data de Ida</label>
+                  <input
+                    type="date"
+                    value={extractedData.departure_date || extractedData.travel_dates?.start || ''}
+                    onChange={(e) => setExtractedData({ ...extractedData, departure_date: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                {/* Data de Volta */}
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">Data de Volta</label>
+                  <input
+                    type="date"
+                    value={extractedData.return_date || extractedData.travel_dates?.end || ''}
+                    onChange={(e) => setExtractedData({ ...extractedData, return_date: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                {/* Validade */}
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">Válido Até</label>
+                  <input
+                    type="date"
+                    value={extractedData.valid_until || ''}
+                    onChange={(e) => setExtractedData({ ...extractedData, valid_until: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                {/* Hotel */}
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">Hotel</label>
+                  <input
+                    type="text"
+                    value={extractedData.hotel_name || ''}
+                    onChange={(e) => setExtractedData({ ...extractedData, hotel_name: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Nome do hotel"
+                  />
+                </div>
+
+                {/* Descrição */}
+                <div className="col-span-full">
+                  <label className="block text-xs text-muted-foreground mb-1">Descrição</label>
+                  <textarea
+                    value={extractedData.description || ''}
+                    onChange={(e) => setExtractedData({ ...extractedData, description: e.target.value })}
+                    rows={2}
+                    className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                    placeholder="Breve descrição do pacote"
+                  />
+                </div>
+
+                {/* Inclusões */}
+                <div className="col-span-full">
+                  <label className="block text-xs text-muted-foreground mb-1">Itens Inclusos (separados por vírgula)</label>
+                  <textarea
+                    value={extractedData.inclusions?.join(', ') || ''}
+                    onChange={(e) => setExtractedData({ 
+                      ...extractedData, 
+                      inclusions: e.target.value.split(',').map(s => s.trim()).filter(s => s) 
+                    })}
+                    rows={2}
+                    className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                    placeholder="Passagem aérea, Hospedagem, Transfer, Café da manhã..."
+                  />
+                </div>
               </div>
             </div>
           )}
