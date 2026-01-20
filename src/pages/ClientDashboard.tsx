@@ -6,6 +6,8 @@ import { ClientFlightInfo } from '@/components/client/ClientFlightInfo';
 import { ClientAccommodationInfo } from '@/components/client/ClientAccommodationInfo';
 import { ClientChecklist } from '@/components/client/ClientChecklist';
 import { ClientTripTips } from '@/components/client/ClientTripTips';
+import { ClientItineraryGenerator } from '@/components/client/ClientItineraryGenerator';
+import { ClientImageGenerator } from '@/components/client/ClientImageGenerator';
 import { 
   Plane, 
   LogOut, 
@@ -13,11 +15,13 @@ import {
   Hotel, 
   CheckSquare, 
   Info,
-  Bell
+  Bell,
+  Map,
+  Image
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabType = 'flight' | 'accommodation' | 'checklist' | 'info';
+type TabType = 'flight' | 'accommodation' | 'checklist' | 'info' | 'itinerary' | 'image';
 
 interface ClientTrip {
   id: string;
@@ -47,6 +51,8 @@ const ClientDashboard = () => {
   const [trips, setTrips] = useState<ClientTrip[]>([]);
   const [selectedTrip, setSelectedTrip] = useState<ClientTrip | null>(null);
   const [userName, setUserName] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+  const [userWhatsapp, setUserWhatsapp] = useState('');
   const [upcomingFlightAlert, setUpcomingFlightAlert] = useState<ClientTrip | null>(null);
 
   useEffect(() => {
@@ -79,12 +85,15 @@ const ClientDashboard = () => {
       // Get user profile
       const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name')
+        .select('full_name, email')
         .eq('user_id', session.user.id)
         .single();
 
       if (profile?.full_name) {
         setUserName(profile.full_name);
+      }
+      if (profile?.email) {
+        setUserEmail(profile.email);
       }
 
       // Fetch user's trips
@@ -140,6 +149,8 @@ const ClientDashboard = () => {
     { id: 'accommodation' as TabType, label: 'Hospedagem', icon: Hotel },
     { id: 'checklist' as TabType, label: 'Checklist', icon: CheckSquare },
     { id: 'info' as TabType, label: 'Informações', icon: Info },
+    { id: 'itinerary' as TabType, label: 'Roteiro IA', icon: Map },
+    { id: 'image' as TabType, label: 'Imagem IA', icon: Image },
   ];
 
   const getHoursUntilFlight = (flightTime: string) => {
@@ -250,7 +261,25 @@ const ClientDashboard = () => {
 
             {/* Main Content */}
             <main className="flex-1 min-w-0">
-              {trips.length === 0 ? (
+              {/* AI Tabs - Always show even without trips */}
+              {(activeTab === 'itinerary' || activeTab === 'image') ? (
+                <div className="glass rounded-2xl p-6">
+                  {activeTab === 'itinerary' && (
+                    <ClientItineraryGenerator 
+                      userName={userName || 'Viajante'}
+                      userEmail={userEmail}
+                      userWhatsapp={userWhatsapp}
+                    />
+                  )}
+                  {activeTab === 'image' && (
+                    <ClientImageGenerator 
+                      userName={userName || 'Viajante'}
+                      userEmail={userEmail}
+                      userWhatsapp={userWhatsapp}
+                    />
+                  )}
+                </div>
+              ) : trips.length === 0 ? (
                 <div className="text-center py-12 glass rounded-2xl">
                   <Plane className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
                   <h2 className="font-serif text-2xl font-bold text-foreground mb-2">
@@ -258,6 +287,9 @@ const ClientDashboard = () => {
                   </h2>
                   <p className="text-muted-foreground">
                     Seu consultor de viagens irá cadastrar sua próxima aventura em breve!
+                  </p>
+                  <p className="text-muted-foreground mt-2">
+                    Enquanto isso, explore as abas de <strong>Roteiro IA</strong> e <strong>Imagem IA</strong>!
                   </p>
                 </div>
               ) : selectedTrip && (
