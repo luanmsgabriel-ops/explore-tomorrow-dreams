@@ -106,21 +106,20 @@ export const StandaloneBannerGenerator = () => {
       // Dynamically import pdfjs-dist to avoid worker issues
       const pdfjsLib = await import('pdfjs-dist');
       
-      // Use unpkg CDN which has the correct file structure for pdfjs-dist
-      const version = '4.10.38';
+      // CRITICAL: Disable worker entirely to avoid CORS/CSP issues in production
+      // This runs PDF parsing on the main thread, which is fine for small files
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
       
-      // Use unpkg with correct path structure - this is the most reliable CDN for pdfjs-dist
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
-      
-      console.log('[PDF Extract] Loading PDF with worker version:', version);
-      console.log('[PDF Extract] Worker URL:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+      console.log('[PDF Extract] Loading PDF without worker (main thread)');
       
       const arrayBuffer = await file.arrayBuffer();
       
-      // Create loading task with disableAutoFetch and disableStream for better compatibility
+      // Create loading task with worker disabled
       const loadingTask = pdfjsLib.getDocument({
         data: arrayBuffer,
-        useSystemFonts: true
+        useSystemFonts: true,
+        disableAutoFetch: true,
+        disableStream: true
       });
       
       const pdf = await loadingTask.promise;
