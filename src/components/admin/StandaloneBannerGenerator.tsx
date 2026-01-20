@@ -102,26 +102,45 @@ export const StandaloneBannerGenerator = () => {
   };
 
   const extractTextFromPdf = async (file: File): Promise<string> => {
-    // Dynamically import pdfjs-dist to avoid worker issues
-    const pdfjsLib = await import('pdfjs-dist');
-    
-    // Use CDN worker with correct path format
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-    
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    
-    let fullText = '';
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(' ');
-      fullText += pageText + '\n';
+    try {
+      // Dynamically import pdfjs-dist to avoid worker issues
+      const pdfjsLib = await import('pdfjs-dist');
+      
+      // Use CDN worker with correct path format - try multiple fallbacks
+      const version = pdfjsLib.version;
+      const workerUrls = [
+        `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.mjs`,
+        `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`,
+        `https://cdn.jsdelivr.net/npm/pdfjs-dist@${version}/build/pdf.worker.min.mjs`
+      ];
+      
+      // Set the first URL, the library will handle fallback internally
+      pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrls[0];
+      
+      console.log('[PDF Extract] Loading PDF with worker version:', version);
+      
+      const arrayBuffer = await file.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      
+      const pdf = await loadingTask.promise;
+      console.log('[PDF Extract] PDF loaded, pages:', pdf.numPages);
+      
+      let fullText = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
+        fullText += pageText + '\n';
+      }
+      
+      console.log('[PDF Extract] Text extracted, length:', fullText.length);
+      return fullText;
+    } catch (error) {
+      console.error('[PDF Extract] Error:', error);
+      throw new Error('Erro ao ler o PDF. Tente novamente ou use um arquivo diferente.');
     }
-    
-    return fullText;
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
