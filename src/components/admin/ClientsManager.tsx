@@ -20,6 +20,7 @@ import {
   KeyRound
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { ClientDetailDialog } from './ClientDetailDialog';
 import { ptBR } from 'date-fns/locale';
 
 interface ClientProfile {
@@ -46,6 +47,7 @@ export const ClientsManager = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ClientProfile | null>(null);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [passwordClient, setPasswordClient] = useState<ClientProfile | null>(null);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   
@@ -437,7 +439,11 @@ export const ClientsManager = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => setSelectedClient(client)}
+                          title="Ver detalhes"
+                          onClick={() => {
+                            setSelectedClient(client);
+                            setIsDetailDialogOpen(true);
+                          }}
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
@@ -513,6 +519,13 @@ export const ClientsManager = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Client Detail Dialog */}
+      <ClientDetailDialog
+        client={selectedClient}
+        open={isDetailDialogOpen}
+        onOpenChange={setIsDetailDialogOpen}
+      />
     </div>
   );
 };
