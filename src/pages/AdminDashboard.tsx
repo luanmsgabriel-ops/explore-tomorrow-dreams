@@ -8,6 +8,7 @@ import { PromotionalOffersManager } from '@/components/admin/PromotionalOffersMa
 import { ClientsManager } from '@/components/admin/ClientsManager';
 import { TripManager } from '@/components/admin/TripManager';
 import { DefaultChecklistManager } from '@/components/admin/DefaultChecklistManager';
+import { StandaloneBannerGenerator } from '@/components/admin/StandaloneBannerGenerator';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -38,7 +39,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabType = 'overview' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'clients' | 'trips' | 'checklist';
+type TabType = 'overview' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'clients' | 'trips' | 'checklist' | 'banner-generator';
 
 interface QuoteRequest {
   id: string;
@@ -323,6 +324,7 @@ const AdminDashboard = () => {
     { id: 'checklist' as TabType, label: 'Checklist Padrão', icon: ListChecks },
     { id: 'destinations' as TabType, label: 'Destinos', icon: Globe },
     { id: 'offers' as TabType, label: 'Ofertas', icon: Tag },
+    { id: 'banner-generator' as TabType, label: 'Gerar Banner', icon: Image },
     { id: 'quotes' as TabType, label: 'Cotações', icon: FileText },
     { id: 'itineraries' as TabType, label: 'Roteiros IA', icon: Map },
     { id: 'images' as TabType, label: 'Imagens IA', icon: Image },
@@ -817,6 +819,10 @@ const AdminDashboard = () => {
 
                   {activeTab === 'checklist' && (
                     <DefaultChecklistManager />
+                  )}
+
+                  {activeTab === 'banner-generator' && (
+                    <StandaloneBannerGenerator />
                   )}
 
                   {activeTab === 'users' && (
