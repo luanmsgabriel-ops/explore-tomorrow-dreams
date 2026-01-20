@@ -16,7 +16,8 @@ import {
   Plane,
   Eye,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  KeyRound
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -43,12 +44,16 @@ export const ClientsManager = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ClientProfile | null>(null);
+  const [passwordClient, setPasswordClient] = useState<ClientProfile | null>(null);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   
   // Form state
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
 
   useEffect(() => {
     fetchClients();
@@ -105,6 +110,51 @@ export const ClientsManager = () => {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     setPassword(result);
+  };
+
+  const generateNewPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    let result = '';
+    for (let i = 0; i < 10; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setNewPassword(result);
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordClient || !newPassword) {
+      toast.error('Preencha a nova senha');
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      const response = await supabase.functions.invoke('update-user-password', {
+        body: { user_id: passwordClient.user_id, new_password: newPassword }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      toast.success('Senha atualizada com sucesso!', {
+        description: `Nova senha: ${newPassword}`
+      });
+
+      setNewPassword('');
+      setPasswordClient(null);
+      setIsPasswordDialogOpen(false);
+    } catch (error: any) {
+      console.error('Error updating password:', error);
+      toast.error(error.message || 'Erro ao atualizar senha');
+    } finally {
+      setIsUpdatingPassword(false);
+    }
   };
 
   const handleCreateClient = async (e: React.FormEvent) => {
@@ -375,6 +425,18 @@ export const ClientsManager = () => {
                         <Button
                           variant="ghost"
                           size="icon"
+                          title="Alterar Senha"
+                          onClick={() => {
+                            setPasswordClient(client);
+                            setNewPassword('');
+                            setIsPasswordDialogOpen(true);
+                          }}
+                        >
+                          <KeyRound className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => setSelectedClient(client)}
                         >
                           <Eye className="w-4 h-4" />
@@ -396,6 +458,61 @@ export const ClientsManager = () => {
           </Table>
         </div>
       )}
+
+      {/* Password Update Dialog */}
+      <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Alterar Senha</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdatePassword} className="space-y-4">
+            <div className="p-4 rounded-lg bg-secondary/50 border border-border">
+              <p className="text-sm text-muted-foreground">
+                Alterando senha para: <strong className="text-foreground">{passwordClient?.full_name || passwordClient?.email}</strong>
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">Nova Senha</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="newPassword"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Nova senha"
+                  required
+                  minLength={6}
+                />
+                <Button type="button" variant="outline" onClick={generateNewPassword}>
+                  Gerar
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                A senha deve ter pelo menos 6 caracteres
+              </p>
+            </div>
+            
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsPasswordDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isUpdatingPassword}>
+                {isUpdatingPassword ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Atualizando...
+                  </>
+                ) : (
+                  <>
+                    <KeyRound className="w-4 h-4 mr-2" />
+                    Alterar Senha
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
