@@ -129,6 +129,21 @@ const AdminDashboard = () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       navigate('/admin');
+      return;
+    }
+
+    // Verify user has admin role
+    const { data: roleData } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (roleData?.role !== 'admin') {
+      toast.error('Acesso negado. Área exclusiva para administradores.');
+      await supabase.auth.signOut();
+      navigate('/cliente');
+      return;
     }
   };
 
