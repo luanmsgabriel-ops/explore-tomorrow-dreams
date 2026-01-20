@@ -148,6 +148,8 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
     hotel_name: '',
     hotel_address: '',
     hotel_link: '',
+    hotel_checkin_date: '',
+    hotel_checkout_date: '',
     hotel_checkin_time: '',
     hotel_checkout_time: '',
     trip_tips: '',
@@ -436,6 +438,8 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
       hotel_name: selectedTrip.hotel_name || '',
       hotel_address: selectedTrip.hotel_address || '',
       hotel_link: selectedTrip.hotel_link || '',
+      hotel_checkin_date: selectedTrip.departure_date || '',
+      hotel_checkout_date: selectedTrip.return_date || '',
       hotel_checkin_time: selectedTrip.hotel_checkin_time || '14:00',
       hotel_checkout_time: selectedTrip.hotel_checkout_time || '12:00',
       trip_tips: selectedTrip.trip_tips || '',
@@ -456,6 +460,8 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
       hotel_name: '',
       hotel_address: '',
       hotel_link: '',
+      hotel_checkin_date: '',
+      hotel_checkout_date: '',
       hotel_checkin_time: '',
       hotel_checkout_time: '',
       trip_tips: '',
@@ -807,6 +813,22 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
                                         placeholder="Endereço completo"
                                         value={editTripData.hotel_address}
                                         onChange={(e) => setEditTripData({...editTripData, hotel_address: e.target.value})}
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label className="text-xs">Data Check-in</Label>
+                                      <Input
+                                        type="date"
+                                        value={editTripData.hotel_checkin_date}
+                                        onChange={(e) => setEditTripData({...editTripData, hotel_checkin_date: e.target.value})}
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label className="text-xs">Data Check-out</Label>
+                                      <Input
+                                        type="date"
+                                        value={editTripData.hotel_checkout_date}
+                                        onChange={(e) => setEditTripData({...editTripData, hotel_checkout_date: e.target.value})}
                                       />
                                     </div>
                                     <div className="space-y-2">
