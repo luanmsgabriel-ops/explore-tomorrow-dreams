@@ -103,14 +103,13 @@ export const StandaloneBannerGenerator = () => {
 
   const extractTextFromPdf = async (file: File): Promise<string> => {
     try {
-      // Import pdfjs-dist with the worker
       const pdfjsLib = await import('pdfjs-dist');
-      const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.mjs');
       
-      // Set the worker using the imported module
-      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+      // Use jsdelivr CDN which has better CORS support
+      const version = pdfjsLib.version;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
       
-      console.log('[PDF Extract] Loading PDF with bundled worker');
+      console.log('[PDF Extract] Loading PDF with CDN worker version:', version);
       
       const arrayBuffer = await file.arrayBuffer();
       
@@ -137,7 +136,6 @@ export const StandaloneBannerGenerator = () => {
     } catch (error: any) {
       console.error('[PDF Extract] Error:', error);
       console.error('[PDF Extract] Error message:', error?.message);
-      console.error('[PDF Extract] Error stack:', error?.stack);
       throw new Error(`Erro ao ler o PDF: ${error?.message || 'Tente novamente ou use um arquivo diferente.'}`);
     }
   };
