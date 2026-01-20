@@ -970,6 +970,7 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
                                   <SelectItem value="voucher_passeio">Passeio</SelectItem>
                                   <SelectItem value="voucher_transfer">Transfer</SelectItem>
                                   <SelectItem value="voucher_carro">Aluguel de Carro</SelectItem>
+                                  <SelectItem value="outro">Outros</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
