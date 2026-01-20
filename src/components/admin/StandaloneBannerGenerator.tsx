@@ -103,23 +103,20 @@ export const StandaloneBannerGenerator = () => {
 
   const extractTextFromPdf = async (file: File): Promise<string> => {
     try {
-      // Dynamically import pdfjs-dist to avoid worker issues
+      // Import pdfjs-dist with the worker
       const pdfjsLib = await import('pdfjs-dist');
+      const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.mjs');
       
-      // CRITICAL: Disable worker entirely to avoid CORS/CSP issues in production
-      // This runs PDF parsing on the main thread, which is fine for small files
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+      // Set the worker using the imported module
+      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
       
-      console.log('[PDF Extract] Loading PDF without worker (main thread)');
+      console.log('[PDF Extract] Loading PDF with bundled worker');
       
       const arrayBuffer = await file.arrayBuffer();
       
-      // Create loading task with worker disabled
       const loadingTask = pdfjsLib.getDocument({
         data: arrayBuffer,
-        useSystemFonts: true,
-        disableAutoFetch: true,
-        disableStream: true
+        useSystemFonts: true
       });
       
       const pdf = await loadingTask.promise;
