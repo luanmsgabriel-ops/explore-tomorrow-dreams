@@ -807,6 +807,18 @@ const AdminDashboard = () => {
                     <ChatConversationsManager />
                   )}
 
+                  {activeTab === 'clients' && (
+                    <ClientsManager />
+                  )}
+
+                  {activeTab === 'trips' && (
+                    <TripManager />
+                  )}
+
+                  {activeTab === 'checklist' && (
+                    <DefaultChecklistManager />
+                  )}
+
                   {activeTab === 'users' && (
                     <div className="space-y-6">
                       <div className="flex items-center justify-between">
