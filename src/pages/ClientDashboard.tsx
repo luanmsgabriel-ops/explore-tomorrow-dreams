@@ -8,6 +8,7 @@ import { ClientChecklist } from '@/components/client/ClientChecklist';
 import { ClientTripTips } from '@/components/client/ClientTripTips';
 import { ClientItineraryGenerator } from '@/components/client/ClientItineraryGenerator';
 import { ClientImageGenerator } from '@/components/client/ClientImageGenerator';
+import { ClientVouchers } from '@/components/client/ClientVouchers';
 import { 
   Plane, 
   LogOut, 
@@ -17,11 +18,12 @@ import {
   Info,
   Bell,
   Map,
-  Image
+  Image,
+  Ticket
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabType = 'flight' | 'accommodation' | 'checklist' | 'info' | 'itinerary' | 'image';
+type TabType = 'flight' | 'accommodation' | 'vouchers' | 'checklist' | 'info' | 'itinerary' | 'image';
 
 interface ClientTrip {
   id: string;
@@ -147,6 +149,7 @@ const ClientDashboard = () => {
   const tabs = [
     { id: 'flight' as TabType, label: 'Aéreo', icon: Plane },
     { id: 'accommodation' as TabType, label: 'Hospedagem', icon: Hotel },
+    { id: 'vouchers' as TabType, label: 'Vouchers', icon: Ticket },
     { id: 'checklist' as TabType, label: 'Checklist', icon: CheckSquare },
     { id: 'info' as TabType, label: 'Informações', icon: Info },
     { id: 'itinerary' as TabType, label: 'Roteiro IA', icon: Map },
@@ -308,6 +311,12 @@ const ClientDashboard = () => {
                   )}
                   {activeTab === 'checklist' && (
                     <ClientChecklist 
+                      tripId={selectedTrip.id} 
+                      tripName={selectedTrip.destination_name}
+                    />
+                  )}
+                  {activeTab === 'vouchers' && (
+                    <ClientVouchers 
                       tripId={selectedTrip.id} 
                       tripName={selectedTrip.destination_name}
                     />

@@ -398,6 +398,9 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
       voucher_voo: 'Voucher de Voo',
       voucher_hotel: 'Voucher de Hotel',
       voucher_traslado: 'Voucher de Traslado',
+      voucher_passeio: 'Voucher de Passeio',
+      voucher_transfer: 'Voucher de Transfer',
+      voucher_carro: 'Voucher Aluguel Carro',
       seguro: 'Seguro Viagem',
       outro: 'Outro'
     };
@@ -733,6 +736,9 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
                                   <SelectItem value="voucher_voo">Voucher de Voo</SelectItem>
                                   <SelectItem value="voucher_hotel">Voucher de Hotel</SelectItem>
                                   <SelectItem value="voucher_traslado">Voucher de Traslado</SelectItem>
+                                  <SelectItem value="voucher_passeio">Voucher de Passeio</SelectItem>
+                                  <SelectItem value="voucher_transfer">Voucher de Transfer</SelectItem>
+                                  <SelectItem value="voucher_carro">Voucher Aluguel Carro</SelectItem>
                                   <SelectItem value="seguro">Seguro Viagem</SelectItem>
                                   <SelectItem value="outro">Outro</SelectItem>
                                 </SelectContent>
