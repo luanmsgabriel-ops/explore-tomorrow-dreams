@@ -31,7 +31,11 @@ import {
   Edit,
   Save,
   X,
-  Clock
+  Clock,
+  Ticket,
+  Car,
+  Map,
+  Bus
 } from 'lucide-react';
 
 interface ClientProfile {
@@ -118,6 +122,13 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
   const [isUploading, setIsUploading] = useState(false);
   const [newChecklistItem, setNewChecklistItem] = useState('');
   const [documentType, setDocumentType] = useState('voucher_voo');
+  const [customDocumentName, setCustomDocumentName] = useState('');
+  
+  // Vouchers tab states
+  const [voucherDocuments, setVoucherDocuments] = useState<TripDocument[]>([]);
+  const [voucherType, setVoucherType] = useState('voucher_passeio');
+  const [voucherName, setVoucherName] = useState('');
+  const [isUploadingVoucher, setIsUploadingVoucher] = useState(false);
   
   // View states
   const [viewingItinerary, setViewingItinerary] = useState<AIItinerary | null>(null);
@@ -197,13 +208,23 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
 
   const fetchTripDetails = async (tripId: string) => {
     try {
-      // Fetch documents
+      // Fetch documents (excluding voucher types for separate tab)
       const { data: docs } = await supabase
         .from('trip_documents')
         .select('*')
         .eq('trip_id', tripId)
+        .not('document_type', 'in', '("voucher_passeio","voucher_transfer","voucher_carro")')
         .order('created_at', { ascending: false });
       setDocuments(docs || []);
+
+      // Fetch voucher documents
+      const { data: voucherDocs } = await supabase
+        .from('trip_documents')
+        .select('*')
+        .eq('trip_id', tripId)
+        .in('document_type', ['voucher_passeio', 'voucher_transfer', 'voucher_carro'])
+        .order('created_at', { ascending: false });
+      setVoucherDocuments(voucherDocs || []);
 
       // Fetch checklist
       const { data: checklistData } = await supabase
@@ -273,6 +294,82 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
       if (selectedTrip) fetchTripDetails(selectedTrip.id);
     } catch (error) {
       toast.error('Erro ao excluir documento');
+    }
+  };
+
+  const handleVoucherUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!selectedTrip || !e.target.files?.length) return;
+    
+    if (!voucherName.trim()) {
+      toast.error('Digite um nome para o voucher');
+      return;
+    }
+    
+    const file = e.target.files[0];
+    setIsUploadingVoucher(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Não autenticado');
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${selectedTrip.id}/vouchers/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('trip-documents')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('trip-documents')
+        .getPublicUrl(fileName);
+
+      const { error: docError } = await supabase
+        .from('trip_documents')
+        .insert({
+          trip_id: selectedTrip.id,
+          document_name: voucherName.trim(),
+          document_type: voucherType,
+          file_url: publicUrl,
+          file_type: file.type,
+          file_size: file.size,
+          uploaded_by: session.user.id
+        });
+
+      if (docError) throw docError;
+
+      toast.success('Voucher enviado!');
+      setVoucherName('');
+      fetchTripDetails(selectedTrip.id);
+    } catch (error: any) {
+      console.error('Error uploading voucher:', error);
+      toast.error(error.message || 'Erro ao enviar voucher');
+    } finally {
+      setIsUploadingVoucher(false);
+      e.target.value = '';
+    }
+  };
+
+  const getVoucherTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      voucher_passeio: 'Passeio',
+      voucher_transfer: 'Transfer',
+      voucher_carro: 'Aluguel de Carro'
+    };
+    return labels[type] || type;
+  };
+
+  const getVoucherIcon = (type: string) => {
+    switch (type) {
+      case 'voucher_passeio':
+        return <Map className="w-4 h-4" />;
+      case 'voucher_transfer':
+        return <Bus className="w-4 h-4" />;
+      case 'voucher_carro':
+        return <Car className="w-4 h-4" />;
+      default:
+        return <Ticket className="w-4 h-4" />;
     }
   };
 
@@ -442,10 +539,14 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="trips" className="flex items-center gap-1">
                 <Plane className="w-4 h-4" />
                 <span className="hidden sm:inline">Viagens</span>
+              </TabsTrigger>
+              <TabsTrigger value="vouchers" className="flex items-center gap-1">
+                <Ticket className="w-4 h-4" />
+                <span className="hidden sm:inline">Vouchers</span>
               </TabsTrigger>
               <TabsTrigger value="checklist" className="flex items-center gap-1">
                 <CheckSquare className="w-4 h-4" />
@@ -785,6 +886,155 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => window.open(doc.file_url, '_blank')}
+                                    >
+                                      <Download className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleDeleteDocument(doc.id)}
+                                      className="text-destructive hover:text-destructive"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </TabsContent>
+
+              {/* Vouchers Tab */}
+              <TabsContent value="vouchers" className="mt-0 space-y-4">
+                {trips.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Ticket className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Nenhuma viagem cadastrada</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Trip Selector */}
+                    <div className="space-y-2">
+                      <Label>Selecione a Viagem</Label>
+                      <Select
+                        value={selectedTrip?.id || ''}
+                        onValueChange={(id) => setSelectedTrip(trips.find(t => t.id === id) || null)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione uma viagem" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {trips.map((trip) => (
+                            <SelectItem key={trip.id} value={trip.id}>
+                              {trip.destination_name} - {format(new Date(trip.departure_date), 'dd/MM/yyyy', { locale: ptBR })}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {selectedTrip && (
+                      <div className="space-y-4">
+                        {/* Upload Voucher Form */}
+                        <div className="p-4 rounded-lg bg-secondary/30 border space-y-3">
+                          <h4 className="font-medium flex items-center gap-2">
+                            <Plus className="w-4 h-4" />
+                            Adicionar Voucher
+                          </h4>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Nome do Voucher</Label>
+                              <Input
+                                placeholder="Ex: Passeio de Barco - Arraial"
+                                value={voucherName}
+                                onChange={(e) => setVoucherName(e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Tipo</Label>
+                              <Select value={voucherType} onValueChange={setVoucherType}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="voucher_passeio">Passeio</SelectItem>
+                                  <SelectItem value="voucher_transfer">Transfer</SelectItem>
+                                  <SelectItem value="voucher_carro">Aluguel de Carro</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end">
+                            <Button
+                              variant="outline"
+                              className="relative"
+                              disabled={isUploadingVoucher || !voucherName.trim()}
+                            >
+                              {isUploadingVoucher ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Upload className="w-4 h-4 mr-2" />
+                                  Selecionar Arquivo
+                                </>
+                              )}
+                              <input
+                                type="file"
+                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                onChange={handleVoucherUpload}
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                                disabled={!voucherName.trim()}
+                              />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Vouchers List */}
+                        <div className="space-y-2">
+                          <h4 className="font-medium flex items-center gap-2">
+                            <Ticket className="w-4 h-4" />
+                            Vouchers Cadastrados
+                            <Badge variant="outline" className="ml-auto">
+                              {voucherDocuments.length}
+                            </Badge>
+                          </h4>
+
+                          {voucherDocuments.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-6">
+                              Nenhum voucher cadastrado para esta viagem
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {voucherDocuments.map((doc) => (
+                                <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border bg-background">
+                                  <div className="flex items-center gap-3">
+                                    {getVoucherIcon(doc.document_type)}
+                                    <div>
+                                      <p className="text-sm font-medium">{doc.document_name}</p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {getVoucherTypeLabel(doc.document_type)} • {formatFileSize(doc.file_size)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => window.open(doc.file_url, '_blank')}
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                    </Button>
                                     <Button
                                       variant="ghost"
                                       size="icon"
