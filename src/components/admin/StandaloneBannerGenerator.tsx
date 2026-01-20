@@ -1,15 +1,11 @@
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import * as pdfjsLib from 'pdfjs-dist';
 import { 
   Loader2, Image, Download, Copy, Check, 
   Smartphone, MessageCircle, Sparkles,
-  FileUp, Wand2, X, Share2
+  FileUp, Wand2, X, Share2, Link, Calendar
 } from 'lucide-react';
-
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 type BannerFormat = 'stories' | 'whatsapp';
 
@@ -27,6 +23,11 @@ interface ExtractedQuoteData {
   description: string | null;
   hotel_name: string | null;
   flight_info: string | null;
+  tagline: string | null;
+  travel_dates?: {
+    start: string | null;
+    end: string | null;
+  };
 }
 
 export const StandaloneBannerGenerator = () => {
@@ -39,6 +40,9 @@ export const StandaloneBannerGenerator = () => {
   const [extractedData, setExtractedData] = useState<ExtractedQuoteData | null>(null);
   const [offerLink, setOfferLink] = useState<string>('');
   const [pdfFileName, setPdfFileName] = useState<string>('');
+  const [isGeneratingCaption, setIsGeneratingCaption] = useState(false);
+  const [quoteUrl, setQuoteUrl] = useState('');
+  const [isExtractingUrl, setIsExtractingUrl] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -46,7 +50,21 @@ export const StandaloneBannerGenerator = () => {
     return value.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
   };
 
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
   const extractTextFromPdf = async (file: File): Promise<string> => {
+    // Dynamically import pdfjs-dist to avoid worker issues
+    const pdfjsLib = await import('pdfjs-dist');
+    
+    // Use CDN worker with correct path format
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+    
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     
@@ -108,9 +126,37 @@ export const StandaloneBannerGenerator = () => {
     }
   };
 
+  const handleExtractFromUrl = async () => {
+    if (!quoteUrl.trim()) {
+      toast.error('Cole a URL da cotação primeiro');
+      return;
+    }
+
+    setIsExtractingUrl(true);
+    try {
+      const response = await supabase.functions.invoke('extract-quote-data', {
+        body: { url: quoteUrl.trim() }
+      });
+
+      if (response.error) throw response.error;
+
+      const data = response.data as ExtractedQuoteData;
+      if (data) {
+        setExtractedData(data);
+        setOfferLink(quoteUrl.trim());
+        toast.success('Dados da cotação extraídos! Use para gerar a legenda.');
+      }
+    } catch (error: any) {
+      console.error('Error extracting quote data:', error);
+      toast.error(error.message || 'Erro ao extrair dados da URL');
+    } finally {
+      setIsExtractingUrl(false);
+    }
+  };
+
   const generateBanner = async () => {
     if (!extractedData?.destination_name) {
-      toast.error('Faça upload do PDF do orçamento primeiro');
+      toast.error('Extraia os dados do orçamento primeiro');
       return;
     }
 
@@ -180,54 +226,86 @@ Focus on creating a breathtaking photo composition with elegant golden decorativ
 
   const generateCaption = () => {
     if (!extractedData) {
-      toast.error('Extraia os dados do PDF primeiro');
+      toast.error('Extraia os dados do orçamento primeiro');
       return;
     }
 
-    const { 
-      destination_name, 
-      title, 
-      total_price, 
-      cash_price, 
-      installments, 
-      installment_value,
-      inclusions,
-      description,
-      valid_until
-    } = extractedData;
+    setIsGeneratingCaption(true);
+    try {
+      const { 
+        destination_name, 
+        title, 
+        total_price, 
+        cash_price, 
+        installments, 
+        installment_value,
+        inclusions,
+        description,
+        valid_until,
+        departure_date,
+        return_date,
+        travel_dates
+      } = extractedData;
 
-    const inclusionsList = inclusions && inclusions.length > 0 
-      ? inclusions.map((inc: string) => `✅ ${inc}`).join('\n')
-      : '';
+      const inclusionsList = inclusions && inclusions.length > 0 
+        ? inclusions.map((inc: string) => `✅ ${inc}`).join('\n')
+        : '';
 
-    const briefDescription = description && description.length > 150 
-      ? description.substring(0, 150).replace(/\s+\S*$/, '') + '...'
-      : description || '';
+      const briefDescription = description && description.length > 150 
+        ? description.substring(0, 150).replace(/\s+\S*$/, '') + '...'
+        : description || '';
 
-    let captionText = `🌴 *${(destination_name || 'DESTINO').toUpperCase()}* 🌴
+      // Determine departure and return dates
+      const startDate = departure_date || travel_dates?.start;
+      const endDate = return_date || travel_dates?.end;
+
+      let captionText = `🌴 *${(destination_name || 'DESTINO').toUpperCase()}* 🌴
 
 ${briefDescription ? `✨ ${briefDescription}\n\n` : ''}${title || 'Pacote de Viagem'}
+`;
 
+      // Add travel dates if available
+      if (startDate && endDate) {
+        captionText += `
+📅 *Período da Viagem:*
+🛫 Ida: ${formatDate(startDate)}
+🛬 Volta: ${formatDate(endDate)}
+`;
+      } else if (startDate) {
+        captionText += `
+📅 *Data de Ida:* ${formatDate(startDate)}
+`;
+      }
+
+      captionText += `
 💰 *A partir de R$ ${formatPrice(total_price || 0)}*
 ${cash_price ? `💵 À vista: R$ ${formatPrice(cash_price)}` : ''}
 ${installments ? `📦 Ou ${installments}x de R$ ${formatPrice(installment_value || 0)}` : ''}
 
-${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
+${inclusionsList ? `📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
 ⏰ *Oferta por tempo limitado!*
-${valid_until ? `📅 Válido até ${new Date(valid_until).toLocaleDateString('pt-BR')}` : ''}`;
+${valid_until ? `📅 Válido até ${formatDate(valid_until)}` : ''}`;
 
-    if (offerLink.trim()) {
-      captionText += `\n\n🔗 *Veja todos os detalhes:* ${offerLink.trim()}`;
-    }
+      if (offerLink.trim()) {
+        captionText += `
 
-    captionText += `
+🔗 *Veja todos os detalhes:* ${offerLink.trim()}`;
+      }
+
+      captionText += `
 
 📲 Entre em contato agora e garanta sua viagem dos sonhos!
 
 ✈️ *Tomorrow Travel - Realizando Sonhos*`;
 
-    setCaption(captionText);
-    toast.success('Legenda gerada!');
+      setCaption(captionText);
+      toast.success('Legenda gerada!');
+    } catch (error) {
+      console.error('Error generating caption:', error);
+      toast.error('Erro ao gerar legenda');
+    } finally {
+      setIsGeneratingCaption(false);
+    }
   };
 
   const copyCaption = async () => {
@@ -236,7 +314,7 @@ ${valid_until ? `📅 Válido até ${new Date(valid_until).toLocaleDateString('p
       setIsCopied(true);
       toast.success('Legenda copiada!');
       setTimeout(() => setIsCopied(false), 2000);
-    } catch (error) {
+    } catch {
       toast.error('Erro ao copiar');
     }
   };
@@ -257,13 +335,8 @@ ${valid_until ? `📅 Válido até ${new Date(valid_until).toLocaleDateString('p
     if (!generatedImage) return null;
     
     try {
-      if (generatedImage.startsWith('data:')) {
-        const response = await fetch(generatedImage);
-        return await response.blob();
-      } else {
-        const response = await fetch(generatedImage);
-        return await response.blob();
-      }
+      const response = await fetch(generatedImage);
+      return await response.blob();
     } catch (error) {
       console.error('Error converting image to blob:', error);
       return null;
@@ -355,12 +428,30 @@ ${valid_until ? `📅 Válido até ${new Date(valid_until).toLocaleDateString('p
     }
   };
 
+  const shareToInstagram = async () => {
+    await navigator.clipboard.writeText(caption);
+    
+    if (generatedImage) {
+      const link = document.createElement('a');
+      link.href = generatedImage;
+      link.download = `instagram-${extractedData?.destination_name || 'destino'}-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Legenda copiada e imagem baixada! Compartilhe no Instagram.', { duration: 5000 });
+    } else {
+      toast.success('Legenda copiada!');
+    }
+  };
+
   const clearAll = () => {
     setExtractedData(null);
     setGeneratedImage(null);
     setCaption('');
     setPdfFileName('');
     setOfferLink('');
+    setQuoteUrl('');
   };
 
   return (
@@ -381,7 +472,7 @@ ${valid_until ? `📅 Válido até ${new Date(valid_until).toLocaleDateString('p
       </div>
 
       <p className="text-muted-foreground">
-        Faça upload do PDF do orçamento para extrair as informações e gerar um banner promocional.
+        Faça upload do PDF do orçamento ou cole a URL para extrair as informações e gerar um banner promocional.
       </p>
 
       {/* PDF Upload */}
@@ -431,6 +522,35 @@ ${valid_until ? `📅 Válido até ${new Date(valid_until).toLocaleDateString('p
             </label>
           </div>
 
+          {/* URL Extraction */}
+          <div className="pt-4 border-t border-border">
+            <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+              <Link className="w-4 h-4 text-accent" />
+              Ou extrair de URL
+            </h4>
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={quoteUrl}
+                onChange={(e) => setQuoteUrl(e.target.value)}
+                placeholder="https://link-do-orcamento.com"
+                className="flex-1 px-4 py-2 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+              />
+              <button
+                onClick={handleExtractFromUrl}
+                disabled={isExtractingUrl || !quoteUrl.trim()}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-50 text-sm"
+              >
+                {isExtractingUrl ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Wand2 className="w-4 h-4" />
+                )}
+                Extrair
+              </button>
+            </div>
+          </div>
+
           {extractedData && (
             <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
               <h4 className="font-medium text-primary mb-3">✅ Dados Extraídos</h4>
@@ -456,6 +576,22 @@ ${valid_until ? `📅 Válido até ${new Date(valid_until).toLocaleDateString('p
                     <span className="text-muted-foreground">Parcelamento:</span>
                     <span className="ml-2 text-foreground">
                       {extractedData.installments}x de R$ {formatPrice(extractedData.installment_value || 0)}
+                    </span>
+                  </div>
+                )}
+                {(extractedData.departure_date || extractedData.travel_dates?.start) && (
+                  <div>
+                    <span className="text-muted-foreground">Data Ida:</span>
+                    <span className="ml-2 text-foreground">
+                      {formatDate(extractedData.departure_date || extractedData.travel_dates?.start || '')}
+                    </span>
+                  </div>
+                )}
+                {(extractedData.return_date || extractedData.travel_dates?.end) && (
+                  <div>
+                    <span className="text-muted-foreground">Data Volta:</span>
+                    <span className="ml-2 text-foreground">
+                      {formatDate(extractedData.return_date || extractedData.travel_dates?.end || '')}
                     </span>
                   </div>
                 )}
@@ -576,9 +712,14 @@ ${valid_until ? `📅 Válido até ${new Date(valid_until).toLocaleDateString('p
 
             <button
               onClick={generateCaption}
+              disabled={isGeneratingCaption}
               className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent/10 text-accent hover:bg-accent/20 transition-colors w-full font-medium"
             >
-              <Wand2 className="w-4 h-4" />
+              {isGeneratingCaption ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Wand2 className="w-4 h-4" />
+              )}
               Gerar Legenda
             </button>
 
@@ -587,7 +728,7 @@ ${valid_until ? `📅 Válido até ${new Date(valid_until).toLocaleDateString('p
                 <textarea
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
-                  rows={12}
+                  rows={16}
                   className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                 />
                 
@@ -602,10 +743,18 @@ ${valid_until ? `📅 Válido até ${new Date(valid_until).toLocaleDateString('p
                   
                   <button
                     onClick={shareToWhatsApp}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#25D366] text-white hover:bg-[#128C7E] transition-colors"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    WhatsApp
+                  </button>
+
+                  <button
+                    onClick={shareToInstagram}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] text-white hover:opacity-90 transition-opacity"
                   >
                     <Share2 className="w-4 h-4" />
-                    Enviar WhatsApp
+                    Instagram
                   </button>
                 </div>
               </div>
