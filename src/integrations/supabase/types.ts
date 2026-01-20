@@ -226,6 +226,92 @@ export type Database = {
         }
         Relationships: []
       }
+      checklist_items_default: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          is_active: boolean
+          item_text: string
+          sort_order: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          item_text: string
+          sort_order?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          item_text?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      client_trips: {
+        Row: {
+          created_at: string
+          departure_date: string
+          destination_id: string | null
+          destination_name: string
+          flight_departure_time: string | null
+          flight_number: string | null
+          hotel_address: string | null
+          hotel_name: string | null
+          id: string
+          notes: string | null
+          return_date: string
+          trip_status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          departure_date: string
+          destination_id?: string | null
+          destination_name: string
+          flight_departure_time?: string | null
+          flight_number?: string | null
+          hotel_address?: string | null
+          hotel_name?: string | null
+          id?: string
+          notes?: string | null
+          return_date: string
+          trip_status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          departure_date?: string
+          destination_id?: string | null
+          destination_name?: string
+          flight_departure_time?: string | null
+          flight_number?: string | null
+          hotel_address?: string | null
+          hotel_name?: string | null
+          id?: string
+          notes?: string | null
+          return_date?: string
+          trip_status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_trips_destination_id_fkey"
+            columns: ["destination_id"]
+            isOneToOne: false
+            referencedRelation: "destinations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       destinations: {
         Row: {
           best_price_periods: Json | null
@@ -440,6 +526,132 @@ export type Database = {
           whatsapp?: string
         }
         Relationships: []
+      }
+      trip_checklist: {
+        Row: {
+          created_at: string
+          id: string
+          is_completed: boolean
+          is_default_item: boolean
+          item_text: string
+          sort_order: number
+          trip_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          is_default_item?: boolean
+          item_text: string
+          sort_order?: number
+          trip_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          is_default_item?: boolean
+          item_text?: string
+          sort_order?: number
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_checklist_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "client_trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_documents: {
+        Row: {
+          created_at: string
+          document_name: string
+          document_type: string
+          file_size: number | null
+          file_type: string
+          file_url: string
+          id: string
+          trip_id: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          document_name: string
+          document_type: string
+          file_size?: number | null
+          file_type: string
+          file_url: string
+          id?: string
+          trip_id: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          document_name?: string
+          document_type?: string
+          file_size?: number | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          trip_id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_documents_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "client_trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_emergency_contacts: {
+        Row: {
+          contact_name: string
+          contact_type: string
+          created_at: string
+          email: string | null
+          id: string
+          notes: string | null
+          phone: string | null
+          sort_order: number
+          trip_id: string
+        }
+        Insert: {
+          contact_name: string
+          contact_type: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          sort_order?: number
+          trip_id: string
+        }
+        Update: {
+          contact_name?: string
+          contact_type?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          sort_order?: number
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_emergency_contacts_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "client_trips"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
