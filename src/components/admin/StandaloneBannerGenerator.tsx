@@ -106,21 +106,24 @@ export const StandaloneBannerGenerator = () => {
       // Dynamically import pdfjs-dist to avoid worker issues
       const pdfjsLib = await import('pdfjs-dist');
       
-      // Use CDN worker with correct path format - try multiple fallbacks
-      const version = pdfjsLib.version;
-      const workerUrls = [
-        `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.mjs`,
-        `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`,
-        `https://cdn.jsdelivr.net/npm/pdfjs-dist@${version}/build/pdf.worker.min.mjs`
-      ];
+      // Use a fixed, known-working version from CDN to ensure compatibility in production
+      // The version should match the installed pdfjs-dist package
+      const version = '4.10.38';
       
-      // Set the first URL, the library will handle fallback internally
-      pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrls[0];
+      // Try legacy worker format (.js) first as it has better browser compatibility
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.js`;
       
       console.log('[PDF Extract] Loading PDF with worker version:', version);
+      console.log('[PDF Extract] Worker URL:', pdfjsLib.GlobalWorkerOptions.workerSrc);
       
       const arrayBuffer = await file.arrayBuffer();
-      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      
+      // Create loading task with explicit options for better compatibility
+      const loadingTask = pdfjsLib.getDocument({
+        data: arrayBuffer,
+        useSystemFonts: true,
+        standardFontDataUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/standard_fonts/`
+      });
       
       const pdf = await loadingTask.promise;
       console.log('[PDF Extract] PDF loaded, pages:', pdf.numPages);
@@ -137,9 +140,11 @@ export const StandaloneBannerGenerator = () => {
       
       console.log('[PDF Extract] Text extracted, length:', fullText.length);
       return fullText;
-    } catch (error) {
+    } catch (error: any) {
       console.error('[PDF Extract] Error:', error);
-      throw new Error('Erro ao ler o PDF. Tente novamente ou use um arquivo diferente.');
+      console.error('[PDF Extract] Error message:', error?.message);
+      console.error('[PDF Extract] Error stack:', error?.stack);
+      throw new Error(`Erro ao ler o PDF: ${error?.message || 'Tente novamente ou use um arquivo diferente.'}`);
     }
   };
 

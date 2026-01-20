@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.create-user]
 verify_jwt = false
+
+[functions.extract-quote-pdf]
+verify_jwt = false
+
+[functions.update-user-password]
+verify_jwt = false
