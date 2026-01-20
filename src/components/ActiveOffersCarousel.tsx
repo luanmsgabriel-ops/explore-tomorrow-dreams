@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ChevronLeft, ChevronRight, Clock, Sparkles, Tag } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Sparkles, Tag, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface PromotionalOffer {
@@ -13,6 +13,8 @@ interface PromotionalOffer {
   installments: number | null;
   installment_value: number | null;
   valid_until: string;
+  departure_date: string | null;
+  return_date: string | null;
   destinations: {
     name: string;
     slug: string;
@@ -128,9 +130,21 @@ const OfferCard = ({ offer }: { offer: PromotionalOffer }) => {
         </h3>
         
         {offer.tagline && (
-          <p className="text-muted-foreground text-sm line-clamp-2 mb-3">
+          <p className="text-muted-foreground text-sm line-clamp-2 mb-2">
             {offer.tagline}
           </p>
+        )}
+
+        {/* Travel dates */}
+        {(offer.departure_date || offer.return_date) && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
+            <Calendar className="w-3 h-3 text-primary" />
+            <span>
+              {offer.departure_date && new Date(offer.departure_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+              {offer.departure_date && offer.return_date && ' - '}
+              {offer.return_date && new Date(offer.return_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+            </span>
+          </div>
         )}
 
         {/* Price */}
@@ -186,6 +200,8 @@ export const ActiveOffersCarousel = () => {
           installments,
           installment_value,
           valid_until,
+          departure_date,
+          return_date,
           destinations (
             name,
             slug,

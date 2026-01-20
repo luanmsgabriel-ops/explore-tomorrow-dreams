@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { ArrowLeft, Clock, Check, MapPin, Calendar, Users, Loader2 } from 'lucide-react';
+import { ArrowLeft, Clock, Check, MapPin, Calendar, Users, Loader2, Plane } from 'lucide-react';
 
 interface PromotionalOffer {
   id: string;
@@ -16,6 +16,8 @@ interface PromotionalOffer {
   installment_value: number | null;
   inclusions: string[];
   valid_until: string;
+  departure_date: string | null;
+  return_date: string | null;
   destinations: {
     name: string;
     slug: string;
@@ -242,6 +244,25 @@ const PromocaoDetail = () => {
 
                 {/* Countdown */}
                 <CountdownDisplay validUntil={offer.valid_until} />
+
+                {/* Travel Dates */}
+                {(offer.departure_date || offer.return_date) && (
+                  <div className="p-4 rounded-2xl bg-secondary border border-border">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Plane className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <span className="text-sm text-muted-foreground">Datas da viagem</span>
+                        <p className="text-lg font-semibold text-foreground">
+                          {offer.departure_date && new Date(offer.departure_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                          {offer.departure_date && offer.return_date && ' → '}
+                          {offer.return_date && new Date(offer.return_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Inclusions */}
                 {offer.inclusions && offer.inclusions.length > 0 && (

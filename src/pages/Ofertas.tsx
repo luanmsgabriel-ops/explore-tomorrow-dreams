@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Link } from 'react-router-dom';
-import { Clock, Sparkles, MapPin, Filter, X, SlidersHorizontal } from 'lucide-react';
+import { Clock, Sparkles, MapPin, Filter, X, SlidersHorizontal, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
@@ -21,6 +21,8 @@ interface PromotionalOffer {
   valid_until: string;
   promo_image_url: string | null;
   inclusions: string[];
+  departure_date: string | null;
+  return_date: string | null;
   destinations: {
     id: string;
     name: string;
@@ -144,6 +146,18 @@ const OfferCard = ({ offer }: { offer: PromotionalOffer }) => {
           <p className="text-sm text-muted-foreground line-clamp-2">{offer.tagline}</p>
         )}
 
+        {/* Travel dates */}
+        {(offer.departure_date || offer.return_date) && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Calendar className="w-4 h-4 text-primary" />
+            <span>
+              {offer.departure_date && new Date(offer.departure_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+              {offer.departure_date && offer.return_date && ' - '}
+              {offer.return_date && new Date(offer.return_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+            </span>
+          </div>
+        )}
+
         {/* Inclusions preview */}
         {offer.inclusions && offer.inclusions.length > 0 && (
           <div className="flex flex-wrap gap-1">
@@ -222,6 +236,8 @@ const Ofertas = () => {
           valid_until,
           promo_image_url,
           inclusions,
+          departure_date,
+          return_date,
           destinations (
             id,
             name,
