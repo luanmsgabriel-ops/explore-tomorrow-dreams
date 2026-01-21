@@ -226,6 +226,38 @@ export type Database = {
         }
         Relationships: []
       }
+      checkin_notifications: {
+        Row: {
+          created_at: string
+          email_sent_at: string
+          id: string
+          trip_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_sent_at?: string
+          id?: string
+          trip_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_sent_at?: string
+          id?: string
+          trip_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checkin_notifications_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "client_trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_items_default: {
         Row: {
           category: string
