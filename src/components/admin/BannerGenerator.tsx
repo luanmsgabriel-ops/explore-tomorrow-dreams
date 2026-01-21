@@ -19,6 +19,8 @@ interface PromotionalOffer {
   inclusions: string[];
   valid_from: string;
   valid_until: string;
+  departure_date: string | null;
+  return_date: string | null;
   is_active: boolean;
   destinations: {
     name: string;
@@ -272,7 +274,6 @@ Focus on creating a breathtaking photo composition with elegant golden decorativ
     setIsGeneratingCaption(true);
     try {
       // Use extracted data if available, otherwise use offer data
-      const dataSource = extractedQuoteData || offer;
       const destinationName = extractedQuoteData?.destination_name || offer.destinations?.name || 'Destino';
       const title = extractedQuoteData?.title || offer.title;
       const totalPrice = extractedQuoteData?.total_price || offer.total_price;
@@ -282,6 +283,10 @@ Focus on creating a breathtaking photo composition with elegant golden decorativ
       const inclusions = extractedQuoteData?.inclusions || offer.inclusions;
       const description = extractedQuoteData?.description || offer.destinations?.description || '';
       const validUntil = extractedQuoteData?.valid_until || offer.valid_until;
+      
+      // Get departure and return dates from extracted data or offer
+      const departureDate = extractedQuoteData?.departure_date || extractedQuoteData?.travel_dates?.start || offer.departure_date;
+      const returnDate = extractedQuoteData?.return_date || extractedQuoteData?.travel_dates?.end || offer.return_date;
 
       const inclusionsList = inclusions && inclusions.length > 0 
         ? inclusions.map((inc: string) => `✅ ${inc}`).join('\n')
@@ -295,12 +300,27 @@ Focus on creating a breathtaking photo composition with elegant golden decorativ
       let captionText = `🌴 *${destinationName.toUpperCase()}* 🌴
 
 ${briefDescription ? `✨ ${briefDescription}\n\n` : ''}${title}
+`;
 
+      // Always add travel dates section if available
+      if (departureDate && returnDate) {
+        captionText += `
+📅 *Período da Viagem:*
+🛫 Ida: ${new Date(departureDate).toLocaleDateString('pt-BR')}
+🛬 Volta: ${new Date(returnDate).toLocaleDateString('pt-BR')}
+`;
+      } else if (departureDate) {
+        captionText += `
+📅 *Data de Ida:* ${new Date(departureDate).toLocaleDateString('pt-BR')}
+`;
+      }
+
+      captionText += `
 💰 *A partir de R$ ${formatPrice(totalPrice)}*
 ${cashPrice ? `💵 À vista: R$ ${formatPrice(cashPrice)}` : ''}
 ${installments ? `📦 Ou ${installments}x de R$ ${formatPrice(installmentValue || 0)}` : ''}
 
-${inclusionsList ? `\n📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
+${inclusionsList ? `📋 *O que está incluso:*\n${inclusionsList}\n` : ''}
 ⏰ *Oferta por tempo limitado!*
 📅 Válido até ${new Date(validUntil).toLocaleDateString('pt-BR')}`;
 
