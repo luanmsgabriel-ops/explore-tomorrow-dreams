@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, differenceInHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Plane,
@@ -37,7 +38,8 @@ import {
   Car,
   Map,
   Bus,
-  Info
+  Info,
+  AlertCircle
 } from 'lucide-react';
 
 interface ClientProfile {
@@ -536,6 +538,21 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
+  // Check if check-in is available (within 48 hours of flight)
+  const isCheckinAvailable = (trip: ClientTrip | null): { available: boolean; hoursToFlight: number } => {
+    if (!trip?.flight_departure_time) return { available: false, hoursToFlight: 0 };
+    
+    const now = new Date();
+    const flightTime = new Date(trip.flight_departure_time);
+    const hoursToFlight = differenceInHours(flightTime, now);
+    
+    // Check-in available if flight is in the future and within 48 hours
+    return {
+      available: hoursToFlight > 0 && hoursToFlight <= 48,
+      hoursToFlight
+    };
+  };
+
   if (!client) return null;
 
   return (
@@ -609,6 +626,18 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
 
                     {selectedTrip && (
                       <div className="space-y-4">
+                        {/* Check-in Available Alert */}
+                        {isCheckinAvailable(selectedTrip).available && (
+                          <Alert className="bg-green-500/10 border-green-500/30">
+                            <AlertCircle className="h-4 w-4 text-green-500" />
+                            <AlertDescription className="text-green-700 dark:text-green-300">
+                              <strong>✅ Check-in disponível!</strong> O voo para {selectedTrip.destination_name} está a {isCheckinAvailable(selectedTrip).hoursToFlight}h de distância. 
+                              {selectedTrip.flight_locator && (
+                                <span className="ml-1">Localizador: <strong className="font-mono">{selectedTrip.flight_locator}</strong></span>
+                              )}
+                            </AlertDescription>
+                          </Alert>
+                        )}
                         {/* Trip Info Header with Edit Button */}
                         <div className="flex items-center justify-between">
                           <h4 className="font-medium flex items-center gap-2">
