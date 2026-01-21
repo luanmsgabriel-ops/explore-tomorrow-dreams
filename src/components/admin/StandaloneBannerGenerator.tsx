@@ -101,27 +101,68 @@ export const StandaloneBannerGenerator = () => {
     });
   };
 
+  // Server-side PDF text extraction (fallback for production)
+  const extractTextFromPdfServer = async (file: File): Promise<string> => {
+    console.log('[PDF Extract Server] Sending to server for extraction');
+    
+    const arrayBuffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    
+    // Convert to base64
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, i + chunkSize);
+      binary += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    const base64 = btoa(binary);
+    
+    console.log('[PDF Extract Server] Base64 length:', base64.length);
+    
+    const response = await supabase.functions.invoke('extract-pdf-text', {
+      body: { pdfBase64: base64 }
+    });
+    
+    if (response.error) {
+      throw new Error(response.error.message || 'Erro ao processar PDF no servidor');
+    }
+    
+    if (!response.data?.text) {
+      throw new Error('Servidor não retornou texto do PDF');
+    }
+    
+    console.log('[PDF Extract Server] Text extracted, length:', response.data.text.length);
+    return response.data.text;
+  };
+
   const extractTextFromPdf = async (file: File): Promise<string> => {
+    // Try server-side extraction first (more reliable in production)
     try {
-      console.log('[PDF Extract] Dynamically importing pdfjs-dist');
+      console.log('[PDF Extract] Attempting server-side extraction first');
+      const serverText = await extractTextFromPdfServer(file);
+      if (serverText && serverText.length > 50) {
+        return serverText;
+      }
+    } catch (serverError) {
+      console.warn('[PDF Extract] Server extraction failed, trying client-side:', serverError);
+    }
+
+    // Fallback to client-side extraction
+    try {
+      console.log('[PDF Extract] Trying client-side extraction');
       
       // Dynamic import to ensure clean module loading
       const pdfjsLib = await import('pdfjs-dist');
       
       // Force disable worker before any document processing
-      // Using empty string forces main thread processing
       (pdfjsLib as any).GlobalWorkerOptions.workerSrc = '';
       
-      // Also try setting it on the default export if available
       if (pdfjsLib.default && (pdfjsLib.default as any).GlobalWorkerOptions) {
         (pdfjsLib.default as any).GlobalWorkerOptions.workerSrc = '';
       }
       
-      console.log('[PDF Extract] Worker disabled, loading PDF on main thread');
-      
       const arrayBuffer = await file.arrayBuffer();
       
-      // Use getDocument from the module
       const getDocumentFn = pdfjsLib.getDocument || (pdfjsLib as any).default?.getDocument;
       
       if (!getDocumentFn) {
@@ -133,7 +174,6 @@ export const StandaloneBannerGenerator = () => {
         useSystemFonts: true,
         isEvalSupported: false,
         disableFontFace: true,
-        // Explicitly disable worker in options as well
         disableAutoFetch: true,
         disableStream: true
       });
@@ -154,8 +194,7 @@ export const StandaloneBannerGenerator = () => {
       console.log('[PDF Extract] Text extracted, length:', fullText.length);
       return fullText;
     } catch (error: any) {
-      console.error('[PDF Extract] Error:', error);
-      console.error('[PDF Extract] Error message:', error?.message);
+      console.error('[PDF Extract] Client-side error:', error);
       throw new Error(`Erro ao ler o PDF: ${error?.message || 'Tente novamente ou use um arquivo diferente.'}`);
     }
   };
