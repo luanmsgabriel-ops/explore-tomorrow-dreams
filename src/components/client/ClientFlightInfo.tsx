@@ -7,8 +7,9 @@ import {
   MapPin, 
   Download, 
   Loader2,
-  ArrowRight
+  AlertCircle
 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format, differenceInDays, differenceInHours, differenceInMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -156,6 +157,21 @@ export const ClientFlightInfo = ({ tripId, tripData }: ClientFlightInfoProps) =>
 
   return (
     <div className="space-y-6">
+      {/* Check-in Available Alert Banner */}
+      {countdown.checkinAvailable && (
+        <Alert className="bg-green-500/10 border-green-500/30 animate-pulse">
+          <AlertCircle className="h-5 w-5 text-green-500" />
+          <AlertDescription className="text-green-700 dark:text-green-300 text-base">
+            <strong>🎉 Check-in online disponível!</strong> Seu voo está próximo. Faça o check-in agora para garantir seu assento preferido.
+            {tripData.flight_locator && (
+              <span className="block mt-1">
+                Localizador: <strong className="font-mono text-lg">{tripData.flight_locator}</strong>
+              </span>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex items-center gap-3 mb-6">
         <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
           <Plane className="w-6 h-6 text-primary" />
