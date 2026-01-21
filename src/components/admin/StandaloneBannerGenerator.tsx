@@ -6,6 +6,11 @@ import {
   Smartphone, MessageCircle, Sparkles,
   FileUp, Wand2, X, Share2, Link, MapPin
 } from 'lucide-react';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Configure PDF.js to work without external worker (main thread processing)
+// This avoids CORS/CSP issues in production environments
+pdfjsLib.GlobalWorkerOptions.workerSrc = '';
 
 type BannerFormat = 'stories' | 'whatsapp';
 
@@ -103,12 +108,6 @@ export const StandaloneBannerGenerator = () => {
 
   const extractTextFromPdf = async (file: File): Promise<string> => {
     try {
-      const pdfjsLib = await import('pdfjs-dist');
-      
-      // Disable worker completely - process on main thread
-      // This is slower but works in all environments without CORS/CSP issues
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-      
       console.log('[PDF Extract] Loading PDF without worker (main thread)');
       
       const arrayBuffer = await file.arrayBuffer();
