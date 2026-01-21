@@ -107,30 +107,56 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("RESEND_API_KEY not configured");
     }
 
+    // Check for test mode with specific trip
+    const body = await req.json().catch(() => ({}));
+    const forceTestTripId = body.forceTest ? body.tripId : null;
+
     console.log("Checking for trips with check-in available...");
+    if (forceTestTripId) {
+      console.log(`Force test mode enabled for trip: ${forceTestTripId}`);
+    }
 
     // Get current time
     const now = new Date();
     const in48Hours = new Date(now.getTime() + 48 * 60 * 60 * 1000);
 
-    // Find trips where flight is within 48 hours and notification hasn't been sent
-    const { data: trips, error: tripsError } = await supabase
-      .from('client_trips')
-      .select(`
-        id,
-        destination_name,
-        flight_departure_time,
-        flight_number,
-        flight_locator,
-        user_id
-      `)
-      .not('flight_departure_time', 'is', null)
-      .gte('flight_departure_time', now.toISOString())
-      .lte('flight_departure_time', in48Hours.toISOString());
+    let trips;
+    
+    if (forceTestTripId) {
+      // Force test mode - get specific trip regardless of time
+      const { data, error } = await supabase
+        .from('client_trips')
+        .select(`
+          id,
+          destination_name,
+          flight_departure_time,
+          flight_number,
+          flight_locator,
+          user_id
+        `)
+        .eq('id', forceTestTripId)
+        .single();
+      
+      if (error) throw error;
+      trips = data ? [data] : [];
+    } else {
+      // Normal mode - find trips where flight is within 48 hours
+      const { data, error } = await supabase
+        .from('client_trips')
+        .select(`
+          id,
+          destination_name,
+          flight_departure_time,
+          flight_number,
+          flight_locator,
+          user_id
+        `)
+        .not('flight_departure_time', 'is', null)
+        .gte('flight_departure_time', now.toISOString())
+        .lte('flight_departure_time', in48Hours.toISOString());
 
-    if (tripsError) {
-      console.error("Error fetching trips:", tripsError);
-      throw tripsError;
+      if (error) throw error;
+      trips = data;
     }
 
     if (!trips || trips.length === 0) {
@@ -146,16 +172,18 @@ const handler = async (req: Request): Promise<Response> => {
     let notificationsSent = 0;
 
     for (const trip of trips) {
-      // Check if notification was already sent
-      const { data: existingNotification } = await supabase
-        .from('checkin_notifications')
-        .select('id')
-        .eq('trip_id', trip.id)
-        .single();
+      // Check if notification was already sent (skip in force test mode)
+      if (!forceTestTripId) {
+        const { data: existingNotification } = await supabase
+          .from('checkin_notifications')
+          .select('id')
+          .eq('trip_id', trip.id)
+          .single();
 
-      if (existingNotification) {
-        console.log(`Notification already sent for trip ${trip.id}`);
-        continue;
+        if (existingNotification) {
+          console.log(`Notification already sent for trip ${trip.id}`);
+          continue;
+        }
       }
 
       // Get user profile for email
