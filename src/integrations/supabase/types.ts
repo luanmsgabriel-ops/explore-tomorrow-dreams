@@ -422,6 +422,48 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_logs: {
+        Row: {
+          body: string
+          created_at: string
+          data: Json | null
+          error_message: string | null
+          id: string
+          notification_type: string
+          sent_at: string | null
+          status: string
+          title: string
+          trip_id: string | null
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          data?: Json | null
+          error_message?: string | null
+          id?: string
+          notification_type: string
+          sent_at?: string | null
+          status?: string
+          title: string
+          trip_id?: string | null
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          data?: Json | null
+          error_message?: string | null
+          id?: string
+          notification_type?: string
+          sent_at?: string | null
+          status?: string
+          title?: string
+          trip_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -615,6 +657,53 @@ export type Database = {
           },
         ]
       }
+      trip_consultants: {
+        Row: {
+          consultant_email: string | null
+          consultant_name: string
+          consultant_phone: string | null
+          consultant_photo_url: string | null
+          created_at: string
+          id: string
+          is_primary: boolean
+          notes: string | null
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          consultant_email?: string | null
+          consultant_name: string
+          consultant_phone?: string | null
+          consultant_photo_url?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          notes?: string | null
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          consultant_email?: string | null
+          consultant_name?: string
+          consultant_phone?: string | null
+          consultant_photo_url?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          notes?: string | null
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_consultants_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "client_trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip_documents: {
         Row: {
           created_at: string
@@ -702,6 +791,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_push_tokens: {
+        Row: {
+          created_at: string
+          device_name: string | null
+          device_type: string
+          id: string
+          is_active: boolean
+          push_token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_name?: string | null
+          device_type?: string
+          id?: string
+          is_active?: boolean
+          push_token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_name?: string | null
+          device_type?: string
+          id?: string
+          is_active?: boolean
+          push_token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
