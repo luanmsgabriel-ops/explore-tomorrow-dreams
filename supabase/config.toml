@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.update-user-password]
 verify_jwt = false
+
+[functions.send-checkin-notification]
+verify_jwt = false

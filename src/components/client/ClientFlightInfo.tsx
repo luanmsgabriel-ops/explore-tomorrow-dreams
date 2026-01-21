@@ -9,7 +9,7 @@ import {
   Loader2,
   ArrowRight
 } from 'lucide-react';
-import { format, differenceInDays, differenceInHours } from 'date-fns';
+import { format, differenceInDays, differenceInHours, differenceInMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 
@@ -92,24 +92,67 @@ export const ClientFlightInfo = ({ tripId, tripData }: ClientFlightInfoProps) =>
     return `${(size / 1024).toFixed(1)} KB`;
   };
 
-  const getCountdown = () => {
+  // Calculate countdown to check-in availability (48 hours before flight)
+  const getCheckinCountdown = () => {
     const now = new Date();
+    
+    // If we have flight departure time, calculate countdown to 48h before
+    if (tripData.flight_departure_time) {
+      const flightTime = new Date(tripData.flight_departure_time);
+      const checkinTime = new Date(flightTime.getTime() - 48 * 60 * 60 * 1000); // 48h before flight
+      
+      const hoursUntilCheckin = differenceInHours(checkinTime, now);
+      const minutesUntilCheckin = differenceInMinutes(checkinTime, now) % 60;
+      
+      // Flight already passed
+      if (flightTime < now) {
+        return { text: 'Viagem realizada', isUpcoming: false, checkinAvailable: false };
+      }
+      
+      // Check-in already available (less than 48h to flight)
+      if (hoursUntilCheckin <= 0) {
+        const hoursToFlight = differenceInHours(flightTime, now);
+        const minutesToFlight = differenceInMinutes(flightTime, now) % 60;
+        if (hoursToFlight <= 0) {
+          return { text: 'Embarque em breve!', isUpcoming: true, checkinAvailable: true };
+        }
+        return { 
+          text: `Check-in disponível! Voo em ${hoursToFlight}h${minutesToFlight > 0 ? ` ${minutesToFlight}min` : ''}`, 
+          isUpcoming: true, 
+          checkinAvailable: true 
+        };
+      }
+      
+      // Countdown to check-in opening
+      const daysUntilCheckin = Math.floor(hoursUntilCheckin / 24);
+      const remainingHours = hoursUntilCheckin % 24;
+      
+      if (daysUntilCheckin > 0) {
+        return { 
+          text: `${daysUntilCheckin}d ${remainingHours}h para check-in`, 
+          isUpcoming: daysUntilCheckin <= 2, 
+          checkinAvailable: false 
+        };
+      }
+      
+      return { 
+        text: `${hoursUntilCheckin}h ${minutesUntilCheckin}min para check-in`, 
+        isUpcoming: true, 
+        checkinAvailable: false 
+      };
+    }
+    
+    // Fallback to departure date if no time specified
     const departureDate = new Date(tripData.departure_date);
     const daysUntil = differenceInDays(departureDate, now);
     
-    if (daysUntil < 0) return { text: 'Viagem realizada', isUpcoming: false };
-    if (daysUntil === 0) {
-      if (tripData.flight_departure_time) {
-        const hoursUntil = differenceInHours(new Date(tripData.flight_departure_time), now);
-        if (hoursUntil > 0) return { text: `Embarque em ${hoursUntil}h`, isUpcoming: true };
-      }
-      return { text: 'Hoje!', isUpcoming: true };
-    }
-    if (daysUntil === 1) return { text: 'Amanhã!', isUpcoming: true };
-    return { text: `${daysUntil} dias`, isUpcoming: daysUntil <= 7 };
+    if (daysUntil < 0) return { text: 'Viagem realizada', isUpcoming: false, checkinAvailable: false };
+    if (daysUntil <= 2) return { text: 'Check-in disponível!', isUpcoming: true, checkinAvailable: true };
+    if (daysUntil === 3) return { text: 'Check-in em 1 dia', isUpcoming: true, checkinAvailable: false };
+    return { text: `${daysUntil - 2} dias para check-in`, isUpcoming: daysUntil <= 7, checkinAvailable: false };
   };
 
-  const countdown = getCountdown();
+  const countdown = getCheckinCountdown();
 
   return (
     <div className="space-y-6">
@@ -124,16 +167,23 @@ export const ClientFlightInfo = ({ tripId, tripData }: ClientFlightInfoProps) =>
       </div>
 
       {/* Countdown Card */}
-      <div className={`p-6 rounded-2xl ${countdown.isUpcoming ? 'bg-gradient-to-r from-accent/20 to-primary/20 border border-accent/30' : 'glass'}`}>
+      <div className={`p-6 rounded-2xl ${countdown.checkinAvailable ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30' : countdown.isUpcoming ? 'bg-gradient-to-r from-accent/20 to-primary/20 border border-accent/30' : 'glass'}`}>
         <div className="flex items-center gap-4">
-          <div className={`w-16 h-16 rounded-xl flex items-center justify-center ${countdown.isUpcoming ? 'bg-accent/20' : 'bg-secondary'}`}>
-            <Calendar className={`w-8 h-8 ${countdown.isUpcoming ? 'text-accent' : 'text-muted-foreground'}`} />
+          <div className={`w-16 h-16 rounded-xl flex items-center justify-center ${countdown.checkinAvailable ? 'bg-green-500/20' : countdown.isUpcoming ? 'bg-accent/20' : 'bg-secondary'}`}>
+            <Calendar className={`w-8 h-8 ${countdown.checkinAvailable ? 'text-green-500' : countdown.isUpcoming ? 'text-accent' : 'text-muted-foreground'}`} />
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Contagem regressiva para o check-in</p>
-            <p className={`text-3xl font-bold ${countdown.isUpcoming ? 'text-accent' : 'text-foreground'}`}>
+          <div className="flex-1">
+            <p className="text-sm text-muted-foreground">
+              {countdown.checkinAvailable ? '✅ Check-in online disponível' : '⏱️ Contagem regressiva para o check-in'}
+            </p>
+            <p className={`text-2xl sm:text-3xl font-bold ${countdown.checkinAvailable ? 'text-green-500' : countdown.isUpcoming ? 'text-accent' : 'text-foreground'}`}>
               {countdown.text}
             </p>
+            {countdown.checkinAvailable && tripData.flight_locator && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Use o localizador <span className="font-mono font-bold text-primary">{tripData.flight_locator}</span> para fazer check-in
+              </p>
+            )}
           </div>
         </div>
       </div>
