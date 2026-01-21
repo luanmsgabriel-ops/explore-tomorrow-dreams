@@ -465,26 +465,6 @@ ${valid_until ? `📅 Válido até ${formatDate(valid_until)}` : ''}`;
     }
   };
 
-  const copyImageToClipboard = async (): Promise<boolean> => {
-    if (!generatedImage) return false;
-    
-    try {
-      const blob = await getImageBlob();
-      if (blob) {
-        const pngBlob = new Blob([blob], { type: 'image/png' });
-        await navigator.clipboard.write([
-          new ClipboardItem({
-            'image/png': pngBlob
-          })
-        ]);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Error copying image to clipboard:', error);
-      return false;
-    }
-  };
 
   const shareToWhatsApp = async () => {
     if (!caption) {
@@ -492,6 +472,7 @@ ${valid_until ? `📅 Válido até ${formatDate(valid_until)}` : ''}`;
       return;
     }
 
+    // Check if Web Share API with files is supported (mainly mobile devices)
     if (navigator.share && navigator.canShare && generatedImage) {
       try {
         const blob = await getImageBlob();
@@ -517,31 +498,34 @@ ${valid_until ? `📅 Válido até ${formatDate(valid_until)}` : ''}`;
       }
     }
 
+    // Desktop fallback: Download image + copy caption
     if (generatedImage) {
-      const imageCopied = await copyImageToClipboard();
-      
-      if (imageCopied) {
-        toast.success('Imagem copiada! Cole (Ctrl+V) no WhatsApp. A legenda será aberta em seguida.', { duration: 4000 });
-        
-        setTimeout(() => {
-          const encodedCaption = encodeURIComponent(caption);
-          const whatsappUrl = `https://wa.me/?text=${encodedCaption}`;
-          window.open(whatsappUrl, '_blank');
-        }, 1500);
-      } else {
-        const link = document.createElement('a');
-        link.href = generatedImage;
-        link.download = `whatsapp-${extractedData?.destination_name || 'destino'}-${Date.now()}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        const encodedCaption = encodeURIComponent(caption);
-        const whatsappUrl = `https://wa.me/?text=${encodedCaption}`;
-        window.open(whatsappUrl, '_blank');
-        
-        toast.info('Banner baixado! Anexe ao WhatsApp.', { duration: 5000 });
+      // First, download the image
+      const link = document.createElement('a');
+      link.href = generatedImage;
+      link.download = `whatsapp-${extractedData?.destination_name || 'destino'}-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Then copy caption to clipboard
+      try {
+        await navigator.clipboard.writeText(caption);
+        toast.success(
+          '✅ Banner baixado e legenda copiada!\n\n📋 Passos:\n1. Abra o WhatsApp\n2. Anexe a imagem baixada\n3. Cole a legenda (Ctrl+V)', 
+          { duration: 8000 }
+        );
+      } catch {
+        toast.success(
+          '✅ Banner baixado!\n\n📋 Passos:\n1. Abra o WhatsApp\n2. Anexe a imagem baixada\n3. Copie e cole a legenda', 
+          { duration: 8000 }
+        );
       }
+
+      // Open WhatsApp Web after a small delay
+      setTimeout(() => {
+        window.open('https://web.whatsapp.com/', '_blank');
+      }, 1000);
     } else {
       const encodedCaption = encodeURIComponent(caption);
       const whatsappUrl = `https://wa.me/?text=${encodedCaption}`;
