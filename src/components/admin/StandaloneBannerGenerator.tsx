@@ -6,11 +6,6 @@ import {
   Smartphone, MessageCircle, Sparkles,
   FileUp, Wand2, X, Share2, Link, MapPin
 } from 'lucide-react';
-import * as pdfjsLib from 'pdfjs-dist';
-
-// Configure PDF.js to work without external worker (main thread processing)
-// This avoids CORS/CSP issues in production environments
-pdfjsLib.GlobalWorkerOptions.workerSrc = '';
 
 type BannerFormat = 'stories' | 'whatsapp';
 
@@ -108,15 +103,39 @@ export const StandaloneBannerGenerator = () => {
 
   const extractTextFromPdf = async (file: File): Promise<string> => {
     try {
-      console.log('[PDF Extract] Loading PDF without worker (main thread)');
+      console.log('[PDF Extract] Dynamically importing pdfjs-dist');
+      
+      // Dynamic import to ensure clean module loading
+      const pdfjsLib = await import('pdfjs-dist');
+      
+      // Force disable worker before any document processing
+      // Using empty string forces main thread processing
+      (pdfjsLib as any).GlobalWorkerOptions.workerSrc = '';
+      
+      // Also try setting it on the default export if available
+      if (pdfjsLib.default && (pdfjsLib.default as any).GlobalWorkerOptions) {
+        (pdfjsLib.default as any).GlobalWorkerOptions.workerSrc = '';
+      }
+      
+      console.log('[PDF Extract] Worker disabled, loading PDF on main thread');
       
       const arrayBuffer = await file.arrayBuffer();
       
-      const loadingTask = pdfjsLib.getDocument({
+      // Use getDocument from the module
+      const getDocumentFn = pdfjsLib.getDocument || (pdfjsLib as any).default?.getDocument;
+      
+      if (!getDocumentFn) {
+        throw new Error('PDF.js getDocument function not found');
+      }
+      
+      const loadingTask = getDocumentFn({
         data: arrayBuffer,
         useSystemFonts: true,
         isEvalSupported: false,
-        disableFontFace: true
+        disableFontFace: true,
+        // Explicitly disable worker in options as well
+        disableAutoFetch: true,
+        disableStream: true
       });
       
       const pdf = await loadingTask.promise;
