@@ -509,6 +509,29 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
 
       toast.success('Viagem atualizada com sucesso!');
       setIsEditingTrip(false);
+      
+      // Update selectedTrip with new data
+      setSelectedTrip({
+        ...selectedTrip,
+        departure_date: updateData.departure_date,
+        return_date: updateData.return_date,
+        flight_number: updateData.flight_number,
+        flight_return_number: updateData.flight_return_number,
+        flight_locator: updateData.flight_locator,
+        flight_departure_time: updateData.flight_departure_time,
+        flight_return_time: updateData.flight_return_time,
+        hotel_name: updateData.hotel_name,
+        hotel_address: updateData.hotel_address,
+        hotel_link: updateData.hotel_link,
+        hotel_checkin_date: updateData.hotel_checkin_date,
+        hotel_checkout_date: updateData.hotel_checkout_date,
+        hotel_checkin_time: updateData.hotel_checkin_time,
+        hotel_checkout_time: updateData.hotel_checkout_time,
+        trip_tips: updateData.trip_tips,
+        trip_status: updateData.trip_status
+      });
+      
+      // Also refresh the full list
       fetchClientData();
     } catch (error: any) {
       console.error('Error updating trip:', error);
@@ -714,9 +737,9 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
                               <div className="flex items-center gap-2 text-muted-foreground col-span-2">
                                 <Hotel className="w-4 h-4" />
                                 <span>{selectedTrip.hotel_name}</span>
-                                {selectedTrip.hotel_checkin_time && selectedTrip.hotel_checkout_time && (
+                                {(selectedTrip.hotel_checkin_date || selectedTrip.hotel_checkout_date) && (
                                   <span className="text-xs">
-                                    (Check-in: {selectedTrip.hotel_checkin_time} | Check-out: {selectedTrip.hotel_checkout_time})
+                                    ({selectedTrip.hotel_checkin_date ? format(new Date(selectedTrip.hotel_checkin_date + 'T12:00:00'), 'dd/MM', { locale: ptBR }) : ''} - {selectedTrip.hotel_checkout_date ? format(new Date(selectedTrip.hotel_checkout_date + 'T12:00:00'), 'dd/MM', { locale: ptBR }) : ''} | Check-in: {selectedTrip.hotel_checkin_time || '14:00'} | Check-out: {selectedTrip.hotel_checkout_time || '12:00'})
                                   </span>
                                 )}
                               </div>
