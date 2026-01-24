@@ -107,17 +107,19 @@ export const ClientAccommodationInfo = ({ tripId, tripData }: ClientAccommodatio
   };
 
   const getStayDuration = () => {
-    const checkinDate = tripData.hotel_checkin_date || tripData.departure_date;
-    const checkoutDate = tripData.hotel_checkout_date || tripData.return_date;
-    const departure = new Date(checkinDate);
-    const returnDate = new Date(checkoutDate);
+    const checkinDateStr = tripData.hotel_checkin_date || tripData.departure_date;
+    const checkoutDateStr = tripData.hotel_checkout_date || tripData.return_date;
+    const departure = new Date(checkinDateStr + 'T12:00:00');
+    const returnDate = new Date(checkoutDateStr + 'T12:00:00');
     const nights = differenceInDays(returnDate, departure);
     return nights;
   };
 
-  // Get actual check-in and check-out dates
-  const checkinDate = tripData.hotel_checkin_date || tripData.departure_date;
-  const checkoutDate = tripData.hotel_checkout_date || tripData.return_date;
+  // Get actual check-in and check-out dates (add T12:00:00 to avoid timezone issues)
+  const checkinDateStr = tripData.hotel_checkin_date || tripData.departure_date;
+  const checkoutDateStr = tripData.hotel_checkout_date || tripData.return_date;
+  const checkinDate = new Date(checkinDateStr + 'T12:00:00');
+  const checkoutDate = new Date(checkoutDateStr + 'T12:00:00');
 
   const countdown = getCountdown();
   const nights = getStayDuration();
@@ -162,7 +164,7 @@ export const ClientAccommodationInfo = ({ tripId, tripData }: ClientAccommodatio
                 <span className="text-sm font-medium text-muted-foreground">Check-in</span>
               </div>
               <p className="font-semibold text-foreground">
-                {format(new Date(checkinDate), "dd 'de' MMMM", { locale: ptBR })}
+                {format(checkinDate, "dd 'de' MMMM", { locale: ptBR })}
               </p>
               <p className="text-sm text-muted-foreground">
                 A partir das {tripData.hotel_checkin_time || '14:00'}
@@ -176,7 +178,7 @@ export const ClientAccommodationInfo = ({ tripId, tripData }: ClientAccommodatio
                 <span className="text-sm font-medium text-muted-foreground">Check-out</span>
               </div>
               <p className="font-semibold text-foreground">
-                {format(new Date(checkoutDate), "dd 'de' MMMM", { locale: ptBR })}
+                {format(checkoutDate, "dd 'de' MMMM", { locale: ptBR })}
               </p>
               <p className="text-sm text-muted-foreground">
                 Até às {tripData.hotel_checkout_time || '12:00'}

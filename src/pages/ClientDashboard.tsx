@@ -32,12 +32,15 @@ interface ClientTrip {
   departure_date: string;
   return_date: string;
   flight_number: string | null;
+  flight_return_number: string | null;
   flight_departure_time: string | null;
   flight_return_time: string | null;
   flight_locator: string | null;
   hotel_name: string | null;
   hotel_address: string | null;
   hotel_link: string | null;
+  hotel_checkin_date: string | null;
+  hotel_checkout_date: string | null;
   hotel_checkin_time: string | null;
   hotel_checkout_time: string | null;
   trip_status: string;
