@@ -294,9 +294,12 @@ export type Database = {
           flight_departure_time: string | null
           flight_locator: string | null
           flight_number: string | null
+          flight_return_number: string | null
           flight_return_time: string | null
           hotel_address: string | null
+          hotel_checkin_date: string | null
           hotel_checkin_time: string | null
+          hotel_checkout_date: string | null
           hotel_checkout_time: string | null
           hotel_link: string | null
           hotel_name: string | null
@@ -316,9 +319,12 @@ export type Database = {
           flight_departure_time?: string | null
           flight_locator?: string | null
           flight_number?: string | null
+          flight_return_number?: string | null
           flight_return_time?: string | null
           hotel_address?: string | null
+          hotel_checkin_date?: string | null
           hotel_checkin_time?: string | null
+          hotel_checkout_date?: string | null
           hotel_checkout_time?: string | null
           hotel_link?: string | null
           hotel_name?: string | null
@@ -338,9 +344,12 @@ export type Database = {
           flight_departure_time?: string | null
           flight_locator?: string | null
           flight_number?: string | null
+          flight_return_number?: string | null
           flight_return_time?: string | null
           hotel_address?: string | null
+          hotel_checkin_date?: string | null
           hotel_checkin_time?: string | null
+          hotel_checkout_date?: string | null
           hotel_checkout_time?: string | null
           hotel_link?: string | null
           hotel_name?: string | null

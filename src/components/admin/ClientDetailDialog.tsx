@@ -58,10 +58,13 @@ interface ClientTrip {
   flight_number: string | null;
   flight_departure_time: string | null;
   flight_return_time: string | null;
+  flight_return_number: string | null;
   flight_locator: string | null;
   hotel_name: string | null;
   hotel_address: string | null;
   hotel_link: string | null;
+  hotel_checkin_date: string | null;
+  hotel_checkout_date: string | null;
   hotel_checkin_time: string | null;
   hotel_checkout_time: string | null;
   trip_status: string;
@@ -144,6 +147,7 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
     departure_date: '',
     return_date: '',
     flight_number: '',
+    flight_return_number: '',
     flight_locator: '',
     flight_departure_time: '',
     flight_return_time: '',
@@ -434,14 +438,15 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
       departure_date: selectedTrip.departure_date || '',
       return_date: selectedTrip.return_date || '',
       flight_number: selectedTrip.flight_number || '',
+      flight_return_number: selectedTrip.flight_return_number || '',
       flight_locator: selectedTrip.flight_locator || '',
       flight_departure_time: selectedTrip.flight_departure_time ? format(new Date(selectedTrip.flight_departure_time), "yyyy-MM-dd'T'HH:mm") : '',
       flight_return_time: selectedTrip.flight_return_time ? format(new Date(selectedTrip.flight_return_time), "yyyy-MM-dd'T'HH:mm") : '',
       hotel_name: selectedTrip.hotel_name || '',
       hotel_address: selectedTrip.hotel_address || '',
       hotel_link: selectedTrip.hotel_link || '',
-      hotel_checkin_date: selectedTrip.departure_date || '',
-      hotel_checkout_date: selectedTrip.return_date || '',
+      hotel_checkin_date: selectedTrip.hotel_checkin_date || selectedTrip.departure_date || '',
+      hotel_checkout_date: selectedTrip.hotel_checkout_date || selectedTrip.return_date || '',
       hotel_checkin_time: selectedTrip.hotel_checkin_time || '14:00',
       hotel_checkout_time: selectedTrip.hotel_checkout_time || '12:00',
       trip_tips: selectedTrip.trip_tips || '',
@@ -456,6 +461,7 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
       departure_date: '',
       return_date: '',
       flight_number: '',
+      flight_return_number: '',
       flight_locator: '',
       flight_departure_time: '',
       flight_return_time: '',
@@ -479,12 +485,15 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
         departure_date: editTripData.departure_date,
         return_date: editTripData.return_date,
         flight_number: editTripData.flight_number || null,
+        flight_return_number: editTripData.flight_return_number || null,
         flight_locator: editTripData.flight_locator || null,
         flight_departure_time: editTripData.flight_departure_time ? new Date(editTripData.flight_departure_time).toISOString() : null,
         flight_return_time: editTripData.flight_return_time ? new Date(editTripData.flight_return_time).toISOString() : null,
         hotel_name: editTripData.hotel_name || null,
         hotel_address: editTripData.hotel_address || null,
         hotel_link: editTripData.hotel_link || null,
+        hotel_checkin_date: editTripData.hotel_checkin_date || null,
+        hotel_checkout_date: editTripData.hotel_checkout_date || null,
         hotel_checkin_time: editTripData.hotel_checkin_time || null,
         hotel_checkout_time: editTripData.hotel_checkout_time || null,
         trip_tips: editTripData.trip_tips || null,
@@ -764,7 +773,6 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
                                 </AccordionContent>
                               </AccordionItem>
 
-                              {/* Flight Info */}
                               <AccordionItem value="flight" className="border rounded-lg px-4">
                                 <AccordionTrigger className="hover:no-underline py-3">
                                   <div className="flex items-center gap-2 text-sm font-medium">
@@ -775,11 +783,19 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
                                 <AccordionContent className="pb-4">
                                   <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                      <Label className="text-xs">Número do Voo</Label>
+                                      <Label className="text-xs">Nº Voo Ida</Label>
                                       <Input
                                         placeholder="Ex: LA3456"
                                         value={editTripData.flight_number}
                                         onChange={(e) => setEditTripData({...editTripData, flight_number: e.target.value})}
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label className="text-xs">Nº Voo Volta</Label>
+                                      <Input
+                                        placeholder="Ex: LA3457"
+                                        value={editTripData.flight_return_number}
+                                        onChange={(e) => setEditTripData({...editTripData, flight_return_number: e.target.value})}
                                       />
                                     </div>
                                     <div className="space-y-2">
