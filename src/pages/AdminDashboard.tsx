@@ -16,7 +16,6 @@ import {
   Image, 
   LogOut, 
   Users,
-  Calendar,
   Mail,
   Phone,
   Clock,
@@ -101,6 +100,17 @@ interface AdminUser {
   created_at: string;
 }
 
+interface UpcomingTrip {
+  id: string;
+  destination_name: string;
+  departure_date: string;
+  return_date: string;
+  trip_status: string;
+  flight_locator: string | null;
+  client_name: string | null;
+  client_email: string;
+}
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -112,6 +122,14 @@ const AdminDashboard = () => {
   const [selectedItinerary, setSelectedItinerary] = useState<AIItinerary | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<QuoteRequest | null>(null);
   const [selectedImage, setSelectedImage] = useState<AIImage | null>(null);
+  
+  // Overview stats
+  const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>([]);
+  const [totalClients, setTotalClients] = useState(0);
+  const [totalTrips, setTotalTrips] = useState(0);
+  const [activeDestinations, setActiveDestinations] = useState(0);
+  const [activeOffers, setActiveOffers] = useState(0);
+  const [pendingQuotes, setPendingQuotes] = useState(0);
   
   // New user form state
   const [showNewUserForm, setShowNewUserForm] = useState(false);
@@ -150,16 +168,32 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [quotesRes, itinerariesRes, imagesRes, usersRes] = await Promise.all([
+      const today = new Date().toISOString().split('T')[0];
+      
+      const [quotesRes, itinerariesRes, imagesRes, usersRes, tripsRes, destinationsRes, offersRes, clientsRes] = await Promise.all([
         supabase.from('quote_requests').select('*').order('created_at', { ascending: false }),
         supabase.from('ai_itineraries').select('*').order('created_at', { ascending: false }),
         supabase.from('ai_generated_images').select('*').order('created_at', { ascending: false }),
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+        supabase.from('client_trips').select(`
+          id,
+          destination_name,
+          departure_date,
+          return_date,
+          trip_status,
+          flight_locator,
+          user_id
+        `).gte('departure_date', today).order('departure_date', { ascending: true }).limit(10),
+        supabase.from('destinations').select('id', { count: 'exact' }).eq('is_active', true),
+        supabase.from('promotional_offers').select('id', { count: 'exact' }).eq('is_active', true),
+        supabase.from('client_trips').select('id', { count: 'exact' }),
       ]);
 
-      if (quotesRes.data) setQuotes(quotesRes.data);
+      if (quotesRes.data) {
+        setQuotes(quotesRes.data);
+        setPendingQuotes(quotesRes.data.filter(q => q.status === 'pending').length);
+      }
       if (itinerariesRes.data) {
-        // Cast selected_activities from Json to SelectedActivity[]
         const typedItineraries = itinerariesRes.data.map(item => ({
           ...item,
           selected_activities: Array.isArray(item.selected_activities) 
@@ -169,7 +203,40 @@ const AdminDashboard = () => {
         setItineraries(typedItineraries);
       }
       if (imagesRes.data) setImages(imagesRes.data);
-      if (usersRes.data) setAdminUsers(usersRes.data);
+      if (usersRes.data) {
+        setAdminUsers(usersRes.data);
+        // Filter out admins to count only clients
+        const { data: adminRoles } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
+        const adminUserIds = adminRoles?.map(r => r.user_id) || [];
+        const clientCount = usersRes.data.filter(u => !adminUserIds.includes(u.user_id)).length;
+        setTotalClients(clientCount);
+      }
+      
+      // Fetch upcoming trips with client info
+      if (tripsRes.data && tripsRes.data.length > 0) {
+        const userIds = [...new Set(tripsRes.data.map(t => t.user_id))];
+        const { data: profiles } = await supabase.from('profiles').select('user_id, full_name, email').in('user_id', userIds);
+        
+        const tripsWithClients: UpcomingTrip[] = tripsRes.data.map(trip => {
+          const profile = profiles?.find(p => p.user_id === trip.user_id);
+          return {
+            id: trip.id,
+            destination_name: trip.destination_name,
+            departure_date: trip.departure_date,
+            return_date: trip.return_date,
+            trip_status: trip.trip_status,
+            flight_locator: trip.flight_locator,
+            client_name: profile?.full_name || null,
+            client_email: profile?.email || 'Email não encontrado',
+          };
+        });
+        setUpcomingTrips(tripsWithClients);
+      }
+      
+      if (destinationsRes.count !== null) setActiveDestinations(destinationsRes.count);
+      if (offersRes.count !== null) setActiveOffers(offersRes.count);
+      if (clientsRes.count !== null) setTotalTrips(clientsRes.count);
+      
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -400,53 +467,161 @@ const AdminDashboard = () => {
                         Visão Geral
                       </h1>
 
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div className="p-6 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
-                              <FileText className="w-6 h-6 text-primary" />
+                      {/* Main Stats Grid */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                              <Users className="w-5 h-5 text-primary" />
                             </div>
                             <div>
-                              <p className="text-3xl font-bold text-foreground">{quotes.length}</p>
-                              <p className="text-muted-foreground text-sm">Cotações</p>
+                              <p className="text-2xl font-bold text-foreground">{totalClients}</p>
+                              <p className="text-muted-foreground text-xs">Clientes</p>
                             </div>
                           </div>
                         </div>
 
-                        <div className="p-6 rounded-2xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
-                              <Map className="w-6 h-6 text-accent" />
+                        <div className="p-4 rounded-2xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center">
+                              <Plane className="w-5 h-5 text-accent" />
                             </div>
                             <div>
-                              <p className="text-3xl font-bold text-foreground">{itineraries.length}</p>
-                              <p className="text-muted-foreground text-sm">Roteiros Gerados</p>
+                              <p className="text-2xl font-bold text-foreground">{totalTrips}</p>
+                              <p className="text-muted-foreground text-xs">Viagens</p>
                             </div>
                           </div>
                         </div>
 
-                        <div className="p-6 rounded-2xl bg-gradient-to-br from-teal-light/20 to-teal-light/5 border border-teal-light/20">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-teal-light/20 flex items-center justify-center">
-                              <Image className="w-6 h-6 text-teal-light" />
+                        <div className="p-4 rounded-2xl bg-gradient-to-br from-teal-light/20 to-teal-light/5 border border-teal-light/20">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-teal-light/20 flex items-center justify-center">
+                              <Globe className="w-5 h-5 text-teal-light" />
                             </div>
                             <div>
-                              <p className="text-3xl font-bold text-foreground">{images.length}</p>
-                              <p className="text-muted-foreground text-sm">Imagens Geradas</p>
+                              <p className="text-2xl font-bold text-foreground">{activeDestinations}</p>
+                              <p className="text-muted-foreground text-xs">Destinos Ativos</p>
                             </div>
                           </div>
                         </div>
 
-                        <div className="p-6 rounded-2xl bg-gradient-to-br from-purple-500/20 to-purple-500/5 border border-purple-500/20">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                              <Users className="w-6 h-6 text-purple-500" />
+                        <div className="p-4 rounded-2xl bg-gradient-to-br from-secondary to-secondary/50 border border-border">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center">
+                              <Tag className="w-5 h-5 text-accent" />
                             </div>
                             <div>
-                              <p className="text-3xl font-bold text-foreground">{adminUsers.length}</p>
-                              <p className="text-muted-foreground text-sm">Administradores</p>
+                              <p className="text-2xl font-bold text-foreground">{activeOffers}</p>
+                              <p className="text-muted-foreground text-xs">Ofertas Ativas</p>
                             </div>
                           </div>
+                        </div>
+                      </div>
+
+                      {/* Secondary Stats */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="p-4 rounded-xl bg-secondary/50 border border-border">
+                          <div className="flex items-center gap-3">
+                            <FileText className="w-5 h-5 text-primary" />
+                            <div>
+                              <p className="text-lg font-semibold text-foreground">{quotes.length}</p>
+                              <p className="text-muted-foreground text-xs">Cotações</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-4 rounded-xl bg-secondary/50 border border-border">
+                          <div className="flex items-center gap-3">
+                            <Clock className="w-5 h-5 text-accent" />
+                            <div>
+                              <p className="text-lg font-semibold text-foreground">{pendingQuotes}</p>
+                              <p className="text-muted-foreground text-xs">Pendentes</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-4 rounded-xl bg-secondary/50 border border-border">
+                          <div className="flex items-center gap-3">
+                            <Map className="w-5 h-5 text-teal-light" />
+                            <div>
+                              <p className="text-lg font-semibold text-foreground">{itineraries.length}</p>
+                              <p className="text-muted-foreground text-xs">Roteiros IA</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-4 rounded-xl bg-secondary/50 border border-border">
+                          <div className="flex items-center gap-3">
+                            <Image className="w-5 h-5 text-primary" />
+                            <div>
+                              <p className="text-lg font-semibold text-foreground">{images.length}</p>
+                              <p className="text-muted-foreground text-xs">Imagens IA</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Upcoming Trips with Check-in Alert */}
+                      <div className="rounded-2xl border border-border overflow-hidden">
+                        <div className="p-4 bg-secondary border-b border-border flex items-center justify-between">
+                          <h2 className="font-serif text-xl font-bold text-foreground">Próximas Viagens</h2>
+                          <span className="text-sm text-muted-foreground">{upcomingTrips.length} viagens</span>
+                        </div>
+                        <div className="divide-y divide-border">
+                          {upcomingTrips.map((trip) => {
+                            const departureDate = new Date(trip.departure_date + 'T12:00:00');
+                            const now = new Date();
+                            const hoursUntilDeparture = (departureDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+                            const isCheckinWindow = hoursUntilDeparture <= 48 && hoursUntilDeparture > 0;
+                            const daysUntilDeparture = Math.ceil(hoursUntilDeparture / 24);
+                            
+                            return (
+                              <div key={trip.id} className={`p-4 transition-colors ${isCheckinWindow ? 'bg-primary/5' : 'hover:bg-secondary/50'}`}>
+                                {isCheckinWindow && (
+                                  <div className="mb-3 px-3 py-2 rounded-lg bg-primary/20 border border-primary/30 flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                                    <span className="text-xs font-medium text-primary">
+                                      🎫 Check-in disponível! Voo em {Math.round(hoursUntilDeparture)}h - Localizador: {trip.flight_locator || 'N/A'}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-4">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isCheckinWindow ? 'bg-primary/20' : 'bg-accent/10'}`}>
+                                      <Plane className={`w-5 h-5 ${isCheckinWindow ? 'text-primary' : 'text-accent'}`} />
+                                    </div>
+                                    <div>
+                                      <p className="font-medium text-foreground">{trip.client_name || trip.client_email}</p>
+                                      <p className="text-sm text-muted-foreground">{trip.destination_name}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-4">
+                                    <div className="text-right">
+                                      <p className="text-sm font-medium text-foreground">
+                                        {new Date(trip.departure_date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {daysUntilDeparture <= 0 ? 'Hoje' : daysUntilDeparture === 1 ? 'Amanhã' : `Em ${daysUntilDeparture} dias`}
+                                      </p>
+                                    </div>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                      trip.trip_status === 'confirmed' ? 'bg-primary/20 text-primary' : 
+                                      trip.trip_status === 'pending' ? 'bg-accent/20 text-accent' :
+                                      trip.trip_status === 'completed' ? 'bg-muted text-muted-foreground' :
+                                      'bg-secondary text-foreground'
+                                    }`}>
+                                      {trip.trip_status === 'confirmed' ? 'Confirmada' : 
+                                       trip.trip_status === 'pending' ? 'Pendente' :
+                                       trip.trip_status === 'completed' ? 'Concluída' :
+                                       trip.trip_status}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {upcomingTrips.length === 0 && (
+                            <div className="p-8 text-center text-muted-foreground">
+                              Nenhuma viagem próxima
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -460,7 +635,7 @@ const AdminDashboard = () => {
                             <div key={quote.id} className="p-4 flex items-center justify-between hover:bg-secondary/50 transition-colors">
                               <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                  <Users className="w-5 h-5 text-primary" />
+                                  <Mail className="w-5 h-5 text-primary" />
                                 </div>
                                 <div>
                                   <p className="font-medium text-foreground">{quote.email}</p>
