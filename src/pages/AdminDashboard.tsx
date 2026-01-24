@@ -469,9 +469,12 @@ const AdminDashboard = () => {
 
                       {/* Main Stats Grid */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
+                        <button 
+                          onClick={() => setActiveTab('clients')}
+                          className="p-4 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 hover:border-primary/40 transition-all text-left cursor-pointer group"
+                        >
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                               <Users className="w-5 h-5 text-primary" />
                             </div>
                             <div>
@@ -479,11 +482,14 @@ const AdminDashboard = () => {
                               <p className="text-muted-foreground text-xs">Clientes</p>
                             </div>
                           </div>
-                        </div>
+                        </button>
 
-                        <div className="p-4 rounded-2xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20">
+                        <button 
+                          onClick={() => setActiveTab('trips')}
+                          className="p-4 rounded-2xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20 hover:border-accent/40 transition-all text-left cursor-pointer group"
+                        >
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                               <Plane className="w-5 h-5 text-accent" />
                             </div>
                             <div>
@@ -491,11 +497,14 @@ const AdminDashboard = () => {
                               <p className="text-muted-foreground text-xs">Viagens</p>
                             </div>
                           </div>
-                        </div>
+                        </button>
 
-                        <div className="p-4 rounded-2xl bg-gradient-to-br from-teal-light/20 to-teal-light/5 border border-teal-light/20">
+                        <button 
+                          onClick={() => setActiveTab('destinations')}
+                          className="p-4 rounded-2xl bg-gradient-to-br from-teal-light/20 to-teal-light/5 border border-teal-light/20 hover:border-teal-light/40 transition-all text-left cursor-pointer group"
+                        >
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-teal-light/20 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-xl bg-teal-light/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                               <Globe className="w-5 h-5 text-teal-light" />
                             </div>
                             <div>
@@ -503,11 +512,14 @@ const AdminDashboard = () => {
                               <p className="text-muted-foreground text-xs">Destinos Ativos</p>
                             </div>
                           </div>
-                        </div>
+                        </button>
 
-                        <div className="p-4 rounded-2xl bg-gradient-to-br from-secondary to-secondary/50 border border-border">
+                        <button 
+                          onClick={() => setActiveTab('offers')}
+                          className="p-4 rounded-2xl bg-gradient-to-br from-secondary to-secondary/50 border border-border hover:border-accent/40 transition-all text-left cursor-pointer group"
+                        >
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                               <Tag className="w-5 h-5 text-accent" />
                             </div>
                             <div>
@@ -515,47 +527,59 @@ const AdminDashboard = () => {
                               <p className="text-muted-foreground text-xs">Ofertas Ativas</p>
                             </div>
                           </div>
-                        </div>
+                        </button>
                       </div>
 
                       {/* Secondary Stats */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="p-4 rounded-xl bg-secondary/50 border border-border">
+                        <button 
+                          onClick={() => setActiveTab('quotes')}
+                          className="p-4 rounded-xl bg-secondary/50 border border-border hover:border-primary/40 transition-all text-left cursor-pointer group"
+                        >
                           <div className="flex items-center gap-3">
-                            <FileText className="w-5 h-5 text-primary" />
+                            <FileText className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
                             <div>
                               <p className="text-lg font-semibold text-foreground">{quotes.length}</p>
                               <p className="text-muted-foreground text-xs">Cotações</p>
                             </div>
                           </div>
-                        </div>
-                        <div className="p-4 rounded-xl bg-secondary/50 border border-border">
+                        </button>
+                        <button 
+                          onClick={() => setActiveTab('quotes')}
+                          className="p-4 rounded-xl bg-secondary/50 border border-border hover:border-accent/40 transition-all text-left cursor-pointer group"
+                        >
                           <div className="flex items-center gap-3">
-                            <Clock className="w-5 h-5 text-accent" />
+                            <Clock className="w-5 h-5 text-accent group-hover:scale-110 transition-transform" />
                             <div>
                               <p className="text-lg font-semibold text-foreground">{pendingQuotes}</p>
                               <p className="text-muted-foreground text-xs">Pendentes</p>
                             </div>
                           </div>
-                        </div>
-                        <div className="p-4 rounded-xl bg-secondary/50 border border-border">
+                        </button>
+                        <button 
+                          onClick={() => setActiveTab('itineraries')}
+                          className="p-4 rounded-xl bg-secondary/50 border border-border hover:border-teal-light/40 transition-all text-left cursor-pointer group"
+                        >
                           <div className="flex items-center gap-3">
-                            <Map className="w-5 h-5 text-teal-light" />
+                            <Map className="w-5 h-5 text-teal-light group-hover:scale-110 transition-transform" />
                             <div>
                               <p className="text-lg font-semibold text-foreground">{itineraries.length}</p>
                               <p className="text-muted-foreground text-xs">Roteiros IA</p>
                             </div>
                           </div>
-                        </div>
-                        <div className="p-4 rounded-xl bg-secondary/50 border border-border">
+                        </button>
+                        <button 
+                          onClick={() => setActiveTab('images')}
+                          className="p-4 rounded-xl bg-secondary/50 border border-border hover:border-primary/40 transition-all text-left cursor-pointer group"
+                        >
                           <div className="flex items-center gap-3">
-                            <Image className="w-5 h-5 text-primary" />
+                            <Image className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
                             <div>
                               <p className="text-lg font-semibold text-foreground">{images.length}</p>
                               <p className="text-muted-foreground text-xs">Imagens IA</p>
                             </div>
                           </div>
-                        </div>
+                        </button>
                       </div>
 
                       {/* Upcoming Trips with Check-in Alert */}
