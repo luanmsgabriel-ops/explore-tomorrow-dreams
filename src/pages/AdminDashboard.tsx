@@ -9,6 +9,7 @@ import { ClientsManager } from '@/components/admin/ClientsManager';
 import { TripManager } from '@/components/admin/TripManager';
 import { DefaultChecklistManager } from '@/components/admin/DefaultChecklistManager';
 import { StandaloneBannerGenerator } from '@/components/admin/StandaloneBannerGenerator';
+import { AnalyticsDashboard } from '@/components/admin/AnalyticsDashboard';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -34,11 +35,12 @@ import {
   Heart,
   Sparkles,
   Plane,
-  ListChecks
+  ListChecks,
+  BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabType = 'overview' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'clients' | 'trips' | 'checklist' | 'banner-generator';
+type TabType = 'overview' | 'analytics' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'clients' | 'trips' | 'checklist' | 'banner-generator';
 
 interface QuoteRequest {
   id: string;
@@ -401,6 +403,7 @@ const AdminDashboard = () => {
 
   const tabs = [
     { id: 'overview' as TabType, label: 'Visão Geral', icon: LayoutDashboard },
+    { id: 'analytics' as TabType, label: 'Analytics', icon: BarChart3 },
     { id: 'clients' as TabType, label: 'Clientes', icon: Users },
     { id: 'trips' as TabType, label: 'Viagens', icon: Plane },
     { id: 'checklist' as TabType, label: 'Checklist Padrão', icon: ListChecks },
@@ -582,7 +585,25 @@ const AdminDashboard = () => {
                         </button>
                       </div>
 
-                      {/* Upcoming Trips with Check-in Alert */}
+                      {/* Analytics CTA */}
+                      <button 
+                        onClick={() => setActiveTab('analytics')}
+                        className="w-full p-4 rounded-2xl bg-gradient-to-r from-primary/10 via-accent/10 to-teal-light/10 border border-primary/20 hover:border-primary/40 transition-all text-left cursor-pointer group"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                              <BarChart3 className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-foreground">Analytics & Insights</p>
+                              <p className="text-muted-foreground text-xs">Visualize comportamento dos clientes, funil de conversão e métricas</p>
+                            </div>
+                          </div>
+                          <Eye className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                        </div>
+                      </button>
+
                       <div className="rounded-2xl border border-border overflow-hidden">
                         <div className="p-4 bg-secondary border-b border-border flex items-center justify-between">
                           <h2 className="font-serif text-xl font-bold text-foreground">Próximas Viagens</h2>
@@ -692,6 +713,10 @@ const AdminDashboard = () => {
                         </div>
                       </div>
                     </div>
+                  )}
+
+                  {activeTab === 'analytics' && (
+                    <AnalyticsDashboard />
                   )}
 
                   {activeTab === 'destinations' && (
