@@ -706,7 +706,7 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
                             <div className="flex items-center gap-2 text-muted-foreground">
                               <Calendar className="w-4 h-4" />
                               <span>
-                                {format(new Date(selectedTrip.departure_date), 'dd/MM', { locale: ptBR })} - {format(new Date(selectedTrip.return_date), 'dd/MM/yyyy', { locale: ptBR })}
+                                {format(new Date(selectedTrip.departure_date + 'T12:00:00'), 'dd/MM', { locale: ptBR })} - {format(new Date(selectedTrip.return_date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
                               </span>
                             </div>
                             {selectedTrip.flight_locator && (
