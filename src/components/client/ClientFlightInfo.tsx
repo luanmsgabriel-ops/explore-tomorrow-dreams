@@ -30,6 +30,7 @@ interface ClientFlightInfoProps {
     departure_date: string;
     return_date: string;
     flight_number: string | null;
+    flight_return_number?: string | null;
     flight_departure_time: string | null;
     flight_return_time?: string | null;
     flight_locator?: string | null;
@@ -255,6 +256,12 @@ export const ClientFlightInfo = ({ tripId, tripData }: ClientFlightInfoProps) =>
                 <span className="text-foreground">
                   {format(new Date(tripData.flight_return_time), 'HH:mm')}
                 </span>
+              </div>
+            )}
+            {tripData.flight_return_number && (
+              <div className="flex items-center gap-3">
+                <Plane className="w-4 h-4 text-muted-foreground" />
+                <span className="text-foreground">Voo {tripData.flight_return_number}</span>
               </div>
             )}
           </div>

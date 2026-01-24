@@ -32,6 +32,8 @@ interface ClientAccommodationInfoProps {
     hotel_name: string | null;
     hotel_address: string | null;
     hotel_link?: string | null;
+    hotel_checkin_date?: string | null;
+    hotel_checkout_date?: string | null;
     hotel_checkin_time?: string | null;
     hotel_checkout_time?: string | null;
   };
@@ -105,11 +107,17 @@ export const ClientAccommodationInfo = ({ tripId, tripData }: ClientAccommodatio
   };
 
   const getStayDuration = () => {
-    const departure = new Date(tripData.departure_date);
-    const returnDate = new Date(tripData.return_date);
+    const checkinDate = tripData.hotel_checkin_date || tripData.departure_date;
+    const checkoutDate = tripData.hotel_checkout_date || tripData.return_date;
+    const departure = new Date(checkinDate);
+    const returnDate = new Date(checkoutDate);
     const nights = differenceInDays(returnDate, departure);
     return nights;
   };
+
+  // Get actual check-in and check-out dates
+  const checkinDate = tripData.hotel_checkin_date || tripData.departure_date;
+  const checkoutDate = tripData.hotel_checkout_date || tripData.return_date;
 
   const countdown = getCountdown();
   const nights = getStayDuration();
@@ -154,7 +162,7 @@ export const ClientAccommodationInfo = ({ tripId, tripData }: ClientAccommodatio
                 <span className="text-sm font-medium text-muted-foreground">Check-in</span>
               </div>
               <p className="font-semibold text-foreground">
-                {format(new Date(tripData.departure_date), "dd 'de' MMMM", { locale: ptBR })}
+                {format(new Date(checkinDate), "dd 'de' MMMM", { locale: ptBR })}
               </p>
               <p className="text-sm text-muted-foreground">
                 A partir das {tripData.hotel_checkin_time || '14:00'}
@@ -168,7 +176,7 @@ export const ClientAccommodationInfo = ({ tripId, tripData }: ClientAccommodatio
                 <span className="text-sm font-medium text-muted-foreground">Check-out</span>
               </div>
               <p className="font-semibold text-foreground">
-                {format(new Date(tripData.return_date), "dd 'de' MMMM", { locale: ptBR })}
+                {format(new Date(checkoutDate), "dd 'de' MMMM", { locale: ptBR })}
               </p>
               <p className="text-sm text-muted-foreground">
                 Até às {tripData.hotel_checkout_time || '12:00'}
