@@ -119,6 +119,45 @@ export type Database = {
         }
         Relationships: []
       }
+      analytics_events: {
+        Row: {
+          created_at: string
+          event_data: Json | null
+          event_type: string
+          id: string
+          ip_hash: string | null
+          page_path: string | null
+          referrer: string | null
+          session_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          ip_hash?: string | null
+          page_path?: string | null
+          referrer?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          ip_hash?: string | null
+          page_path?: string | null
+          referrer?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       banner_history: {
         Row: {
           caption: string | null
@@ -857,7 +896,16 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      analytics_daily_stats: {
+        Row: {
+          day: string | null
+          event_count: number | null
+          event_type: string | null
+          page_path: string | null
+          unique_sessions: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       check_ai_usage_limit: {
