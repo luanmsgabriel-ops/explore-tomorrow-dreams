@@ -687,7 +687,6 @@ export type Database = {
           client_email: string | null
           client_name: string
           client_phone: string | null
-          commission_percentage: number | null
           commission_value: number | null
           created_at: string
           created_by: string | null
@@ -709,7 +708,6 @@ export type Database = {
           client_email?: string | null
           client_name: string
           client_phone?: string | null
-          commission_percentage?: number | null
           commission_value?: number | null
           created_at?: string
           created_by?: string | null
@@ -731,7 +729,6 @@ export type Database = {
           client_email?: string | null
           client_name?: string
           client_phone?: string | null
-          commission_percentage?: number | null
           commission_value?: number | null
           created_at?: string
           created_by?: string | null

@@ -35,8 +35,7 @@ interface Sale {
   departure_date: string | null;
   return_date: string | null;
   total_value: number;
-  commission_percentage: number;
-  commission_value: number;
+  commission_value: number | null;
   payment_method: string | null;
   payment_status: string;
   notes: string | null;
@@ -86,7 +85,7 @@ export function SalesManager() {
     departure_date: undefined as Date | undefined,
     return_date: undefined as Date | undefined,
     total_value: '',
-    commission_percentage: '10',
+    commission_value: '',
     payment_method: '',
     payment_status: 'pending',
     notes: '',
@@ -124,7 +123,7 @@ export function SalesManager() {
       departure_date: undefined,
       return_date: undefined,
       total_value: '',
-      commission_percentage: '10',
+      commission_value: '',
       payment_method: '',
       payment_status: 'pending',
       notes: '',
@@ -144,7 +143,7 @@ export function SalesManager() {
       departure_date: sale.departure_date ? new Date(sale.departure_date + 'T12:00:00') : undefined,
       return_date: sale.return_date ? new Date(sale.return_date + 'T12:00:00') : undefined,
       total_value: sale.total_value.toString(),
-      commission_percentage: sale.commission_percentage.toString(),
+      commission_value: sale.commission_value?.toString() || '',
       payment_method: sale.payment_method || '',
       payment_status: sale.payment_status,
       notes: sale.notes || '',
@@ -172,7 +171,7 @@ export function SalesManager() {
         departure_date: formData.departure_date ? format(formData.departure_date, 'yyyy-MM-dd') : null,
         return_date: formData.return_date ? format(formData.return_date, 'yyyy-MM-dd') : null,
         total_value: parseFloat(formData.total_value),
-        commission_percentage: parseFloat(formData.commission_percentage),
+        commission_value: formData.commission_value ? parseFloat(formData.commission_value) : null,
         payment_method: formData.payment_method || null,
         payment_status: formData.payment_status,
         notes: formData.notes || null,
@@ -232,7 +231,7 @@ export function SalesManager() {
 
   // Dashboard calculations
   const totalSales = sales.reduce((acc, sale) => acc + Number(sale.total_value), 0);
-  const totalCommission = sales.reduce((acc, sale) => acc + Number(sale.commission_value), 0);
+  const totalCommission = sales.reduce((acc, sale) => acc + Number(sale.commission_value || 0), 0);
   const paidSales = sales.filter(s => s.payment_status === 'paid');
   const pendingSales = sales.filter(s => s.payment_status === 'pending');
   const totalPaid = paidSales.reduce((acc, sale) => acc + Number(sale.total_value), 0);
@@ -246,7 +245,7 @@ export function SalesManager() {
     return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
   });
   const monthTotal = monthSales.reduce((acc, sale) => acc + Number(sale.total_value), 0);
-  const monthCommission = monthSales.reduce((acc, sale) => acc + Number(sale.commission_value), 0);
+  const monthCommission = monthSales.reduce((acc, sale) => acc + Number(sale.commission_value || 0), 0);
 
   if (loading) {
     return (
@@ -397,22 +396,16 @@ export function SalesManager() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="commission_percentage">Comissão (%)</Label>
+                  <Label htmlFor="commission_value">Comissão (R$)</Label>
                   <Input
-                    id="commission_percentage"
+                    id="commission_value"
                     type="number"
                     step="0.01"
                     min="0"
-                    max="100"
-                    value={formData.commission_percentage}
-                    onChange={(e) => setFormData({ ...formData, commission_percentage: e.target.value })}
-                    placeholder="10"
+                    value={formData.commission_value}
+                    onChange={(e) => setFormData({ ...formData, commission_value: e.target.value })}
+                    placeholder="0,00"
                   />
-                  {formData.total_value && formData.commission_percentage && (
-                    <p className="text-xs text-muted-foreground">
-                      Comissão: {formatCurrency(parseFloat(formData.total_value) * parseFloat(formData.commission_percentage) / 100)}
-                    </p>
-                  )}
                 </div>
               </div>
 
@@ -581,11 +574,8 @@ export function SalesManager() {
                     <td className="px-4 py-4 text-foreground">{sale.destination_name}</td>
                     <td className="px-4 py-4 text-foreground">{formatDate(sale.sale_date)}</td>
                     <td className="px-4 py-4 text-foreground font-medium">{formatCurrency(sale.total_value)}</td>
-                    <td className="px-4 py-4">
-                      <div>
-                        <p className="text-foreground">{formatCurrency(sale.commission_value)}</p>
-                        <p className="text-xs text-muted-foreground">{sale.commission_percentage}%</p>
-                      </div>
+                    <td className="px-4 py-4 text-foreground">
+                      {sale.commission_value ? formatCurrency(sale.commission_value) : '-'}
                     </td>
                     <td className="px-4 py-4">
                       <span className={cn("px-3 py-1 rounded-full text-xs font-medium", statusInfo?.color)}>
