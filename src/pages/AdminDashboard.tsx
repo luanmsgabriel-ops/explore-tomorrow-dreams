@@ -633,7 +633,11 @@ const AdminDashboard = () => {
                             const daysUntilDeparture = Math.ceil(hoursUntilDeparture / 24);
                             
                             return (
-                              <div key={trip.id} className={`p-4 transition-colors ${isCheckinWindow ? 'bg-primary/5' : 'hover:bg-secondary/50'}`}>
+                              <div 
+                                key={trip.id} 
+                                className={`p-4 transition-colors cursor-pointer ${isCheckinWindow ? 'bg-primary/5 hover:bg-primary/10' : 'hover:bg-secondary/50'}`}
+                                onClick={() => setActiveTab('trips')}
+                              >
                                 {isCheckinWindow && (
                                   <div className="mb-3 px-3 py-2 rounded-lg bg-primary/20 border border-primary/30 flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
@@ -648,7 +652,7 @@ const AdminDashboard = () => {
                                       <Plane className={`w-5 h-5 ${isCheckinWindow ? 'text-primary' : 'text-accent'}`} />
                                     </div>
                                     <div>
-                                      <p className="font-medium text-foreground">{trip.client_name || trip.client_email}</p>
+                                      <p className="font-medium text-foreground hover:text-primary transition-colors">{trip.client_name || trip.client_email}</p>
                                       <p className="text-sm text-muted-foreground">{trip.destination_name}</p>
                                     </div>
                                   </div>
@@ -672,6 +676,7 @@ const AdminDashboard = () => {
                                        trip.trip_status === 'completed' ? 'Concluída' :
                                        trip.trip_status}
                                     </span>
+                                    <Eye className="w-4 h-4 text-muted-foreground" />
                                   </div>
                                 </div>
                               </div>
