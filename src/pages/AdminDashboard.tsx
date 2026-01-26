@@ -11,6 +11,7 @@ import { DefaultChecklistManager } from '@/components/admin/DefaultChecklistMana
 import { StandaloneBannerGenerator } from '@/components/admin/StandaloneBannerGenerator';
 import { AnalyticsDashboard } from '@/components/admin/AnalyticsDashboard';
 import { ManualQuoteForm } from '@/components/admin/ManualQuoteForm';
+import { SalesManager } from '@/components/admin/SalesManager';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -39,11 +40,12 @@ import {
   ListChecks,
   BarChart3,
   MessageCircle,
-  AlertCircle
+  AlertCircle,
+  DollarSign
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabType = 'overview' | 'analytics' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'clients' | 'trips' | 'checklist' | 'banner-generator';
+type TabType = 'overview' | 'analytics' | 'sales' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'clients' | 'trips' | 'checklist' | 'banner-generator';
 
 interface QuoteRequest {
   id: string;
@@ -413,6 +415,7 @@ const AdminDashboard = () => {
   const tabs = [
     { id: 'overview' as TabType, label: 'Visão Geral', icon: LayoutDashboard },
     { id: 'analytics' as TabType, label: 'Analytics', icon: BarChart3 },
+    { id: 'sales' as TabType, label: 'Vendas', icon: DollarSign },
     { id: 'clients' as TabType, label: 'Clientes', icon: Users },
     { id: 'trips' as TabType, label: 'Viagens', icon: Plane },
     { id: 'checklist' as TabType, label: 'Checklist Padrão', icon: ListChecks },
@@ -726,6 +729,10 @@ const AdminDashboard = () => {
 
                   {activeTab === 'analytics' && (
                     <AnalyticsDashboard />
+                  )}
+
+                  {activeTab === 'sales' && (
+                    <SalesManager />
                   )}
 
                   {activeTab === 'destinations' && (
