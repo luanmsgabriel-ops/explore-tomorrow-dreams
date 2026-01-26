@@ -10,6 +10,7 @@ import { TripManager } from '@/components/admin/TripManager';
 import { DefaultChecklistManager } from '@/components/admin/DefaultChecklistManager';
 import { StandaloneBannerGenerator } from '@/components/admin/StandaloneBannerGenerator';
 import { AnalyticsDashboard } from '@/components/admin/AnalyticsDashboard';
+import { ManualQuoteForm } from '@/components/admin/ManualQuoteForm';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -36,7 +37,9 @@ import {
   Sparkles,
   Plane,
   ListChecks,
-  BarChart3
+  BarChart3,
+  MessageCircle,
+  AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -60,6 +63,12 @@ interface QuoteRequest {
   preferred_contact_channel: string | null;
   status: string;
   created_at: string;
+  // New fields for manual quotes
+  client_name: string | null;
+  source_channel: string | null;
+  follow_up_date: string | null;
+  notes: string | null;
+  is_manual: boolean | null;
 }
 
 interface SelectedActivity {
@@ -727,11 +736,57 @@ const AdminDashboard = () => {
                     <PromotionalOffersManager />
                   )}
 
-                  {activeTab === 'quotes' && (
+{activeTab === 'quotes' && (
                     <div className="space-y-6">
-                      <h1 className="font-serif text-3xl font-bold text-foreground">
-                        Cotações
-                      </h1>
+                      <div className="flex items-center justify-between">
+                        <h1 className="font-serif text-3xl font-bold text-foreground">
+                          Cotações
+                        </h1>
+                        <ManualQuoteForm onSuccess={fetchData} />
+                      </div>
+
+                      {/* Alertas de Follow-up */}
+                      {quotes.filter(q => {
+                        if (!q.follow_up_date) return false;
+                        const followUp = new Date(q.follow_up_date + 'T12:00:00');
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return followUp <= today && q.status !== 'completed';
+                      }).length > 0 && (
+                        <div className="p-4 rounded-xl bg-accent/10 border border-accent/30">
+                          <div className="flex items-center gap-2 text-accent font-medium mb-2">
+                            <AlertCircle className="w-5 h-5" />
+                            Retornos pendentes para hoje
+                          </div>
+                          <div className="space-y-2">
+                            {quotes.filter(q => {
+                              if (!q.follow_up_date) return false;
+                              const followUp = new Date(q.follow_up_date + 'T12:00:00');
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              return followUp <= today && q.status !== 'completed';
+                            }).map(q => (
+                              <div key={q.id} className="flex items-center justify-between p-2 bg-background/50 rounded-lg">
+                                <div>
+                                  <span className="font-medium">{q.client_name || q.email}</span>
+                                  <span className="text-muted-foreground"> - {q.destination_name}</span>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    const cleanPhone = q.whatsapp.replace(/\D/g, '');
+                                    const message = encodeURIComponent(`Olá${q.client_name ? ` ${q.client_name}` : ''}! Tudo bem?\n\nEstou retornando sobre sua cotação para ${q.destination_name || 'sua viagem'}. Posso te ajudar com mais informações?`);
+                                    window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
+                                  }}
+                                  className="flex items-center gap-1 px-3 py-1 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
+                                >
+                                  <MessageCircle className="w-4 h-4" />
+                                  WhatsApp
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       <div className="rounded-2xl border border-border overflow-hidden">
                         <div className="overflow-x-auto">
@@ -740,59 +795,121 @@ const AdminDashboard = () => {
                               <tr>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Cliente</th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Destino</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Canal</th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Data Viagem</th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
-                                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Recebido</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Retorno</th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Ações</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
-                              {quotes.map((quote) => (
-                                <tr key={quote.id} className="hover:bg-secondary/30">
-                                  <td className="px-4 py-4">
-                                    <div>
-                                      <p className="font-medium text-foreground">{quote.email}</p>
-                                      <p className="text-sm text-muted-foreground">{quote.whatsapp}</p>
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-4 text-foreground">{quote.destination_name || '-'}</td>
-                                  <td className="px-4 py-4 text-foreground">{quote.travel_date || '-'}</td>
-                                  <td className="px-4 py-4">
-                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                      quote.status === 'pending' ? 'bg-accent/20 text-accent' : 
-                                      quote.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
-                                      quote.status === 'quoted' ? 'bg-purple-500/20 text-purple-400' :
-                                      quote.status === 'completed' ? 'bg-primary/20 text-primary' :
-                                      'bg-muted text-muted-foreground'
-                                    }`}>
-                                      {quote.status === 'pending' ? 'Pendente' : 
-                                       quote.status === 'in_progress' ? 'Em andamento' :
-                                       quote.status === 'quoted' ? 'Cotado' :
-                                       quote.status === 'completed' ? 'Finalizado' :
-                                       quote.status}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-4 text-sm text-muted-foreground">{formatDate(quote.created_at)}</td>
-                                  <td className="px-4 py-4">
-                                    <div className="flex items-center gap-1">
-                                      <button
-                                        onClick={() => setSelectedQuote(quote)}
-                                        className="p-2 rounded-lg hover:bg-primary/10 text-primary transition-colors"
-                                        title="Visualizar"
-                                      >
-                                        <Eye className="w-4 h-4" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteQuote(quote.id)}
-                                        className="p-2 rounded-lg hover:bg-destructive/10 text-destructive transition-colors"
-                                        title="Excluir"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
+                              {quotes.map((quote) => {
+                                const isFollowUpDue = quote.follow_up_date && (() => {
+                                  const followUp = new Date(quote.follow_up_date + 'T12:00:00');
+                                  const today = new Date();
+                                  today.setHours(0, 0, 0, 0);
+                                  return followUp <= today && quote.status !== 'completed';
+                                })();
+                                
+                                const getChannelLabel = (channel: string | null) => {
+                                  const channels: Record<string, string> = {
+                                    website: 'Site',
+                                    instagram: 'Instagram',
+                                    facebook: 'Facebook',
+                                    whatsapp_direct: 'WhatsApp',
+                                    phone: 'Telefone',
+                                    walk_in: 'Presencial',
+                                    referral: 'Indicação',
+                                    email: 'E-mail',
+                                    other: 'Outro',
+                                  };
+                                  return channels[channel || 'website'] || channel || 'Site';
+                                };
+
+                                return (
+                                  <tr key={quote.id} className={`hover:bg-secondary/30 ${isFollowUpDue ? 'bg-accent/5' : ''}`}>
+                                    <td className="px-4 py-4">
+                                      <div>
+                                        <p className="font-medium text-foreground">
+                                          {quote.client_name || quote.email}
+                                          {quote.is_manual && (
+                                            <span className="ml-2 px-1.5 py-0.5 text-xs rounded bg-blue-500/20 text-blue-400">Manual</span>
+                                          )}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">{quote.whatsapp}</p>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-4 text-foreground">{quote.destination_name || '-'}</td>
+                                    <td className="px-4 py-4">
+                                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                        quote.source_channel === 'instagram' ? 'bg-pink-500/20 text-pink-400' :
+                                        quote.source_channel === 'facebook' ? 'bg-blue-600/20 text-blue-400' :
+                                        quote.source_channel === 'whatsapp_direct' ? 'bg-green-500/20 text-green-400' :
+                                        quote.source_channel === 'phone' ? 'bg-yellow-500/20 text-yellow-400' :
+                                        quote.source_channel === 'referral' ? 'bg-purple-500/20 text-purple-400' :
+                                        'bg-muted text-muted-foreground'
+                                      }`}>
+                                        {getChannelLabel(quote.source_channel)}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-4 text-foreground">{quote.travel_date || '-'}</td>
+                                    <td className="px-4 py-4">
+                                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                        quote.status === 'pending' ? 'bg-accent/20 text-accent' : 
+                                        quote.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
+                                        quote.status === 'quoted' ? 'bg-purple-500/20 text-purple-400' :
+                                        quote.status === 'completed' ? 'bg-primary/20 text-primary' :
+                                        'bg-muted text-muted-foreground'
+                                      }`}>
+                                        {quote.status === 'pending' ? 'Pendente' : 
+                                         quote.status === 'in_progress' ? 'Em andamento' :
+                                         quote.status === 'quoted' ? 'Cotado' :
+                                         quote.status === 'completed' ? 'Finalizado' :
+                                         quote.status}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-4 text-sm">
+                                      {quote.follow_up_date ? (
+                                        <span className={isFollowUpDue ? 'text-accent font-medium' : 'text-muted-foreground'}>
+                                          {isFollowUpDue && <AlertCircle className="w-3 h-3 inline mr-1" />}
+                                          {formatDate(quote.follow_up_date)}
+                                        </span>
+                                      ) : (
+                                        <span className="text-muted-foreground">-</span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-4">
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          onClick={() => {
+                                            const cleanPhone = quote.whatsapp.replace(/\D/g, '');
+                                            const message = encodeURIComponent(`Olá${quote.client_name ? ` ${quote.client_name}` : ''}! Tudo bem?\n\nSou da Tomorrow Travel e gostaria de falar sobre sua viagem para ${quote.destination_name || 'seu destino dos sonhos'}!`);
+                                            window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
+                                          }}
+                                          className="p-2 rounded-lg hover:bg-green-500/10 text-green-500 transition-colors"
+                                          title="WhatsApp"
+                                        >
+                                          <MessageCircle className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                          onClick={() => setSelectedQuote(quote)}
+                                          className="p-2 rounded-lg hover:bg-primary/10 text-primary transition-colors"
+                                          title="Visualizar"
+                                        >
+                                          <Eye className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeleteQuote(quote.id)}
+                                          className="p-2 rounded-lg hover:bg-destructive/10 text-destructive transition-colors"
+                                          title="Excluir"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                           {quotes.length === 0 && (
@@ -1122,18 +1239,35 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Quote detail modal */}
+{/* Quote detail modal */}
       {selectedQuote && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm" onClick={() => setSelectedQuote(null)}>
           <div className="relative w-full max-w-lg bg-card border border-border rounded-2xl overflow-hidden p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="font-serif text-2xl font-bold text-foreground mb-6">Detalhes da Cotação</h2>
+            <h2 className="font-serif text-2xl font-bold text-foreground mb-6">
+              Detalhes da Cotação
+              {selectedQuote.is_manual && (
+                <span className="ml-3 px-2 py-1 text-sm rounded bg-blue-500/20 text-blue-400">Manual</span>
+              )}
+            </h2>
             
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+              {/* Nome do Cliente (se manual) */}
+              {selectedQuote.client_name && (
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Nome do Cliente</p>
+                  <p className="text-foreground font-medium text-lg">{selectedQuote.client_name}</p>
+                </div>
+              )}
+
               {/* Contato */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">E-mail</p>
-                  <p className="text-foreground font-medium">{selectedQuote.email}</p>
+                  <p className="text-foreground font-medium">
+                    {selectedQuote.is_manual && selectedQuote.email.includes('@manual.local') 
+                      ? '-' 
+                      : selectedQuote.email}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">WhatsApp</p>
@@ -1141,15 +1275,66 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* Destino */}
+              {/* Destino e Canal */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Destino Principal</p>
                   <p className="text-foreground font-medium">{selectedQuote.destination_name || '-'}</p>
                 </div>
                 <div>
+                  <p className="text-sm text-muted-foreground mb-1">Canal de Origem</p>
+                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                    selectedQuote.source_channel === 'instagram' ? 'bg-pink-500/20 text-pink-400' :
+                    selectedQuote.source_channel === 'facebook' ? 'bg-blue-600/20 text-blue-400' :
+                    selectedQuote.source_channel === 'whatsapp_direct' ? 'bg-green-500/20 text-green-400' :
+                    selectedQuote.source_channel === 'phone' ? 'bg-yellow-500/20 text-yellow-400' :
+                    selectedQuote.source_channel === 'referral' ? 'bg-purple-500/20 text-purple-400' :
+                    'bg-muted text-muted-foreground'
+                  }`}>
+                    {(() => {
+                      const channels: Record<string, string> = {
+                        website: 'Site',
+                        instagram: 'Instagram',
+                        facebook: 'Facebook',
+                        whatsapp_direct: 'WhatsApp Direto',
+                        phone: 'Telefone',
+                        walk_in: 'Presencial',
+                        referral: 'Indicação',
+                        email: 'E-mail',
+                        other: 'Outro',
+                      };
+                      return channels[selectedQuote.source_channel || 'website'] || selectedQuote.source_channel || 'Site';
+                    })()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Data da Viagem e Retorno */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <p className="text-sm text-muted-foreground mb-1">Data da Viagem</p>
                   <p className="text-foreground font-medium">{selectedQuote.travel_date || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Alerta de Retorno</p>
+                  {selectedQuote.follow_up_date ? (
+                    <p className={`font-medium ${(() => {
+                      const followUp = new Date(selectedQuote.follow_up_date + 'T12:00:00');
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return followUp <= today && selectedQuote.status !== 'completed' ? 'text-accent' : 'text-foreground';
+                    })()}`}>
+                      {formatDate(selectedQuote.follow_up_date)}
+                      {(() => {
+                        const followUp = new Date(selectedQuote.follow_up_date + 'T12:00:00');
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return followUp <= today && selectedQuote.status !== 'completed' ? ' ⚠️' : '';
+                      })()}
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground">-</p>
+                  )}
                 </div>
               </div>
 
@@ -1213,7 +1398,17 @@ const AdminDashboard = () => {
                 </div>
               )}
 
-              {/* Data de Recebimento */}
+              {/* Observações (para cotações manuais) */}
+              {selectedQuote.notes && (
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Observações</p>
+                  <p className="text-foreground font-medium whitespace-pre-wrap bg-secondary/50 p-3 rounded-lg">
+                    {selectedQuote.notes}
+                  </p>
+                </div>
+              )}
+
+              {/* Data de Recebimento e Status */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Recebido em</p>
