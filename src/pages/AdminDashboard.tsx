@@ -11,7 +11,9 @@ import { DefaultChecklistManager } from '@/components/admin/DefaultChecklistMana
 import { StandaloneBannerGenerator } from '@/components/admin/StandaloneBannerGenerator';
 import { AnalyticsDashboard } from '@/components/admin/AnalyticsDashboard';
 import { ManualQuoteForm } from '@/components/admin/ManualQuoteForm';
+import { QuoteEditForm } from '@/components/admin/QuoteEditForm';
 import { SalesManager } from '@/components/admin/SalesManager';
+import { Edit } from 'lucide-react';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -134,6 +136,7 @@ const AdminDashboard = () => {
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [selectedItinerary, setSelectedItinerary] = useState<AIItinerary | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<QuoteRequest | null>(null);
+  const [editingQuote, setEditingQuote] = useState<QuoteRequest | null>(null);
   const [selectedImage, setSelectedImage] = useState<AIImage | null>(null);
   
   // Overview stats
@@ -899,6 +902,13 @@ const AdminDashboard = () => {
                                           <MessageCircle className="w-4 h-4" />
                                         </button>
                                         <button
+                                          onClick={() => setEditingQuote(quote)}
+                                          className="p-2 rounded-lg hover:bg-accent/10 text-accent transition-colors"
+                                          title="Editar"
+                                        >
+                                          <Edit className="w-4 h-4" />
+                                        </button>
+                                        <button
                                           onClick={() => setSelectedQuote(quote)}
                                           className="p-2 rounded-lg hover:bg-primary/10 text-primary transition-colors"
                                           title="Visualizar"
@@ -1492,6 +1502,17 @@ const AdminDashboard = () => {
               )}
               
               <button
+                onClick={() => {
+                  setEditingQuote(selectedQuote);
+                  setSelectedQuote(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-accent/10 text-accent hover:bg-accent/20 flex items-center gap-2 transition-all"
+              >
+                <Edit className="w-4 h-4" />
+                Editar
+              </button>
+              
+              <button
                 onClick={() => handleDeleteQuote(selectedQuote.id)}
                 className="ml-auto px-4 py-2 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 flex items-center gap-2 transition-all"
               >
@@ -1897,6 +1918,19 @@ const AdminDashboard = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Quote Edit Form */}
+      {editingQuote && (
+        <QuoteEditForm
+          quote={editingQuote}
+          open={!!editingQuote}
+          onOpenChange={(open) => !open && setEditingQuote(null)}
+          onSuccess={() => {
+            fetchData();
+            setEditingQuote(null);
+          }}
+        />
       )}
     </div>
   );
