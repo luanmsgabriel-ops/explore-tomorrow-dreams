@@ -691,35 +691,63 @@ const AdminDashboard = () => {
                           <h2 className="font-serif text-xl font-bold text-foreground">Cotações Recentes</h2>
                         </div>
                         <div className="divide-y divide-border">
-                          {quotes.slice(0, 5).map((quote) => (
-                            <div key={quote.id} className="p-4 flex items-center justify-between hover:bg-secondary/50 transition-colors">
-                              <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                  <Mail className="w-5 h-5 text-primary" />
-                                </div>
-                                <div>
-                                  <p className="font-medium text-foreground">{quote.email}</p>
-                                  <p className="text-sm text-muted-foreground">{quote.destination_name || 'Destino não especificado'}</p>
+                          {quotes.slice(0, 5).map((quote) => {
+                            // Check if follow-up is due or overdue
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const hasFollowUp = !!quote.follow_up_date;
+                            const followUpDate = hasFollowUp ? new Date(quote.follow_up_date + 'T12:00:00') : null;
+                            const isFollowUpToday = followUpDate && followUpDate.toDateString() === today.toDateString();
+                            const isFollowUpOverdue = followUpDate && followUpDate < today;
+                            const needsAlert = (isFollowUpToday || isFollowUpOverdue) && quote.status !== 'completed';
+                            
+                            return (
+                              <div key={quote.id} className={`p-4 transition-colors ${needsAlert ? 'bg-destructive/5' : 'hover:bg-secondary/50'}`}>
+                                {needsAlert && (
+                                  <div className="mb-3 px-3 py-2 rounded-lg bg-destructive/20 border border-destructive/30 flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4 text-destructive" />
+                                    <span className="text-xs font-medium text-destructive">
+                                      {isFollowUpOverdue ? '⚠️ Retorno vencido!' : '📅 Retornar hoje!'}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-4">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${needsAlert ? 'bg-destructive/20' : 'bg-primary/10'}`}>
+                                      <Mail className={`w-5 h-5 ${needsAlert ? 'text-destructive' : 'text-primary'}`} />
+                                    </div>
+                                    <div>
+                                      <p className="font-medium text-foreground">{quote.client_name || quote.email.split('@')[0]}</p>
+                                      <p className="text-sm text-muted-foreground">{quote.destination_name || 'Destino não especificado'}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-4">
+                                    {hasFollowUp && (
+                                      <div className="text-right">
+                                        <p className={`text-xs ${needsAlert ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                                          Retorno: {followUpDate?.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                                        </p>
+                                      </div>
+                                    )}
+                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                      quote.status === 'pending' ? 'bg-accent/20 text-accent' : 
+                                      quote.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
+                                      quote.status === 'quoted' ? 'bg-purple-500/20 text-purple-400' :
+                                      quote.status === 'completed' ? 'bg-primary/20 text-primary' :
+                                      'bg-muted text-muted-foreground'
+                                    }`}>
+                                      {quote.status === 'pending' ? 'Pendente' : 
+                                       quote.status === 'in_progress' ? 'Em andamento' :
+                                       quote.status === 'quoted' ? 'Cotado' :
+                                       quote.status === 'completed' ? 'Finalizado' :
+                                       quote.status}
+                                    </span>
+                                    <span className="text-sm text-muted-foreground">{formatDate(quote.created_at)}</span>
+                                  </div>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-4">
-                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                  quote.status === 'pending' ? 'bg-accent/20 text-accent' : 
-                                  quote.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
-                                  quote.status === 'quoted' ? 'bg-purple-500/20 text-purple-400' :
-                                  quote.status === 'completed' ? 'bg-primary/20 text-primary' :
-                                  'bg-muted text-muted-foreground'
-                                }`}>
-                                  {quote.status === 'pending' ? 'Pendente' : 
-                                   quote.status === 'in_progress' ? 'Em andamento' :
-                                   quote.status === 'quoted' ? 'Cotado' :
-                                   quote.status === 'completed' ? 'Finalizado' :
-                                   quote.status}
-                                </span>
-                                <span className="text-sm text-muted-foreground">{formatDate(quote.created_at)}</span>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                           {quotes.length === 0 && (
                             <div className="p-8 text-center text-muted-foreground">
                               Nenhuma cotação recebida ainda
