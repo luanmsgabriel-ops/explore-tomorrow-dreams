@@ -682,6 +682,90 @@ export type Database = {
         }
         Relationships: []
       }
+      sales: {
+        Row: {
+          client_email: string | null
+          client_name: string
+          client_phone: string | null
+          commission_percentage: number | null
+          commission_value: number | null
+          created_at: string
+          created_by: string | null
+          departure_date: string | null
+          destination_name: string
+          id: string
+          notes: string | null
+          payment_method: string | null
+          payment_status: string | null
+          quote_id: string | null
+          return_date: string | null
+          sale_date: string
+          source_channel: string | null
+          total_value: number
+          trip_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_email?: string | null
+          client_name: string
+          client_phone?: string | null
+          commission_percentage?: number | null
+          commission_value?: number | null
+          created_at?: string
+          created_by?: string | null
+          departure_date?: string | null
+          destination_name: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          quote_id?: string | null
+          return_date?: string | null
+          sale_date?: string
+          source_channel?: string | null
+          total_value: number
+          trip_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_email?: string | null
+          client_name?: string
+          client_phone?: string | null
+          commission_percentage?: number | null
+          commission_value?: number | null
+          created_at?: string
+          created_by?: string | null
+          departure_date?: string | null
+          destination_name?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          quote_id?: string | null
+          return_date?: string | null
+          sale_date?: string
+          source_channel?: string | null
+          total_value?: number
+          trip_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "client_trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip_checklist: {
         Row: {
           created_at: string
