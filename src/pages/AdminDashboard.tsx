@@ -702,7 +702,14 @@ const AdminDashboard = () => {
                             const needsAlert = (isFollowUpToday || isFollowUpOverdue) && quote.status !== 'completed';
                             
                             return (
-                              <div key={quote.id} className={`p-4 transition-colors ${needsAlert ? 'bg-destructive/5' : 'hover:bg-secondary/50'}`}>
+                              <div 
+                                key={quote.id} 
+                                className={`p-4 transition-colors cursor-pointer ${needsAlert ? 'bg-destructive/5 hover:bg-destructive/10' : 'hover:bg-secondary/50'}`}
+                                onClick={() => {
+                                  setActiveTab('quotes');
+                                  setSelectedQuote(quote);
+                                }}
+                              >
                                 {needsAlert && (
                                   <div className="mb-3 px-3 py-2 rounded-lg bg-destructive/20 border border-destructive/30 flex items-center gap-2">
                                     <AlertCircle className="w-4 h-4 text-destructive" />
@@ -717,7 +724,7 @@ const AdminDashboard = () => {
                                       <Mail className={`w-5 h-5 ${needsAlert ? 'text-destructive' : 'text-primary'}`} />
                                     </div>
                                     <div>
-                                      <p className="font-medium text-foreground">{quote.client_name || quote.email.split('@')[0]}</p>
+                                      <p className="font-medium text-foreground hover:text-primary transition-colors">{quote.client_name || quote.email.split('@')[0]}</p>
                                       <p className="text-sm text-muted-foreground">{quote.destination_name || 'Destino não especificado'}</p>
                                     </div>
                                   </div>
@@ -743,6 +750,7 @@ const AdminDashboard = () => {
                                        quote.status}
                                     </span>
                                     <span className="text-sm text-muted-foreground">{formatDate(quote.created_at)}</span>
+                                    <Eye className="w-4 h-4 text-muted-foreground" />
                                   </div>
                                 </div>
                               </div>
