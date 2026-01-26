@@ -609,16 +609,21 @@ export type Database = {
       }
       quote_requests: {
         Row: {
+          client_name: string | null
           created_at: string
           destination_id: string | null
           destination_name: string | null
           email: string
           flight_time_preference: string | null
+          follow_up_date: string | null
           id: string
+          is_manual: boolean | null
+          notes: string | null
           num_people: string | null
           preferred_airport: string | null
           preferred_contact_channel: string | null
           preferred_contact_time: string | null
+          source_channel: string | null
           special_requests: string | null
           status: string
           travel_date: string | null
@@ -628,16 +633,21 @@ export type Database = {
           whatsapp: string
         }
         Insert: {
+          client_name?: string | null
           created_at?: string
           destination_id?: string | null
           destination_name?: string | null
           email: string
           flight_time_preference?: string | null
+          follow_up_date?: string | null
           id?: string
+          is_manual?: boolean | null
+          notes?: string | null
           num_people?: string | null
           preferred_airport?: string | null
           preferred_contact_channel?: string | null
           preferred_contact_time?: string | null
+          source_channel?: string | null
           special_requests?: string | null
           status?: string
           travel_date?: string | null
@@ -647,16 +657,21 @@ export type Database = {
           whatsapp: string
         }
         Update: {
+          client_name?: string | null
           created_at?: string
           destination_id?: string | null
           destination_name?: string | null
           email?: string
           flight_time_preference?: string | null
+          follow_up_date?: string | null
           id?: string
+          is_manual?: boolean | null
+          notes?: string | null
           num_people?: string | null
           preferred_airport?: string | null
           preferred_contact_channel?: string | null
           preferred_contact_time?: string | null
+          source_channel?: string | null
           special_requests?: string | null
           status?: string
           travel_date?: string | null
