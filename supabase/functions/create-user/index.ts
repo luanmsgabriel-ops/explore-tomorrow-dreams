@@ -74,6 +74,32 @@ Deno.serve(async (req) => {
     });
 
     if (createError) {
+      // If user already exists, try to find them
+      if (createError.message.includes("already been registered")) {
+        const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+        
+        if (listError) {
+          return new Response(
+            JSON.stringify({ error: "Failed to look up existing user" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const existingUser = existingUsers.users.find(u => u.email === email);
+        
+        if (existingUser) {
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              message: "User already exists, linking to shared access",
+              user: { id: existingUser.id, email: existingUser.email },
+              existing: true
+            }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+
       return new Response(
         JSON.stringify({ error: createError.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
