@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +22,10 @@ import {
   Percent, 
   Trash2,
   Edit,
-  Clock
+  Clock,
+  LinkIcon,
+  FileText,
+  CheckCircle
 } from 'lucide-react';
 
 interface Sale {
@@ -39,6 +42,19 @@ interface Sale {
   payment_method: string | null;
   payment_status: string;
   notes: string | null;
+  source_channel: string | null;
+  quote_id: string | null;
+  created_at: string;
+}
+
+interface Quote {
+  id: string;
+  client_name: string | null;
+  email: string;
+  whatsapp: string;
+  destination_name: string | null;
+  travel_date: string | null;
+  status: string;
   source_channel: string | null;
   created_at: string;
 }
@@ -75,6 +91,11 @@ export function SalesManager() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  
+  // Quote matching states
+  const [matchingQuotes, setMatchingQuotes] = useState<Quote[]>([]);
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
+  const [searchingQuotes, setSearchingQuotes] = useState(false);
   
   const [formData, setFormData] = useState({
     client_name: '',
@@ -130,6 +151,72 @@ export function SalesManager() {
       source_channel: 'website',
     });
     setEditingSale(null);
+    setMatchingQuotes([]);
+    setSelectedQuoteId(null);
+  };
+
+  // Search for matching quotes based on email or phone
+  const searchMatchingQuotes = useCallback(async (email: string, phone: string) => {
+    if (!email && !phone) {
+      setMatchingQuotes([]);
+      return;
+    }
+
+    setSearchingQuotes(true);
+    try {
+      let query = supabase.from('quote_requests').select('*');
+      
+      // Build OR condition for email and phone matching
+      const conditions: string[] = [];
+      if (email) conditions.push(`email.ilike.%${email}%`);
+      if (phone) {
+        const cleanPhone = phone.replace(/\D/g, '');
+        if (cleanPhone.length >= 8) {
+          conditions.push(`whatsapp.ilike.%${cleanPhone.slice(-8)}%`);
+        }
+      }
+      
+      if (conditions.length > 0) {
+        query = query.or(conditions.join(','));
+      }
+      
+      const { data, error } = await query
+        .neq('status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+      setMatchingQuotes(data || []);
+    } catch (error) {
+      console.error('Error searching quotes:', error);
+    } finally {
+      setSearchingQuotes(false);
+    }
+  }, []);
+
+  // Debounce quote search
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (!editingSale && formOpen) {
+        searchMatchingQuotes(formData.client_email, formData.client_phone);
+      }
+    }, 500);
+    
+    return () => clearTimeout(timeoutId);
+  }, [formData.client_email, formData.client_phone, editingSale, formOpen, searchMatchingQuotes]);
+
+  // Fill form with quote data
+  const fillFromQuote = (quote: Quote) => {
+    setSelectedQuoteId(quote.id);
+    setFormData(prev => ({
+      ...prev,
+      client_name: quote.client_name || prev.client_name,
+      client_email: quote.email || prev.client_email,
+      client_phone: quote.whatsapp || prev.client_phone,
+      destination_name: quote.destination_name || prev.destination_name,
+      source_channel: quote.source_channel || prev.source_channel,
+    }));
+    toast.success('Dados da cotação preenchidos!');
   };
 
   const openEditForm = (sale: Sale) => {
@@ -176,6 +263,7 @@ export function SalesManager() {
         payment_status: formData.payment_status,
         notes: formData.notes || null,
         source_channel: formData.source_channel,
+        quote_id: selectedQuoteId,
       };
 
       if (editingSale) {
@@ -190,6 +278,15 @@ export function SalesManager() {
           .from('sales')
           .insert(saleData);
         if (error) throw error;
+        
+        // Update quote status to completed if linked
+        if (selectedQuoteId) {
+          await supabase
+            .from('quote_requests')
+            .update({ status: 'completed' })
+            .eq('id', selectedQuoteId);
+        }
+        
         toast.success('Venda cadastrada com sucesso!');
       }
 
@@ -318,6 +415,53 @@ export function SalesManager() {
                   />
                 </div>
               </div>
+
+              {/* Matching Quotes Section */}
+              {!editingSale && (matchingQuotes.length > 0 || searchingQuotes) && (
+                <div className="p-4 rounded-lg border border-primary/30 bg-primary/5 space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                    <LinkIcon className="w-4 h-4" />
+                    <span>Cotações encontradas para este cliente</span>
+                    {searchingQuotes && <Loader2 className="w-3 h-3 animate-spin" />}
+                  </div>
+                  
+                  {matchingQuotes.map((quote) => (
+                    <div 
+                      key={quote.id} 
+                      className={cn(
+                        "p-3 rounded-lg border cursor-pointer transition-all",
+                        selectedQuoteId === quote.id 
+                          ? "border-primary bg-primary/10" 
+                          : "border-border bg-background hover:border-primary/50"
+                      )}
+                      onClick={() => fillFromQuote(quote)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              {quote.client_name || quote.email}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {quote.destination_name || 'Destino não definido'} • {format(new Date(quote.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                            </p>
+                          </div>
+                        </div>
+                        {selectedQuoteId === quote.id && (
+                          <CheckCircle className="w-5 h-5 text-primary" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {selectedQuoteId && (
+                    <p className="text-xs text-muted-foreground">
+                      ✓ Cotação vinculada. O status será atualizado para "Concluída" ao salvar.
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
