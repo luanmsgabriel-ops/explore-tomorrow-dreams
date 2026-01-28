@@ -165,7 +165,25 @@ export const SharedAccessManager = ({ primaryUserId, primaryEmail, clientName }:
 
     setIsUpdating(true);
     try {
-      // Update email in account_shared_access table
+      // First, update email in auth.users via edge function (most important for login)
+      const { data: authData, error: authError } = await supabase.functions.invoke('update-user-password', {
+        body: {
+          userId: sharedUserId,
+          newEmail: editingEmail.trim()
+        }
+      });
+
+      // Check for errors from the edge function
+      if (authError) {
+        throw new Error('Erro ao atualizar e-mail no sistema de autenticação');
+      }
+
+      // Check if the edge function returned an error in the response body
+      if (authData?.error) {
+        throw new Error(authData.error);
+      }
+
+      // Only update other tables if auth update succeeded
       const { error: accessError } = await supabase
         .from('account_shared_access')
         .update({ shared_email: editingEmail.trim() })
@@ -173,26 +191,12 @@ export const SharedAccessManager = ({ primaryUserId, primaryEmail, clientName }:
 
       if (accessError) throw accessError;
 
-      // Update email in profiles table
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ email: editingEmail.trim() })
         .eq('user_id', sharedUserId);
 
       if (profileError) throw profileError;
-
-      // Update email in auth.users via edge function
-      const { error: authError } = await supabase.functions.invoke('update-user-password', {
-        body: {
-          userId: sharedUserId,
-          newEmail: editingEmail.trim()
-        }
-      });
-
-      if (authError) {
-        console.warn('Could not update auth email:', authError);
-        // Still show success since the shared_access and profile were updated
-      }
 
       toast.success('E-mail atualizado com sucesso!');
       setEditingId(null);
