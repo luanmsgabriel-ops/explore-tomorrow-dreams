@@ -282,11 +282,11 @@ const ClientDashboard = () => {
                       </p>
                     )}
                   </div>
-                  <div className="relative w-full">
+                  <div className="relative w-full px-4 pb-4">
                     <img 
                       src={selectedTrip.welcome_image_url} 
                       alt="Bem-vindo à sua viagem"
-                      className="w-full h-48 md:h-64 object-cover"
+                      className="w-full max-h-40 md:max-h-48 object-contain rounded-lg"
                     />
                   </div>
                 </div>
