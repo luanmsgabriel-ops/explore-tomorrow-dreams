@@ -23,7 +23,9 @@ import {
   Edit,
   Upload,
   Download,
-  CheckCircle
+  CheckCircle,
+  Image,
+  Sparkles
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -55,6 +57,7 @@ interface Trip {
   notes: string | null;
   trip_status: string;
   created_at: string;
+  welcome_image_url: string | null;
 }
 
 interface TripDocument {
@@ -97,6 +100,7 @@ export const TripManager = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingWelcome, setIsUploadingWelcome] = useState(false);
   
   // Form state for new trip
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -425,6 +429,94 @@ export const TripManager = () => {
     }
   };
 
+  const handleWelcomeImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!selectedTrip || !e.target.files?.length) return;
+    
+    const file = e.target.files[0];
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Por favor, selecione apenas arquivos de imagem');
+      return;
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 5MB');
+      return;
+    }
+    
+    setIsUploadingWelcome(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Não autenticado');
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `welcome/${selectedTrip.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('trip-documents')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Create signed URL for private bucket
+      const { data: signedData } = await supabase.storage
+        .from('trip-documents')
+        .createSignedUrl(fileName, 60 * 60 * 24 * 365); // 1 year
+
+      if (!signedData?.signedUrl) throw new Error('Erro ao gerar URL');
+
+      // Update trip with welcome image URL
+      const { error: updateError } = await supabase
+        .from('client_trips')
+        .update({ welcome_image_url: signedData.signedUrl })
+        .eq('id', selectedTrip.id);
+
+      if (updateError) throw updateError;
+
+      // Update local state
+      setTrips(prev => prev.map(t => 
+        t.id === selectedTrip.id 
+          ? { ...t, welcome_image_url: signedData.signedUrl }
+          : t
+      ));
+      setSelectedTrip(prev => prev ? { ...prev, welcome_image_url: signedData.signedUrl } : null);
+
+      toast.success('Imagem de boas-vindas enviada com sucesso!');
+    } catch (error: any) {
+      console.error('Error uploading welcome image:', error);
+      toast.error(error.message || 'Erro ao enviar imagem');
+    } finally {
+      setIsUploadingWelcome(false);
+    }
+  };
+
+  const handleRemoveWelcomeImage = async () => {
+    if (!selectedTrip || !confirm('Remover a imagem de boas-vindas?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('client_trips')
+        .update({ welcome_image_url: null })
+        .eq('id', selectedTrip.id);
+
+      if (error) throw error;
+
+      setTrips(prev => prev.map(t => 
+        t.id === selectedTrip.id 
+          ? { ...t, welcome_image_url: null }
+          : t
+      ));
+      setSelectedTrip(prev => prev ? { ...prev, welcome_image_url: null } : null);
+
+      toast.success('Imagem removida');
+    } catch (error) {
+      toast.error('Erro ao remover imagem');
+    }
+  };
+
   const handleDeleteTrip = async (tripId: string) => {
     if (!confirm('Excluir esta viagem e todos os documentos associados?')) return;
 
@@ -750,7 +842,7 @@ export const TripManager = () => {
               </div>
 
               <Tabs defaultValue="documents" className="w-full">
-                <TabsList className="w-full justify-start">
+                <TabsList className="w-full justify-start flex-wrap">
                   <TabsTrigger value="documents">
                     <FileText className="w-4 h-4 mr-2" />
                     Documentos
@@ -762,6 +854,10 @@ export const TripManager = () => {
                   <TabsTrigger value="checklist">
                     <CheckCircle className="w-4 h-4 mr-2" />
                     Checklist
+                  </TabsTrigger>
+                  <TabsTrigger value="welcome">
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Boas-vindas
                   </TabsTrigger>
                 </TabsList>
 
@@ -921,6 +1017,83 @@ export const TripManager = () => {
                       ))}
                     </div>
                   )}
+                </TabsContent>
+
+                <TabsContent value="welcome" className="space-y-4 mt-4">
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium text-foreground mb-2">Imagem de Boas-vindas</h4>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Esta imagem será exibida em um popup especial quando o cliente acessar sua área pela primeira vez.
+                        Ideal para fotos personalizadas do destino ou mensagens de boas-vindas.
+                      </p>
+                    </div>
+
+                    {selectedTrip.welcome_image_url ? (
+                      <div className="space-y-4">
+                        <div className="relative rounded-xl overflow-hidden border border-border">
+                          <img 
+                            src={selectedTrip.welcome_image_url} 
+                            alt="Imagem de boas-vindas"
+                            className="w-full h-64 object-cover"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+                          <div className="absolute bottom-4 left-4 right-4">
+                            <p className="text-sm text-foreground/80 italic">
+                              "Bem-vindo ao início da sua próxima história..."
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Label htmlFor="welcome-upload-update" className="cursor-pointer flex-1">
+                            <div className="flex items-center justify-center gap-2 px-4 py-2 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors">
+                              <Upload className="w-4 h-4" />
+                              {isUploadingWelcome ? 'Enviando...' : 'Trocar Imagem'}
+                            </div>
+                          </Label>
+                          <Input
+                            id="welcome-upload-update"
+                            type="file"
+                            className="hidden"
+                            onChange={handleWelcomeImageUpload}
+                            disabled={isUploadingWelcome}
+                            accept="image/*"
+                          />
+                          <Button 
+                            variant="destructive" 
+                            onClick={handleRemoveWelcomeImage}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Remover
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
+                        <Image className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                        <p className="text-muted-foreground mb-4">
+                          Nenhuma imagem de boas-vindas configurada
+                        </p>
+                        <Label htmlFor="welcome-upload" className="cursor-pointer inline-block">
+                          <div className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+                            <Upload className="w-4 h-4" />
+                            {isUploadingWelcome ? 'Enviando...' : 'Enviar Imagem'}
+                          </div>
+                        </Label>
+                        <Input
+                          id="welcome-upload"
+                          type="file"
+                          className="hidden"
+                          onChange={handleWelcomeImageUpload}
+                          disabled={isUploadingWelcome}
+                          accept="image/*"
+                        />
+                        <p className="text-xs text-muted-foreground mt-3">
+                          Formatos aceitos: JPG, PNG, WEBP (máx. 5MB)
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </TabsContent>
               </Tabs>
             </div>
