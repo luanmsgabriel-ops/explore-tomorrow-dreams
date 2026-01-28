@@ -49,6 +49,7 @@ interface ClientTrip {
   notes: string | null;
   created_at: string;
   welcome_image_url: string | null;
+  welcome_caption: string | null;
 }
 
 const ClientDashboard = () => {
@@ -63,6 +64,7 @@ const ClientDashboard = () => {
   const [upcomingFlightAlert, setUpcomingFlightAlert] = useState<ClientTrip | null>(null);
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   const [welcomeImageUrl, setWelcomeImageUrl] = useState<string | null>(null);
+  const [welcomeCaption, setWelcomeCaption] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuthAndFetchData();
@@ -142,6 +144,7 @@ const ClientDashboard = () => {
           const alreadyShown = sessionStorage.getItem(popupKey);
           if (!alreadyShown) {
             setWelcomeImageUrl(upcomingOrCurrent.welcome_image_url);
+            setWelcomeCaption(upcomingOrCurrent.welcome_caption);
             setShowWelcomePopup(true);
             sessionStorage.setItem(popupKey, 'true');
           }
@@ -198,6 +201,7 @@ const ClientDashboard = () => {
         onClose={() => setShowWelcomePopup(false)}
         imageUrl={welcomeImageUrl}
         userName={userName || 'Viajante'}
+        customCaption={welcomeCaption}
       />
 
       <div className="pt-24 pb-12">

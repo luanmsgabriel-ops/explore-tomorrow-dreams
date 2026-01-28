@@ -39,7 +39,8 @@ import {
   Map,
   Bus,
   Info,
-  AlertCircle
+  AlertCircle,
+  Gift
 } from 'lucide-react';
 
 interface ClientProfile {
@@ -69,6 +70,8 @@ interface ClientTrip {
   hotel_checkout_time: string | null;
   trip_status: string;
   trip_tips: string | null;
+  welcome_image_url: string | null;
+  welcome_caption: string | null;
 }
 
 interface TripDocument {
@@ -159,8 +162,13 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
     hotel_checkin_time: '',
     hotel_checkout_time: '',
     trip_tips: '',
-    trip_status: ''
+    trip_status: '',
+    welcome_image_url: '',
+    welcome_caption: ''
   });
+  
+  // Welcome image upload state
+  const [isUploadingWelcome, setIsUploadingWelcome] = useState(false);
 
   useEffect(() => {
     if (client && open) {
@@ -450,7 +458,9 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
       hotel_checkin_time: selectedTrip.hotel_checkin_time || '14:00',
       hotel_checkout_time: selectedTrip.hotel_checkout_time || '12:00',
       trip_tips: selectedTrip.trip_tips || '',
-      trip_status: selectedTrip.trip_status || 'confirmed'
+      trip_status: selectedTrip.trip_status || 'confirmed',
+      welcome_image_url: selectedTrip.welcome_image_url || '',
+      welcome_caption: selectedTrip.welcome_caption || ''
     });
     setIsEditingTrip(true);
   };
@@ -473,7 +483,9 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
       hotel_checkin_time: '',
       hotel_checkout_time: '',
       trip_tips: '',
-      trip_status: ''
+      trip_status: '',
+      welcome_image_url: '',
+      welcome_caption: ''
     });
   };
 
@@ -497,7 +509,9 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
         hotel_checkin_time: editTripData.hotel_checkin_time || null,
         hotel_checkout_time: editTripData.hotel_checkout_time || null,
         trip_tips: editTripData.trip_tips || null,
-        trip_status: editTripData.trip_status
+        trip_status: editTripData.trip_status,
+        welcome_image_url: editTripData.welcome_image_url || null,
+        welcome_caption: editTripData.welcome_caption || null
       };
 
       const { error } = await supabase
@@ -528,7 +542,9 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
         hotel_checkin_time: updateData.hotel_checkin_time,
         hotel_checkout_time: updateData.hotel_checkout_time,
         trip_tips: updateData.trip_tips,
-        trip_status: updateData.trip_status
+        trip_status: updateData.trip_status,
+        welcome_image_url: updateData.welcome_image_url,
+        welcome_caption: updateData.welcome_caption
       });
       
       // Also refresh the full list
@@ -536,6 +552,52 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
     } catch (error: any) {
       console.error('Error updating trip:', error);
       toast.error(error.message || 'Erro ao atualizar viagem');
+    }
+  };
+
+  const handleWelcomeImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!selectedTrip || !e.target.files?.length) return;
+    
+    const file = e.target.files[0];
+    
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 5MB');
+      return;
+    }
+    
+    setIsUploadingWelcome(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Não autenticado');
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${selectedTrip.id}/welcome-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('trip-documents')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      // Generate signed URL
+      const { data: signedUrlData } = await supabase.storage
+        .from('trip-documents')
+        .createSignedUrl(fileName, 60 * 60 * 24 * 365); // 1 year
+
+      if (!signedUrlData?.signedUrl) throw new Error('Erro ao gerar URL');
+
+      // Update editTripData with the new URL
+      setEditTripData({...editTripData, welcome_image_url: signedUrlData.signedUrl});
+      
+      toast.success('Imagem de boas-vindas enviada!');
+    } catch (error: any) {
+      console.error('Error uploading welcome image:', error);
+      toast.error(error.message || 'Erro ao enviar imagem');
+    } finally {
+      setIsUploadingWelcome(false);
+      e.target.value = '';
     }
   };
 
@@ -935,6 +997,87 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
                                       onChange={(e) => setEditTripData({...editTripData, trip_tips: e.target.value})}
                                       rows={4}
                                     />
+                                  </div>
+                                </AccordionContent>
+                              </AccordionItem>
+
+                              {/* Welcome Image */}
+                              <AccordionItem value="welcome" className="border rounded-lg px-4">
+                                <AccordionTrigger className="hover:no-underline py-3">
+                                  <div className="flex items-center gap-2 text-sm font-medium">
+                                    <Gift className="w-4 h-4 text-primary" />
+                                    Boas-vindas
+                                    {editTripData.welcome_image_url && (
+                                      <Badge variant="secondary" className="ml-2 text-xs">Imagem configurada</Badge>
+                                    )}
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="pb-4">
+                                  <div className="space-y-4">
+                                    <p className="text-xs text-muted-foreground">
+                                      Configure a imagem e legenda que aparecerão no popup de boas-vindas quando o cliente acessar a área dele.
+                                    </p>
+                                    
+                                    {/* Image Preview/Upload */}
+                                    <div className="space-y-2">
+                                      <Label className="text-xs">Imagem de Boas-vindas</Label>
+                                      {editTripData.welcome_image_url ? (
+                                        <div className="relative">
+                                          <img 
+                                            src={editTripData.welcome_image_url} 
+                                            alt="Preview de boas-vindas" 
+                                            className="w-full max-h-48 object-cover rounded-lg border"
+                                          />
+                                          <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            className="absolute top-2 right-2"
+                                            onClick={() => setEditTripData({...editTripData, welcome_image_url: ''})}
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </div>
+                                      ) : (
+                                        <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                                          <Image className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                                          <p className="text-sm text-muted-foreground mb-3">
+                                            Faça upload de uma imagem personalizada (máx. 5MB)
+                                          </p>
+                                          <Button
+                                            variant="outline"
+                                            className="relative"
+                                            disabled={isUploadingWelcome}
+                                          >
+                                            {isUploadingWelcome ? (
+                                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                            ) : (
+                                              <Upload className="w-4 h-4 mr-2" />
+                                            )}
+                                            {isUploadingWelcome ? 'Enviando...' : 'Selecionar Imagem'}
+                                            <input
+                                              type="file"
+                                              className="absolute inset-0 opacity-0 cursor-pointer"
+                                              onChange={handleWelcomeImageUpload}
+                                              accept=".jpg,.jpeg,.png,.webp"
+                                            />
+                                          </Button>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Caption Field */}
+                                    <div className="space-y-2">
+                                      <Label className="text-xs">Legenda do Popup (opcional)</Label>
+                                      <Textarea
+                                        placeholder="Deixe em branco para usar a mensagem padrão. Ex: Olá Maria! Preparamos uma viagem especial para você!"
+                                        value={editTripData.welcome_caption}
+                                        onChange={(e) => setEditTripData({...editTripData, welcome_caption: e.target.value})}
+                                        rows={3}
+                                      />
+                                      <p className="text-xs text-muted-foreground">
+                                        Mensagem padrão: "Bem-vindo ao início da sua próxima história. Com a Tomorrow Travel sua experiência começa antes mesmo da sua VIAGEM✈️"
+                                      </p>
+                                    </div>
                                   </div>
                                 </AccordionContent>
                               </AccordionItem>
