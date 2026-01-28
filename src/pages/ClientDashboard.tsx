@@ -286,7 +286,7 @@ const ClientDashboard = () => {
                     <img 
                       src={selectedTrip.welcome_image_url} 
                       alt="Bem-vindo à sua viagem"
-                      className="w-full max-h-40 md:max-h-48 object-contain rounded-lg"
+                      className="w-full max-h-[500px] md:max-h-[600px] object-contain rounded-lg"
                     />
                   </div>
                 </div>
