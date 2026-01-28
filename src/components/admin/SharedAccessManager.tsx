@@ -65,8 +65,8 @@ export const SharedAccessManager = ({ primaryUserId, primaryEmail, clientName }:
   };
 
   const handleAddSharedAccess = async () => {
-    if (!newEmail.trim() || !newPassword.trim()) {
-      toast.error('Preencha o e-mail e a senha');
+    if (!newEmail.trim() || !newPassword.trim() || !newName.trim()) {
+      toast.error('Preencha o nome, e-mail e a senha');
       return;
     }
 
@@ -84,7 +84,7 @@ export const SharedAccessManager = ({ primaryUserId, primaryEmail, clientName }:
         body: {
           email: newEmail.trim(),
           password: newPassword,
-          full_name: newName.trim() || `Acesso Compartilhado - ${clientName}`
+          full_name: newName.trim()
         }
       });
 
@@ -327,13 +327,14 @@ export const SharedAccessManager = ({ primaryUserId, primaryEmail, clientName }:
 
         <div className="grid gap-4">
           <div className="space-y-2">
-            <Label htmlFor="shared-name">Nome (opcional)</Label>
+            <Label htmlFor="shared-name">Nome *</Label>
             <Input
               id="shared-name"
               type="text"
-              placeholder="Nome do usuário"
+              placeholder="Nome completo do usuário"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
+              required
             />
           </div>
 
@@ -370,7 +371,7 @@ export const SharedAccessManager = ({ primaryUserId, primaryEmail, clientName }:
 
           <Button
             onClick={handleAddSharedAccess}
-            disabled={isAdding || !newEmail.trim() || !newPassword.trim()}
+            disabled={isAdding || !newEmail.trim() || !newPassword.trim() || !newName.trim()}
             className="w-full"
           >
             {isAdding ? (
