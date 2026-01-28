@@ -349,6 +349,7 @@ export type Database = {
           trip_tips: string | null
           updated_at: string
           user_id: string
+          welcome_image_url: string | null
         }
         Insert: {
           created_at?: string
@@ -374,6 +375,7 @@ export type Database = {
           trip_tips?: string | null
           updated_at?: string
           user_id: string
+          welcome_image_url?: string | null
         }
         Update: {
           created_at?: string
@@ -399,6 +401,7 @@ export type Database = {
           trip_tips?: string | null
           updated_at?: string
           user_id?: string
+          welcome_image_url?: string | null
         }
         Relationships: [
           {
