@@ -94,6 +94,15 @@ export const ClientFlightInfo = ({ tripId, tripData }: ClientFlightInfoProps) =>
     return `${(size / 1024).toFixed(1)} KB`;
   };
 
+  // Helper to parse date strings correctly (avoid timezone issues)
+  const parseDate = (dateStr: string) => {
+    // If it's just a date (YYYY-MM-DD), add T12:00:00 to avoid timezone shifts
+    if (dateStr && dateStr.length === 10) {
+      return new Date(dateStr + 'T12:00:00');
+    }
+    return new Date(dateStr);
+  };
+
   // Calculate countdown to check-in availability (48 hours before flight)
   const getCheckinCountdown = () => {
     const now = new Date();
@@ -145,7 +154,7 @@ export const ClientFlightInfo = ({ tripId, tripData }: ClientFlightInfoProps) =>
     }
     
     // Fallback to departure date if no time specified
-    const departureDate = new Date(tripData.departure_date);
+    const departureDate = parseDate(tripData.departure_date);
     const daysUntil = differenceInDays(departureDate, now);
     
     if (daysUntil < 0) return { text: 'Viagem realizada', isUpcoming: false, checkinAvailable: false };
@@ -217,7 +226,7 @@ export const ClientFlightInfo = ({ tripId, tripData }: ClientFlightInfoProps) =>
             <div className="flex items-center gap-3">
               <Calendar className="w-4 h-4 text-muted-foreground" />
               <span className="text-foreground">
-                {format(new Date(tripData.departure_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                {format(parseDate(tripData.departure_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
               </span>
             </div>
             {tripData.flight_departure_time && (
@@ -247,7 +256,7 @@ export const ClientFlightInfo = ({ tripId, tripData }: ClientFlightInfoProps) =>
             <div className="flex items-center gap-3">
               <Calendar className="w-4 h-4 text-muted-foreground" />
               <span className="text-foreground">
-                {format(new Date(tripData.return_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                {format(parseDate(tripData.return_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
               </span>
             </div>
             {tripData.flight_return_time && (
