@@ -59,38 +59,62 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { user_id, new_password } = await req.json();
+    const { user_id, new_password, userId, newEmail } = await req.json();
 
-    if (!user_id || !new_password) {
+    // Support both old and new parameter names
+    const targetUserId = user_id || userId;
+    const updateData: { password?: string; email?: string } = {};
+
+    if (new_password) {
+      if (new_password.length < 6) {
+        return new Response(
+          JSON.stringify({ error: 'A senha deve ter pelo menos 6 caracteres' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      updateData.password = new_password;
+    }
+
+    if (newEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(newEmail.trim())) {
+        return new Response(
+          JSON.stringify({ error: 'E-mail inválido' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      updateData.email = newEmail.trim();
+    }
+
+    if (!targetUserId || Object.keys(updateData).length === 0) {
       return new Response(
-        JSON.stringify({ error: 'user_id e new_password são obrigatórios' }),
+        JSON.stringify({ error: 'user_id e (new_password ou newEmail) são obrigatórios' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (new_password.length < 6) {
-      return new Response(
-        JSON.stringify({ error: 'A senha deve ter pelo menos 6 caracteres' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Update the user's password using admin client
+    // Update the user using admin client
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      user_id,
-      { password: new_password }
+      targetUserId,
+      updateData
     );
 
     if (updateError) {
-      console.error('Error updating password:', updateError);
+      console.error('Error updating user:', updateError);
       return new Response(
-        JSON.stringify({ error: 'Erro ao atualizar senha: ' + updateError.message }),
+        JSON.stringify({ error: 'Erro ao atualizar usuário: ' + updateError.message }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    const message = updateData.password && updateData.email 
+      ? 'Senha e e-mail atualizados com sucesso'
+      : updateData.password 
+        ? 'Senha atualizada com sucesso' 
+        : 'E-mail atualizado com sucesso';
+
     return new Response(
-      JSON.stringify({ success: true, message: 'Senha atualizada com sucesso' }),
+      JSON.stringify({ success: true, message }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

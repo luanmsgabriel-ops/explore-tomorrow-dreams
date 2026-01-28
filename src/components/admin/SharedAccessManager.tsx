@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Loader2, Plus, Trash2, UserPlus, Users, Mail } from 'lucide-react';
+import { Loader2, Plus, Trash2, UserPlus, Users, Mail, Pencil, Check, X } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface SharedAccess {
@@ -28,6 +28,9 @@ export const SharedAccessManager = ({ primaryUserId, primaryEmail, clientName }:
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newName, setNewName] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingEmail, setEditingEmail] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     fetchSharedAccesses();
@@ -138,6 +141,71 @@ export const SharedAccessManager = ({ primaryUserId, primaryEmail, clientName }:
     }
   };
 
+  const handleStartEdit = (access: SharedAccess) => {
+    setEditingId(access.id);
+    setEditingEmail(access.shared_email);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditingEmail('');
+  };
+
+  const handleSaveEdit = async (accessId: string, sharedUserId: string) => {
+    if (!editingEmail.trim()) {
+      toast.error('E-mail não pode estar vazio');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editingEmail.trim())) {
+      toast.error('E-mail inválido');
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      // Update email in account_shared_access table
+      const { error: accessError } = await supabase
+        .from('account_shared_access')
+        .update({ shared_email: editingEmail.trim() })
+        .eq('id', accessId);
+
+      if (accessError) throw accessError;
+
+      // Update email in profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ email: editingEmail.trim() })
+        .eq('user_id', sharedUserId);
+
+      if (profileError) throw profileError;
+
+      // Update email in auth.users via edge function
+      const { error: authError } = await supabase.functions.invoke('update-user-password', {
+        body: {
+          userId: sharedUserId,
+          newEmail: editingEmail.trim()
+        }
+      });
+
+      if (authError) {
+        console.warn('Could not update auth email:', authError);
+        // Still show success since the shared_access and profile were updated
+      }
+
+      toast.success('E-mail atualizado com sucesso!');
+      setEditingId(null);
+      setEditingEmail('');
+      fetchSharedAccesses();
+    } catch (error: any) {
+      console.error('Error updating email:', error);
+      toast.error(error.message || 'Erro ao atualizar e-mail');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -175,18 +243,67 @@ export const SharedAccessManager = ({ primaryUserId, primaryEmail, clientName }:
         {/* Shared accesses */}
         {sharedAccesses.map((access) => (
           <div key={access.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg border">
-            <div className="flex items-center gap-3">
-              <UserPlus className="w-4 h-4 text-accent" />
-              <span>{access.shared_email}</span>
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <UserPlus className="w-4 h-4 text-accent flex-shrink-0" />
+              {editingId === access.id ? (
+                <Input
+                  type="email"
+                  value={editingEmail}
+                  onChange={(e) => setEditingEmail(e.target.value)}
+                  className="flex-1"
+                  autoFocus
+                />
+              ) : (
+                <span className="truncate">{access.shared_email}</span>
+              )}
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleRemoveSharedAccess(access.id, access.shared_email)}
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {editingId === access.id ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSaveEdit(access.id, access.shared_user_id)}
+                    disabled={isUpdating}
+                    className="text-green-600 hover:text-green-700 hover:bg-green-100"
+                  >
+                    {isUpdating ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCancelEdit}
+                    disabled={isUpdating}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleStartEdit(access)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveSharedAccess(access.id, access.shared_email)}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         ))}
 
