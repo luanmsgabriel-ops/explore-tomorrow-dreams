@@ -84,6 +84,8 @@ Deno.serve(async (req) => {
         );
       }
       updateData.email = newEmail.trim();
+      // Confirm the email automatically so users can login immediately
+      (updateData as any).email_confirm = true;
     }
 
     if (!targetUserId || Object.keys(updateData).length === 0) {
