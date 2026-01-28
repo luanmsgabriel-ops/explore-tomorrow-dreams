@@ -89,7 +89,7 @@ const ClientDashboard = () => {
         return;
       }
 
-      // Get user profile
+      // Get user profile (always show the logged-in user's name)
       const { data: profile } = await supabase
         .from('profiles')
         .select('full_name, email')
@@ -103,11 +103,21 @@ const ClientDashboard = () => {
         setUserEmail(profile.email);
       }
 
-      // Fetch user's trips
+      // Check if this user has shared access to another account
+      const { data: sharedAccess } = await supabase
+        .from('account_shared_access')
+        .select('primary_user_id')
+        .eq('shared_user_id', session.user.id)
+        .maybeSingle();
+
+      // Determine which user_id to use for fetching trips
+      const tripOwnerId = sharedAccess?.primary_user_id || session.user.id;
+
+      // Fetch trips (either own trips or primary user's trips if shared access)
       const { data: tripsData, error } = await supabase
         .from('client_trips')
         .select('*')
-        .eq('user_id', session.user.id)
+        .eq('user_id', tripOwnerId)
         .order('departure_date', { ascending: true });
 
       if (error) throw error;
