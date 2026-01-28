@@ -8,9 +8,10 @@ interface WelcomePopupProps {
   onClose: () => void;
   imageUrl: string | null;
   userName: string;
+  customCaption?: string | null;
 }
 
-export const WelcomePopup = ({ isOpen, onClose, imageUrl, userName }: WelcomePopupProps) => {
+export const WelcomePopup = ({ isOpen, onClose, imageUrl, userName, customCaption }: WelcomePopupProps) => {
   const [imageLoaded, setImageLoaded] = useState(false);
 
   useEffect(() => {
@@ -48,14 +49,22 @@ export const WelcomePopup = ({ isOpen, onClose, imageUrl, userName }: WelcomePop
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.5 }}
                 >
-                  <h2 className="font-serif text-xl md:text-2xl font-bold text-foreground mb-2">
-                    Bem-vindo ao início da sua próxima história.
-                  </h2>
-                  <p className="text-sm md:text-base text-muted-foreground">
-                    Com a <span className="text-primary font-semibold">Tomorrow Travel</span> sua experiência 
-                    começa antes mesmo da sua <span className="gradient-text-gold font-semibold">VIAGEM</span>
-                    <Plane className="inline-block w-4 h-4 ml-1 text-accent" />
-                  </p>
+                  {customCaption ? (
+                    <h2 className="font-serif text-xl md:text-2xl font-bold text-foreground mb-2">
+                      {customCaption}
+                    </h2>
+                  ) : (
+                    <>
+                      <h2 className="font-serif text-xl md:text-2xl font-bold text-foreground mb-2">
+                        Bem-vindo ao início da sua próxima história.
+                      </h2>
+                      <p className="text-sm md:text-base text-muted-foreground">
+                        Com a <span className="text-primary font-semibold">Tomorrow Travel</span> sua experiência 
+                        começa antes mesmo da sua <span className="gradient-text-gold font-semibold">VIAGEM</span>
+                        <Plane className="inline-block w-4 h-4 ml-1 text-accent" />
+                      </p>
+                    </>
+                  )}
                 </motion.div>
               </div>
 
