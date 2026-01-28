@@ -9,7 +9,6 @@ import { ClientTripTips } from '@/components/client/ClientTripTips';
 import { ClientItineraryGenerator } from '@/components/client/ClientItineraryGenerator';
 import { ClientImageGenerator } from '@/components/client/ClientImageGenerator';
 import { ClientVouchers } from '@/components/client/ClientVouchers';
-import { WelcomePopup } from '@/components/client/WelcomePopup';
 import { 
   Plane, 
   LogOut, 
@@ -62,9 +61,6 @@ const ClientDashboard = () => {
   const [userEmail, setUserEmail] = useState('');
   const [userWhatsapp, setUserWhatsapp] = useState('');
   const [upcomingFlightAlert, setUpcomingFlightAlert] = useState<ClientTrip | null>(null);
-  const [showWelcomePopup, setShowWelcomePopup] = useState(false);
-  const [welcomeImageUrl, setWelcomeImageUrl] = useState<string | null>(null);
-  const [welcomeCaption, setWelcomeCaption] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuthAndFetchData();
@@ -137,18 +133,6 @@ const ClientDashboard = () => {
       );
       if (upcomingOrCurrent) {
         setSelectedTrip(upcomingOrCurrent);
-        
-        // Check for welcome image - show popup on first load if image exists
-        if (upcomingOrCurrent.welcome_image_url) {
-          const popupKey = `welcome_popup_shown_${upcomingOrCurrent.id}`;
-          const alreadyShown = sessionStorage.getItem(popupKey);
-          if (!alreadyShown) {
-            setWelcomeImageUrl(upcomingOrCurrent.welcome_image_url);
-            setWelcomeCaption(upcomingOrCurrent.welcome_caption);
-            setShowWelcomePopup(true);
-            sessionStorage.setItem(popupKey, 'true');
-          }
-        }
       } else if (tripsData && tripsData.length > 0) {
         setSelectedTrip(tripsData[0]);
       }
@@ -194,15 +178,6 @@ const ClientDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
-      {/* Welcome Popup */}
-      <WelcomePopup
-        isOpen={showWelcomePopup}
-        onClose={() => setShowWelcomePopup(false)}
-        imageUrl={welcomeImageUrl}
-        userName={userName || 'Viajante'}
-        customCaption={welcomeCaption}
-      />
 
       <div className="pt-24 pb-12">
         <div className="container mx-auto px-4 lg:px-8">
@@ -294,6 +269,29 @@ const ClientDashboard = () => {
 
             {/* Main Content */}
             <main className="flex-1 min-w-0">
+              {/* Welcome Image Section - Fixed above content */}
+              {selectedTrip?.welcome_image_url && (
+                <div className="mb-6 glass rounded-2xl overflow-hidden">
+                  <div className="p-4 text-center">
+                    <h2 className="font-serif text-lg md:text-xl font-bold text-foreground mb-1">
+                      {selectedTrip.welcome_caption || 'Bem-vindo ao início da sua próxima história.'}
+                    </h2>
+                    {!selectedTrip.welcome_caption && (
+                      <p className="text-sm text-muted-foreground">
+                        Com a Tomorrow Travel sua experiência começa antes mesmo da sua VIAGEM✈️
+                      </p>
+                    )}
+                  </div>
+                  <div className="relative w-full">
+                    <img 
+                      src={selectedTrip.welcome_image_url} 
+                      alt="Bem-vindo à sua viagem"
+                      className="w-full h-48 md:h-64 object-cover"
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* AI Tabs - Always show even without trips */}
               {(activeTab === 'itinerary' || activeTab === 'image') ? (
                 <div className="glass rounded-2xl p-6">
