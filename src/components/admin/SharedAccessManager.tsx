@@ -81,14 +81,14 @@ export const SharedAccessManager = ({ primaryUserId, primaryEmail, clientName }:
         body: {
           email: newEmail.trim(),
           password: newPassword,
-          fullName: newName.trim() || `Acesso Compartilhado - ${clientName}`
+          full_name: newName.trim() || `Acesso Compartilhado - ${clientName}`
         }
       });
 
       if (createError) throw createError;
       if (createData?.error) throw new Error(createData.error);
 
-      const newUserId = createData.userId;
+      const newUserId = createData.user?.id;
 
       // 2. Create the shared access entry
       const { data: { session } } = await supabase.auth.getSession();
