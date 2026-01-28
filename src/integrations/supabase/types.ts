@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_shared_access: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          primary_user_id: string
+          shared_email: string
+          shared_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          primary_user_id: string
+          shared_email: string
+          shared_user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          primary_user_id?: string
+          shared_email?: string
+          shared_user_id?: string
+        }
+        Relationships: []
+      }
       ai_generated_images: {
         Row: {
           created_at: string

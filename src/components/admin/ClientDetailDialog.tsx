@@ -14,6 +14,7 @@ import { format, differenceInHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
+import { SharedAccessManager } from './SharedAccessManager';
 import {
   Plane,
   Hotel,
@@ -40,7 +41,8 @@ import {
   Bus,
   Info,
   AlertCircle,
-  Gift
+  Gift,
+  Users
 } from 'lucide-react';
 
 interface ClientProfile {
@@ -665,7 +667,7 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="trips" className="flex items-center gap-1">
                 <Plane className="w-4 h-4" />
                 <span className="hidden sm:inline">Viagens</span>
@@ -677,6 +679,10 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
               <TabsTrigger value="checklist" className="flex items-center gap-1">
                 <CheckSquare className="w-4 h-4" />
                 <span className="hidden sm:inline">Checklist</span>
+              </TabsTrigger>
+              <TabsTrigger value="access" className="flex items-center gap-1">
+                <Users className="w-4 h-4" />
+                <span className="hidden sm:inline">Acessos</span>
               </TabsTrigger>
               <TabsTrigger value="itineraries" className="flex items-center gap-1">
                 <FileText className="w-4 h-4" />
@@ -1418,6 +1424,15 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
                     </div>
                   </>
                 )}
+              </TabsContent>
+
+              {/* Shared Access Tab */}
+              <TabsContent value="access" className="mt-0">
+                <SharedAccessManager
+                  primaryUserId={client.user_id}
+                  primaryEmail={client.email}
+                  clientName={client.full_name || client.email}
+                />
               </TabsContent>
 
               {/* AI Itineraries Tab */}
