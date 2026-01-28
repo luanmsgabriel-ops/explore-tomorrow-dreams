@@ -3,8 +3,8 @@ import { Sparkles, Loader2, Download, Send, CheckCircle, MapPin, Heart, Compass,
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
-import { useDestinations } from '@/hooks/useDestinations';
 import logo from '@/assets/logo.jpeg';
+import { Input } from '@/components/ui/input';
 
 // Definição dos climas de viagem
 const TRAVEL_MOODS = [
@@ -32,9 +32,7 @@ interface ClientItineraryGeneratorProps {
 
 export const ClientItineraryGenerator = ({ userName, userEmail, userWhatsapp = '' }: ClientItineraryGeneratorProps) => {
   const [step, setStep] = useState<'mood' | 'destination' | 'preferences' | 'generating' | 'result'>('mood');
-  const [selectedDestinationId, setSelectedDestinationId] = useState('');
   const [selectedDestinationName, setSelectedDestinationName] = useState('');
-  const { destinations, isLoading: isLoadingDestinations } = useDestinations();
   const [preferences, setPreferences] = useState('');
   const [itinerary, setItinerary] = useState('');
   const [selectedMood, setSelectedMood] = useState<string>('');
@@ -104,9 +102,11 @@ export const ClientItineraryGenerator = ({ userName, userEmail, userWhatsapp = '
     setStep('destination');
   };
 
-  const handleDestinationSelect = (destId: string, destName: string) => {
-    setSelectedDestinationId(destId);
-    setSelectedDestinationName(destName);
+  const handleDestinationSubmit = () => {
+    if (selectedDestinationName.trim().length < 2) {
+      toast.error('Por favor, digite um destino válido');
+      return;
+    }
     setStep('preferences');
   };
 
@@ -255,7 +255,6 @@ export const ClientItineraryGenerator = ({ userName, userEmail, userWhatsapp = '
       
       const { error } = await supabase.from('quote_requests').insert({
         destination_name: selectedDestinationName,
-        destination_id: selectedDestinationId || null,
         email: userEmail,
         whatsapp: userWhatsapp,
         special_requests: `Cliente: ${userName}. Clima: ${moodLabel || 'Não especificado'}. Preferências: ${preferences || 'Nenhuma especificada'}.${selectedActivitiesText}`,
@@ -277,7 +276,6 @@ export const ClientItineraryGenerator = ({ userName, userEmail, userWhatsapp = '
   const resetGenerator = () => {
     setStep('mood');
     setSelectedMood('');
-    setSelectedDestinationId('');
     setSelectedDestinationName('');
     setPreferences('');
     setItinerary('');
@@ -319,7 +317,7 @@ export const ClientItineraryGenerator = ({ userName, userEmail, userWhatsapp = '
     );
   }
 
-  // Destination Selection Step
+  // Destination Input Step
   if (step === 'destination') {
     return (
       <div className="space-y-6">
@@ -328,46 +326,48 @@ export const ClientItineraryGenerator = ({ userName, userEmail, userWhatsapp = '
             <MapPin className="w-7 h-7 text-primary" />
           </div>
           <h3 className="font-serif text-2xl font-bold text-foreground mb-2">
-            Escolha seu Destino
+            Para onde você quer ir?
           </h3>
           <p className="text-muted-foreground">
             Clima selecionado: <span className="text-primary font-medium">{TRAVEL_MOODS.find(m => m.id === selectedMood)?.label}</span>
           </p>
         </div>
 
-        {isLoadingDestinations ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Digite seu destino
+            </label>
+            <Input
+              value={selectedDestinationName}
+              onChange={(e) => setSelectedDestinationName(e.target.value)}
+              placeholder="Ex: Maldivas, Paris, Fernando de Noronha..."
+              className="w-full bg-secondary border-border"
+              maxLength={100}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleDestinationSubmit();
+                }
+              }}
+            />
           </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto pr-2">
-            {destinations.map((dest) => (
-              <button
-                key={dest.id}
-                onClick={() => handleDestinationSelect(dest.id, dest.name)}
-                className="relative overflow-hidden rounded-xl border border-border hover:border-primary/50 transition-all group aspect-[4/3]"
-              >
-                <img 
-                  src={dest.image || '/placeholder.svg'} 
-                  alt={dest.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-3">
-                  <p className="text-white font-medium text-sm">{dest.name}</p>
-                  <p className="text-white/70 text-xs">{dest.location}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
+        </div>
 
-        <button
-          onClick={() => setStep('mood')}
-          className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          ← Voltar
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setStep('mood')}
+            className="flex-1 py-3 rounded-xl border border-border text-foreground hover:bg-secondary transition-colors"
+          >
+            Voltar
+          </button>
+          <button
+            onClick={handleDestinationSubmit}
+            disabled={selectedDestinationName.trim().length < 2}
+            className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Continuar
+          </button>
+        </div>
       </div>
     );
   }
