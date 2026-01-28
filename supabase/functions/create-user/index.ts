@@ -106,6 +106,20 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Manually create profile since trigger may not work with admin.createUser
+    const { error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .insert({
+        user_id: newUser.user.id,
+        email: email,
+        full_name: full_name || null
+      });
+
+    if (profileError) {
+      console.error("Error creating profile:", profileError);
+      // Don't fail the request, the user was created successfully
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
