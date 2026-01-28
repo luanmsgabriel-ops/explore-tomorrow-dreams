@@ -77,13 +77,38 @@ Deno.serve(async (req) => {
 
     if (newEmail) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(newEmail.trim())) {
+      const trimmedEmail = newEmail.trim().toLowerCase();
+      
+      if (!emailRegex.test(trimmedEmail)) {
         return new Response(
           JSON.stringify({ error: 'E-mail inválido' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      updateData.email = newEmail.trim();
+
+      // Check if email already exists in auth.users (excluding current user)
+      const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+      
+      if (listError) {
+        console.error('Error checking existing emails:', listError);
+        return new Response(
+          JSON.stringify({ error: 'Erro ao verificar e-mail existente' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const emailExists = existingUsers.users.some(
+        (user) => user.email?.toLowerCase() === trimmedEmail && user.id !== targetUserId
+      );
+
+      if (emailExists) {
+        return new Response(
+          JSON.stringify({ error: 'Este e-mail já está em uso por outro usuário' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      updateData.email = trimmedEmail;
       // Confirm the email automatically so users can login immediately
       (updateData as any).email_confirm = true;
     }
