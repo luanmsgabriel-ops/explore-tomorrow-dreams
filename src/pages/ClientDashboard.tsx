@@ -318,12 +318,12 @@ const ClientDashboard = () => {
                       {/* Welcome Image Section - Only on flight tab */}
                       {selectedTrip.welcome_image_url && (
                         <div className="mb-6 rounded-xl overflow-hidden">
-                          <div className="text-center mb-3">
-                            <h2 className="font-serif text-lg md:text-xl font-bold text-foreground mb-1">
+                          <div className="text-center mb-4">
+                            <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-2">
                               {selectedTrip.welcome_caption || 'Bem-vindo ao início da sua próxima história.'}
                             </h2>
                             {!selectedTrip.welcome_caption && (
-                              <p className="text-sm text-muted-foreground">
+                              <p className="text-lg md:text-xl text-muted-foreground">
                                 Com a Tomorrow Travel sua experiência começa antes mesmo da sua VIAGEM✈️
                               </p>
                             )}
