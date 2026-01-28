@@ -279,28 +279,6 @@ const ClientDashboard = () => {
 
             {/* Main Content */}
             <main className="flex-1 min-w-0">
-              {/* Welcome Image Section - Fixed above content */}
-              {selectedTrip?.welcome_image_url && (
-                <div className="mb-6 glass rounded-2xl overflow-hidden">
-                  <div className="p-4 text-center">
-                    <h2 className="font-serif text-lg md:text-xl font-bold text-foreground mb-1">
-                      {selectedTrip.welcome_caption || 'Bem-vindo ao início da sua próxima história.'}
-                    </h2>
-                    {!selectedTrip.welcome_caption && (
-                      <p className="text-sm text-muted-foreground">
-                        Com a Tomorrow Travel sua experiência começa antes mesmo da sua VIAGEM✈️
-                      </p>
-                    )}
-                  </div>
-                  <div className="relative w-full px-4 pb-4">
-                    <img 
-                      src={selectedTrip.welcome_image_url} 
-                      alt="Bem-vindo à sua viagem"
-                      className="w-full max-h-[500px] md:max-h-[600px] object-contain rounded-lg"
-                    />
-                  </div>
-                </div>
-              )}
 
               {/* AI Tabs - Always show even without trips */}
               {(activeTab === 'itinerary' || activeTab === 'image') ? (
@@ -336,10 +314,34 @@ const ClientDashboard = () => {
               ) : selectedTrip && (
                 <div className="glass rounded-2xl p-6">
                   {activeTab === 'flight' && (
-                    <ClientFlightInfo 
-                      tripId={selectedTrip.id} 
-                      tripData={selectedTrip}
-                    />
+                    <>
+                      {/* Welcome Image Section - Only on flight tab */}
+                      {selectedTrip.welcome_image_url && (
+                        <div className="mb-6 rounded-xl overflow-hidden">
+                          <div className="text-center mb-3">
+                            <h2 className="font-serif text-lg md:text-xl font-bold text-foreground mb-1">
+                              {selectedTrip.welcome_caption || 'Bem-vindo ao início da sua próxima história.'}
+                            </h2>
+                            {!selectedTrip.welcome_caption && (
+                              <p className="text-sm text-muted-foreground">
+                                Com a Tomorrow Travel sua experiência começa antes mesmo da sua VIAGEM✈️
+                              </p>
+                            )}
+                          </div>
+                          <div className="relative w-full">
+                            <img 
+                              src={selectedTrip.welcome_image_url} 
+                              alt="Bem-vindo à sua viagem"
+                              className="w-full max-h-[500px] md:max-h-[600px] object-contain rounded-lg"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      <ClientFlightInfo 
+                        tripId={selectedTrip.id} 
+                        tripData={selectedTrip}
+                      />
+                    </>
                   )}
                   {activeTab === 'accommodation' && (
                     <ClientAccommodationInfo 
