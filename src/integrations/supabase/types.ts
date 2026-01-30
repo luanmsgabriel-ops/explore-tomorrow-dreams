@@ -1037,6 +1037,20 @@ export type Database = {
       }
     }
     Functions: {
+      admin_add_role: {
+        Args: {
+          target_role: Database["public"]["Enums"]["app_role"]
+          target_user_id: string
+        }
+        Returns: undefined
+      }
+      admin_remove_role: {
+        Args: {
+          target_role: Database["public"]["Enums"]["app_role"]
+          target_user_id: string
+        }
+        Returns: undefined
+      }
       check_ai_usage_limit: {
         Args: {
           p_daily_limit?: number
