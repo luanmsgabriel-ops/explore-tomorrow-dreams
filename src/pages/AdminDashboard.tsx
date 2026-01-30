@@ -13,6 +13,7 @@ import { AnalyticsDashboard } from '@/components/admin/AnalyticsDashboard';
 import { ManualQuoteForm } from '@/components/admin/ManualQuoteForm';
 import { QuoteEditForm } from '@/components/admin/QuoteEditForm';
 import { SalesManager } from '@/components/admin/SalesManager';
+import { QuotesFilter, QuotesFilterValues } from '@/components/admin/QuotesFilter';
 import { Edit } from 'lucide-react';
 import { 
   LayoutDashboard, 
@@ -153,6 +154,16 @@ const AdminDashboard = () => {
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserName, setNewUserName] = useState('');
   const [isCreatingUser, setIsCreatingUser] = useState(false);
+  
+  // Quotes filter state
+  const [quotesFilters, setQuotesFilters] = useState<QuotesFilterValues>({
+    search: '',
+    status: 'all',
+    channel: 'all',
+    dateFrom: undefined,
+    dateTo: undefined,
+    hasFollowUp: 'all',
+  });
 
   useEffect(() => {
     checkAuth();
@@ -790,14 +801,93 @@ const AdminDashboard = () => {
                     <PromotionalOffersManager />
                   )}
 
-{activeTab === 'quotes' && (
+{activeTab === 'quotes' && (() => {
+                    // Filter quotes based on current filters
+                    const filteredQuotes = quotes.filter(quote => {
+                      // Search filter
+                      if (quotesFilters.search) {
+                        const searchLower = quotesFilters.search.toLowerCase();
+                        const matchesSearch = 
+                          (quote.client_name?.toLowerCase().includes(searchLower)) ||
+                          (quote.email?.toLowerCase().includes(searchLower)) ||
+                          (quote.whatsapp?.includes(quotesFilters.search)) ||
+                          (quote.destination_name?.toLowerCase().includes(searchLower));
+                        if (!matchesSearch) return false;
+                      }
+                      
+                      // Status filter
+                      if (quotesFilters.status !== 'all' && quote.status !== quotesFilters.status) {
+                        return false;
+                      }
+                      
+                      // Channel filter
+                      if (quotesFilters.channel !== 'all') {
+                        const quoteChannel = quote.source_channel || 'website';
+                        if (quoteChannel !== quotesFilters.channel) return false;
+                      }
+                      
+                      // Date from filter
+                      if (quotesFilters.dateFrom) {
+                        const quoteDate = new Date(quote.created_at);
+                        const filterDate = new Date(quotesFilters.dateFrom);
+                        filterDate.setHours(0, 0, 0, 0);
+                        if (quoteDate < filterDate) return false;
+                      }
+                      
+                      // Date to filter
+                      if (quotesFilters.dateTo) {
+                        const quoteDate = new Date(quote.created_at);
+                        const filterDate = new Date(quotesFilters.dateTo);
+                        filterDate.setHours(23, 59, 59, 999);
+                        if (quoteDate > filterDate) return false;
+                      }
+                      
+                      // Follow-up filter
+                      if (quotesFilters.hasFollowUp !== 'all') {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        
+                        if (quotesFilters.hasFollowUp === 'none') {
+                          if (quote.follow_up_date) return false;
+                        } else if (quotesFilters.hasFollowUp === 'pending') {
+                          if (!quote.follow_up_date || quote.status === 'completed') return false;
+                        } else if (quotesFilters.hasFollowUp === 'today') {
+                          if (!quote.follow_up_date) return false;
+                          const followUp = new Date(quote.follow_up_date + 'T12:00:00');
+                          const todayStr = today.toISOString().split('T')[0];
+                          const followUpStr = followUp.toISOString().split('T')[0];
+                          if (todayStr !== followUpStr || quote.status === 'completed') return false;
+                        } else if (quotesFilters.hasFollowUp === 'overdue') {
+                          if (!quote.follow_up_date) return false;
+                          const followUp = new Date(quote.follow_up_date + 'T12:00:00');
+                          if (followUp >= today || quote.status === 'completed') return false;
+                        }
+                      }
+                      
+                      return true;
+                    });
+                    
+                    // Get unique destinations for filter
+                    const destinations = [...new Set(quotes.map(q => q.destination_name).filter(Boolean))] as string[];
+
+                    return (
                     <div className="space-y-6">
                       <div className="flex items-center justify-between">
                         <h1 className="font-serif text-3xl font-bold text-foreground">
                           Cotações
+                          <span className="ml-2 text-lg font-normal text-muted-foreground">
+                            ({filteredQuotes.length}{filteredQuotes.length !== quotes.length ? ` de ${quotes.length}` : ''})
+                          </span>
                         </h1>
                         <ManualQuoteForm onSuccess={fetchData} />
                       </div>
+
+                      {/* Filters */}
+                      <QuotesFilter 
+                        filters={quotesFilters}
+                        onFiltersChange={setQuotesFilters}
+                        destinations={destinations}
+                      />
 
                       {/* Alertas de Follow-up */}
                       {quotes.filter(q => {
@@ -857,7 +947,7 @@ const AdminDashboard = () => {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
-                              {quotes.map((quote) => {
+                              {filteredQuotes.map((quote) => {
                                 const isFollowUpDue = quote.follow_up_date && (() => {
                                   const followUp = new Date(quote.follow_up_date + 'T12:00:00');
                                   const today = new Date();
@@ -973,15 +1063,16 @@ const AdminDashboard = () => {
                               })}
                             </tbody>
                           </table>
-                          {quotes.length === 0 && (
+                          {filteredQuotes.length === 0 && (
                             <div className="p-8 text-center text-muted-foreground">
-                              Nenhuma cotação recebida ainda
+                              {quotes.length === 0 ? 'Nenhuma cotação recebida ainda' : 'Nenhuma cotação encontrada com os filtros aplicados'}
                             </div>
                           )}
                         </div>
                       </div>
                     </div>
-                  )}
+                    );
+                  })()}
 
                   {activeTab === 'itineraries' && (
                     <div className="space-y-6">
