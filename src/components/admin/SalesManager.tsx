@@ -113,7 +113,7 @@ export function SalesManager() {
     source_channel: 'website',
   });
 
-  const fetchSales = async () => {
+  const fetchSales = async (isRetry = false) => {
     try {
       const { data, error } = await supabase
         .from('sales')
@@ -121,11 +121,19 @@ export function SalesManager() {
         .order('sale_date', { ascending: false })
         .limit(200);
 
-      if (error) throw error;
+      if (error) {
+        // Detect timeout or 500 errors and retry once
+        if (!isRetry && (error.message?.includes('timeout') || error.code === '500' || error.message?.includes('statement timeout'))) {
+          console.warn('Sales fetch timeout, refreshing session and retrying...');
+          await supabase.auth.refreshSession();
+          return fetchSales(true);
+        }
+        throw error;
+      }
       setSales(data || []);
     } catch (error) {
       console.error('Error fetching sales:', error);
-      toast.error('Erro ao carregar vendas');
+      toast.error('Erro ao carregar vendas. Tente atualizar a página.');
     } finally {
       setLoading(false);
     }

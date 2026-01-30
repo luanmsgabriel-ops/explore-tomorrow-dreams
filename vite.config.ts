@@ -53,8 +53,15 @@ export default defineConfig(({ mode }) => ({
         lang: "pt-BR"
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
         globPatterns: ["**/*.{js,css,html,ico,png,jpg,jpeg,svg,webp}"],
+        navigateFallbackDenylist: [/^\/rest\//, /supabase/],
         runtimeCaching: [
+          {
+            urlPattern: /\.supabase\.co/,
+            handler: "NetworkOnly",
+          },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: "CacheFirst",

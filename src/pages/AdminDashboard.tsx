@@ -177,6 +177,42 @@ const AdminDashboard = () => {
     }
   }, [activeTab]);
 
+  // Handle load errors with cache clearing and session refresh
+  const handleLoadError = async (error: any) => {
+    console.error('Load error detected:', error);
+    
+    // Clear Service Worker cache
+    if ('serviceWorker' in navigator) {
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+          await registration.unregister();
+        }
+        if ('caches' in window) {
+          const names = await caches.keys();
+          for (const name of names) {
+            await caches.delete(name);
+          }
+        }
+        console.log('Service Worker cache cleared');
+      } catch (swError) {
+        console.error('Error clearing SW cache:', swError);
+      }
+    }
+    
+    // Verify session and refresh token
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast.error('Sessão expirada. Faça login novamente.');
+      navigate('/admin');
+      return;
+    }
+    
+    await supabase.auth.refreshSession();
+    toast.error('Erro de conexão. Recarregando...');
+    window.location.reload();
+  };
+
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -203,7 +239,7 @@ const AdminDashboard = () => {
   const [loadedTabs, setLoadedTabs] = useState<Set<TabType>>(new Set(['overview']));
 
   // Fetch overview data only (lightweight)
-  const fetchOverviewData = async () => {
+  const fetchOverviewData = async (isRetry = false) => {
     setIsLoading(true);
     try {
       const today = new Date().toISOString().split('T')[0];
@@ -269,8 +305,15 @@ const AdminDashboard = () => {
         console.error('Error fetching recent quotes:', error);
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching overview data:', error);
+      
+      // Detect timeout/500 errors and handle with cache clearing
+      if (!isRetry && (error.message?.includes('timeout') || error.code === '500' || error.message?.includes('statement timeout'))) {
+        await handleLoadError(error);
+        return;
+      }
+      
       toast.error('Erro ao carregar dados. Algumas informações podem estar incompletas.');
     } finally {
       setIsLoading(false);
