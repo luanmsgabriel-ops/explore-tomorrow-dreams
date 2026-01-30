@@ -970,16 +970,28 @@ const AdminDashboard = () => {
                                   return channels[channel || 'website'] || channel || 'Site';
                                 };
 
+                                // Extract display name from email if client_name is not available
+                                const getDisplayName = () => {
+                                  if (quote.client_name) return quote.client_name;
+                                  // For auto-generated emails like manual-xxx@manual.local, show just the phone
+                                  if (quote.email.includes('@manual.local')) {
+                                    return quote.whatsapp || 'Cliente';
+                                  }
+                                  // For real emails, show the part before @
+                                  return quote.email.split('@')[0];
+                                };
+
                                 return (
                                   <tr key={quote.id} className={`hover:bg-secondary/30 ${isFollowUpDue ? 'bg-accent/5' : ''}`}>
                                     <td className="px-4 py-4">
                                       <div>
                                         <p className="font-medium text-foreground">
-                                          {quote.client_name || quote.email}
+                                          {getDisplayName()}
                                           {quote.is_manual && (
                                             <span className="ml-2 px-1.5 py-0.5 text-xs rounded bg-blue-500/20 text-blue-400">Manual</span>
                                           )}
                                         </p>
+                                        <p className="text-sm text-muted-foreground">{quote.email !== quote.email.split('@')[0] + '@manual.local' ? quote.email : ''}</p>
                                         <p className="text-sm text-muted-foreground">{quote.whatsapp}</p>
                                       </div>
                                     </td>
