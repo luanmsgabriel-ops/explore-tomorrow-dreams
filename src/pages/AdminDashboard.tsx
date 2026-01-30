@@ -186,11 +186,11 @@ const AdminDashboard = () => {
     try {
       const today = new Date().toISOString().split('T')[0];
       
-      const [quotesRes, itinerariesRes, imagesRes, usersRes, tripsRes, destinationsRes, offersRes, clientsRes] = await Promise.all([
-        supabase.from('quote_requests').select('*').order('created_at', { ascending: false }),
-        supabase.from('ai_itineraries').select('*').order('created_at', { ascending: false }),
-        supabase.from('ai_generated_images').select('*').order('created_at', { ascending: false }),
-        supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+      const [quotesRes, itinerariesRes, imagesRes, usersRes, tripsRes, destinationsRes, offersRes, clientsRes, clientCountRes] = await Promise.all([
+        supabase.from('quote_requests').select('*').order('created_at', { ascending: false }).limit(500),
+        supabase.from('ai_itineraries').select('*').order('created_at', { ascending: false }).limit(200),
+        supabase.from('ai_generated_images').select('*').order('created_at', { ascending: false }).limit(200),
+        supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(500),
         supabase.from('client_trips').select(`
           id,
           destination_name,
@@ -200,9 +200,10 @@ const AdminDashboard = () => {
           flight_locator,
           user_id
         `).gte('departure_date', today).order('departure_date', { ascending: true }).limit(10),
-        supabase.from('destinations').select('id', { count: 'exact' }).eq('is_active', true),
-        supabase.from('promotional_offers').select('id', { count: 'exact' }).eq('is_active', true),
-        supabase.from('client_trips').select('id', { count: 'exact' }),
+        supabase.from('destinations').select('id', { count: 'exact', head: true }).eq('is_active', true),
+        supabase.from('promotional_offers').select('id', { count: 'exact', head: true }).eq('is_active', true),
+        supabase.from('client_trips').select('id', { count: 'exact', head: true }),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }),
       ]);
 
       if (quotesRes.data) {
@@ -221,11 +222,13 @@ const AdminDashboard = () => {
       if (imagesRes.data) setImages(imagesRes.data);
       if (usersRes.data) {
         setAdminUsers(usersRes.data);
-        // Filter out admins to count only clients
-        const { data: adminRoles } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-        const adminUserIds = adminRoles?.map(r => r.user_id) || [];
-        const clientCount = usersRes.data.filter(u => !adminUserIds.includes(u.user_id)).length;
-        setTotalClients(clientCount);
+      }
+      
+      // Use count query for total clients (much faster)
+      if (clientCountRes.count !== null) {
+        // Subtract admin count from total profiles
+        const { count: adminCount } = await supabase.from('user_roles').select('id', { count: 'exact', head: true }).eq('role', 'admin');
+        setTotalClients((clientCountRes.count || 0) - (adminCount || 0));
       }
       
       // Fetch upcoming trips with client info
