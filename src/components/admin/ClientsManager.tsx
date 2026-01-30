@@ -64,39 +64,48 @@ export const ClientsManager = () => {
   const fetchClients = async () => {
     setIsLoading(true);
     try {
-      // Fetch all profiles that have 'user' role (not admin)
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Fetch user roles to filter out admins
+      // Fetch admin user IDs first (small query)
       const { data: adminRoles } = await supabase
         .from('user_roles')
         .select('user_id')
         .eq('role', 'admin');
 
       const adminUserIds = new Set(adminRoles?.map(r => r.user_id) || []);
+
+      // Fetch profiles with limit to prevent timeout
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      if (error) throw error;
+
       const clientProfiles = profiles?.filter(p => !adminUserIds.has(p.user_id)) || [];
-      
       setClients(clientProfiles);
 
-      // Fetch trips for each client
-      const tripsMap: Record<string, ClientTrip[]> = {};
-      for (const client of clientProfiles) {
-        const { data: trips } = await supabase
+      // Fetch ALL trips at once instead of N+1 queries
+      if (clientProfiles.length > 0) {
+        const userIds = clientProfiles.map(c => c.user_id);
+        const { data: allTrips } = await supabase
           .from('client_trips')
-          .select('id, destination_name, departure_date, return_date, trip_status')
-          .eq('user_id', client.user_id)
-          .order('departure_date', { ascending: false });
-        
-        if (trips) {
-          tripsMap[client.user_id] = trips;
-        }
+          .select('id, destination_name, departure_date, return_date, trip_status, user_id')
+          .in('user_id', userIds)
+          .order('departure_date', { ascending: false })
+          .limit(500);
+
+        // Group trips by user_id
+        const tripsMap: Record<string, ClientTrip[]> = {};
+        (allTrips || []).forEach(trip => {
+          if (!tripsMap[trip.user_id]) {
+            tripsMap[trip.user_id] = [];
+          }
+          tripsMap[trip.user_id].push(trip);
+        });
+        setClientTrips(tripsMap);
+      } else {
+        setClientTrips({});
       }
-      setClientTrips(tripsMap);
     } catch (error) {
       console.error('Error fetching clients:', error);
       toast.error('Erro ao carregar clientes');

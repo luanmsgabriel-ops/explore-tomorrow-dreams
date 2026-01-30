@@ -118,7 +118,8 @@ export function SalesManager() {
       const { data, error } = await supabase
         .from('sales')
         .select('*')
-        .order('sale_date', { ascending: false });
+        .order('sale_date', { ascending: false })
+        .limit(200);
 
       if (error) throw error;
       setSales(data || []);
