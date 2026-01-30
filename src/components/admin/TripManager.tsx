@@ -141,28 +141,30 @@ export const TripManager = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch clients
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('full_name');
-      
-      // Filter out admins
+      // Fetch admin roles first (small query)
       const { data: adminRoles } = await supabase
         .from('user_roles')
         .select('user_id')
         .eq('role', 'admin');
       
       const adminUserIds = new Set(adminRoles?.map(r => r.user_id) || []);
-      setClients(profiles?.filter(p => !adminUserIds.has(p.user_id)) || []);
 
-      // Fetch all trips
-      const { data: tripsData } = await supabase
-        .from('client_trips')
-        .select('*')
-        .order('departure_date', { ascending: false });
+      // Fetch clients and trips in parallel with limits
+      const [profilesRes, tripsRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('*')
+          .order('full_name')
+          .limit(200),
+        supabase
+          .from('client_trips')
+          .select('*')
+          .order('departure_date', { ascending: false })
+          .limit(200)
+      ]);
       
-      setTrips(tripsData || []);
+      setClients(profilesRes.data?.filter(p => !adminUserIds.has(p.user_id)) || []);
+      setTrips(tripsRes.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Erro ao carregar dados');
