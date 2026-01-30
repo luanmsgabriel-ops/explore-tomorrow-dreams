@@ -167,8 +167,15 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     checkAuth();
-    fetchData();
+    fetchOverviewData();
   }, []);
+
+  // Fetch tab data when tab changes
+  useEffect(() => {
+    if (activeTab !== 'overview') {
+      fetchTabData(activeTab);
+    }
+  }, [activeTab]);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -192,54 +199,39 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchData = async () => {
+  // Track which tabs have been loaded to avoid re-fetching
+  const [loadedTabs, setLoadedTabs] = useState<Set<TabType>>(new Set(['overview']));
+
+  // Fetch overview data only (lightweight)
+  const fetchOverviewData = async () => {
     setIsLoading(true);
     try {
       const today = new Date().toISOString().split('T')[0];
       
-      const [quotesRes, itinerariesRes, imagesRes, usersRes, tripsRes, destinationsRes, offersRes, clientsRes, clientCountRes] = await Promise.all([
-        supabase.from('quote_requests').select('*').order('created_at', { ascending: false }).limit(500),
-        supabase.from('ai_itineraries').select('*').order('created_at', { ascending: false }).limit(200),
-        supabase.from('ai_generated_images').select('*').order('created_at', { ascending: false }).limit(200),
-        supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(500),
-        supabase.from('client_trips').select(`
-          id,
-          destination_name,
-          departure_date,
-          return_date,
-          trip_status,
-          flight_locator,
-          user_id
-        `).gte('departure_date', today).order('departure_date', { ascending: true }).limit(10),
+      // Run lighter queries for overview - only counts and minimal data
+      const [destinationsRes, offersRes, clientsRes, clientCountRes, pendingQuotesRes, tripsRes] = await Promise.all([
         supabase.from('destinations').select('id', { count: 'exact', head: true }).eq('is_active', true),
         supabase.from('promotional_offers').select('id', { count: 'exact', head: true }).eq('is_active', true),
         supabase.from('client_trips').select('id', { count: 'exact', head: true }),
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        supabase.from('quote_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('client_trips').select('id, destination_name, departure_date, return_date, trip_status, flight_locator, user_id')
+          .gte('departure_date', today).order('departure_date', { ascending: true }).limit(10),
       ]);
 
-      if (quotesRes.data) {
-        setQuotes(quotesRes.data);
-        setPendingQuotes(quotesRes.data.filter(q => q.status === 'pending').length);
-      }
-      if (itinerariesRes.data) {
-        const typedItineraries = itinerariesRes.data.map(item => ({
-          ...item,
-          selected_activities: Array.isArray(item.selected_activities) 
-            ? (item.selected_activities as unknown as SelectedActivity[])
-            : null,
-        }));
-        setItineraries(typedItineraries);
-      }
-      if (imagesRes.data) setImages(imagesRes.data);
-      if (usersRes.data) {
-        setAdminUsers(usersRes.data);
-      }
+      if (destinationsRes.count !== null) setActiveDestinations(destinationsRes.count);
+      if (offersRes.count !== null) setActiveOffers(offersRes.count);
+      if (clientsRes.count !== null) setTotalTrips(clientsRes.count);
+      if (pendingQuotesRes.count !== null) setPendingQuotes(pendingQuotesRes.count);
       
-      // Use count query for total clients (much faster)
+      // Calculate total clients
       if (clientCountRes.count !== null) {
-        // Subtract admin count from total profiles
-        const { count: adminCount } = await supabase.from('user_roles').select('id', { count: 'exact', head: true }).eq('role', 'admin');
-        setTotalClients((clientCountRes.count || 0) - (adminCount || 0));
+        try {
+          const { count: adminCount } = await supabase.from('user_roles').select('id', { count: 'exact', head: true }).eq('role', 'admin');
+          setTotalClients((clientCountRes.count || 0) - (adminCount || 0));
+        } catch {
+          setTotalClients(clientCountRes.count || 0);
+        }
       }
       
       // Fetch upcoming trips with client info
@@ -262,16 +254,95 @@ const AdminDashboard = () => {
         });
         setUpcomingTrips(tripsWithClients);
       }
-      
-      if (destinationsRes.count !== null) setActiveDestinations(destinationsRes.count);
-      if (offersRes.count !== null) setActiveOffers(offersRes.count);
-      if (clientsRes.count !== null) setTotalTrips(clientsRes.count);
+
+      // Load quotes for overview (only recent 10 for display)
+      try {
+        const { data: recentQuotes } = await supabase
+          .from('quote_requests')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(10);
+        if (recentQuotes) {
+          setQuotes(recentQuotes);
+        }
+      } catch (error) {
+        console.error('Error fetching recent quotes:', error);
+      }
       
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching overview data:', error);
+      toast.error('Erro ao carregar dados. Algumas informações podem estar incompletas.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Lazy load data for specific tabs
+  const fetchTabData = async (tab: TabType) => {
+    if (loadedTabs.has(tab)) return;
+    
+    try {
+      switch (tab) {
+        case 'quotes':
+          const { data: quotesData } = await supabase
+            .from('quote_requests')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(100);
+          if (quotesData) {
+            setQuotes(quotesData);
+            setPendingQuotes(quotesData.filter(q => q.status === 'pending').length);
+          }
+          break;
+          
+        case 'itineraries':
+          const { data: itinerariesData } = await supabase
+            .from('ai_itineraries')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(100);
+          if (itinerariesData) {
+            const typedItineraries = itinerariesData.map(item => ({
+              ...item,
+              selected_activities: Array.isArray(item.selected_activities) 
+                ? (item.selected_activities as unknown as SelectedActivity[])
+                : null,
+            }));
+            setItineraries(typedItineraries);
+          }
+          break;
+          
+        case 'images':
+          const { data: imagesData } = await supabase
+            .from('ai_generated_images')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(100);
+          if (imagesData) setImages(imagesData);
+          break;
+          
+        case 'users':
+          const { data: usersData } = await supabase
+            .from('profiles')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(100);
+          if (usersData) setAdminUsers(usersData);
+          break;
+      }
+      
+      setLoadedTabs(prev => new Set([...prev, tab]));
+    } catch (error) {
+      console.error(`Error fetching ${tab} data:`, error);
+      toast.error(`Erro ao carregar dados de ${tab}`);
+    }
+  };
+
+  // Legacy fetchData for compatibility with refresh calls
+  const fetchData = async () => {
+    await fetchOverviewData();
+    // Reset loaded tabs to force refresh on next tab visit
+    setLoadedTabs(new Set(['overview']));
   };
 
   const handleLogout = async () => {
