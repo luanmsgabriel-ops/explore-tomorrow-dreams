@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -9,6 +9,7 @@ import { ImageGenerator } from '@/components/ImageGenerator';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { useDestinationById } from '@/hooks/useDestinations';
 import { useAutoAmbientSound } from '@/hooks/useAmbientSound';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import { Sparkles, MessageCircle, Image, MapPin, Calendar, Users, X, ArrowLeft, Sun, Clock, Loader2, TrendingDown, Plane } from 'lucide-react';
 
 type ModalType = 'quote' | 'itinerary' | 'chat' | 'image' | null;
@@ -18,9 +19,17 @@ const DestinationDetail = () => {
   const navigate = useNavigate();
   const { destination, isLoading } = useDestinationById(id || '');
   const [activeModal, setActiveModal] = useState<ModalType>(null);
+  const { trackDestinationView } = useAnalytics();
   
   // Auto-play ocean sound for beach destinations
   useAutoAmbientSound(destination?.category || '');
+
+  // Track destination view
+  useEffect(() => {
+    if (destination) {
+      trackDestinationView(destination.id, destination.name);
+    }
+  }, [destination?.id]);
 
   const handleGoBack = () => {
     navigate(-1);

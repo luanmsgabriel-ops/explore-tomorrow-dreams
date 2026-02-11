@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Search, X, MapPin, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { trackEventStandalone } from '@/hooks/useAnalytics';
 
 interface Destination {
   id: string;
@@ -68,6 +69,7 @@ export const DestinationSearch = ({ onClose }: DestinationSearchProps) => {
   }, []);
 
   const handleSelect = (destination: Destination) => {
+    trackEventStandalone('search', { query, selected_destination: destination.name, results_count: results.length });
     setQuery('');
     setIsOpen(false);
     onClose?.();
