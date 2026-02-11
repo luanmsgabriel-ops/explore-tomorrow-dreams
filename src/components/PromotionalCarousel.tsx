@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { X, ChevronLeft, ChevronRight, Clock, Sparkles, ArrowRight } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { trackEventStandalone } from '@/hooks/useAnalytics';
 
 interface PromotionalOffer {
   id: string;
@@ -125,22 +126,39 @@ export const PromotionalCarousel = () => {
     fetchOffers();
   }, []);
 
+  // Track which offer is being viewed in carousel
+  const trackedOffers = useRef<Set<string>>(new Set());
+
   // Auto-scroll effect
   useEffect(() => {
     if (!isVisible || isPaused || offers.length === 0) return;
 
     const interval = setInterval(() => {
       setCurrentIndex((prev) => {
-        // Loop back to first offer after "view more" slide
         if (prev >= offers.length) {
           return 0;
         }
         return prev + 1;
       });
-    }, 5000); // 5 seconds per slide
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [isVisible, isPaused, offers.length]);
+
+  // Track offer impression when slide changes
+  useEffect(() => {
+    const isViewMore = currentIndex === offers.length;
+    const offer = !isViewMore ? offers[currentIndex] : null;
+    if (!isVisible || !offer) return;
+    if (trackedOffers.current.has(offer.id)) return;
+    trackedOffers.current.add(offer.id);
+    trackEventStandalone('offer_view', {
+      offer_id: offer.id,
+      offer_title: offer.title,
+      destination_name: offer.destinations?.name,
+      source: 'popup_carousel',
+    });
+  }, [currentIndex, isVisible, offers]);
 
   const fetchOffers = async () => {
     try {
