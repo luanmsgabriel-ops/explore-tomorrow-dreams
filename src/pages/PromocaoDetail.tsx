@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { ArrowLeft, Clock, Check, MapPin, Calendar, Users, Loader2, Plane } from 'lucide-react';
+import { trackEventStandalone } from '@/hooks/useAnalytics';
 
 interface PromotionalOffer {
   id: string;
@@ -142,6 +143,12 @@ const PromocaoDetail = () => {
 
       if (error) throw error;
       setOffer(data as PromotionalOffer);
+      trackEventStandalone('offer_view', {
+        offer_id: data.id,
+        offer_title: data.title,
+        destination_name: (data as any).destinations?.name,
+        source: 'detail_page',
+      });
     } catch (error) {
       console.error('Error fetching offer:', error);
     } finally {

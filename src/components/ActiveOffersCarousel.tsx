@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ChevronLeft, ChevronRight, Clock, Sparkles, Tag, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { trackEventStandalone } from '@/hooks/useAnalytics';
 
 interface PromotionalOffer {
   id: string;
@@ -91,9 +92,19 @@ const OfferCountdown = ({ validUntil }: { validUntil: string }) => {
 const OfferCard = ({ offer }: { offer: PromotionalOffer }) => {
   const destinationImage = offer.destinations?.image_url;
 
+  const handleOfferClick = () => {
+    trackEventStandalone('offer_click', {
+      offer_id: offer.id,
+      offer_title: offer.title,
+      destination_name: offer.destinations?.name,
+      source: 'inline_carousel',
+    });
+  };
+
   return (
     <Link
       to={`/promocao/${offer.id}`}
+      onClick={handleOfferClick}
       className="group flex-shrink-0 w-[280px] sm:w-[320px] rounded-2xl overflow-hidden bg-card border border-border hover:border-accent/50 transition-all duration-300 hover:shadow-lg"
     >
       {/* Image */}
