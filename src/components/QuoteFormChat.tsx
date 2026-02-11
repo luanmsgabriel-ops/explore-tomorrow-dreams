@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { destinations } from '@/data/destinations';
 import { quoteFormSchema, validateForm, sanitizeText, isValidationError } from '@/lib/validations';
+import { trackEventStandalone } from '@/hooks/useAnalytics';
 
 interface QuoteFormChatProps {
   destinationId?: string;
@@ -172,6 +173,7 @@ export const QuoteFormChat = ({ destinationId, destinationName, onClose }: Quote
       }
 
       setIsComplete(true);
+      trackEventStandalone('quote_submit', { destination_name: finalDestinationName });
       toast.success('Solicitação enviada com sucesso! Entraremos em contato em breve.');
     } catch {
       toast.error('Erro ao enviar solicitação. Tente novamente.');

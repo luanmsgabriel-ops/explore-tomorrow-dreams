@@ -20,6 +20,7 @@ import NotFound from "./pages/NotFound";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { FloatingWhatsApp } from "./components/FloatingWhatsApp";
 import { TravelAdvisorChat } from "./components/TravelAdvisorChat";
+import { AnalyticsProvider } from "./components/AnalyticsProvider";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,7 @@ const App = () => (
           <Route path="/install" element={<Install />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <AnalyticsProvider />
         <InstallPrompt />
         <FloatingButtons />
       </BrowserRouter>
