@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { 
   BarChart3, Eye, MousePointer, TrendingUp, Users, FileText,
   Image, Map, Phone, Loader2, RefreshCw, Tag, ArrowRight,
-  Clock, Globe, Smartphone, Monitor, Search, Sparkles
+  Clock, Globe, Smartphone, Monitor, Search, Sparkles, MapPin
 } from 'lucide-react';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -27,11 +27,12 @@ interface SessionFlow {
   events: RawEvent[];
   startTime: string;
   endTime: string;
-  duration: number; // seconds
+  duration: number;
   pageCount: number;
   device: string;
   referrer: string;
-  converted: boolean; // did they submit quote or click whatsapp
+  city: string;
+  converted: boolean;
   offersViewed: string[];
   offersClicked: string[];
   destinationsViewed: string[];
@@ -105,6 +106,8 @@ export const AnalyticsDashboard = () => {
       const ua = sorted[0].user_agent || '';
       const device = /Mobile|Android|iPhone/i.test(ua) ? 'mobile' : 'desktop';
       const referrer = sorted[0].referrer || 'Direto';
+      const firstData = sorted[0].event_data as Record<string, unknown> | null;
+      const city = [(firstData?.geo_city as string) || '', (firstData?.geo_region as string) || ''].filter(Boolean).join(', ') || 'Desconhecido';
 
       const offersViewed: string[] = [];
       const offersClicked: string[] = [];
@@ -139,7 +142,7 @@ export const AnalyticsDashboard = () => {
         events: sorted,
         startTime, endTime, duration,
         pageCount: sorted.filter(e => e.event_type === 'page_view').length,
-        device, referrer, converted,
+        device, referrer, city, converted,
         offersViewed, offersClicked, destinationsViewed, searchQueries,
       };
     }).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
@@ -267,6 +270,30 @@ export const AnalyticsDashboard = () => {
     return Object.entries(map).map(([source, count]) => ({ source, count })).sort((a, b) => b.count - a.count).slice(0, 10);
   })();
 
+  // City breakdown
+  const cityBreakdown = (() => {
+    const map: Record<string, { count: number; region: string; country: string }> = {};
+    const seen = new Set<string>();
+    events.forEach(e => {
+      if (!e.session_id || seen.has(e.session_id)) return;
+      seen.add(e.session_id);
+      const data = e.event_data as Record<string, unknown> | null;
+      const city = (data?.geo_city as string) || '';
+      if (!city) return;
+      const region = (data?.geo_region as string) || '';
+      const country = (data?.geo_country as string) || '';
+      const key = `${city}-${region}`;
+      if (!map[key]) map[key] = { count: 0, region, country };
+      map[key].count++;
+    });
+    return Object.entries(map).map(([key, v]) => ({ 
+      city: key.split('-')[0], 
+      region: v.region, 
+      country: v.country, 
+      count: v.count 
+    })).sort((a, b) => b.count - a.count);
+  })();
+
   // Filtered events for log
   const filteredEvents = eventFilter === 'all' ? events : events.filter(e => e.event_type === eventFilter);
   const uniqueEventTypes = [...new Set(events.map(e => e.event_type))].sort();
@@ -374,8 +401,8 @@ export const AnalyticsDashboard = () => {
         ))}
       </div>
 
-      {/* Device & Referrer quick stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Device, Referrer & City stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="p-4 rounded-xl border border-border bg-card">
           <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
             <Monitor className="w-4 h-4" /> Dispositivos
@@ -408,6 +435,23 @@ export const AnalyticsDashboard = () => {
                 <span className="font-medium text-foreground">{r.count}</span>
               </div>
             ))}
+          </div>
+        </div>
+        <div className="p-4 rounded-xl border border-border bg-card">
+          <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+            <MapPin className="w-4 h-4" /> Cidades dos Visitantes
+          </h3>
+          <div className="space-y-1.5 max-h-24 overflow-y-auto">
+            {cityBreakdown.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Dados de cidade serão coletados nos próximos acessos.</p>
+            ) : (
+              cityBreakdown.slice(0, 10).map((c, i) => (
+                <div key={i} className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground truncate max-w-[180px]">{c.city}, {c.region}</span>
+                  <span className="font-medium text-foreground">{c.count}</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -633,6 +677,12 @@ export const AnalyticsDashboard = () => {
                         <span className="text-[10px] text-muted-foreground">{session.pageCount} pgs</span>
                         <span className="text-[10px] text-muted-foreground">•</span>
                         <span className="text-[10px] text-muted-foreground">{formatDuration(session.duration)}</span>
+                        {session.city !== 'Desconhecido' && (
+                          <>
+                            <span className="text-[10px] text-muted-foreground">•</span>
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><MapPin className="w-2.5 h-2.5" />{session.city}</span>
+                          </>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {session.converted && <span className="px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 text-[10px] font-medium">Converteu</span>}
