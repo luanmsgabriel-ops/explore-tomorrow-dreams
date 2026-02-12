@@ -12,6 +12,34 @@ const getSessionId = () => {
   return sessionId;
 };
 
+// Cache geolocation data per session
+let geoDataCache: { city?: string; region?: string; country?: string; lat?: number; lon?: number } | null = null;
+let geoFetchPromise: Promise<typeof geoDataCache> | null = null;
+
+const fetchGeoData = async () => {
+  if (geoDataCache) return geoDataCache;
+  if (geoFetchPromise) return geoFetchPromise;
+  
+  geoFetchPromise = fetch('https://ipapi.co/json/')
+    .then(res => res.json())
+    .then(data => {
+      geoDataCache = {
+        city: data.city || null,
+        region: data.region || null,
+        country: data.country_name || null,
+        lat: data.latitude || null,
+        lon: data.longitude || null,
+      };
+      return geoDataCache;
+    })
+    .catch(() => {
+      geoDataCache = {};
+      return geoDataCache;
+    });
+  
+  return geoFetchPromise;
+};
+
 // Hash function for IP (we don't store raw IPs)
 const hashString = async (str: string): Promise<string> => {
   const encoder = new TextEncoder();
@@ -34,12 +62,14 @@ export const useAnalytics = () => {
 
   const trackEvent = useCallback(async ({ eventType, eventData = {}, pagePath }: TrackEventOptions) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const [{ data: { user } }, geo] = await Promise.all([
+        supabase.auth.getUser(),
+        fetchGeoData(),
+      ]);
       
-      // Use type assertion since analytics_events may not be in generated types yet
       await (supabase.from('analytics_events') as any).insert({
         event_type: eventType,
-        event_data: eventData,
+        event_data: { ...eventData, geo_city: geo?.city, geo_region: geo?.region, geo_country: geo?.country },
         page_path: pagePath || location.pathname,
         referrer: document.referrer || null,
         user_agent: navigator.userAgent,
@@ -48,7 +78,6 @@ export const useAnalytics = () => {
         ip_hash: await hashString(sessionId.current + navigator.userAgent),
       });
     } catch (error) {
-      // Silently fail - analytics shouldn't break the app
       console.debug('Analytics tracking error:', error);
     }
   }, [location.pathname]);
@@ -143,12 +172,14 @@ export const useAnalytics = () => {
 export const trackEventStandalone = async (eventType: string, eventData: Record<string, unknown> = {}) => {
   try {
     const sessionId = getSessionId();
-    const { data: { user } } = await supabase.auth.getUser();
+    const [{ data: { user } }, geo] = await Promise.all([
+      supabase.auth.getUser(),
+      fetchGeoData(),
+    ]);
     
-    // Use type assertion since analytics_events may not be in generated types yet
     await (supabase.from('analytics_events') as any).insert({
       event_type: eventType,
-      event_data: eventData,
+      event_data: { ...eventData, geo_city: geo?.city, geo_region: geo?.region, geo_country: geo?.country },
       page_path: window.location.pathname,
       referrer: document.referrer || null,
       user_agent: navigator.userAgent,
