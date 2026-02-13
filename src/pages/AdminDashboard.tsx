@@ -13,6 +13,7 @@ import { AnalyticsDashboard } from '@/components/admin/AnalyticsDashboard';
 import { ManualQuoteForm } from '@/components/admin/ManualQuoteForm';
 import { QuoteEditForm } from '@/components/admin/QuoteEditForm';
 import { SalesManager } from '@/components/admin/SalesManager';
+import { WhatsAppManager } from '@/components/admin/WhatsAppManager';
 import { QuotesFilter, QuotesFilterValues } from '@/components/admin/QuotesFilter';
 import { Edit } from 'lucide-react';
 import { 
@@ -48,7 +49,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabType = 'overview' | 'analytics' | 'sales' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'clients' | 'trips' | 'checklist' | 'banner-generator';
+type TabType = 'overview' | 'analytics' | 'sales' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'clients' | 'trips' | 'checklist' | 'banner-generator' | 'whatsapp';
 
 interface QuoteRequest {
   id: string;
@@ -557,6 +558,7 @@ const AdminDashboard = () => {
     { id: 'itineraries' as TabType, label: 'Roteiros IA', icon: Map },
     { id: 'images' as TabType, label: 'Imagens IA', icon: Image },
     { id: 'conversations' as TabType, label: 'Conversas IA', icon: MessageSquare },
+    { id: 'whatsapp' as TabType, label: 'WhatsApp', icon: MessageCircle },
     { id: 'users' as TabType, label: 'Admins', icon: UserPlus },
   ];
 
@@ -1441,6 +1443,10 @@ const AdminDashboard = () => {
 
                   {activeTab === 'conversations' && (
                     <ChatConversationsManager />
+                  )}
+
+                  {activeTab === 'whatsapp' && (
+                    <WhatsAppManager />
                   )}
 
                   {activeTab === 'clients' && (
