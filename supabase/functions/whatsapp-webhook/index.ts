@@ -183,9 +183,28 @@ serve(async (req) => {
       return new Response("Forbidden", { status: 403 });
     }
 
-    // POST: Incoming message
+    // POST: Incoming message or manual send
     if (req.method === "POST") {
       const body = await req.json();
+
+      // Handle manual message send from admin panel
+      if (body.manual_send) {
+        const { phone_number, message } = body;
+        if (!phone_number || !message) {
+          return new Response(JSON.stringify({ error: "phone_number and message are required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        console.log(`Manual send to ${phone_number}: ${message}`);
+        await sendWhatsAppMessage(phone_number, message);
+
+        return new Response(JSON.stringify({ status: "ok", manual_sent: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       // Meta sends various webhook events; we only care about messages
       const entry = body.entry?.[0];
