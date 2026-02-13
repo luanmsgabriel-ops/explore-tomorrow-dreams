@@ -57,7 +57,9 @@ serve(async (req) => {
       });
     } catch (fetchError) {
       clearTimeout(timeoutId);
-      if (fetchError instanceof DOMException && fetchError.name === "AbortError") {
+      const isAbort = (fetchError instanceof DOMException && fetchError.name === "AbortError") ||
+        (fetchError instanceof Error && fetchError.message?.includes("abort"));
+      if (isAbort) {
         console.error("Request to external API timed out after 150s");
         return new Response(
           JSON.stringify({ error: "A cotação está demorando mais que o esperado. Tente novamente em alguns minutos." }),
