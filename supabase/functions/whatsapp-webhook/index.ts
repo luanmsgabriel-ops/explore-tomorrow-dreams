@@ -368,8 +368,8 @@ serve(async (req) => {
         conversation = newConv;
       }
 
-      // If AI is disabled, just store the message and skip AI response
-      if (!conversation.is_ai_active) {
+      // If AI is disabled or conversation is completed, just store the message and skip AI response
+      if (!conversation.is_ai_active || conversation.conversation_state === "completed") {
         const updatedHistory = [
           ...(conversation.messages_history as any[] || []),
           { role: "user", content: messageText, timestamp: new Date().toISOString() },
@@ -380,7 +380,7 @@ serve(async (req) => {
           .update({ messages_history: updatedHistory })
           .eq("id", conversation.id);
 
-        return new Response(JSON.stringify({ status: "ok", ai_disabled: true }), {
+        return new Response(JSON.stringify({ status: "ok", ai_disabled: true, state: conversation.conversation_state }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -522,7 +522,7 @@ serve(async (req) => {
             collected_data: newCollectedData,
             messages_history: updatedHistory,
             quote_request_id: quoteRequestId,
-            is_ai_active: newState !== "human_takeover",
+          is_ai_active: newState !== "human_takeover" && newState !== "completed",
           })
           .eq("id", conversation.id);
 
@@ -563,7 +563,7 @@ serve(async (req) => {
           collected_data: newCollectedData,
           messages_history: updatedHistory,
           quote_request_id: quoteRequestId,
-          is_ai_active: newState !== "human_takeover",
+          is_ai_active: newState !== "human_takeover" && newState !== "completed",
         })
         .eq("id", conversation.id);
 
