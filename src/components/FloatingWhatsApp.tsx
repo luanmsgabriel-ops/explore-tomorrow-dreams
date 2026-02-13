@@ -2,8 +2,8 @@ import { MessageCircle } from 'lucide-react';
 import { trackEventStandalone } from '@/hooks/useAnalytics';
 
 export const FloatingWhatsApp = () => {
-  const whatsappNumber = '5515998389220';
-  const message = 'Olá! Vim pelo site e gostaria de saber mais sobre os pacotes de viagem.';
+  const whatsappNumber = '5515991833448';
+  const message = 'Oi! Vim pelo site da Tomorrow Travel e quero saber sobre viagens! 🌴';
   
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
 

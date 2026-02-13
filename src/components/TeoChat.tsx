@@ -303,7 +303,7 @@ Me conta aí! 👇`
         const whatsappMessage = encodeURIComponent(
           `Olá! Sou ${userName} e acabei de conversar com o Téo. Me interessei por ${destination}! Gostaria de mais informações.`
         );
-        setWhatsappRedirectLink(`https://wa.me/5511999999999?text=${whatsappMessage}`);
+        setWhatsappRedirectLink(`https://wa.me/5515991833448?text=${whatsappMessage}`);
         setStep('destination_chosen');
         
         try {
