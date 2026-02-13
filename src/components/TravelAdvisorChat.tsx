@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Bot, User, Phone, UserCircle, X, Sparkles, MessageCircle, ExternalLink } from 'lucide-react';
+import { Send, Loader2, User, Phone, UserCircle, X, Sparkles, MessageCircle, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { chatMessageSchema, generateSecureSessionId, sanitizeText, phoneSchema, nameSchema } from '@/lib/validations';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { TeoMascot } from './TeoMascot';
+import { QuotationStatusDisplay } from '@/components/QuotationStatusDisplay';
+import { useQuotation, parseQuotationTag, formatQuotationResults } from '@/hooks/useQuotation';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -51,6 +53,7 @@ export const TravelAdvisorChat = () => {
   const [hasInteracted, setHasInteracted] = useState(() => checkTeoInteraction());
   const [isOpen, setIsOpen] = useState(false);
   const sessionIdRef = useRef<string>(generateSecureSessionId());
+  const quotation = useQuotation();
   
   const [step, setStep] = useState<ChatStep>('collect_name');
   const [userName, setUserName] = useState('');
@@ -335,14 +338,33 @@ Me conta aí! 👇`
           }
         }
       }
+      // Check for quotation tag
+      const quotationData = parseQuotationTag(assistantContent);
+      if (quotationData) {
+        assistantContent = assistantContent.replace(/\[COTAR_VIAGEM:.*?\]/s, '').trim();
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          newMessages[newMessages.length - 1] = {
+            role: 'assistant',
+            content: assistantContent.replace(/\[DESTINO_ESCOLHIDO:\s*[^\]]+\]/gi, '').trim(),
+          };
+          return newMessages;
+        });
+
+        const quotResult = await quotation.requestQuotation(quotationData);
+        if (quotResult.status === 'success' && quotResult.data) {
+          const formatted = formatQuotationResults(quotResult.data);
+          setMessages((prev) => [...prev, { role: 'assistant', content: formatted }]);
+        }
+      }
+
       // Verifica se o assistente indicou que o cliente escolheu um destino
       const destinationMatch = assistantContent.match(/\[DESTINO_ESCOLHIDO:\s*([^\]]+)\]/i);
       if (destinationMatch) {
         const destination = destinationMatch[1].trim();
         setChosenDestination(destination);
         
-        // Remove o marcador [DESTINO_ESCOLHIDO: ...] da mensagem exibida
-        const cleanContent = assistantContent.replace(/\[DESTINO_ESCOLHIDO:\s*[^\]]+\]/gi, '').trim();
+        const cleanContent = assistantContent.replace(/\[DESTINO_ESCOLHIDO:\s*[^\]]+\]/gi, '').replace(/\[COTAR_VIAGEM:.*?\]/s, '').trim();
         setMessages((prev) => {
           const newMessages = [...prev];
           newMessages[newMessages.length - 1] = {
@@ -352,36 +374,11 @@ Me conta aí! 👇`
           return newMessages;
         });
         
-        // Gera link do WhatsApp com mensagem personalizada
         const whatsappMessage = encodeURIComponent(
           `Olá! Sou ${userName} e acabei de conversar com o Téo. Me interessei por ${destination}! Gostaria de mais informações.`
         );
         setWhatsappRedirectLink(`https://wa.me/5515991833448?text=${whatsappMessage}`);
         setStep('destination_chosen');
-        
-        // Envia notificação de email para o admin
-        try {
-          const notifyResponse = await supabase.functions.invoke('send-admin-notification', {
-            body: {
-              type: 'chat_session',
-              data: {
-                session_id: sessionIdRef.current,
-                destination_id: 'travel-advisor',
-                destination_name: `Consultor IA - Destino: ${destination}`,
-                user_name: userName,
-                user_whatsapp: userWhatsapp,
-                chosen_destination: destination,
-              },
-            },
-          });
-          if (notifyResponse.error) {
-            console.error('Erro ao enviar notificação:', notifyResponse.error);
-          } else {
-            console.log('Notificação de destino escolhido enviada com sucesso');
-          }
-        } catch (err) {
-          console.error('Erro ao enviar notificação:', err);
-        }
       }
     } catch {
       toast.error('Erro ao enviar mensagem. Tente novamente.');
@@ -754,6 +751,16 @@ Me conta aí! 👇`
             </div>
           </div>
         )}
+        <QuotationStatusDisplay
+          status={quotation.status}
+          onSubmitCode={async (code) => {
+            const result = await quotation.submitVerificationCode(code);
+            if (result?.status === 'success' && result.data) {
+              const formatted = formatQuotationResults(result.data);
+              setMessages((prev) => [...prev, { role: 'assistant', content: formatted }]);
+            }
+          }}
+        />
         <div ref={messagesEndRef} />
       </div>
 

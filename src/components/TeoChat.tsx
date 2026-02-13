@@ -5,7 +5,8 @@ import { chatMessageSchema, generateSecureSessionId, sanitizeText, phoneSchema, 
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { TeoMascot } from '@/components/TeoMascot';
-
+import { QuotationStatusDisplay } from '@/components/QuotationStatusDisplay';
+import { useQuotation, parseQuotationTag, formatQuotationResults } from '@/hooks/useQuotation';
 interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -27,6 +28,7 @@ interface TeoChatProps {
 
 export const TeoChat = ({ fullPage = false }: TeoChatProps) => {
   const sessionIdRef = useRef<string>(generateSecureSessionId());
+  const quotation = useQuotation();
   
   const [step, setStep] = useState<ChatStep>('collect_name');
   const [userName, setUserName] = useState('');
@@ -285,12 +287,34 @@ Me conta aí! 👇`
         }
       }
       
+      // Check for quotation tag
+      const quotationData = parseQuotationTag(assistantContent);
+      if (quotationData) {
+        // Remove quotation tag from displayed message
+        assistantContent = assistantContent.replace(/\[COTAR_VIAGEM:.*?\]/s, '').trim();
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          newMessages[newMessages.length - 1] = {
+            role: 'assistant',
+            content: assistantContent.replace(/\[DESTINO_ESCOLHIDO:\s*[^\]]+\]/gi, '').trim(),
+          };
+          return newMessages;
+        });
+
+        // Trigger quotation request
+        const quotResult = await quotation.requestQuotation(quotationData);
+        if (quotResult.status === 'success' && quotResult.data) {
+          const formatted = formatQuotationResults(quotResult.data);
+          setMessages((prev) => [...prev, { role: 'assistant', content: formatted }]);
+        }
+      }
+
       const destinationMatch = assistantContent.match(/\[DESTINO_ESCOLHIDO:\s*([^\]]+)\]/i);
       if (destinationMatch) {
         const destination = destinationMatch[1].trim();
         setChosenDestination(destination);
         
-        const cleanContent = assistantContent.replace(/\[DESTINO_ESCOLHIDO:\s*[^\]]+\]/gi, '').trim();
+        const cleanContent = assistantContent.replace(/\[DESTINO_ESCOLHIDO:\s*[^\]]+\]/gi, '').replace(/\[COTAR_VIAGEM:.*?\]/s, '').trim();
         setMessages((prev) => {
           const newMessages = [...prev];
           newMessages[newMessages.length - 1] = {
@@ -305,27 +329,6 @@ Me conta aí! 👇`
         );
         setWhatsappRedirectLink(`https://wa.me/5515991833448?text=${whatsappMessage}`);
         setStep('destination_chosen');
-        
-        try {
-          const notifyResponse = await supabase.functions.invoke('send-admin-notification', {
-            body: {
-              type: 'chat_session',
-              data: {
-                session_id: sessionIdRef.current,
-                destination_id: 'travel-advisor',
-                destination_name: `Consultor IA - Destino: ${destination}`,
-                user_name: userName,
-                user_whatsapp: userWhatsapp,
-                chosen_destination: destination,
-              },
-            },
-          });
-          if (notifyResponse.error) {
-            console.error('Erro ao enviar notificação:', notifyResponse.error);
-          }
-        } catch (err) {
-          console.error('Erro ao enviar notificação:', err);
-        }
       }
     } catch {
       toast.error('Erro ao enviar mensagem. Tente novamente.');
@@ -421,6 +424,17 @@ Me conta aí! 👇`
             </div>
           </div>
         )}
+
+        <QuotationStatusDisplay
+          status={quotation.status}
+          onSubmitCode={async (code) => {
+            const result = await quotation.submitVerificationCode(code);
+            if (result?.status === 'success' && result.data) {
+              const formatted = formatQuotationResults(result.data);
+              setMessages((prev) => [...prev, { role: 'assistant', content: formatted }]);
+            }
+          }}
+        />
 
         {step === 'destination_chosen' && whatsappRedirectLink && (
           <div className="flex justify-center mt-4">
