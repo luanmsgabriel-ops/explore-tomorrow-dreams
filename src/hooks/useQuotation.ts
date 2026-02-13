@@ -98,11 +98,14 @@ export function useQuotation() {
 }
 
 export function parseQuotationTag(content: string): QuotationRequest | null {
-  const match = content.match(/\[COTAR_VIAGEM:(.*?)\]/s);
+  // Use a greedy match that captures everything up to the LAST ] on the same logical block
+  // This handles nested brackets like idades_criancas:[]
+  const match = content.match(/\[COTAR_VIAGEM:\s*(\{.*\})\s*\]/s);
   if (!match) return null;
 
   try {
-    const parsed = JSON.parse(match[1]);
+    const jsonStr = match[1].replace(/\n/g, ' ').trim();
+    const parsed = JSON.parse(jsonStr);
     return {
       origem: parsed.origem,
       destino: parsed.destino,
@@ -114,8 +117,8 @@ export function parseQuotationTag(content: string): QuotationRequest | null {
         idades_criancas: parsed.idades_criancas || [],
       },
     };
-  } catch {
-    console.error('Failed to parse COTAR_VIAGEM tag');
+  } catch (e) {
+    console.error('Failed to parse COTAR_VIAGEM tag:', e, 'Raw:', match[1]);
     return null;
   }
 }
