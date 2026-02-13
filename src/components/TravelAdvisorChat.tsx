@@ -341,7 +341,7 @@ Me conta aí! 👇`
       // Check for quotation tag
       const quotationData = parseQuotationTag(assistantContent);
       if (quotationData) {
-        assistantContent = assistantContent.replace(/\[COTAR_VIAGEM:.*?\]/s, '').trim();
+        assistantContent = assistantContent.replace(/\[COTAR_VIAGEM:\s*\{.*\}\s*\]/s, '').trim();
         setMessages((prev) => {
           const newMessages = [...prev];
           newMessages[newMessages.length - 1] = {
@@ -364,7 +364,7 @@ Me conta aí! 👇`
         const destination = destinationMatch[1].trim();
         setChosenDestination(destination);
         
-        const cleanContent = assistantContent.replace(/\[DESTINO_ESCOLHIDO:\s*[^\]]+\]/gi, '').replace(/\[COTAR_VIAGEM:.*?\]/s, '').trim();
+        const cleanContent = assistantContent.replace(/\[DESTINO_ESCOLHIDO:\s*[^\]]+\]/gi, '').replace(/\[COTAR_VIAGEM:\s*\{.*\}\s*\]/s, '').trim();
         setMessages((prev) => {
           const newMessages = [...prev];
           newMessages[newMessages.length - 1] = {
