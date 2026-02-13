@@ -408,7 +408,7 @@ serve(async (req) => {
           updatedData._quotation_request = collectedData._quotation_request;
           responseMsg = "❌ Código inválido ou expirado. Por favor, verifique seu e-mail e envie o código correto.";
         } else {
-          responseMsg = "😕 Não consegui buscar a cotação. Tente novamente mais tarde ou fale com um de nossos consultores!";
+          responseMsg = "✨ Seu pedido é especial e precisa de uma atenção personalizada! Nossa equipe de especialistas vai analisar as melhores opções e entrará em contato em breve. Fique tranquilo(a)! 🙌💛";
         }
 
         const updatedHistory = [
@@ -479,7 +479,16 @@ serve(async (req) => {
           quotationMsg = formatQuotationResults(quotResult.data);
           quotationMsg += "\n\nQuer que eu te ajude com mais alguma coisa? 😊";
         } else {
-          quotationMsg = "😕 Não consegui buscar cotações no momento. Mas não se preocupe, nosso time vai buscar as melhores opções pra você! 🙌";
+          quotationMsg = "✨ Seu pedido é especial e precisa de uma atenção personalizada! Nossa equipe de especialistas vai analisar as melhores opções pra você e entrará em contato em breve. Pode ficar tranquilo(a) que vamos cuidar de tudo! 🙌💛";
+          // Force completed state so the flow stops
+          newCollectedData._quotation_failed = true;
+          // Create quote request immediately so the team can follow up
+          try {
+            const quoteRequest = await createQuoteRequest(phoneNumber, newCollectedData);
+            quoteRequestId = quoteRequest.id;
+          } catch (err) {
+            console.error("Error creating quote on failure:", err);
+          }
         }
 
         // Update history with all messages
@@ -490,12 +499,13 @@ serve(async (req) => {
           { role: "assistant", content: quotationMsg, timestamp: new Date().toISOString() },
         ];
 
-        let newState = conversationStatus === "completed" ? "completed"
+        let newState = newCollectedData._quotation_failed ? "completed"
+          : conversationStatus === "completed" ? "completed"
           : conversationStatus === "human_takeover" ? "human_takeover"
           : determineConversationState(newCollectedData);
 
         let quoteRequestId = conversation.quote_request_id;
-        if (newState === "completed" && !quoteRequestId) {
+        if (newState === "completed" && !quoteRequestId && !newCollectedData._quotation_failed) {
           try {
             const quoteRequest = await createQuoteRequest(phoneNumber, newCollectedData);
             quoteRequestId = quoteRequest.id;
