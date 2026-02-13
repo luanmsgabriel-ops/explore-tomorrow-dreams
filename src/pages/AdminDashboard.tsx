@@ -128,6 +128,18 @@ interface UpcomingTrip {
   client_email: string;
 }
 
+interface WhatsAppConversation {
+  id: string;
+  phone_number: string;
+  client_name: string | null;
+  conversation_state: string;
+  is_ai_active: boolean;
+  collected_data: Record<string, any> | null;
+  messages_history: any[] | null;
+  updated_at: string;
+  created_at: string;
+}
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -143,6 +155,7 @@ const AdminDashboard = () => {
   
   // Overview stats
   const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>([]);
+  const [whatsappConversations, setWhatsappConversations] = useState<WhatsAppConversation[]>([]);
   const [totalClients, setTotalClients] = useState(0);
   const [totalTrips, setTotalTrips] = useState(0);
   const [activeDestinations, setActiveDestinations] = useState(0);
@@ -246,7 +259,7 @@ const AdminDashboard = () => {
       const today = new Date().toISOString().split('T')[0];
       
       // Run lighter queries for overview - only counts and minimal data
-      const [destinationsRes, offersRes, clientsRes, clientCountRes, pendingQuotesRes, tripsRes] = await Promise.all([
+      const [destinationsRes, offersRes, clientsRes, clientCountRes, pendingQuotesRes, tripsRes, whatsappRes] = await Promise.all([
         supabase.from('destinations').select('id', { count: 'exact', head: true }).eq('is_active', true),
         supabase.from('promotional_offers').select('id', { count: 'exact', head: true }).eq('is_active', true),
         supabase.from('client_trips').select('id', { count: 'exact', head: true }),
@@ -254,6 +267,8 @@ const AdminDashboard = () => {
         supabase.from('quote_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('client_trips').select('id, destination_name, departure_date, return_date, trip_status, flight_locator, user_id')
           .gte('departure_date', today).order('departure_date', { ascending: true }).limit(10),
+        supabase.from('whatsapp_conversations').select('*')
+          .order('updated_at', { ascending: false }).limit(10),
       ]);
 
       if (destinationsRes.count !== null) setActiveDestinations(destinationsRes.count);
@@ -290,6 +305,11 @@ const AdminDashboard = () => {
           };
         });
         setUpcomingTrips(tripsWithClients);
+      }
+
+      // Set WhatsApp conversations
+      if (whatsappRes.data) {
+        setWhatsappConversations(whatsappRes.data as unknown as WhatsAppConversation[]);
       }
 
       // Load quotes for overview (only recent 10 for display)
@@ -728,6 +748,121 @@ const AdminDashboard = () => {
                             </div>
                           </div>
                         </button>
+                      </div>
+
+                      {/* WhatsApp Conversations Summary - PRIORITY */}
+                      <div className="rounded-2xl border border-border overflow-hidden">
+                        <div className="p-4 bg-secondary border-b border-border flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-[hsl(142,70%,45%)]/20 flex items-center justify-center">
+                              <MessageCircle className="w-4 h-4 text-[hsl(142,70%,45%)]" />
+                            </div>
+                            <h2 className="font-serif text-xl font-bold text-foreground">WhatsApp - Conversas do Teo</h2>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm text-muted-foreground">{whatsappConversations.length} conversas</span>
+                            <button 
+                              onClick={() => setActiveTab('whatsapp')}
+                              className="text-xs px-3 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                            >
+                              Ver todas
+                            </button>
+                          </div>
+                        </div>
+                        <div className="divide-y divide-border">
+                          {whatsappConversations.slice(0, 5).map((conv) => {
+                            const messagesCount = Array.isArray(conv.messages_history) ? conv.messages_history.length : 0;
+                            const lastMessage = Array.isArray(conv.messages_history) && conv.messages_history.length > 0 
+                              ? conv.messages_history[conv.messages_history.length - 1] 
+                              : null;
+                            const stateLabels: Record<string, string> = {
+                              greeting: '👋 Saudação',
+                              collecting_name: '📝 Coletando nome',
+                              collecting_destination: '🗺️ Destino',
+                              collecting_dates: '📅 Datas',
+                              collecting_people: '👥 Viajantes',
+                              collecting_preferences: '⭐ Preferências',
+                              summary_confirmation: '✅ Confirmação',
+                              completed: '🎉 Concluída',
+                              human_takeover: '🙋 Atendimento humano',
+                            };
+                            const isHumanTakeover = conv.conversation_state === 'human_takeover';
+                            const isCompleted = conv.conversation_state === 'completed';
+                            const isActive = !isCompleted && !isHumanTakeover && !conv.is_ai_active === false;
+                            
+                            return (
+                              <div 
+                                key={conv.id} 
+                                className={`p-4 transition-colors cursor-pointer ${
+                                  isHumanTakeover ? 'bg-destructive/5 hover:bg-destructive/10' : 
+                                  isCompleted ? 'bg-primary/5 hover:bg-primary/10' : 
+                                  'hover:bg-secondary/50'
+                                }`}
+                                onClick={() => setActiveTab('whatsapp')}
+                              >
+                                {isHumanTakeover && (
+                                  <div className="mb-3 px-3 py-2 rounded-lg bg-destructive/20 border border-destructive/30 flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4 text-destructive" />
+                                    <span className="text-xs font-medium text-destructive">
+                                      🙋 Cliente pediu atendimento humano!
+                                    </span>
+                                  </div>
+                                )}
+                                {!conv.is_ai_active && !isHumanTakeover && !isCompleted && (
+                                  <div className="mb-3 px-3 py-2 rounded-lg bg-accent/20 border border-accent/30 flex items-center gap-2">
+                                    <Phone className="w-4 h-4 text-accent" />
+                                    <span className="text-xs font-medium text-accent">
+                                      Controle manual ativo
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-4">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                      isHumanTakeover ? 'bg-destructive/20' : 
+                                      isCompleted ? 'bg-primary/20' : 
+                                      'bg-[hsl(142,70%,45%)]/10'
+                                    }`}>
+                                      <MessageCircle className={`w-5 h-5 ${
+                                        isHumanTakeover ? 'text-destructive' : 
+                                        isCompleted ? 'text-primary' : 
+                                        'text-[hsl(142,70%,45%)]'
+                                      }`} />
+                                    </div>
+                                    <div>
+                                      <p className="font-medium text-foreground">{conv.client_name || conv.phone_number}</p>
+                                      <p className="text-sm text-muted-foreground truncate max-w-[250px]">
+                                        {lastMessage ? (lastMessage as any).content?.slice(0, 50) + ((lastMessage as any).content?.length > 50 ? '...' : '') : 'Sem mensagens'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <div className="text-right">
+                                      <p className="text-xs text-muted-foreground">
+                                        {new Date(conv.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">{messagesCount} msgs</p>
+                                    </div>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                                      isCompleted ? 'bg-primary/20 text-primary' :
+                                      isHumanTakeover ? 'bg-destructive/20 text-destructive' :
+                                      'bg-accent/20 text-accent'
+                                    }`}>
+                                      {stateLabels[conv.conversation_state] || conv.conversation_state}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {whatsappConversations.length === 0 && (
+                            <div className="p-8 text-center text-muted-foreground">
+                              <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                              <p>Nenhuma conversa no WhatsApp ainda</p>
+                              <p className="text-xs mt-1">As conversas aparecerão aqui quando clientes falarem com o Teo</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {/* Analytics CTA */}
