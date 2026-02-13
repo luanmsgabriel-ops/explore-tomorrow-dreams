@@ -45,14 +45,27 @@ serve(async (req) => {
     console.log("Sending quotation request:", JSON.stringify(payload));
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min timeout
+    const timeoutId = setTimeout(() => controller.abort(), 150000); // 2.5 min timeout
 
-    const response = await fetch(EXTERNAL_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
+    let response: Response;
+    try {
+      response = await fetch(EXTERNAL_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError instanceof DOMException && fetchError.name === "AbortError") {
+        console.error("Request to external API timed out after 150s");
+        return new Response(
+          JSON.stringify({ error: "A cotação está demorando mais que o esperado. Tente novamente em alguns minutos." }),
+          { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      throw fetchError;
+    }
 
     clearTimeout(timeoutId);
 
