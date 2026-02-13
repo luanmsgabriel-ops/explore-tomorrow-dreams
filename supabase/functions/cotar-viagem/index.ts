@@ -73,6 +73,7 @@ serve(async (req) => {
 
     const responseText = await response.text();
     console.log("External API response status:", response.status);
+    console.log("External API response body:", responseText.substring(0, 2000));
 
     let responseData;
     try {

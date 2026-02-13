@@ -12,6 +12,7 @@ const WHATSAPP_VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const EXTERNAL_API_URL = "http://212.85.21.28:5000/cotar_viagem";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -42,13 +43,19 @@ Quando identificar uma info, adicione no final:
 
 Campos: nome, destino, datas, num_viajantes, tipo_viagem, orcamento, preferencias, aeroporto
 
+COTAÇÃO AUTOMÁTICA:
+Quando tiver destino, datas, aeroporto de saída e número de viajantes (adultos e crianças), DISPARE A BUSCA DE COTAÇÃO adicionando no final da mensagem:
+[COTAR_VIAGEM:{"origem":"cidade de saída","destino":"destino","data_ida":"DD/MM/AAAA","data_volta":"DD/MM/AAAA","adultos":N,"criancas":N,"idades_criancas":[]}]
+
 Tudo coletado e confirmado pelo cliente:
 [STATUS:completed]
 
 Cliente quer falar com humano:
 [STATUS:human_takeover]`;
 
-async function extractCollectedData(aiResponse: string, existingData: Record<string, any>): Promise<{ data: Record<string, any>; status: string | null }> {
+// ========== Helper Functions ==========
+
+function extractCollectedData(aiResponse: string, existingData: Record<string, any>): { data: Record<string, any>; status: string | null } {
   const newData = { ...existingData };
   let status: string | null = null;
 
@@ -69,7 +76,20 @@ function cleanAiResponse(response: string): string {
   return response
     .replace(/\[DADOS:\w+=.+?\]/g, "")
     .replace(/\[STATUS:\w+\]/g, "")
+    .replace(/\[COTAR_VIAGEM:\s*\{.*?\}\s*\]/gs, "")
+    .replace(/\[DESTINO_ESCOLHIDO:\s*[^\]]+\]/gi, "")
     .trim();
+}
+
+function parseQuotationTag(content: string): Record<string, any> | null {
+  const match = content.match(/\[COTAR_VIAGEM:\s*(\{.*\})\s*\]/s);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[1].replace(/\n/g, " ").trim());
+  } catch (e) {
+    console.error("Failed to parse COTAR_VIAGEM tag:", e);
+    return null;
+  }
 }
 
 function determineConversationState(collectedData: Record<string, any>): string {
@@ -85,30 +105,42 @@ function determineConversationState(collectedData: Record<string, any>): string 
 }
 
 async function sendWhatsAppMessage(to: string, message: string) {
-  const response = await fetch(
-    `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to,
-        type: "text",
-        text: { body: message },
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("WhatsApp API error:", errorText);
-    throw new Error(`WhatsApp API error: ${response.status}`);
+  // WhatsApp has a 4096 char limit per message, split if needed
+  const maxLen = 4000;
+  const parts = [];
+  let remaining = message;
+  while (remaining.length > maxLen) {
+    const splitIdx = remaining.lastIndexOf("\n", maxLen);
+    const idx = splitIdx > 0 ? splitIdx : maxLen;
+    parts.push(remaining.substring(0, idx));
+    remaining = remaining.substring(idx).trimStart();
   }
+  if (remaining) parts.push(remaining);
 
-  return response.json();
+  for (const part of parts) {
+    const response = await fetch(
+      `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to,
+          type: "text",
+          text: { body: part },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("WhatsApp API error:", errorText);
+      throw new Error(`WhatsApp API error: ${response.status}`);
+    }
+  }
 }
 
 async function getAiResponse(messagesHistory: any[]): Promise<string> {
@@ -137,6 +169,89 @@ async function getAiResponse(messagesHistory: any[]): Promise<string> {
   return data.choices?.[0]?.message?.content || "Desculpe, tive um problema. Pode repetir?";
 }
 
+async function requestQuotation(quotationData: Record<string, any>, verificationCode?: string): Promise<{ status: string; data: any }> {
+  const payload: Record<string, any> = {
+    origem: quotationData.origem,
+    destino: quotationData.destino,
+    data_ida: quotationData.data_ida,
+    data_volta: quotationData.data_volta,
+    passageiros: {
+      adultos: quotationData.adultos || 1,
+      criancas: quotationData.criancas || 0,
+      idades_criancas: quotationData.idades_criancas || [],
+    },
+    operadora: "all",
+  };
+
+  if (verificationCode) {
+    payload.verification_code = verificationCode;
+  }
+
+  console.log("WhatsApp quotation request:", JSON.stringify(payload));
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 150000);
+
+  try {
+    const response = await fetch(EXTERNAL_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const responseText = await response.text();
+    console.log("Quotation API response:", response.status, responseText.substring(0, 2000));
+
+    let responseData;
+    try {
+      responseData = JSON.parse(responseText);
+    } catch {
+      responseData = { raw: responseText };
+    }
+
+    if (responseData.status === "pending_code" || responseData.pending_code) {
+      return { status: "pending_code", data: responseData };
+    }
+
+    return { status: "success", data: responseData };
+  } catch (err) {
+    clearTimeout(timeoutId);
+    console.error("Quotation API error:", err);
+    return { status: "error", data: null };
+  }
+}
+
+function formatQuotationResults(data: any): string {
+  if (!data) return "Não foi possível obter resultados.";
+
+  const results = data.resultados || data.results || (Array.isArray(data) ? data : null);
+  if (results && Array.isArray(results)) {
+    if (results.length === 0) return "😕 Nenhuma cotação encontrada para essas datas.";
+
+    let formatted = "✈️ *Cotações encontradas:*\n\n";
+    results.forEach((r: any, i: number) => {
+      formatted += `*${i + 1}. ${r.operadora || r.companhia || "Operadora"}*\n`;
+      if (r.preco || r.valor || r.price) {
+        formatted += `💰 Valor: R$ ${Number(r.preco || r.valor || r.price).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n`;
+      }
+      if (r.voo_ida || r.flight_out) formatted += `🛫 Ida: ${r.voo_ida || r.flight_out}\n`;
+      if (r.voo_volta || r.flight_back) formatted += `🛬 Volta: ${r.voo_volta || r.flight_back}\n`;
+      if (r.paradas !== undefined) formatted += `🔄 Paradas: ${r.paradas}\n`;
+      if (r.duracao || r.duration) formatted += `⏱️ Duração: ${r.duracao || r.duration}\n`;
+      formatted += "\n";
+    });
+    return formatted;
+  }
+
+  if (data.preco || data.valor || data.price) {
+    return `✈️ *Cotação encontrada:*\n💰 Valor: R$ ${Number(data.preco || data.valor || data.price).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+  }
+
+  return `✈️ *Resultado da cotação:*\n${JSON.stringify(data, null, 2)}`;
+}
+
 async function createQuoteRequest(phoneNumber: string, collectedData: Record<string, any>) {
   const { data, error } = await supabase.from("quote_requests").insert({
     client_name: collectedData.nome || null,
@@ -161,8 +276,9 @@ async function createQuoteRequest(phoneNumber: string, collectedData: Record<str
   return data;
 }
 
+// ========== Main Server ==========
+
 serve(async (req) => {
-  // Handle CORS
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -210,7 +326,6 @@ serve(async (req) => {
       const changes = entry?.changes?.[0];
       const value = changes?.value;
 
-      // Ignore status updates
       if (!value?.messages || value.messages.length === 0) {
         return new Response(JSON.stringify({ status: "ok" }), {
           status: 200,
@@ -271,6 +386,53 @@ serve(async (req) => {
         });
       }
 
+      const collectedData = (conversation.collected_data as Record<string, any>) || {};
+
+      // Check if conversation is waiting for a verification code
+      if (collectedData._quotation_pending_code && collectedData._quotation_request) {
+        console.log("Processing verification code:", messageText.trim());
+        const quotResult = await requestQuotation(collectedData._quotation_request, messageText.trim());
+
+        // Clear pending state
+        const updatedData = { ...collectedData };
+        delete updatedData._quotation_pending_code;
+        delete updatedData._quotation_request;
+
+        let responseMsg: string;
+        if (quotResult.status === "success" && quotResult.data) {
+          responseMsg = formatQuotationResults(quotResult.data);
+          responseMsg += "\n\nQuer que eu te ajude com mais alguma coisa? 😊";
+        } else if (quotResult.status === "pending_code") {
+          // Still pending, ask again
+          updatedData._quotation_pending_code = true;
+          updatedData._quotation_request = collectedData._quotation_request;
+          responseMsg = "❌ Código inválido ou expirado. Por favor, verifique seu e-mail e envie o código correto.";
+        } else {
+          responseMsg = "😕 Não consegui buscar a cotação. Tente novamente mais tarde ou fale com um de nossos consultores!";
+        }
+
+        const updatedHistory = [
+          ...(conversation.messages_history as any[] || []),
+          { role: "user", content: messageText, timestamp: new Date().toISOString() },
+          { role: "assistant", content: responseMsg, timestamp: new Date().toISOString() },
+        ];
+
+        await supabase
+          .from("whatsapp_conversations")
+          .update({
+            collected_data: updatedData,
+            messages_history: updatedHistory,
+          })
+          .eq("id", conversation.id);
+
+        await sendWhatsAppMessage(phoneNumber, responseMsg);
+
+        return new Response(JSON.stringify({ status: "ok", quotation_code_processed: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Build messages for AI
       const historyForAi = (conversation.messages_history as any[] || []).map((msg: any) => ({
         role: msg.role === "user" ? "user" : "assistant",
@@ -282,29 +444,97 @@ serve(async (req) => {
       const aiResponse = await getAiResponse(historyForAi);
 
       // Extract collected data and status
-      const { data: newCollectedData, status: conversationStatus } = await extractCollectedData(
+      const { data: newCollectedData, status: conversationStatus } = extractCollectedData(
         aiResponse,
-        (conversation.collected_data as Record<string, any>) || {}
+        collectedData
       );
 
-      // Clean response (remove data tags)
-      const cleanResponse = cleanAiResponse(aiResponse);
+      // Check if AI triggered a quotation request
+      const quotationData = parseQuotationTag(aiResponse);
 
-      // Update conversation history
+      // Clean response (remove all tags)
+      let cleanResponse = cleanAiResponse(aiResponse);
+
+      // Handle quotation if triggered
+      if (quotationData) {
+        console.log("AI triggered quotation request:", JSON.stringify(quotationData));
+        
+        // Send the clean message first
+        if (cleanResponse) {
+          await sendWhatsAppMessage(phoneNumber, cleanResponse);
+        }
+
+        // Send searching message
+        await sendWhatsAppMessage(phoneNumber, "🔍 Buscando cotações nas operadoras... isso pode levar alguns segundos!");
+
+        const quotResult = await requestQuotation(quotationData);
+
+        let quotationMsg: string;
+        if (quotResult.status === "pending_code") {
+          // Store quotation state for verification code
+          newCollectedData._quotation_pending_code = true;
+          newCollectedData._quotation_request = quotationData;
+          quotationMsg = "📧 Um código de verificação foi enviado para o e-mail cadastrado na operadora.\n\nPor favor, envie o código aqui para eu finalizar a busca! 🔑";
+        } else if (quotResult.status === "success" && quotResult.data) {
+          quotationMsg = formatQuotationResults(quotResult.data);
+          quotationMsg += "\n\nQuer que eu te ajude com mais alguma coisa? 😊";
+        } else {
+          quotationMsg = "😕 Não consegui buscar cotações no momento. Mas não se preocupe, nosso time vai buscar as melhores opções pra você! 🙌";
+        }
+
+        // Update history with all messages
+        const updatedHistory = [
+          ...(conversation.messages_history as any[] || []),
+          { role: "user", content: messageText, timestamp: new Date().toISOString() },
+          { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
+          { role: "assistant", content: quotationMsg, timestamp: new Date().toISOString() },
+        ];
+
+        let newState = conversationStatus === "completed" ? "completed"
+          : conversationStatus === "human_takeover" ? "human_takeover"
+          : determineConversationState(newCollectedData);
+
+        let quoteRequestId = conversation.quote_request_id;
+        if (newState === "completed" && !quoteRequestId) {
+          try {
+            const quoteRequest = await createQuoteRequest(phoneNumber, newCollectedData);
+            quoteRequestId = quoteRequest.id;
+          } catch (err) {
+            console.error("Error creating quote:", err);
+          }
+        }
+
+        await supabase
+          .from("whatsapp_conversations")
+          .update({
+            client_name: newCollectedData.nome || conversation.client_name || contactName,
+            conversation_state: newState,
+            collected_data: newCollectedData,
+            messages_history: updatedHistory,
+            quote_request_id: quoteRequestId,
+            is_ai_active: newState !== "human_takeover",
+          })
+          .eq("id", conversation.id);
+
+        await sendWhatsAppMessage(phoneNumber, quotationMsg);
+
+        return new Response(JSON.stringify({ status: "ok", state: newState, quotation: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Standard flow (no quotation)
       const updatedHistory = [
         ...(conversation.messages_history as any[] || []),
         { role: "user", content: messageText, timestamp: new Date().toISOString() },
         { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
       ];
 
-      // Determine new state
-      let newState = conversationStatus === "completed"
-        ? "completed"
-        : conversationStatus === "human_takeover"
-        ? "human_takeover"
+      let newState = conversationStatus === "completed" ? "completed"
+        : conversationStatus === "human_takeover" ? "human_takeover"
         : determineConversationState(newCollectedData);
 
-      // If completed, create quote request
       let quoteRequestId = conversation.quote_request_id;
       if (newState === "completed" && !quoteRequestId) {
         try {
@@ -315,7 +545,6 @@ serve(async (req) => {
         }
       }
 
-      // Update conversation in DB
       await supabase
         .from("whatsapp_conversations")
         .update({
@@ -328,7 +557,6 @@ serve(async (req) => {
         })
         .eq("id", conversation.id);
 
-      // Send response via WhatsApp
       await sendWhatsAppMessage(phoneNumber, cleanResponse);
 
       return new Response(JSON.stringify({ status: "ok", state: newState }), {
@@ -341,7 +569,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Webhook error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
-      status: 200, // Always return 200 to Meta to avoid retries
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
