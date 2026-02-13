@@ -44,11 +44,17 @@ serve(async (req) => {
 
     console.log("Sending quotation request:", JSON.stringify(payload));
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min timeout
+
     const response = await fetch(EXTERNAL_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     const responseText = await response.text();
     console.log("External API response status:", response.status);
