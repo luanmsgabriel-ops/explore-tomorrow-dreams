@@ -1023,6 +1023,53 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_conversations: {
+        Row: {
+          client_name: string | null
+          collected_data: Json | null
+          conversation_state: string
+          created_at: string
+          id: string
+          is_ai_active: boolean
+          messages_history: Json | null
+          phone_number: string
+          quote_request_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_name?: string | null
+          collected_data?: Json | null
+          conversation_state?: string
+          created_at?: string
+          id?: string
+          is_ai_active?: boolean
+          messages_history?: Json | null
+          phone_number: string
+          quote_request_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_name?: string | null
+          collected_data?: Json | null
+          conversation_state?: string
+          created_at?: string
+          id?: string
+          is_ai_active?: boolean
+          messages_history?: Json | null
+          phone_number?: string
+          quote_request_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_conversations_quote_request_id_fkey"
+            columns: ["quote_request_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       analytics_daily_stats: {
