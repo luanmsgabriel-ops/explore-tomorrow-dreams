@@ -365,7 +365,7 @@ const PromocaoDetail = () => {
                       Solicitar Orçamento
                     </Link>
                     <a
-                      href="https://wa.me/5511999999999"
+                      href="https://wa.me/5515991833448"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full px-6 py-3 rounded-xl border border-border text-foreground hover:bg-secondary transition-colors flex items-center justify-center gap-2"
