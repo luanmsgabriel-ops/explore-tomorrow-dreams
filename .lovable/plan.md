@@ -1,172 +1,209 @@
 
-# Plano: Resolver Cache do Service Worker (PWA) e Sessão Antiga
 
-## Diagnóstico
+# Plano: Integrar WhatsApp Business API com IA Conversacional (Teo)
 
-O problema está claro agora:
-- **Janela anônima funciona** = código novo + nenhum cache = nenhuma sessão antiga
-- **Aba normal não funciona** = Service Worker cache + possível sessão JWT expirada/corrompida
+## Visao Geral
 
-O projeto usa **VitePWA com Workbox** que cacheia agressivamente arquivos JS/CSS/HTML. Quando você republica, o navegador normal pode estar:
+Implementar um sistema onde o Teo (IA) responde automaticamente clientes no WhatsApp, conduzindo uma conversa para coletar todas as informacoes necessarias para uma cotacao de viagem, e salva tudo no banco de dados como um quote_request.
 
-1. **Usando JavaScript antigo** do Service Worker cache (código que ainda chama políticas RLS antigas)
-2. **Com token JWT expirado** ou corrompido no localStorage
+## Passo 1: Configurar Conta WhatsApp Business API (Voce faz isso)
 
-## Solução em 3 Partes
+Antes de implementar o codigo, voce precisa criar uma conta gratuita na Meta:
 
-### Parte 1: Forçar Atualização do Service Worker
+1. Acesse [developers.facebook.com](https://developers.facebook.com) e crie uma conta de desenvolvedor
+2. Crie um novo App do tipo "Business" 
+3. Adicione o produto "WhatsApp" ao app
+4. Na secao WhatsApp > API Setup:
+   - Voce recebera um **numero de teste** para enviar mensagens
+   - Copie o **WhatsApp Access Token** (permanente ou temporario)
+   - Copie o **Phone Number ID**
+5. Configure o **Webhook**:
+   - URL: `https://wimdgvdpefkmjzzsklnt.supabase.co/functions/v1/whatsapp-webhook`
+   - Verify Token: uma string que voce escolher (ex: `teo_tomorrow_travel_2024`)
+   - Campos para assinar: `messages`
 
-Modificar `vite.config.ts` para usar estratégia de atualização mais agressiva:
+**Importante**: A conta de teste permite enviar para ate 5 numeros cadastrados. Para producao, voce precisara verificar seu negocio na Meta (processo gratuito).
 
+## Passo 2: Armazenar Secrets
+
+Precisaremos armazenar 3 secrets:
+- `WHATSAPP_ACCESS_TOKEN` - Token da API do WhatsApp
+- `WHATSAPP_PHONE_NUMBER_ID` - ID do numero de telefone
+- `WHATSAPP_VERIFY_TOKEN` - Token de verificacao do webhook
+
+## Passo 3: Criar Tabela de Conversas WhatsApp
+
+Nova tabela `whatsapp_conversations` para rastrear o estado de cada conversa:
+
+```sql
+CREATE TABLE public.whatsapp_conversations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  phone_number text NOT NULL UNIQUE,
+  client_name text,
+  conversation_state text NOT NULL DEFAULT 'greeting',
+  collected_data jsonb DEFAULT '{}'::jsonb,
+  messages_history jsonb DEFAULT '[]'::jsonb,
+  quote_request_id uuid REFERENCES quote_requests(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.whatsapp_conversations ENABLE ROW LEVEL SECURITY;
+
+-- Apenas admins podem ver/gerenciar
+CREATE POLICY "Admins manage whatsapp conversations"
+  ON public.whatsapp_conversations FOR ALL
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+```
+
+Os estados da conversa serao: `greeting`, `collecting_name`, `collecting_destination`, `collecting_dates`, `collecting_people`, `collecting_preferences`, `summary_confirmation`, `completed`.
+
+## Passo 4: Criar Edge Function - Webhook WhatsApp
+
+Nova edge function `whatsapp-webhook` que:
+
+1. **GET** - Verificacao do webhook (Meta envia um challenge na configuracao)
+2. **POST** - Recebe mensagens dos clientes e processa
+
+Fluxo do POST:
 ```text
-workbox: {
-  // Adicionar skip waiting para ativar novo SW imediatamente
-  skipWaiting: true,
-  clientsClaim: true,
-  // Não cachear chamadas API do Supabase
-  navigateFallbackDenylist: [/^\/rest\//, /supabase/]
+Cliente envia mensagem no WhatsApp
+        |
+        v
+Webhook recebe a mensagem
+        |
+        v
+Busca conversa existente no banco (pelo numero)
+        |
+        v
+Se nova -> Cria conversa com estado 'greeting'
+Se existente -> Carrega historico
+        |
+        v
+Envia historico + mensagem para o Teo (Lovable AI)
+com system prompt especifico para coleta de dados
+        |
+        v
+Teo responde com a proxima pergunta
+        |
+        v
+Salva resposta e atualiza estado
+        |
+        v
+Envia resposta via WhatsApp API
+        |
+        v
+Quando todos dados coletados -> Cria quote_request
+```
+
+### System Prompt do Teo para WhatsApp
+
+O Teo tera um prompt especifico para WhatsApp focado em coletar:
+- Nome completo
+- Destino desejado (ou ajudar a escolher)
+- Datas de viagem pretendidas
+- Numero de viajantes (adultos/criancas)
+- Tipo de viagem (lua de mel, familia, aventura, etc.)
+- Orcamento aproximado
+- Preferencias especiais (hotel, voo, atividades)
+- Aeroporto de preferencia
+
+A IA sera instruida a ser conversacional (estilo Teo) mas objetiva, coletando uma informacao por vez.
+
+## Passo 5: Painel Admin - Gerenciar Conversas WhatsApp
+
+Nova aba no AdminDashboard "WhatsApp" com:
+- Lista de conversas ativas/concluidas
+- Visualizacao do fluxo completo de cada conversa
+- Status de cada conversa (em andamento, dados completos, cotacao criada)
+- Botao para assumir a conversa manualmente (desativar IA)
+- Link para a cotacao gerada automaticamente
+
+## Arquivos a Criar/Modificar
+
+| Arquivo | Acao | Descricao |
+|---------|------|-----------|
+| `supabase/functions/whatsapp-webhook/index.ts` | Criar | Webhook para receber e responder mensagens |
+| `supabase/config.toml` | Modificar | Adicionar config do webhook (verify_jwt = false) |
+| `src/components/admin/WhatsAppManager.tsx` | Criar | Painel para gerenciar conversas WhatsApp |
+| `src/pages/AdminDashboard.tsx` | Modificar | Adicionar aba WhatsApp |
+| Migracao SQL | Criar | Tabela whatsapp_conversations |
+
+## Detalhes Tecnicos
+
+### Edge Function: whatsapp-webhook/index.ts
+
+```typescript
+// GET: Verificacao do webhook Meta
+if (req.method === "GET") {
+  const url = new URL(req.url);
+  const mode = url.searchParams.get("hub.mode");
+  const token = url.searchParams.get("hub.verify_token");
+  const challenge = url.searchParams.get("hub.challenge");
+  
+  if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    return new Response(challenge, { status: 200 });
+  }
+  return new Response("Forbidden", { status: 403 });
 }
+
+// POST: Mensagem recebida
+// 1. Extrair numero e mensagem do payload Meta
+// 2. Buscar/criar conversa no banco
+// 3. Chamar Lovable AI com historico
+// 4. Enviar resposta via WhatsApp Cloud API
+// 5. Atualizar conversa no banco
 ```
 
-### Parte 2: Adicionar Lógica de Refresh no AdminDashboard
-
-Adicionar tratamento de erro que detecta timeout/500 e força:
-1. Limpar cache do Service Worker
-2. Fazer logout e re-login automático se token estiver inválido
-3. Mostrar botão de "Forçar Atualização" para o usuário
-
-### Parte 3: Cache-Busting no Cliente Supabase
-
-Adicionar headers para evitar cache em requisições ao banco:
+### Envio de Mensagem via WhatsApp API
 
 ```typescript
-// Em chamadas críticas
-.select('*', { 
-  headers: { 'Cache-Control': 'no-cache' }
-})
+await fetch(
+  `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`,
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${ACCESS_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to: phoneNumber,
+      type: "text",
+      text: { body: aiResponse }
+    })
+  }
+);
 ```
 
-## Arquivos a Modificar
+### WhatsAppManager.tsx - Componente Admin
 
-| Arquivo | Alteração |
-|---------|-----------|
-| `vite.config.ts` | Adicionar skipWaiting, clientsClaim, excluir API do cache |
-| `src/pages/AdminDashboard.tsx` | Adicionar error handling com retry e clear cache |
-| `src/components/admin/SalesManager.tsx` | Adicionar error handling para tabela de vendas |
+- Tabela com conversas: nome, telefone, estado, data, acoes
+- Modal de visualizacao com timeline das mensagens
+- Indicadores visuais de estado (em andamento = amarelo, completo = verde)
+- Botao "Assumir conversa" para desativar IA e responder manualmente
+- Link direto para cotacao criada
 
-## Detalhes Técnicos
+## Sequencia de Implementacao
 
-### vite.config.ts - Modificações no PWA
+1. Criar tabela no banco de dados
+2. Armazenar os 3 secrets (voce fornece os valores)
+3. Criar a edge function do webhook
+4. Configurar o webhook na Meta (voce faz no painel da Meta)
+5. Criar o componente admin WhatsAppManager
+6. Integrar no AdminDashboard
+7. Testar com numero de teste
 
-```typescript
-VitePWA({
-  registerType: "autoUpdate",
-  workbox: {
-    skipWaiting: true,        // Ativa novo SW imediatamente
-    clientsClaim: true,       // Toma controle de todas as tabs
-    globPatterns: ["**/*.{js,css,html,ico,png,jpg,jpeg,svg,webp}"],
-    // Excluir API calls do cache
-    navigateFallbackDenylist: [/^\/rest\//],
-    runtimeCaching: [
-      // ... configurações existentes de fonts
-      {
-        // NÃO cachear chamadas Supabase
-        urlPattern: /\.supabase\.co/,
-        handler: "NetworkOnly",
-      }
-    ]
-  }
-})
-```
+## Custo Estimado
 
-### AdminDashboard.tsx - Error Handling com Clear Cache
+- **WhatsApp Business API**: As primeiras 1.000 conversas/mes sao gratuitas. Depois, cerca de R$0,25-0,50 por conversa (varia por pais).
+- **Lovable AI (Teo)**: Usa os creditos ja inclusos no seu plano.
 
-```typescript
-const handleLoadError = async (error: any) => {
-  console.error('Load error:', error);
-  
-  // Se erro 500 ou timeout, tentar limpar cache
-  if ('serviceWorker' in navigator) {
-    const registrations = await navigator.serviceWorker.getRegistrations();
-    for (let registration of registrations) {
-      await registration.unregister();
-    }
-    // Limpar caches
-    if ('caches' in window) {
-      const names = await caches.keys();
-      for (let name of names) {
-        await caches.delete(name);
-      }
-    }
-  }
-  
-  // Verificar se sessão ainda é válida
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    toast.error('Sessão expirada. Faça login novamente.');
-    navigate('/admin');
-    return;
-  }
-  
-  // Tentar refresh do token
-  await supabase.auth.refreshSession();
-  
-  toast.error('Erro de conexão. Recarregando...');
-  window.location.reload();
-};
-```
+## Limitacoes e Consideracoes
 
-### SalesManager.tsx - Tratamento Específico
+- Mensagens template (primeira mensagem para o cliente) precisam ser aprovadas pela Meta
+- O bot so responde a mensagens iniciadas pelo cliente (janela de 24h)
+- Para producao, o numero precisa ser verificado pela Meta (leva 2-5 dias uteis)
+- A IA pode ser desativada a qualquer momento para atendimento humano
 
-```typescript
-const fetchSales = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('sales')
-      .select('*')
-      .order('sale_date', { ascending: false })
-      .limit(200);
-
-    if (error) {
-      if (error.message?.includes('timeout') || error.code === '500') {
-        // Tentar refresh da sessão e retry
-        await supabase.auth.refreshSession();
-        // Retry uma vez
-        const retry = await supabase.from('sales').select('*').limit(100);
-        if (retry.error) throw retry.error;
-        setSales(retry.data || []);
-        return;
-      }
-      throw error;
-    }
-    setSales(data || []);
-  } catch (error) {
-    console.error('Error fetching sales:', error);
-    toast.error('Erro ao carregar vendas. Tente atualizar a página.');
-  } finally {
-    setLoading(false);
-  }
-};
-```
-
-## Solução Imediata para Você (Enquanto Aplico as Mudanças)
-
-Para resolver agora no seu navegador:
-
-1. **Limpar dados do site manualmente:**
-   - Chrome: F12 → Application → Storage → "Clear site data"
-   - Ou: Configurações → Privacidade → Limpar dados de navegação → Selecione apenas o site
-
-2. **Desinstalar o PWA se instalado:**
-   - Se você instalou o app, desinstale e reinstale após publicar
-
-3. **Forçar refresh:**
-   - Ctrl+Shift+R (Windows) ou Cmd+Shift+R (Mac)
-
-## Após Aprovação
-
-1. Modificarei os 3 arquivos listados
-2. Você republica o projeto
-3. Limpa os dados do site no navegador (uma única vez)
-4. Faz login novamente
-5. O problema estará resolvido permanentemente
