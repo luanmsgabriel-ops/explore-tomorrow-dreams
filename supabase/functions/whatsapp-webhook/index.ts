@@ -12,7 +12,10 @@ const WHATSAPP_VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const MANUS_API_TOKEN = Deno.env.get("MANUS_API_TOKEN")!;
 const EXTERNAL_API_URL = "http://212.85.21.28:5000/cotar_viagem";
+const MANUS_API_URL = "https://api.manus.im/v1/chat/completions";
+const WHATSAPP_WEBHOOK_URL = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -169,6 +172,82 @@ async function getAiResponse(messagesHistory: any[]): Promise<string> {
   return data.choices?.[0]?.message?.content || "Desculpe, tive um problema. Pode repetir?";
 }
 
+async function requestQuotationViaManus(
+  quotationData: Record<string, any>,
+  phoneNumber: string,
+  clientName?: string
+): Promise<{ status: string; data: any }> {
+  const prompt = `Preciso de uma cotação de viagem:
+- Origem: ${quotationData.origem}
+- Destino: ${quotationData.destino}
+- Data de ida: ${quotationData.data_ida}
+- Data de volta: ${quotationData.data_volta}
+- Passageiros: ${quotationData.adultos || 1} adultos${quotationData.criancas ? `, ${quotationData.criancas} crianças (idades: ${(quotationData.idades_criancas || []).join(", ")})` : ""}
+- Número do cliente para envio via WhatsApp: ${phoneNumber}
+${clientName ? `- Nome do cliente: ${clientName}` : ""}
+
+Por favor, faça a cotação no sistema Cativa Operadora e envie o resultado diretamente para o cliente via WhatsApp através do Teo usando o endpoint: ${WHATSAPP_WEBHOOK_URL}`;
+
+  console.log("Sending quotation request to Manus:", prompt);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 min timeout
+
+  try {
+    const response = await fetch(MANUS_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${MANUS_API_TOKEN}`,
+      },
+      body: JSON.stringify({
+        model: "manus-1",
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const responseText = await response.text();
+    console.log("=== MANUS API RAW RESPONSE ===");
+    console.log("Status:", response.status);
+    console.log("Body (first 3000 chars):", responseText.substring(0, 3000));
+    console.log("=== END MANUS RESPONSE ===");
+
+    if (!response.ok) {
+      console.error("Manus API returned non-OK status:", response.status);
+      return { status: "error", data: null };
+    }
+
+    let responseData;
+    try {
+      responseData = JSON.parse(responseText);
+    } catch {
+      console.error("Manus API returned non-JSON response");
+      return { status: "error", data: null };
+    }
+
+    // Manus will process and send the quotation directly to the client via WhatsApp
+    // The response here is just acknowledgment
+    return { status: "manus_processing", data: responseData };
+  } catch (err) {
+    clearTimeout(timeoutId);
+    const isAbort = (err instanceof DOMException && err.name === "AbortError") ||
+      (err instanceof Error && err.message?.includes("abort"));
+    if (isAbort) {
+      console.error("Manus API timed out after 300s");
+    } else {
+      console.error("Manus API fetch error:", err);
+    }
+    return { status: "error", data: null };
+  }
+}
+
 async function requestQuotation(quotationData: Record<string, any>, verificationCode?: string): Promise<{ status: string; data: any }> {
   const payload: Record<string, any> = {
     origem: quotationData.origem,
@@ -187,10 +266,10 @@ async function requestQuotation(quotationData: Record<string, any>, verification
     payload.verification_code = verificationCode;
   }
 
-  console.log("WhatsApp quotation request:", JSON.stringify(payload));
+  console.log("WhatsApp quotation request (direct):", JSON.stringify(payload));
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 min timeout
+  const timeoutId = setTimeout(() => controller.abort(), 300000);
 
   try {
     const response = await fetch(EXTERNAL_API_URL, {
@@ -204,28 +283,21 @@ async function requestQuotation(quotationData: Record<string, any>, verification
     const responseText = await response.text();
     console.log("=== QUOTATION API RAW RESPONSE ===");
     console.log("Status:", response.status);
-    console.log("Headers:", JSON.stringify(Object.fromEntries(response.headers.entries())));
     console.log("Body (first 3000 chars):", responseText.substring(0, 3000));
     console.log("=== END RAW RESPONSE ===");
 
-    // Non-2xx status = error
     if (!response.ok) {
-      console.error("Quotation API returned non-OK status:", response.status, "Body:", responseText.substring(0, 1000));
       return { status: "error", data: null };
     }
 
     let responseData;
     try {
       responseData = JSON.parse(responseText);
-    } catch (parseErr) {
-      console.error("Quotation API returned non-JSON response. Parse error:", parseErr);
-      console.error("Raw body:", responseText.substring(0, 2000));
+    } catch {
       return { status: "error", data: null };
     }
 
-    // Check for error fields in the response
     if (responseData.error || responseData.erro) {
-      console.error("Quotation API returned error field:", JSON.stringify(responseData.error || responseData.erro));
       return { status: "error", data: null };
     }
 
@@ -236,13 +308,6 @@ async function requestQuotation(quotationData: Record<string, any>, verification
     return { status: "success", data: responseData };
   } catch (err) {
     clearTimeout(timeoutId);
-    const isAbort = (err instanceof DOMException && err.name === "AbortError") ||
-      (err instanceof Error && err.message?.includes("abort"));
-    if (isAbort) {
-      console.error("Quotation API timed out after 300s");
-    } else {
-      console.error("Quotation API fetch error:", err);
-    }
     return { status: "error", data: null };
   }
 }
@@ -543,32 +608,47 @@ serve(async (req) => {
           await sendWhatsAppMessage(phoneNumber, cleanResponse);
         }
 
-        // Send searching message
-        await sendWhatsAppMessage(phoneNumber, "🔍 Buscando cotações nas operadoras... isso pode levar alguns segundos!");
+        // Send processing message
+        await sendWhatsAppMessage(phoneNumber, `Estou processando sua cotação para ${quotationData.destino}. Em instantes você receberá as melhores opções de voos e hotéis! ✈️🏨`);
 
-        const quotResult = await requestQuotation(quotationData);
+        // Send to Manus for processing
+        const manusResult = await requestQuotationViaManus(
+          quotationData,
+          phoneNumber,
+          newCollectedData.nome || conversation.client_name || contactName
+        );
 
         let quoteRequestId = conversation.quote_request_id;
         let quotationMsg: string;
-        if (quotResult.status === "pending_code") {
-          // Store quotation state for verification code
-          newCollectedData._quotation_pending_code = true;
-          newCollectedData._quotation_request = quotationData;
-          quotationMsg = "📧 Um código de verificação foi enviado para o e-mail cadastrado na operadora.\n\nPor favor, envie o código aqui para eu finalizar a busca! 🔑";
-        } else if (quotResult.status === "success" && quotResult.data) {
-          quotationMsg = formatQuotationResults(quotResult.data);
-          quotationMsg += "\n\nQuer que eu te ajude com mais alguma coisa? 😊";
+
+        if (manusResult.status === "manus_processing") {
+          // Manus is processing and will send results directly via WhatsApp
+          quotationMsg = "🔄 O Manus está processando sua cotação no sistema Cativa. Os resultados serão enviados aqui assim que estiverem prontos!";
+          newCollectedData._manus_processing = true;
         } else {
-          quotationMsg = "😊 Não se preocupe! Nosso agente especialista nesse destino já está preparando a melhor cotação pra você e vai te chamar aqui mesmo no WhatsApp em breve.\n\nSe tiver qualquer dúvida enquanto isso, estou por aqui! 🙌💛";
-          // Force completed state so the flow stops and agent takes over
-          newCollectedData._quotation_failed = true;
-          // Create quote request only if one doesn't already exist for this conversation
-          if (!quoteRequestId) {
-            try {
-              const quoteRequest = await createQuoteRequest(phoneNumber, newCollectedData);
-              quoteRequestId = quoteRequest.id;
-            } catch (err) {
-              console.error("Error creating quote on failure:", err);
+          // Manus failed, fallback to direct API
+          console.log("Manus failed, falling back to direct API...");
+          await sendWhatsAppMessage(phoneNumber, "🔍 Buscando cotações diretamente nas operadoras...");
+          
+          const quotResult = await requestQuotation(quotationData);
+
+          if (quotResult.status === "pending_code") {
+            newCollectedData._quotation_pending_code = true;
+            newCollectedData._quotation_request = quotationData;
+            quotationMsg = "📧 Um código de verificação foi enviado para o e-mail cadastrado na operadora.\n\nPor favor, envie o código aqui para eu finalizar a busca! 🔑";
+          } else if (quotResult.status === "success" && quotResult.data) {
+            quotationMsg = formatQuotationResults(quotResult.data);
+            quotationMsg += "\n\nQuer que eu te ajude com mais alguma coisa? 😊";
+          } else {
+            quotationMsg = "😊 Não se preocupe! Nosso agente especialista nesse destino já está preparando a melhor cotação pra você e vai te chamar aqui mesmo no WhatsApp em breve.\n\nSe tiver qualquer dúvida enquanto isso, estou por aqui! 🙌💛";
+            newCollectedData._quotation_failed = true;
+            if (!quoteRequestId) {
+              try {
+                const quoteRequest = await createQuoteRequest(phoneNumber, newCollectedData);
+                quoteRequestId = quoteRequest.id;
+              } catch (err) {
+                console.error("Error creating quote on failure:", err);
+              }
             }
           }
         }
@@ -604,13 +684,16 @@ serve(async (req) => {
             collected_data: newCollectedData,
             messages_history: updatedHistory,
             quote_request_id: quoteRequestId,
-          is_ai_active: newState !== "human_takeover" && newState !== "completed",
+            is_ai_active: newState !== "human_takeover" && newState !== "completed",
           })
           .eq("id", conversation.id);
 
-        await sendWhatsAppMessage(phoneNumber, quotationMsg);
+        // Only send quotationMsg if NOT manus_processing (Manus sends directly)
+        if (manusResult.status !== "manus_processing") {
+          await sendWhatsAppMessage(phoneNumber, quotationMsg);
+        }
 
-        return new Response(JSON.stringify({ status: "ok", state: newState, quotation: true }), {
+        return new Response(JSON.stringify({ status: "ok", state: newState, quotation: true, via: manusResult.status === "manus_processing" ? "manus" : "direct" }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
