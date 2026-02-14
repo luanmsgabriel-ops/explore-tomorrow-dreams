@@ -190,7 +190,7 @@ async function requestQuotation(quotationData: Record<string, any>, verification
   console.log("WhatsApp quotation request:", JSON.stringify(payload));
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 150000);
+  const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 min timeout
 
   try {
     const response = await fetch(EXTERNAL_API_URL, {
@@ -202,25 +202,30 @@ async function requestQuotation(quotationData: Record<string, any>, verification
     clearTimeout(timeoutId);
 
     const responseText = await response.text();
-    console.log("Quotation API response:", response.status, responseText.substring(0, 2000));
+    console.log("=== QUOTATION API RAW RESPONSE ===");
+    console.log("Status:", response.status);
+    console.log("Headers:", JSON.stringify(Object.fromEntries(response.headers.entries())));
+    console.log("Body (first 3000 chars):", responseText.substring(0, 3000));
+    console.log("=== END RAW RESPONSE ===");
 
     // Non-2xx status = error
     if (!response.ok) {
-      console.error("Quotation API returned non-OK status:", response.status);
+      console.error("Quotation API returned non-OK status:", response.status, "Body:", responseText.substring(0, 1000));
       return { status: "error", data: null };
     }
 
     let responseData;
     try {
       responseData = JSON.parse(responseText);
-    } catch {
-      console.error("Quotation API returned non-JSON response:", responseText.substring(0, 500));
+    } catch (parseErr) {
+      console.error("Quotation API returned non-JSON response. Parse error:", parseErr);
+      console.error("Raw body:", responseText.substring(0, 2000));
       return { status: "error", data: null };
     }
 
     // Check for error fields in the response
     if (responseData.error || responseData.erro) {
-      console.error("Quotation API returned error:", responseData.error || responseData.erro);
+      console.error("Quotation API returned error field:", JSON.stringify(responseData.error || responseData.erro));
       return { status: "error", data: null };
     }
 
@@ -234,9 +239,9 @@ async function requestQuotation(quotationData: Record<string, any>, verification
     const isAbort = (err instanceof DOMException && err.name === "AbortError") ||
       (err instanceof Error && err.message?.includes("abort"));
     if (isAbort) {
-      console.error("Quotation API timed out after 150s");
+      console.error("Quotation API timed out after 300s");
     } else {
-      console.error("Quotation API error:", err);
+      console.error("Quotation API fetch error:", err);
     }
     return { status: "error", data: null };
   }
