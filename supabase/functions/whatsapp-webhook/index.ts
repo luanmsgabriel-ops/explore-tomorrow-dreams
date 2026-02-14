@@ -204,11 +204,24 @@ async function requestQuotation(quotationData: Record<string, any>, verification
     const responseText = await response.text();
     console.log("Quotation API response:", response.status, responseText.substring(0, 2000));
 
+    // Non-2xx status = error
+    if (!response.ok) {
+      console.error("Quotation API returned non-OK status:", response.status);
+      return { status: "error", data: null };
+    }
+
     let responseData;
     try {
       responseData = JSON.parse(responseText);
     } catch {
-      responseData = { raw: responseText };
+      console.error("Quotation API returned non-JSON response:", responseText.substring(0, 500));
+      return { status: "error", data: null };
+    }
+
+    // Check for error fields in the response
+    if (responseData.error || responseData.erro) {
+      console.error("Quotation API returned error:", responseData.error || responseData.erro);
+      return { status: "error", data: null };
     }
 
     if (responseData.status === "pending_code" || responseData.pending_code) {
@@ -218,7 +231,13 @@ async function requestQuotation(quotationData: Record<string, any>, verification
     return { status: "success", data: responseData };
   } catch (err) {
     clearTimeout(timeoutId);
-    console.error("Quotation API error:", err);
+    const isAbort = (err instanceof DOMException && err.name === "AbortError") ||
+      (err instanceof Error && err.message?.includes("abort"));
+    if (isAbort) {
+      console.error("Quotation API timed out after 150s");
+    } else {
+      console.error("Quotation API error:", err);
+    }
     return { status: "error", data: null };
   }
 }
@@ -449,7 +468,18 @@ serve(async (req) => {
           updatedData._quotation_request = collectedData._quotation_request;
           responseMsg = "❌ Código inválido ou expirado. Por favor, verifique seu e-mail e envie o código correto.";
         } else {
-          responseMsg = "✨ Seu pedido é especial e precisa de uma atenção personalizada! Nossa equipe de especialistas vai analisar as melhores opções e entrará em contato em breve. Fique tranquilo(a)! 🙌💛";
+          responseMsg = "😊 Não se preocupe! Nosso agente especialista nesse destino já está preparando a melhor cotação pra você e vai te chamar aqui mesmo no WhatsApp em breve.\n\nSe tiver qualquer dúvida enquanto isso, estou por aqui! 🙌💛";
+          // Mark as failed and finalize
+          updatedData._quotation_failed = true;
+          // Create lead if needed
+          if (!conversation.quote_request_id) {
+            try {
+              const quoteRequest = await createQuoteRequest(phoneNumber, updatedData);
+              await supabase.from("whatsapp_conversations").update({ quote_request_id: quoteRequest.id }).eq("id", conversation.id);
+            } catch (err) {
+              console.error("Error creating quote on verification failure:", err);
+            }
+          }
         }
 
         const updatedHistory = [
@@ -458,11 +488,14 @@ serve(async (req) => {
           { role: "assistant", content: responseMsg, timestamp: new Date().toISOString() },
         ];
 
+        const isFinalized = !!updatedData._quotation_failed;
+
         await supabase
           .from("whatsapp_conversations")
           .update({
             collected_data: updatedData,
             messages_history: updatedHistory,
+            ...(isFinalized ? { conversation_state: "completed", is_ai_active: false } : {}),
           })
           .eq("id", conversation.id);
 
@@ -521,8 +554,8 @@ serve(async (req) => {
           quotationMsg = formatQuotationResults(quotResult.data);
           quotationMsg += "\n\nQuer que eu te ajude com mais alguma coisa? 😊";
         } else {
-          quotationMsg = "✨ Seu pedido é especial e precisa de uma atenção personalizada! Nossa equipe de especialistas vai analisar as melhores opções pra você e entrará em contato em breve. Pode ficar tranquilo(a) que vamos cuidar de tudo! 🙌💛";
-          // Force completed state so the flow stops
+          quotationMsg = "😊 Não se preocupe! Nosso agente especialista nesse destino já está preparando a melhor cotação pra você e vai te chamar aqui mesmo no WhatsApp em breve.\n\nSe tiver qualquer dúvida enquanto isso, estou por aqui! 🙌💛";
+          // Force completed state so the flow stops and agent takes over
           newCollectedData._quotation_failed = true;
           // Create quote request only if one doesn't already exist for this conversation
           if (!quoteRequestId) {
