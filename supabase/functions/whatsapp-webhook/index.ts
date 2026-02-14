@@ -230,23 +230,64 @@ function formatQuotationResults(data: any): string {
   if (results && Array.isArray(results)) {
     if (results.length === 0) return "😕 Nenhuma cotação encontrada para essas datas.";
 
-    let formatted = "✈️ *Cotações encontradas:*\n\n";
+    let formatted = "✈️ *Cotações encontradas!* ✈️\n";
+    formatted += "━━━━━━━━━━━━━━━━━━\n\n";
+
     results.forEach((r: any, i: number) => {
-      formatted += `*${i + 1}. ${r.operadora || r.companhia || "Operadora"}*\n`;
-      if (r.preco || r.valor || r.price) {
-        formatted += `💰 Valor: R$ ${Number(r.preco || r.valor || r.price).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n`;
+      const hotelName = r.hotel || r.hotel_name || r.hospedagem || null;
+      const operadora = r.operadora || r.companhia || "Operadora";
+      const preco = r.preco || r.valor || r.price || r.total || null;
+
+      formatted += `🔹 *Opção ${i + 1}*\n`;
+      formatted += `📌 Operadora: *${operadora}*\n`;
+
+      if (hotelName) {
+        formatted += `🏨 Hotel: *${hotelName}*\n`;
+      }
+      if (r.regime || r.meal_plan || r.pensao) {
+        formatted += `🍽️ Regime: ${r.regime || r.meal_plan || r.pensao}\n`;
+      }
+      if (r.categoria || r.category || r.estrelas) {
+        formatted += `⭐ Categoria: ${r.categoria || r.category || r.estrelas}\n`;
       }
       if (r.voo_ida || r.flight_out) formatted += `🛫 Ida: ${r.voo_ida || r.flight_out}\n`;
       if (r.voo_volta || r.flight_back) formatted += `🛬 Volta: ${r.voo_volta || r.flight_back}\n`;
       if (r.paradas !== undefined) formatted += `🔄 Paradas: ${r.paradas}\n`;
       if (r.duracao || r.duration) formatted += `⏱️ Duração: ${r.duracao || r.duration}\n`;
-      formatted += "\n";
+      if (r.noites || r.nights) formatted += `🌙 Noites: ${r.noites || r.nights}\n`;
+
+      if (preco) {
+        const valorFormatado = Number(preco).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+        formatted += `\n💰 *Valor Total: R$ ${valorFormatado}*\n`;
+      }
+      if (r.preco_por_pessoa || r.valor_por_pessoa || r.price_per_person) {
+        const ppFormatado = Number(r.preco_por_pessoa || r.valor_por_pessoa || r.price_per_person).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+        formatted += `👤 Por pessoa: R$ ${ppFormatado}\n`;
+      }
+      if (r.parcelas || r.installments) {
+        formatted += `💳 ${r.parcelas || r.installments}x no cartão\n`;
+      }
+
+      formatted += "\n━━━━━━━━━━━━━━━━━━\n\n";
     });
-    return formatted;
+
+    return formatted.trim();
   }
 
-  if (data.preco || data.valor || data.price) {
-    return `✈️ *Cotação encontrada:*\n💰 Valor: R$ ${Number(data.preco || data.valor || data.price).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+  // Single result object
+  const hotelName = data.hotel || data.hotel_name || data.hospedagem || null;
+  const preco = data.preco || data.valor || data.price || data.total || null;
+
+  if (preco || hotelName) {
+    let msg = "✈️ *Cotação encontrada!* ✈️\n";
+    msg += "━━━━━━━━━━━━━━━━━━\n\n";
+    if (hotelName) msg += `🏨 Hotel: *${hotelName}*\n`;
+    if (data.regime || data.meal_plan) msg += `🍽️ Regime: ${data.regime || data.meal_plan}\n`;
+    if (preco) {
+      const valorFormatado = Number(preco).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+      msg += `\n💰 *Valor Total: R$ ${valorFormatado}*\n`;
+    }
+    return msg.trim();
   }
 
   return `✈️ *Resultado da cotação:*\n${JSON.stringify(data, null, 2)}`;
