@@ -394,8 +394,8 @@ serve(async (req) => {
     if (req.method === "POST") {
       const body = await req.json();
 
-      // Handle manual message send from admin panel
-      if (body.manual_send) {
+      // Handle manual message send from admin panel or external systems (e.g. Manus)
+      if (body.manual_send || body.handler === "manual_send") {
         const { phone_number, message } = body;
         if (!phone_number || !message) {
           return new Response(JSON.stringify({ error: "phone_number and message are required" }), {
