@@ -148,29 +148,51 @@ export function parseQuotationTag(content: string): QuotationRequest | null {
 export function formatQuotationResults(data: any): string {
   if (!data) return 'Não foi possível obter resultados.';
 
-  // Handle array of results
-  if (Array.isArray(data.resultados || data.results || data)) {
-    const results = data.resultados || data.results || data;
-    if (results.length === 0) return '😕 Nenhuma cotação encontrada para essas datas.';
-
+  // Handle various array key names
+  const results = data.resultados || data.results || data.cotacoes || data.opcoes || data.options || (Array.isArray(data) ? data : null);
+  
+  if (Array.isArray(results) && results.length > 0) {
     let formatted = '✈️ **Cotações encontradas:**\n\n';
     results.forEach((r: any, i: number) => {
-      formatted += `**${i + 1}. ${r.operadora || r.companhia || 'Operadora'}**\n`;
-      if (r.preco || r.valor || r.price) {
-        formatted += `💰 Valor: R$ ${(r.preco || r.valor || r.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+      const name = r.operadora || r.companhia || r.hotel || r.nome || r.name || 'Opção';
+      formatted += `**${i + 1}. ${name}**\n`;
+      const price = r.preco || r.valor || r.price || r.total || r.valor_total;
+      if (price) {
+        const num = typeof price === 'number' ? price : parseFloat(String(price).replace(/[^\d.,]/g, '').replace(',', '.'));
+        if (!isNaN(num)) {
+          formatted += `💰 Valor: R$ ${num.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+        } else {
+          formatted += `💰 Valor: ${price}\n`;
+        }
       }
+      if (r.parcelas || r.installments) formatted += `💳 Parcelas: ${r.parcelas || r.installments}\n`;
+      if (r.regime || r.alimentacao || r.meal_plan) formatted += `🍽️ Regime: ${r.regime || r.alimentacao || r.meal_plan}\n`;
+      if (r.noites || r.nights) formatted += `🌙 Noites: ${r.noites || r.nights}\n`;
+      if (r.categoria || r.category) formatted += `⭐ Categoria: ${r.categoria || r.category}\n`;
       if (r.voo_ida || r.flight_out) formatted += `🛫 Ida: ${r.voo_ida || r.flight_out}\n`;
       if (r.voo_volta || r.flight_back) formatted += `🛬 Volta: ${r.voo_volta || r.flight_back}\n`;
       if (r.paradas !== undefined) formatted += `🔄 Paradas: ${r.paradas}\n`;
       if (r.duracao || r.duration) formatted += `⏱️ Duração: ${r.duracao || r.duration}\n`;
+      if (r.descricao || r.description) formatted += `📝 ${r.descricao || r.description}\n`;
       formatted += '\n';
     });
     return formatted;
   }
+  
+  if (Array.isArray(results) && results.length === 0) {
+    return '😕 Nenhuma cotação encontrada para essas datas.';
+  }
 
-  // Handle single object result
-  if (data.preco || data.valor || data.price) {
-    return `✈️ **Cotação encontrada:**\n💰 Valor: R$ ${(data.preco || data.valor || data.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+  // Handle single object with price
+  const singlePrice = data.preco || data.valor || data.price || data.total || data.valor_total;
+  if (singlePrice) {
+    return `✈️ **Cotação encontrada:**\n💰 Valor: R$ ${typeof singlePrice === 'number' ? singlePrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : singlePrice}`;
+  }
+
+  // Handle message-only responses (ack without prices)
+  if (data.message || data.mensagem || data.msg) {
+    const msg = data.message || data.mensagem || data.msg;
+    return `📋 ${msg}`;
   }
 
   // Fallback: show raw data formatted
