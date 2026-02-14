@@ -34,7 +34,7 @@ export const QuotationStatusDisplay = ({ status, onSubmitCode }: QuotationStatus
           <p className="text-sm font-medium text-foreground">📧 Código de verificação necessário</p>
         </div>
         <p className="text-xs text-muted-foreground mb-3">
-          Um código foi enviado para o e-mail cadastrado. Digite-o abaixo:
+          A operadora enviou um código para o seu e-mail. Digite-o abaixo para prosseguir:
         </p>
         <div className="flex gap-2">
           <Input
