@@ -796,6 +796,63 @@ export type Database = {
           },
         ]
       }
+      travel_quote_requests: {
+        Row: {
+          adults: number
+          children: number
+          children_ages: number[] | null
+          created_at: string
+          customer_name: string | null
+          departure_date: string
+          destination: string
+          error_message: string | null
+          id: string
+          origin: string
+          phone_number: string
+          preferences: string | null
+          processed_at: string | null
+          raw_request: Json | null
+          return_date: string
+          status: string
+        }
+        Insert: {
+          adults?: number
+          children?: number
+          children_ages?: number[] | null
+          created_at?: string
+          customer_name?: string | null
+          departure_date: string
+          destination: string
+          error_message?: string | null
+          id?: string
+          origin: string
+          phone_number: string
+          preferences?: string | null
+          processed_at?: string | null
+          raw_request?: Json | null
+          return_date: string
+          status?: string
+        }
+        Update: {
+          adults?: number
+          children?: number
+          children_ages?: number[] | null
+          created_at?: string
+          customer_name?: string | null
+          departure_date?: string
+          destination?: string
+          error_message?: string | null
+          id?: string
+          origin?: string
+          phone_number?: string
+          preferences?: string | null
+          processed_at?: string | null
+          raw_request?: Json | null
+          return_date?: string
+          status?: string
+        }
+        Relationships: []
+      }
       trip_checklist: {
         Row: {
           created_at: string
