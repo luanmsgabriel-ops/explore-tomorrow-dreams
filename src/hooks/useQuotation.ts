@@ -25,7 +25,7 @@ type QuotationStatus = 'idle' | 'loading' | 'pending_code' | 'success' | 'error'
 export function useQuotation() {
   const [status, setStatus] = useState<QuotationStatus>('idle');
   const [result, setResult] = useState<QuotationResult | null>(null);
-  const [pendingRequest, setPendingRequest] = useState<QuotationRequest | null>(null);
+  const [_pendingRequest, setPendingRequest] = useState<QuotationRequest | null>(null);
 
   const COTAR_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cotar-viagem`;
 
@@ -75,11 +75,33 @@ export function useQuotation() {
   };
 
   const submitVerificationCode = async (code: string) => {
-    if (!pendingRequest) {
-      toast.error('Nenhuma cotação pendente');
-      return;
+    setStatus('loading');
+
+    try {
+      const response = await fetch(COTAR_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ verification_code: code }),
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.error || 'Erro ao enviar código');
+      }
+
+      setStatus('success');
+      setResult(responseData);
+      return { status: 'success' as const, data: responseData };
+    } catch (err) {
+      setStatus('error');
+      const errorMsg = err instanceof Error ? err.message : 'Erro ao enviar código';
+      toast.error(errorMsg);
+      return { status: 'error' as const, data: null };
     }
-    return requestQuotation(pendingRequest, code);
   };
 
   const reset = () => {

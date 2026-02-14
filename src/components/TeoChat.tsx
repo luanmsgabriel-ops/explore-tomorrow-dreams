@@ -306,6 +306,11 @@ Me conta aí! 👇`
         if (quotResult.status === 'success' && quotResult.data) {
           const formatted = formatQuotationResults(quotResult.data);
           setMessages((prev) => [...prev, { role: 'assistant', content: formatted }]);
+        } else if (quotResult.status === 'pending_code') {
+          setMessages((prev) => [...prev, { 
+            role: 'assistant', 
+            content: `Recebi o pedido! 📧 A operadora enviou um código de verificação para o seu e-mail. Por favor, digite-o no campo abaixo para eu prosseguir com a cotação! 🔐`
+          }]);
         }
       }
 

@@ -16,7 +16,42 @@ serve(async (req) => {
     const body = await req.json();
     const { origem, destino, data_ida, data_volta, passageiros, operadora, verification_code } = body;
 
-    // Validate required fields
+    // If only verification_code is provided, forward it directly
+    if (verification_code && !origem) {
+      const payload = { verification_code };
+      console.log("Sending verification code:", JSON.stringify(payload));
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000);
+
+      let response: Response;
+      try {
+        response = await fetch(EXTERNAL_API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        throw fetchError;
+      }
+
+      clearTimeout(timeoutId);
+      const responseText = await response.text();
+      console.log("Verification response status:", response.status);
+      console.log("Verification response body:", responseText.substring(0, 2000));
+
+      let responseData;
+      try { responseData = JSON.parse(responseText); } catch { responseData = { raw: responseText }; }
+
+      return new Response(JSON.stringify(responseData), {
+        status: response.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate required fields for full quotation
     if (!origem || !destino || !data_ida || !data_volta || !passageiros) {
       return new Response(
         JSON.stringify({ error: "Campos obrigatórios: origem, destino, data_ida, data_volta, passageiros" }),
