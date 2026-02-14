@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { 
   MessageCircle, Eye, Bot, UserCheck, RefreshCw, Send, Phone, Clock, 
-  CheckCircle, AlertCircle, Loader2, FileText 
+  CheckCircle, AlertCircle, Loader2, FileText, Trash2 
 } from 'lucide-react';
 
 interface WhatsAppConversation {
@@ -68,6 +68,28 @@ export const WhatsAppManager = () => {
       toast.error('Erro ao carregar conversas');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const deleteConversation = async (conversationId: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta conversa? Esta ação não pode ser desfeita.')) return;
+
+    try {
+      const { error } = await supabase
+        .from('whatsapp_conversations')
+        .delete()
+        .eq('id', conversationId);
+
+      if (error) throw error;
+
+      toast.success('Conversa excluída com sucesso!');
+      fetchConversations();
+      if (selectedConversation?.id === conversationId) {
+        setSelectedConversation(null);
+      }
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      toast.error('Erro ao excluir conversa');
     }
   };
 
@@ -252,6 +274,14 @@ export const WhatsAppManager = () => {
                             onClick={() => toggleAI(conv.id, conv.is_ai_active)}
                           >
                             {conv.is_ai_active ? <UserCheck className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            className="text-destructive hover:bg-destructive/10"
+                            onClick={() => deleteConversation(conv.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </TableCell>
