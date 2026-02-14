@@ -469,6 +469,7 @@ serve(async (req) => {
 
         const quotResult = await requestQuotation(quotationData);
 
+        let quoteRequestId = conversation.quote_request_id;
         let quotationMsg: string;
         if (quotResult.status === "pending_code") {
           // Store quotation state for verification code
@@ -482,12 +483,14 @@ serve(async (req) => {
           quotationMsg = "✨ Seu pedido é especial e precisa de uma atenção personalizada! Nossa equipe de especialistas vai analisar as melhores opções pra você e entrará em contato em breve. Pode ficar tranquilo(a) que vamos cuidar de tudo! 🙌💛";
           // Force completed state so the flow stops
           newCollectedData._quotation_failed = true;
-          // Create quote request immediately so the team can follow up
-          try {
-            const quoteRequest = await createQuoteRequest(phoneNumber, newCollectedData);
-            quoteRequestId = quoteRequest.id;
-          } catch (err) {
-            console.error("Error creating quote on failure:", err);
+          // Create quote request only if one doesn't already exist for this conversation
+          if (!quoteRequestId) {
+            try {
+              const quoteRequest = await createQuoteRequest(phoneNumber, newCollectedData);
+              quoteRequestId = quoteRequest.id;
+            } catch (err) {
+              console.error("Error creating quote on failure:", err);
+            }
           }
         }
 
@@ -504,8 +507,8 @@ serve(async (req) => {
           : conversationStatus === "human_takeover" ? "human_takeover"
           : determineConversationState(newCollectedData);
 
-        let quoteRequestId = conversation.quote_request_id;
-        if (newState === "completed" && !quoteRequestId && !newCollectedData._quotation_failed) {
+        // Create quote only if completed and no existing quote for this conversation
+        if (newState === "completed" && !quoteRequestId) {
           try {
             const quoteRequest = await createQuoteRequest(phoneNumber, newCollectedData);
             quoteRequestId = quoteRequest.id;
