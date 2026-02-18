@@ -395,17 +395,18 @@ serve(async (req) => {
       const body = await req.json();
 
       // Handle manual message send from admin panel or external systems (e.g. Manus)
-      if (body.manual_send || body.handler === "manual_send") {
-        const { phone_number, message } = body;
-        if (!phone_number || !message) {
+      if (body.manual_send || body.handler === "manual_send" || body.action === "manual_send") {
+        const phone = body.phone_number || body.phone;
+        const message = body.message;
+        if (!phone || !message) {
           return new Response(JSON.stringify({ error: "phone_number and message are required" }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        console.log(`Manual send to ${phone_number}: ${message}`);
-        await sendWhatsAppMessage(phone_number, message);
+        console.log(`Manual send to ${phone}: ${message.substring(0, 100)}...`);
+        await sendWhatsAppMessage(phone, message);
 
         return new Response(JSON.stringify({ status: "ok", manual_sent: true }), {
           status: 200,
