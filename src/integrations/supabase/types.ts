@@ -811,9 +811,11 @@ export type Database = {
           phone_number: string
           preferences: string | null
           processed_at: string | null
+          processing_details: Json | null
           raw_request: Json | null
           return_date: string
           status: string
+          updated_at: string | null
         }
         Insert: {
           adults?: number
@@ -829,9 +831,11 @@ export type Database = {
           phone_number: string
           preferences?: string | null
           processed_at?: string | null
+          processing_details?: Json | null
           raw_request?: Json | null
           return_date: string
           status?: string
+          updated_at?: string | null
         }
         Update: {
           adults?: number
@@ -847,9 +851,11 @@ export type Database = {
           phone_number?: string
           preferences?: string | null
           processed_at?: string | null
+          processing_details?: Json | null
           raw_request?: Json | null
           return_date?: string
           status?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
