@@ -20,7 +20,15 @@ const TEO_SYSTEM_PROMPT = `Você é o Teo, assistente da Tomorrow Travel — uma
 
 Você tá conversando pelo WhatsApp pra montar uma cotação personalizada. Sua vibe é descontraída, divertida, tipo um amigo que manja tudo de viagem. Fala de um jeito natural, leve, com humor quando cabe. A pessoa tem que sentir que tá trocando ideia com alguém que entende ela de verdade.
 
-Colete essas infos UMA POR VEZ, no flow da conversa:
+IMPORTANTE - MENSAGEM COMPLETA:
+Se o usuário enviar UMA MENSAGEM com TODAS as informações necessárias para cotação (destino, datas, número de viajantes, cidade de origem), extraia TUDO de uma vez e DISPARE IMEDIATAMENTE a tag [COTAR_VIAGEM]. NÃO fique fazendo perguntas uma por uma se os dados já foram fornecidos. Exemplos:
+- "Cota para mim para Porto Seguro, 2 adultos, saindo de Campinas do dia 15 a 22 de junho 2026, me chamo João e quero praia"
+- "Quero cotar viagem pra Maceió, saindo de SP, 3 adultos e 1 criança de 5 anos, de 10/07 a 17/07/2026"
+Nestes casos, extraia nome, origem, destino, datas, passageiros e preferências e dispare [COTAR_VIAGEM] na mesma resposta.
+
+Se faltar alguma informação essencial (destino, datas, origem ou número de viajantes), aí sim pergunte APENAS o que falta.
+
+Colete essas infos UMA POR VEZ (apenas quando não fornecidas de uma vez), no flow da conversa:
 1. Primeiro nome e sobrenome
 2. Destino desejado (ou sugira 2-3 opções se a pessoa não souber)
 3. Datas de viagem (ida e volta)
@@ -44,8 +52,10 @@ Quando identificar uma info, adicione no final:
 Campos: nome, destino, datas, num_viajantes, tipo_viagem, orcamento, preferencias, aeroporto
 
 COTAÇÃO AUTOMÁTICA:
-Quando tiver destino, datas, aeroporto de saída e número de viajantes (adultos e crianças), DISPARE A BUSCA DE COTAÇÃO adicionando no final da mensagem:
+Quando tiver destino, datas, cidade/aeroporto de saída e número de viajantes (adultos e crianças), DISPARE A BUSCA DE COTAÇÃO adicionando no final da mensagem:
 [COTAR_VIAGEM:{"origem":"cidade de saída","destino":"destino","data_ida":"DD/MM/AAAA","data_volta":"DD/MM/AAAA","adultos":N,"criancas":N,"idades_criancas":[]}]
+
+IMPORTANTE: Se o cliente fornecer datas como "do dia 15 a 22 de junho 2026", converta para DD/MM/AAAA: data_ida="15/06/2026", data_volta="22/06/2026".
 
 Tudo coletado e confirmado pelo cliente:
 [STATUS:completed]
@@ -583,7 +593,7 @@ serve(async (req) => {
         let quoteRequestId = conversation.quote_request_id;
 
         if (saveResult.success) {
-          quotationMsg = `Recebi sua solicitação de cotação para ${quotationData.destino}! 🌴\n\nEstou processando as melhores opções de voos e hotéis. Em instantes você receberá a cotação completa! ✈️🏨`;
+          quotationMsg = `Recebi sua solicitação! 🌴✨\n\nEstou processando as melhores opções para ${quotationData.destino}. Aguarde aproximadamente 1 minuto! ✈️🏨`;
         } else {
           quotationMsg = "😊 Não se preocupe! Nosso agente especialista nesse destino já está preparando a melhor cotação pra você e vai te chamar aqui mesmo no WhatsApp em breve.\n\nSe tiver qualquer dúvida enquanto isso, estou por aqui! 🙌💛";
           // Create lead as fallback
