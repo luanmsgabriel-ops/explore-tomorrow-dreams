@@ -511,7 +511,7 @@ serve(async (req) => {
           updatedData._quotation_request = collectedData._quotation_request;
           responseMsg = "❌ Código inválido ou expirado. Por favor, verifique seu e-mail e envie o código correto.";
         } else {
-          responseMsg = "😊 Não se preocupe! Nosso agente especialista nesse destino já está preparando a melhor cotação pra você e vai te chamar aqui mesmo no WhatsApp em breve.\n\nSe tiver qualquer dúvida enquanto isso, estou por aqui! 🙌💛";
+          responseMsg = "Eita, parece que a tecnologia resolveu tirar férias antes de você! 😅🏖️\n\nMas relaxa, isso não vai atrasar seu sonho não! Nosso time de especialistas já tá de olho no seu pedido e vai montar uma cotação COMPLETA com toda a experiência que você merece — daquelas que dá vontade de postar no Instagram inteiro! 📸✨\n\nVamos te chamar aqui mesmo no WhatsApp rapidinho. Enquanto isso, já vai separando o protetor solar! ☀️🧴";
           // Mark as failed and finalize
           updatedData._quotation_failed = true;
           // Create lead if needed
@@ -595,7 +595,7 @@ serve(async (req) => {
         if (saveResult.success) {
           quotationMsg = `Recebi sua solicitação! 🌴✨\n\nEstou processando as melhores opções para ${quotationData.destino}. Aguarde aproximadamente 1 minuto! ✈️🏨`;
         } else {
-          quotationMsg = "😊 Não se preocupe! Nosso agente especialista nesse destino já está preparando a melhor cotação pra você e vai te chamar aqui mesmo no WhatsApp em breve.\n\nSe tiver qualquer dúvida enquanto isso, estou por aqui! 🙌💛";
+          quotationMsg = "Opa, o sistema deu aquela travadinha clássica de segunda-feira! 😂🔧\n\nMas fica tranquilo(a)! A gente não vai deixar sua viagem dos sonhos escapar, não! Nosso time de especialistas já foi acionado e tá preparando uma cotação personalizada com tudo que você merece — porque viagem boa é viagem bem planejada! 🗺️✨\n\nVamos te retornar aqui no WhatsApp bem rapidinho. Pode ir escolhendo a playlist da viagem enquanto isso! 🎶🌴";
           // Create lead as fallback
           if (!quoteRequestId) {
             try {
