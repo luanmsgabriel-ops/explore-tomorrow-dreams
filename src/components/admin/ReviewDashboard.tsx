@@ -292,14 +292,37 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
                 style={{ background: 'radial-gradient(circle, hsl(43 75% 55%), transparent 70%)', filter: 'blur(25px)' }}
               />
 
+              {/* Client photo as background overlay */}
+              {currentReview.photo_url && (
+                <div className="absolute inset-0 z-0">
+                  <img
+                    src={currentReview.photo_url}
+                    alt=""
+                    className="w-full h-full object-cover opacity-15"
+                    crossOrigin="anonymous"
+                  />
+                  <div className="absolute inset-0" style={{ background: 'linear-gradient(145deg, hsl(220 25% 8% / 0.85), hsl(220 20% 14% / 0.9), hsl(174 40% 12% / 0.85))' }} />
+                </div>
+              )}
+
               <div className="relative z-10 h-full flex flex-col justify-between p-7">
                 {/* Header */}
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-[0.25em] text-primary/70 font-medium">Avaliação de Viagem</p>
-                    <h2 className="text-lg font-bold text-white mt-0.5" style={{ fontFamily: 'Playfair Display, serif' }}>
-                      Tomorrow Travel
-                    </h2>
+                  <div className="flex items-center gap-3">
+                    {currentReview.photo_url && (
+                      <img
+                        src={currentReview.photo_url}
+                        alt={currentReview.client_name || 'Cliente'}
+                        className="w-10 h-10 rounded-full object-cover border-2 border-primary/40"
+                        crossOrigin="anonymous"
+                      />
+                    )}
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.25em] text-primary/70 font-medium">Avaliação de Viagem</p>
+                      <h2 className="text-lg font-bold text-white mt-0.5" style={{ fontFamily: 'Playfair Display, serif' }}>
+                        Tomorrow Travel
+                      </h2>
+                    </div>
                   </div>
                   <div className="flex gap-0.5">
                     {[1, 2, 3, 4, 5].map(i => (
@@ -391,13 +414,26 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
               <Card key={review.id} className="bg-gradient-to-br from-card to-secondary/50 border-border/50 hover:border-primary/30 transition-colors">
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="font-semibold text-foreground">{review.client_name || 'Cliente'}</p>
-                      {review.destination_name && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3 h-3" /> {review.destination_name}
-                        </p>
+                    <div className="flex items-center gap-3">
+                      {review.photo_url ? (
+                        <img
+                          src={review.photo_url}
+                          alt={review.client_name || 'Cliente'}
+                          className="w-10 h-10 rounded-full object-cover border-2 border-primary/30"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                          {(review.client_name || 'C').charAt(0).toUpperCase()}
+                        </div>
                       )}
+                      <div>
+                        <p className="font-semibold text-foreground">{review.client_name || 'Cliente'}</p>
+                        {review.destination_name && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <MapPin className="w-3 h-3" /> {review.destination_name}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       <StarRating score={review.nps_score} />
