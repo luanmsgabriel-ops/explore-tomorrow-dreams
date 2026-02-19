@@ -279,8 +279,10 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
           <div className="flex flex-col items-center gap-4">
             <div
               ref={cardRef}
-              className="w-[400px] aspect-square rounded-2xl overflow-hidden relative"
+              className="rounded-2xl overflow-hidden relative"
               style={{
+                width: '360px',
+                aspectRatio: '9 / 16',
                 background: 'linear-gradient(145deg, hsl(220 25% 8%), hsl(220 20% 14%), hsl(174 40% 12%))',
               }}
             >
@@ -292,37 +294,14 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
                 style={{ background: 'radial-gradient(circle, hsl(43 75% 55%), transparent 70%)', filter: 'blur(25px)' }}
               />
 
-              {/* Client photo as background overlay */}
-              {currentReview.photo_url && (
-                <div className="absolute inset-0 z-0">
-                  <img
-                    src={currentReview.photo_url}
-                    alt=""
-                    className="w-full h-full object-cover opacity-15"
-                    crossOrigin="anonymous"
-                  />
-                  <div className="absolute inset-0" style={{ background: 'linear-gradient(145deg, hsl(220 25% 8% / 0.85), hsl(220 20% 14% / 0.9), hsl(174 40% 12% / 0.85))' }} />
-                </div>
-              )}
-
-              <div className="relative z-10 h-full flex flex-col justify-between p-7">
+              <div className="relative z-10 h-full flex flex-col p-7">
                 {/* Header */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {currentReview.photo_url && (
-                      <img
-                        src={currentReview.photo_url}
-                        alt={currentReview.client_name || 'Cliente'}
-                        className="w-10 h-10 rounded-full object-cover border-2 border-primary/40"
-                        crossOrigin="anonymous"
-                      />
-                    )}
-                    <div>
-                      <p className="text-[10px] uppercase tracking-[0.25em] text-primary/70 font-medium">Avaliação de Viagem</p>
-                      <h2 className="text-lg font-bold text-white mt-0.5" style={{ fontFamily: 'Playfair Display, serif' }}>
-                        Tomorrow Travel
-                      </h2>
-                    </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.25em] text-primary/70 font-medium">Avaliação de Viagem</p>
+                    <h2 className="text-lg font-bold text-white mt-0.5" style={{ fontFamily: 'Playfair Display, serif' }}>
+                      Tomorrow Travel
+                    </h2>
                   </div>
                   <div className="flex gap-0.5">
                     {[1, 2, 3, 4, 5].map(i => (
@@ -335,17 +314,17 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
                 </div>
 
                 {/* Feedback quote */}
-                <div className="flex-1 flex items-center py-4">
+                <div className="flex-1 flex items-center py-5">
                   <div>
-                    <Quote className="w-8 h-8 text-primary/40 mb-2 scale-x-[-1]" />
-                    <p className="text-white/90 text-sm leading-relaxed italic line-clamp-5" style={{ fontFamily: 'Playfair Display, serif' }}>
+                    <Quote className="w-8 h-8 text-primary/40 mb-3 scale-x-[-1]" />
+                    <p className="text-white/90 text-base leading-relaxed italic line-clamp-6" style={{ fontFamily: 'Playfair Display, serif' }}>
                       {currentReview.feedback_text || 'Experiência incrível!'}
                     </p>
                   </div>
                 </div>
 
                 {/* Scores */}
-                <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center gap-3 mb-4">
                   <div className="flex-1 bg-white/5 rounded-xl p-3 text-center border border-white/10">
                     <p className="text-2xl font-bold text-primary">{currentReview.route_score ?? '-'}</p>
                     <p className="text-[9px] text-white/50 uppercase tracking-wider mt-0.5">Roteiro</p>
@@ -360,17 +339,39 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
                   </div>
                 </div>
 
+                {/* Client photo */}
+                {currentReview.photo_url && (
+                  <div className="rounded-xl overflow-hidden mb-4 border border-white/10">
+                    <img
+                      src={currentReview.photo_url}
+                      alt={currentReview.client_name || 'Cliente'}
+                      className="w-full h-44 object-cover"
+                      crossOrigin="anonymous"
+                    />
+                  </div>
+                )}
+
                 {/* Footer */}
-                <div className="flex items-center justify-between border-t border-white/10 pt-3">
-                  <div>
-                    <p className="text-white font-semibold text-sm">
-                      {currentReview.client_name || 'Cliente'}
-                    </p>
-                    {currentReview.destination_name && (
-                      <p className="text-white/50 text-xs flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-3 h-3" /> {currentReview.destination_name}
-                      </p>
+                <div className="flex items-center justify-between border-t border-white/10 pt-3 mt-auto">
+                  <div className="flex items-center gap-3">
+                    {currentReview.photo_url && (
+                      <img
+                        src={currentReview.photo_url}
+                        alt=""
+                        className="w-9 h-9 rounded-full object-cover border-2 border-primary/40"
+                        crossOrigin="anonymous"
+                      />
                     )}
+                    <div>
+                      <p className="text-white font-semibold text-sm">
+                        {currentReview.client_name || 'Cliente'}
+                      </p>
+                      {currentReview.destination_name && (
+                        <p className="text-white/50 text-xs flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3" /> {currentReview.destination_name}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <p className="text-[9px] text-white/30">@tomorrowtravel</p>
                 </div>
