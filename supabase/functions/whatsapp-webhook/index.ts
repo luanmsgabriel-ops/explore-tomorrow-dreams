@@ -733,9 +733,11 @@ serve(async (req) => {
           { role: "assistant", content: quotationMsg, timestamp: new Date().toISOString() },
         ];
 
-        let newState = conversationStatus === "completed" ? "completed"
-          : conversationStatus === "human_takeover" ? "human_takeover"
-          : determineConversationState(newCollectedData);
+        // After quotation is triggered, keep conversation active to handle Manus response
+        // Do NOT set to "completed" here - wait for Manus to process and respond
+        let newState = conversationStatus === "human_takeover" ? "human_takeover"
+          : saveResult.success ? "awaiting_quotation"
+          : "completed";
 
         if (newState === "completed" && !quoteRequestId) {
           try {
@@ -746,6 +748,9 @@ serve(async (req) => {
           }
         }
 
+        // Keep AI active when awaiting quotation so Téo can handle follow-up
+        const keepAiActive = newState === "awaiting_quotation";
+
         await supabase
           .from("whatsapp_conversations")
           .update({
@@ -754,7 +759,7 @@ serve(async (req) => {
             collected_data: newCollectedData,
             messages_history: updatedHistory,
             quote_request_id: quoteRequestId,
-            is_ai_active: newState !== "human_takeover" && newState !== "completed",
+            is_ai_active: keepAiActive || (newState !== "human_takeover" && newState !== "completed"),
           })
           .eq("id", conversation.id);
 
