@@ -67,7 +67,8 @@ COTAÇÃO AUTOMÁTICA:
 Quando tiver destino, datas, origem e passageiros, DISPARE:
 [COTAR_VIAGEM:{"origem":"cidade","destino":"destino","data_ida":"DD/MM/AAAA","data_volta":"DD/MM/AAAA","adultos":N,"criancas":N,"idades_criancas":[]}]
 
-IMPORTANTE: Datas como "do dia 15 a 22 de junho 2026" → data_ida="15/06/2026", data_volta="22/06/2026".
+IMPORTANTE: Datas como "do dia 15 a 22 de junho" → data_ida="15/06/2026", data_volta="22/06/2026".
+REGRA CRÍTICA DE ANO: O ano atual é ${new Date().getFullYear()}. Se o cliente NÃO especificar o ano, SEMPRE use ${new Date().getFullYear()}. NUNCA use 2024 ou 2025. Exemplo: "junho" = "junho de ${new Date().getFullYear()}".
 
 Tudo coletado e confirmado:
 [STATUS:completed]
@@ -197,10 +198,37 @@ async function saveQuotationRequest(
   clientName?: string,
   preferences?: string
 ): Promise<{ success: boolean; id?: string }> {
-  // Parse dates from DD/MM/YYYY to YYYY-MM-DD
+  // Parse dates from DD/MM/YYYY to YYYY-MM-DD, ensuring correct year
   const parseDate = (d: string) => {
+    const currentYear = new Date().getFullYear();
     const parts = d.split("/");
-    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    if (parts.length === 3) {
+      let year = parseInt(parts[2], 10);
+      // Fix 2-digit years or past years when no year was explicitly given
+      if (year < 100) year += 2000;
+      // If the resulting date is in the past by more than 30 days, assume current year
+      const parsed = new Date(year, parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      if (parsed < thirtyDaysAgo) {
+        year = currentYear;
+        // If still in the past, use next year
+        const reparsed = new Date(year, parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+        if (reparsed < thirtyDaysAgo) year = currentYear + 1;
+      }
+      return `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    if (parts.length === 2) {
+      // DD/MM without year - use current year or next if in past
+      const month = parseInt(parts[1], 10);
+      const day = parseInt(parts[0], 10);
+      let year = currentYear;
+      const parsed = new Date(year, month - 1, day);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      if (parsed < thirtyDaysAgo) year = currentYear + 1;
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
     return d;
   };
 
