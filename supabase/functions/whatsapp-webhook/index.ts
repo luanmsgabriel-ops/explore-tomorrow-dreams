@@ -167,7 +167,7 @@ async function sendWhatsAppMessage(to: string, message: string) {
 }
 
 async function getAiResponse(messagesHistory: any[]): Promise<string> {
-  const models = ["google/gemini-2.5-flash", "google/gemini-2.5-flash-lite"];
+  const models = ["google/gemini-2.5-flash", "openai/gpt-5-mini", "google/gemini-2.5-flash-lite"];
   
   for (const model of models) {
     try {
@@ -189,23 +189,22 @@ async function getAiResponse(messagesHistory: any[]): Promise<string> {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`AI gateway error with ${model}:`, response.status, errorText);
-        continue; // Try next model
+        console.error(`AI error ${model}: ${response.status} ${errorText}`);
+        continue;
       }
 
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content;
       if (content) {
-        console.log(`AI response received from ${model}`);
+        console.log(`AI response from ${model} ✓`);
         return content;
       }
     } catch (err) {
-      console.error(`Error with model ${model}:`, err.message);
+      console.error(`Error ${model}:`, err.message);
       continue;
     }
   }
   
-  // All models failed - return a friendly fallback
   console.error("All AI models failed");
   return "Oi! 😊 Estou com um probleminha técnico agora, mas não se preocupe! Me conta o que você precisa que já anoto aqui e um especialista da Tomorrow Travel vai te responder rapidinho! ✈️";
 }
