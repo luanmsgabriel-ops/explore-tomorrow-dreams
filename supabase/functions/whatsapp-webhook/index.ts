@@ -47,6 +47,7 @@ Se o usuário enviar UMA MENSAGEM com TODAS as informações (destino, datas, vi
 4. PÓS-COTAÇÃO:
    ⚠️ NÃO FINALIZAR após enviar cotação. AGUARDAR RESPOSTA.
    Ofereça ajuda: detalhes, outras datas, ajustar orçamento, passeios.
+   ⚠️ NUNCA repita que a cotação está sendo processada. A mensagem de processamento já foi enviada UMA VEZ. Se o cliente perguntar sobre a cotação, diga que já está sendo preparada e dê mais dicas do destino.
 
 5. RESPOSTAS CONTEXTUAIS:
    - "Achei caro" → Alternativas econômicas, pergunte orçamento ideal
@@ -761,6 +762,40 @@ serve(async (req) => {
 
         if (saveResult.success) {
           quotationMsg = `Recebi sua solicitação! 🌴✨\n\nEstou processando as melhores opções para ${quotationData.destino}. Aguarde aproximadamente 1 minuto! ✈️🏨`;
+          
+          // Generate destination tips to keep the client engaged while waiting
+          try {
+            const tipsResponse = await getAiResponse([
+              { role: "user", content: `Me dê 3-4 dicas rápidas de passeios e experiências imperdíveis em ${quotationData.destino}. Seja breve, divertido e use emojis. Formato: uma dica por linha com emoji no início. NÃO mencione que a cotação está sendo processada, apenas dê as dicas. Comece com algo como "Enquanto preparo tudo, olha só o que te espera em ${quotationData.destino}:" seguido das dicas.` }
+            ]);
+            const cleanTips = cleanAiResponse(tipsResponse);
+            if (cleanTips && cleanTips.length > 20) {
+              // Send tips as a separate message after the processing message
+              setTimeout(async () => {
+                try {
+                  await sendWhatsAppMessage(phoneNumber, cleanTips);
+                  // Save tips to history
+                  const { data: convNow } = await supabase
+                    .from("whatsapp_conversations")
+                    .select("messages_history")
+                    .eq("id", conversation.id)
+                    .single();
+                  if (convNow) {
+                    const hist = [...((convNow.messages_history as any[]) || []),
+                      { role: "assistant", content: cleanTips, timestamp: new Date().toISOString() }
+                    ];
+                    await supabase.from("whatsapp_conversations")
+                      .update({ messages_history: hist })
+                      .eq("id", conversation.id);
+                  }
+                } catch (tipErr) {
+                  console.error("Error sending tips:", tipErr);
+                }
+              }, 2000);
+            }
+          } catch (tipErr) {
+            console.error("Error generating tips:", tipErr);
+          }
         } else {
           quotationMsg = "Opa, o sistema deu aquela travadinha clássica de segunda-feira! 😂🔧\n\nMas fica tranquilo(a)! A gente não vai deixar sua viagem dos sonhos escapar, não! Nosso time de especialistas já foi acionado e tá preparando uma cotação personalizada com tudo que você merece — porque viagem boa é viagem bem planejada! 🗺️✨\n\nVamos te retornar aqui no WhatsApp bem rapidinho. Pode ir escolhendo a playlist da viagem enquanto isso! 🎶🌴";
           // Create lead as fallback
