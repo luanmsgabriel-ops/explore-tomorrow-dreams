@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.auto-follow-up]
 verify_jwt = false
+
+[functions.review-webhook]
+verify_jwt = false

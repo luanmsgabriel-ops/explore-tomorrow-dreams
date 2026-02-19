@@ -455,6 +455,43 @@ serve(async (req) => {
 
       console.log(`Message from ${phoneNumber}: ${messageText}`);
 
+      // Check if there's an active review for this phone number
+      const { data: activeReview } = await supabase
+        .from("travel_reviews")
+        .select("id")
+        .eq("phone_number", phoneNumber)
+        .eq("conversation_status", "in_progress")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (activeReview) {
+        // Route to review webhook
+        console.log(`Routing to review webhook for review ${activeReview.id}`);
+        const reviewUrl = `${SUPABASE_URL}/functions/v1/review-webhook`;
+        const reviewResponse = await fetch(reviewUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          },
+          body: JSON.stringify({
+            action: "process_review_message",
+            phone_number: phoneNumber,
+            message_text: messageText,
+            review_id: activeReview.id,
+          }),
+        });
+
+        const reviewResult = await reviewResponse.json();
+        console.log("Review webhook result:", reviewResult);
+
+        return new Response(JSON.stringify({ status: "ok", routed_to: "review", ...reviewResult }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Get or create conversation
       let { data: conversation } = await supabase
         .from("whatsapp_conversations")

@@ -14,6 +14,7 @@ import { ManualQuoteForm } from '@/components/admin/ManualQuoteForm';
 import { QuoteEditForm } from '@/components/admin/QuoteEditForm';
 import { SalesManager } from '@/components/admin/SalesManager';
 import { WhatsAppManager } from '@/components/admin/WhatsAppManager';
+import { ReviewManager } from '@/components/admin/ReviewManager';
 import { QuotesFilter, QuotesFilterValues } from '@/components/admin/QuotesFilter';
 import { Edit } from 'lucide-react';
 import { 
@@ -49,7 +50,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabType = 'overview' | 'analytics' | 'sales' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'clients' | 'trips' | 'checklist' | 'banner-generator' | 'whatsapp';
+type TabType = 'overview' | 'analytics' | 'sales' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'clients' | 'trips' | 'checklist' | 'banner-generator' | 'whatsapp' | 'reviews';
 
 interface QuoteRequest {
   id: string;
@@ -582,6 +583,7 @@ const AdminDashboard = () => {
     { id: 'images' as TabType, label: 'Imagens IA', icon: Image },
     { id: 'conversations' as TabType, label: 'Conversas IA', icon: MessageSquare },
     { id: 'whatsapp' as TabType, label: 'WhatsApp', icon: MessageCircle },
+    { id: 'reviews' as TabType, label: 'Avaliações', icon: Heart },
     { id: 'users' as TabType, label: 'Admins', icon: UserPlus },
   ];
 
@@ -1634,6 +1636,10 @@ const AdminDashboard = () => {
 
                   {activeTab === 'whatsapp' && (
                     <WhatsAppManager />
+                  )}
+
+                  {activeTab === 'reviews' && (
+                    <ReviewManager />
                   )}
 
                   {activeTab === 'clients' && (
