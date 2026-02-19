@@ -41,6 +41,7 @@ serve(async (req) => {
       .select("*")
       .in("status", ["pending", "in_progress", "quoted"])
       .eq("follow_up_message_sent", false)
+      .eq("follow_up_enabled", true)
       .order("created_at", { ascending: true });
 
     if (quotesError) {
