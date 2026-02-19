@@ -653,6 +653,7 @@ export type Database = {
           follow_up_enabled: boolean | null
           follow_up_message_sent: boolean | null
           follow_up_sent_at: string | null
+          follow_up_stage: number
           id: string
           is_manual: boolean | null
           notes: string | null
@@ -681,6 +682,7 @@ export type Database = {
           follow_up_enabled?: boolean | null
           follow_up_message_sent?: boolean | null
           follow_up_sent_at?: string | null
+          follow_up_stage?: number
           id?: string
           is_manual?: boolean | null
           notes?: string | null
@@ -709,6 +711,7 @@ export type Database = {
           follow_up_enabled?: boolean | null
           follow_up_message_sent?: boolean | null
           follow_up_sent_at?: string | null
+          follow_up_stage?: number
           id?: string
           is_manual?: boolean | null
           notes?: string | null

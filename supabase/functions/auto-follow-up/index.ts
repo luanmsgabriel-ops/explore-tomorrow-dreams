@@ -6,13 +6,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Follow-up messages organized by stage (day 1, 3, 7, 14)
+const TEO_FOLLOW_UP_DAY1 = (name: string, dest: string) =>
+  `Oi ${name}! Tudo bem? 😊\n\nVi que te enviei algumas opções de viagem para ${dest} ontem. Conseguiu dar uma olhada?\n\nSe tiver alguma dúvida ou quiser ajustar algo, é só me chamar! Estou aqui para ajudar.\n\nAh, e se preferir, posso te mostrar outras opções de datas ou hotéis! 🏨✈️`;
+
+const TEO_FOLLOW_UP_DAY3 = (name: string, dest: string) =>
+  `Olá ${name}! 👋\n\nPercebi que você ainda não fechou a viagem para ${dest}.\n\nQueria te avisar que:\n⚠️ Os preços podem variar (geralmente sobem quanto mais perto da data)\n⚠️ A disponibilidade dos hotéis pode mudar\n\nSe ainda tiver interesse, posso:\n✅ Atualizar os preços para você\n✅ Buscar novas opções\n✅ Te ajudar com qualquer dúvida\n\nO que você acha? Ainda está planejando essa viagem? 🌍`;
+
+const TEO_FOLLOW_UP_DAY7 = (name: string, dest: string) =>
+  `Oi ${name}! Tudo bem por aí? 😊\n\nFaz uma semana que conversamos sobre sua viagem para ${dest}.\n\nEntendo que às vezes precisamos de um tempo para decidir, mas queria te dar um toque:\n\n💡 Os melhores preços costumam ser de 60-90 dias antes da viagem\n💡 Hotéis bem avaliados esgotam rápido em alta temporada\n\nSe mudou de ideia ou quer planejar para outra data, sem problemas! Estou aqui quando precisar.\n\nMas se ainda tiver interesse, me avisa que atualizo tudo para você! 🚀`;
+
+const TEO_FOLLOW_UP_DAY14 = (name: string, dest: string) =>
+  `Oi ${name}! 😊\n\nPercebi que faz um tempo que não conversamos sobre sua viagem para ${dest}.\n\nVou deixar sua cotação arquivada aqui, mas se mudar de ideia ou quiser planejar uma viagem no futuro, é só me chamar!\n\nEstarei sempre aqui para te ajudar a realizar seus sonhos de viagem! ✈️🌍\n\nAté breve! 👋`;
+
+// Legacy array for backward compat
 const TEO_FOLLOW_UP_MESSAGES = [
-  (name: string, dest: string) =>
-    `E aí, ${name}! 🌴 Sou o Teo da Tomorrow Travel! Lembra daquela viagem incrível pra ${dest} que a gente conversou? Ainda tá nos planos? Porque as melhores ofertas não ficam esperando na praia pra sempre! 🏖️😄\n\nSe quiser, posso atualizar a cotação rapidinho pra você!`,
-  (name: string, dest: string) =>
-    `Oi ${name}! 👋 Teo aqui! Tô passando pra lembrar que ${dest} tá te esperando com os braços abertos! 🤗✈️\n\nA gente tinha conversado sobre essa viagem e eu não quero que você perca as melhores condições. Bora retomar? É só me dar um "oi" que eu atualizo tudo pra você! 😉🌟`,
-  (name: string, dest: string) =>
-    `Fala ${name}! 🙌 Aqui é o Teo! Tava aqui pensando... sabe o que combina com ${dest}? VOCÊ! 😂🌊\n\nA cotação que fizemos ainda pode ser atualizada com condições especiais. Quer dar uma olhada? Prometo que vai valer a pena! 💛✨`,
+  TEO_FOLLOW_UP_DAY1,
+  TEO_FOLLOW_UP_DAY3,
+  TEO_FOLLOW_UP_DAY7,
 ];
 
 serve(async (req) => {
@@ -33,15 +44,14 @@ serve(async (req) => {
 
     // Find quotes that need follow-up:
     // - status is 'quoted' or 'pending' or 'in_progress'
-    // - follow_up_message_sent is false
-    // - created_at is older than follow_up_days (default 3)
-    // - also check quote_requests table
+    // - follow_up_enabled is true
+    // - follow_up_stage < 4 (not yet archived)
     const { data: quotes, error: quotesError } = await supabase
       .from("quote_requests")
       .select("*")
       .in("status", ["pending", "in_progress", "quoted"])
-      .eq("follow_up_message_sent", false)
       .eq("follow_up_enabled", true)
+      .lt("follow_up_stage", 4)
       .order("created_at", { ascending: true });
 
     if (quotesError) {
@@ -55,19 +65,24 @@ serve(async (req) => {
     const now = new Date();
     const followUpResults: any[] = [];
 
+    // Follow-up schedule: stage 0→1 after 1 day, 1→2 after 3 days, 2→3 after 7 days, 3→4 after 14 days
+    const STAGE_CONFIG = [
+      { minDays: 1, nextStage: 1, getMessage: TEO_FOLLOW_UP_DAY1 },
+      { minDays: 3, nextStage: 2, getMessage: TEO_FOLLOW_UP_DAY3 },
+      { minDays: 7, nextStage: 3, getMessage: TEO_FOLLOW_UP_DAY7 },
+      { minDays: 14, nextStage: 4, getMessage: TEO_FOLLOW_UP_DAY14 },
+    ];
+
     for (const quote of (quotes || [])) {
-      const followUpDays = quote.follow_up_days || 3;
+      const currentStage = quote.follow_up_stage || 0;
+      const config = STAGE_CONFIG[currentStage];
+      if (!config) continue;
+
       const createdAt = new Date(quote.created_at);
       const diffDays = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
 
-      // Skip if not enough days have passed
-      if (diffDays < followUpDays) continue;
-
-      // Skip if follow_up_date is set and hasn't arrived yet
-      if (quote.follow_up_date) {
-        const followUpDate = new Date(quote.follow_up_date);
-        if (now < followUpDate) continue;
-      }
+      // Skip if not enough days have passed for this stage
+      if (diffDays < config.minDays) continue;
 
       const clientName = quote.client_name || "Viajante";
       const destination = quote.destination_name || "seu destino dos sonhos";
@@ -75,8 +90,7 @@ serve(async (req) => {
 
       // 1. Send WhatsApp message via Teo
       if (phone && WHATSAPP_ACCESS_TOKEN && WHATSAPP_PHONE_NUMBER_ID) {
-        const randomMsg = TEO_FOLLOW_UP_MESSAGES[Math.floor(Math.random() * TEO_FOLLOW_UP_MESSAGES.length)];
-        const message = randomMsg(clientName, destination);
+        const message = config.getMessage(clientName, destination);
 
         try {
           const waResponse = await fetch(
@@ -130,20 +144,21 @@ serve(async (req) => {
             body: JSON.stringify({
               from: "Tomorrow Travel <onboarding@resend.dev>",
               to: [ADMIN_EMAIL],
-              subject: `🔔 Follow-up automático: ${clientName} - ${destination}`,
+              subject: `🔔 Follow-up Dia ${config.minDays}: ${clientName} - ${destination}`,
               html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h2 style="color: #f59e0b;">🔔 Follow-up Automático Enviado</h2>
-                  <p>O Teo enviou uma mensagem de follow-up para um cliente que não fechou após <strong>${followUpDays} dias</strong>.</p>
+                  <h2 style="color: #f59e0b;">🔔 Follow-up Automático - Dia ${config.minDays}</h2>
+                  <p>O Teo enviou a mensagem de follow-up <strong>etapa ${config.nextStage}/4</strong> (dia ${config.minDays}) para um cliente.</p>
                   <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
                     <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Cliente</td><td style="padding: 8px; border: 1px solid #ddd;">${clientName}</td></tr>
+                     <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Follow-up</td><td style="padding: 8px; border: 1px solid #ddd;">Etapa ${config.nextStage} de 4 (Dia ${config.minDays})</td></tr>
                     <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Destino</td><td style="padding: 8px; border: 1px solid #ddd;">${destination}</td></tr>
                     <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">WhatsApp</td><td style="padding: 8px; border: 1px solid #ddd;">${quote.whatsapp || "N/A"}</td></tr>
                     <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">E-mail</td><td style="padding: 8px; border: 1px solid #ddd;">${quote.email || "N/A"}</td></tr>
                     <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Status</td><td style="padding: 8px; border: 1px solid #ddd;">${quote.status}</td></tr>
                     <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Criado em</td><td style="padding: 8px; border: 1px solid #ddd;">${new Date(quote.created_at).toLocaleDateString("pt-BR")}</td></tr>
                   </table>
-                  <p style="color: #666;">Recomendamos entrar em contato com o cliente para retomar a negociação. 💛</p>
+                  <p style="color: #666;">${config.nextStage === 4 ? 'Cotação será arquivada automaticamente. Cliente não respondeu após 14 dias.' : 'Recomendamos entrar em contato com o cliente para retomar a negociação. 💛'}</p>
                 </div>
               `,
             }),
@@ -154,13 +169,21 @@ serve(async (req) => {
         }
       }
 
-      // 3. Mark follow-up as sent
+      // 3. Update follow-up stage
+      const updateData: Record<string, any> = {
+        follow_up_stage: config.nextStage,
+        follow_up_sent_at: now.toISOString(),
+      };
+      
+      // Archive on day 14 (stage 4)
+      if (config.nextStage === 4) {
+        updateData.status = 'archived';
+        updateData.follow_up_message_sent = true;
+      }
+
       await supabase
         .from("quote_requests")
-        .update({
-          follow_up_message_sent: true,
-          follow_up_sent_at: now.toISOString(),
-        })
+        .update(updateData)
         .eq("id", quote.id);
     }
 
