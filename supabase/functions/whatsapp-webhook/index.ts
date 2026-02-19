@@ -47,7 +47,10 @@ Se o usuário enviar UMA MENSAGEM com TODAS as informações (destino, datas, vi
 4. PÓS-COTAÇÃO:
    ⚠️ NÃO FINALIZAR após enviar cotação. AGUARDAR RESPOSTA.
    Ofereça ajuda: detalhes, outras datas, ajustar orçamento, passeios.
-   ⚠️ NUNCA repita que a cotação está sendo processada. A mensagem de processamento já foi enviada UMA VEZ. Se o cliente perguntar sobre a cotação, diga que já está sendo preparada e dê mais dicas do destino.
+   ⚠️ NUNCA repita que a cotação está sendo processada. A mensagem de processamento já foi enviada UMA VEZ. Se o cliente perguntar sobre a cotação, diga que já está sendo preparada.
+   ⚠️ NUNCA dispare [COTAR_VIAGEM] mais de uma vez na mesma conversa. A cotação já foi solicitada.
+   ⚠️ NÃO envie mais dicas de passeio depois que já tiver enviado. Máximo de 4 dicas no total durante toda a conversa.
+   ⚠️ Após a cotação ser disparada, responda APENAS se o cliente enviar uma nova mensagem. Seja breve e direto.
 
 5. RESPOSTAS CONTEXTUAIS:
    - "Achei caro" → Alternativas econômicas, pergunte orçamento ideal
@@ -734,8 +737,9 @@ serve(async (req) => {
         collectedData
       );
 
-      // Check if AI triggered a quotation request
-      const quotationData = parseQuotationTag(aiResponse);
+      // Check if AI triggered a quotation request - but ONLY if not already triggered before
+      const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || !!collectedData._quotation_triggered;
+      const quotationData = alreadyQuoted ? null : parseQuotationTag(aiResponse);
 
       // Clean response (remove all tags)
       let cleanResponse = cleanAiResponse(aiResponse);
@@ -760,38 +764,20 @@ serve(async (req) => {
         let quotationMsg: string;
         let quoteRequestId = conversation.quote_request_id;
 
+        // Mark quotation as triggered to prevent duplicates
+        newCollectedData._quotation_triggered = true;
+
         if (saveResult.success) {
           quotationMsg = `Recebi sua solicitação! 🌴✨\n\nEstou processando as melhores opções para ${quotationData.destino}. Aguarde aproximadamente 1 minuto! ✈️🏨`;
           
-          // Generate destination tips to keep the client engaged while waiting
+          // Generate exactly 4 destination tips (one-time, synchronous)
           try {
             const tipsResponse = await getAiResponse([
-              { role: "user", content: `Me dê 3-4 dicas rápidas de passeios e experiências imperdíveis em ${quotationData.destino}. Seja breve, divertido e use emojis. Formato: uma dica por linha com emoji no início. NÃO mencione que a cotação está sendo processada, apenas dê as dicas. Comece com algo como "Enquanto preparo tudo, olha só o que te espera em ${quotationData.destino}:" seguido das dicas.` }
+              { role: "user", content: `Me dê exatamente 4 dicas rápidas de passeios em ${quotationData.destino}. Breve, divertido, com emojis. Uma dica por linha. Comece com "Enquanto preparo tudo, olha só o que te espera:" e depois as 4 dicas. APENAS 4 dicas, nada mais.` }
             ]);
             const cleanTips = cleanAiResponse(tipsResponse);
             if (cleanTips && cleanTips.length > 20) {
-              // Send tips as a separate message after the processing message
-              setTimeout(async () => {
-                try {
-                  await sendWhatsAppMessage(phoneNumber, cleanTips);
-                  // Save tips to history
-                  const { data: convNow } = await supabase
-                    .from("whatsapp_conversations")
-                    .select("messages_history")
-                    .eq("id", conversation.id)
-                    .single();
-                  if (convNow) {
-                    const hist = [...((convNow.messages_history as any[]) || []),
-                      { role: "assistant", content: cleanTips, timestamp: new Date().toISOString() }
-                    ];
-                    await supabase.from("whatsapp_conversations")
-                      .update({ messages_history: hist })
-                      .eq("id", conversation.id);
-                  }
-                } catch (tipErr) {
-                  console.error("Error sending tips:", tipErr);
-                }
-              }, 2000);
+              await sendWhatsAppMessage(phoneNumber, cleanTips);
             }
           } catch (tipErr) {
             console.error("Error generating tips:", tipErr);
@@ -817,8 +803,8 @@ serve(async (req) => {
           { role: "assistant", content: quotationMsg, timestamp: new Date().toISOString() },
         ];
 
-        // After quotation is triggered, keep conversation active to handle Manus response
-        // Do NOT set to "completed" here - wait for Manus to process and respond
+        // After quotation is triggered, set to awaiting_quotation but DISABLE AI
+        // AI should NOT keep sending messages. Only manual_send (from Manus) or human should respond.
         let newState = conversationStatus === "human_takeover" ? "human_takeover"
           : saveResult.success ? "awaiting_quotation"
           : "completed";
@@ -832,8 +818,8 @@ serve(async (req) => {
           }
         }
 
-        // Keep AI active when awaiting quotation so Téo can handle follow-up
-        const keepAiActive = newState === "awaiting_quotation";
+        // DISABLE AI after quotation to prevent loops - Manus will respond via manual_send
+        const keepAiActive = false;
 
         await supabase
           .from("whatsapp_conversations")
