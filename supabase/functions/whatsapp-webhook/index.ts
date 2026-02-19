@@ -452,8 +452,49 @@ serve(async (req) => {
       const phoneNumber = message.from;
       const messageText = message.text?.body || "";
       const contactName = value.contacts?.[0]?.profile?.name || null;
+      const messageType = message.type; // text, image, video, audio, document, etc.
 
-      console.log(`Message from ${phoneNumber}: ${messageText}`);
+      // Extract image URL if message is an image
+      let imageUrl: string | null = null;
+      if (messageType === "image" && message.image?.id) {
+        try {
+          // Get media URL from WhatsApp API
+          const mediaResponse = await fetch(
+            `https://graph.facebook.com/v21.0/${message.image.id}`,
+            {
+              headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
+            }
+          );
+          if (mediaResponse.ok) {
+            const mediaData = await mediaResponse.json();
+            // Download the actual image
+            const imageResponse = await fetch(mediaData.url, {
+              headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
+            });
+            if (imageResponse.ok) {
+              const imageBlob = await imageResponse.blob();
+              const fileName = `review-photos/${phoneNumber}/${Date.now()}.jpg`;
+              const { data: uploadData, error: uploadError } = await supabase.storage
+                .from("destination-images")
+                .upload(fileName, imageBlob, { contentType: "image/jpeg", upsert: true });
+              
+              if (!uploadError && uploadData) {
+                const { data: publicUrlData } = supabase.storage
+                  .from("destination-images")
+                  .getPublicUrl(fileName);
+                imageUrl = publicUrlData.publicUrl;
+                console.log("Image uploaded successfully:", imageUrl);
+              } else {
+                console.error("Image upload error:", uploadError);
+              }
+            }
+          }
+        } catch (imgErr) {
+          console.error("Error processing image:", imgErr);
+        }
+      }
+
+      console.log(`Message from ${phoneNumber} (type: ${messageType}): ${messageText}`);
 
       // Check if there's an active review for this phone number
       const { data: activeReview } = await supabase
@@ -478,8 +519,9 @@ serve(async (req) => {
           body: JSON.stringify({
             action: "process_review_message",
             phone_number: phoneNumber,
-            message_text: messageText,
+            message_text: messageText || (imageUrl ? "Enviou uma foto" : ""),
             review_id: activeReview.id,
+            image_url: imageUrl,
           }),
         });
 
