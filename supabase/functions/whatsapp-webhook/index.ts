@@ -430,6 +430,33 @@ serve(async (req) => {
         console.log(`Manual send to ${phone}: ${message.substring(0, 100)}...`);
         await sendWhatsAppMessage(phone, message);
 
+        // Save manual message to conversation history so it appears in admin panel
+        try {
+          const { data: conv } = await supabase
+            .from("whatsapp_conversations")
+            .select("id, messages_history")
+            .eq("phone_number", phone)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (conv) {
+            const updatedHistory = [
+              ...((conv.messages_history as any[]) || []),
+              { role: "assistant", content: message, timestamp: new Date().toISOString() },
+            ];
+
+            await supabase
+              .from("whatsapp_conversations")
+              .update({ messages_history: updatedHistory })
+              .eq("id", conv.id);
+
+            console.log(`Manual message saved to conversation ${conv.id}`);
+          }
+        } catch (histErr) {
+          console.error("Error saving manual message to history:", histErr);
+        }
+
         return new Response(JSON.stringify({ status: "ok", manual_sent: true }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
