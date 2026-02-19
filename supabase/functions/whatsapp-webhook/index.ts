@@ -204,31 +204,35 @@ async function saveQuotationRequest(
     return d;
   };
 
+  const insertPayload = {
+    phone_number: phoneNumber,
+    origin: quotationData.origem,
+    destination: quotationData.destino,
+    departure_date: parseDate(quotationData.data_ida),
+    return_date: parseDate(quotationData.data_volta),
+    adults: quotationData.adultos || 1,
+    children: quotationData.criancas || 0,
+    children_ages: quotationData.idades_criancas || [],
+    customer_name: clientName || null,
+    preferences: preferences || null,
+    status: "pending",
+    raw_request: quotationData,
+  };
+
+  console.log("[DEBUG] Salvando cotação no travel_quote_requests:", JSON.stringify(insertPayload));
+
   const { data, error } = await supabase
     .from("travel_quote_requests")
-    .insert({
-      phone_number: phoneNumber,
-      origin: quotationData.origem,
-      destination: quotationData.destino,
-      departure_date: parseDate(quotationData.data_ida),
-      return_date: parseDate(quotationData.data_volta),
-      adults: quotationData.adultos || 1,
-      children: quotationData.criancas || 0,
-      children_ages: quotationData.idades_criancas || [],
-      customer_name: clientName || null,
-      preferences: preferences || null,
-      status: "pending",
-      raw_request: quotationData,
-    })
+    .insert(insertPayload)
     .select("id")
     .single();
 
   if (error) {
-    console.error("Error saving travel quote request:", error);
+    console.error("[DEBUG] ERRO ao salvar cotação:", JSON.stringify(error));
     return { success: false };
   }
 
-  console.log("Travel quote request saved:", data.id);
+  console.log("[DEBUG] Cotação salva com sucesso! ID:", data.id);
   return { success: true, id: data.id };
 }
 
