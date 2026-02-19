@@ -14,7 +14,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-const REVIEW_SYSTEM_PROMPT = `Você é Téo, um assistente de IA especializado em coleta de avaliações de viagens para a Turma Travel. Sua função é conduzir uma conversa natural e fluida via WhatsApp para coletar feedback dos clientes sobre suas experiências de viagem.
+const REVIEW_SYSTEM_PROMPT = `Você é Téo, um assistente de IA especializado em coleta de avaliações de viagens para a Tomorrow Travel. Sua função é conduzir uma conversa natural e fluida via WhatsApp para coletar feedback dos clientes sobre suas experiências de viagem.
 
 REGRAS DE RESPOSTAS CURTAS:
 - Máximo 2 parágrafos curtos por mensagem (3-4 linhas cada no máximo)
@@ -25,17 +25,17 @@ FLUXO DE CONVERSA (siga rigorosamente esta ordem):
 
 Você DEVE seguir as etapas na ordem. Use as tags abaixo para indicar o progresso:
 
-1. SAUDAÇÃO - Cumprimente, agradeça pela viagem com a Turma Travel, explique que são 5 perguntas rápidas.
+1. SAUDAÇÃO - Cumprimente, agradeça pela viagem com a Tomorrow Travel, explique que são 5 perguntas rápidas.
 
 2. NOTA DO ROTEIRO - Pergunte: "Qual nota de 0 a 10 para o roteiro da viagem?"
    - Se resposta válida (0-10), responda com [ROUTE_SCORE:X] onde X é a nota
    - Se inválida, peça novamente gentilmente
 
-3. NOTA DO ATENDIMENTO - Pergunte: "Qual nota de 0 a 10 para o atendimento da Turma Travel?"
+3. NOTA DO ATENDIMENTO - Pergunte: "Qual nota de 0 a 10 para o atendimento da Tomorrow Travel?"
    - Se resposta válida (0-10), responda com [SERVICE_SCORE:X]
    - Se inválida, peça novamente
 
-4. NPS - Pergunte: "De 0 a 10, quanto indicaria a Turma Travel para um amigo?"
+4. NPS - Pergunte: "De 0 a 10, quanto indicaria a Tomorrow Travel para um amigo?"
    - Se resposta válida (0-10), responda com [NPS_SCORE:X]
    - Se inválida, peça novamente
 
@@ -43,13 +43,15 @@ Você DEVE seguir as etapas na ordem. Use as tags abaixo para indicar o progress
    - Aceite qualquer texto. Se "pular" ou "próximo", prossiga.
    - Responda com [FEEDBACK:texto do feedback] ou [FEEDBACK:SKIPPED]
 
-6. AUTORIZAÇÃO - Pergunte: "Autoriza a Turma Travel a divulgar seu feedback nas redes sociais?"
+6. AUTORIZAÇÃO - Pergunte: "Autoriza a Tomorrow Travel a divulgar seu feedback nas redes sociais?"
    - Aceite: sim, não, talvez, com restrições
    - Responda com [SHARING:sim], [SHARING:não], [SHARING:talvez] ou [SHARING:com restrições]
 
 7. FOTO - Pergunte: "Quer compartilhar uma foto da viagem para divulgarmos?"
    - Se sim, diga para enviar. Se não, tudo bem.
-   - Responda com [PHOTO:waiting] ou [PHOTO:declined]
+   - Se o cliente ENVIAR UMA IMAGEM/FOTO, confirme o recebimento com entusiasmo e responda com [PHOTO:received]
+   - Se recusar, responda com [PHOTO:declined]
+   - Se disser que vai enviar, responda com [PHOTO:waiting]
 
 8. ENCERRAMENTO - Agradeça sinceramente, reforce que o feedback é valioso, convide a viajar novamente.
    - Responda com [REVIEW_COMPLETE]
@@ -61,7 +63,8 @@ REGRAS:
 - Se quiser cancelar, respeite e finalize com [REVIEW_CANCELLED]
 - Use o nome do cliente quando disponível
 - Se parecer insatisfeito, seja mais empático
-- SEMPRE inclua a tag correspondente na sua resposta quando coletar um dado`;
+- SEMPRE inclua a tag correspondente na sua resposta quando coletar um dado
+- Quando o cliente enviar uma IMAGEM, trate como foto recebida e use [PHOTO:received]`;
 
 async function sendWhatsAppMessage(to: string, message: string): Promise<void> {
   const MAX_LENGTH = 4000;
@@ -158,7 +161,8 @@ function extractReviewData(aiResponse: string, currentData: Record<string, any>)
 function determineStep(data: Record<string, any>): string {
   if (data.completed) return "done";
   if (data.cancelled) return "done";
-  if (data.photo_status) return "done";
+  if (data.photo_status === "received" || data.photo_status === "declined") return "done";
+  if (data.photo_status === "waiting") return "photo";
   if (data.allows_sharing !== undefined) return "photo";
   if (data.feedback_text !== undefined || data.feedback_skipped) return "sharing";
   if (data.nps_score !== undefined) return "feedback";
@@ -222,7 +226,7 @@ serve(async (req) => {
         // Build greeting message
         const greetingContext = client_name ? `Olá, ${client_name}!` : "Olá!";
         const destContext = destination_name ? ` para ${destination_name}` : "";
-        const greetingMsg = `${greetingContext} 👋 Aqui é o Téo da Turma Travel! ✈️\n\nQueremos saber como foi sua viagem${destContext}! São só 5 perguntinhas rápidas, prometo que é rapidinho! 😊\n\nPra começar: qual nota de 0 a 10 você daria pro roteiro da viagem?`;
+        const greetingMsg = `${greetingContext} 👋 Aqui é o Téo da Tomorrow Travel! ✈️\n\nQueremos saber como foi sua viagem${destContext}! São só 5 perguntinhas rápidas, prometo que é rapidinho! 😊\n\nPra começar: qual nota de 0 a 10 você daria pro roteiro da viagem?`;
 
         // Send greeting via WhatsApp
         await sendWhatsAppMessage(phone_number, greetingMsg);
@@ -246,7 +250,7 @@ serve(async (req) => {
 
       // Handle incoming WhatsApp message for an active review
       if (body.action === "process_review_message") {
-        const { phone_number, message_text, review_id } = body;
+        const { phone_number, message_text, review_id, image_url } = body;
 
         // Find the active review for this phone
         let review;
@@ -281,7 +285,12 @@ serve(async (req) => {
           role: m.role,
           content: m.content,
         }));
-        historyForAi.push({ role: "user", content: message_text });
+
+        // If the user sent an image, tell the AI about it
+        const userMessageContent = image_url
+          ? `${message_text || ""} [O cliente enviou uma foto/imagem]`.trim()
+          : message_text;
+        historyForAi.push({ role: "user", content: userMessageContent });
 
         // Add context about client
         if (review.client_name) {
@@ -309,7 +318,7 @@ serve(async (req) => {
 
         const updatedHistory = [
           ...history,
-          { role: "user", content: message_text, timestamp: new Date().toISOString() },
+          { role: "user", content: message_text, timestamp: new Date().toISOString(), ...(image_url ? { image_url } : {}) },
           { role: "assistant", content: clean, timestamp: new Date().toISOString() },
         ];
 
@@ -319,6 +328,9 @@ serve(async (req) => {
           allowsSharing = null;
         }
 
+        // Save photo_url if image was sent and AI recognized it
+        const photoUrl = image_url || review.photo_url;
+
         await supabase
           .from("travel_reviews")
           .update({
@@ -327,6 +339,7 @@ serve(async (req) => {
             nps_score: extractedData.nps_score ?? review.nps_score,
             feedback_text: extractedData.feedback_text ?? review.feedback_text,
             allows_sharing: allowsSharing ?? review.allows_sharing,
+            photo_url: photoUrl,
             current_step: newStep,
             conversation_status: isComplete ? (extractedData.cancelled ? "cancelled" : "complete") : "in_progress",
             messages_history: updatedHistory,
