@@ -77,6 +77,7 @@ interface QuoteRequest {
   is_manual: boolean | null;
   follow_up_enabled: boolean | null;
   follow_up_message_sent: boolean | null;
+  follow_up_days: number | null;
 }
 
 interface SelectedActivity {
@@ -1289,27 +1290,52 @@ const AdminDashboard = () => {
                                       )}
                                     </td>
                                     <td className="px-4 py-4 text-center">
-                                      {quote.follow_up_message_sent ? (
-                                        <span className="text-xs text-primary" title="Follow-up já enviado">✅ Enviado</span>
-                                      ) : (
-                                        <button
-                                          onClick={async () => {
-                                            const newVal = !quote.follow_up_enabled;
-                                            const { error } = await supabase
-                                              .from('quote_requests')
-                                              .update({ follow_up_enabled: newVal })
-                                              .eq('id', quote.id);
-                                            if (!error) {
-                                              setQuotes(prev => prev.map(q => q.id === quote.id ? { ...q, follow_up_enabled: newVal } : q));
-                                              toast.success(newVal ? 'Follow-up ativado para este cliente' : 'Follow-up desativado');
-                                            }
-                                          }}
-                                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${quote.follow_up_enabled ? 'bg-primary' : 'bg-muted'}`}
-                                          title={quote.follow_up_enabled ? 'Teo vai enviar follow-up' : 'Follow-up desativado'}
-                                        >
-                                          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-background transition-transform ${quote.follow_up_enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                                        </button>
-                                      )}
+                                      <div className="flex flex-col items-center gap-1">
+                                        {quote.follow_up_message_sent ? (
+                                          <span className="text-xs text-primary" title="Follow-up já enviado">✅ Enviado</span>
+                                        ) : (
+                                          <>
+                                            <button
+                                              onClick={async () => {
+                                                const newVal = !quote.follow_up_enabled;
+                                                const { error } = await supabase
+                                                  .from('quote_requests')
+                                                  .update({ follow_up_enabled: newVal })
+                                                  .eq('id', quote.id);
+                                                if (!error) {
+                                                  setQuotes(prev => prev.map(q => q.id === quote.id ? { ...q, follow_up_enabled: newVal } : q));
+                                                  toast.success(newVal ? 'Follow-up ativado para este cliente' : 'Follow-up desativado');
+                                                }
+                                              }}
+                                              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${quote.follow_up_enabled ? 'bg-primary' : 'bg-muted'}`}
+                                              title={quote.follow_up_enabled ? 'Teo vai enviar follow-up' : 'Follow-up desativado'}
+                                            >
+                                              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-background transition-transform ${quote.follow_up_enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                                            </button>
+                                            {quote.follow_up_enabled && (
+                                              <select
+                                                value={quote.follow_up_days || 3}
+                                                onChange={async (e) => {
+                                                  const days = Number(e.target.value);
+                                                  const { error } = await supabase
+                                                    .from('quote_requests')
+                                                    .update({ follow_up_days: days })
+                                                    .eq('id', quote.id);
+                                                  if (!error) {
+                                                    setQuotes(prev => prev.map(q => q.id === quote.id ? { ...q, follow_up_days: days } : q));
+                                                    toast.success(`Prazo de follow-up: ${days} dias`);
+                                                  }
+                                                }}
+                                                className="w-16 text-xs rounded border border-input bg-background px-1 py-0.5 text-center"
+                                              >
+                                                <option value={3}>3 dias</option>
+                                                <option value={5}>5 dias</option>
+                                                <option value={7}>7 dias</option>
+                                              </select>
+                                            )}
+                                          </>
+                                        )}
+                                      </div>
                                     </td>
                                     <td className="px-4 py-4">
                                       <div className="flex items-center gap-1">
