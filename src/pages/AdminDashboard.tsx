@@ -75,6 +75,8 @@ interface QuoteRequest {
   follow_up_date: string | null;
   notes: string | null;
   is_manual: boolean | null;
+  follow_up_enabled: boolean | null;
+  follow_up_message_sent: boolean | null;
 }
 
 interface SelectedActivity {
@@ -1194,6 +1196,7 @@ const AdminDashboard = () => {
                                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Data Viagem</th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Retorno</th>
+                                <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground" title="Follow-up automático do Teo">🤖 Teo</th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Ações</th>
                               </tr>
                             </thead>
@@ -1283,6 +1286,29 @@ const AdminDashboard = () => {
                                         </span>
                                       ) : (
                                         <span className="text-muted-foreground">-</span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-4 text-center">
+                                      {quote.follow_up_message_sent ? (
+                                        <span className="text-xs text-primary" title="Follow-up já enviado">✅ Enviado</span>
+                                      ) : (
+                                        <button
+                                          onClick={async () => {
+                                            const newVal = !quote.follow_up_enabled;
+                                            const { error } = await supabase
+                                              .from('quote_requests')
+                                              .update({ follow_up_enabled: newVal })
+                                              .eq('id', quote.id);
+                                            if (!error) {
+                                              setQuotes(prev => prev.map(q => q.id === quote.id ? { ...q, follow_up_enabled: newVal } : q));
+                                              toast.success(newVal ? 'Follow-up ativado para este cliente' : 'Follow-up desativado');
+                                            }
+                                          }}
+                                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${quote.follow_up_enabled ? 'bg-primary' : 'bg-muted'}`}
+                                          title={quote.follow_up_enabled ? 'Teo vai enviar follow-up' : 'Follow-up desativado'}
+                                        >
+                                          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-background transition-transform ${quote.follow_up_enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                                        </button>
                                       )}
                                     </td>
                                     <td className="px-4 py-4">
