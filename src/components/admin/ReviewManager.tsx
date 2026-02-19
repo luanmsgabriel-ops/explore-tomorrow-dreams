@@ -5,13 +5,15 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import {
   Star, Send, RefreshCw, Loader2, Eye, Trash2,
-  Phone, MessageCircle, CheckCircle, Clock
+  Phone, MessageCircle, CheckCircle, Clock, BarChart3, ListOrdered
 } from 'lucide-react';
+import { ReviewDashboard } from './ReviewDashboard';
 
 interface TravelReview {
   id: string;
@@ -174,6 +176,21 @@ export const ReviewManager = () => {
   }
 
   return (
+    <Tabs defaultValue="dashboard" className="space-y-6">
+      <TabsList>
+        <TabsTrigger value="dashboard" className="gap-2">
+          <BarChart3 className="w-4 h-4" /> Dashboard
+        </TabsTrigger>
+        <TabsTrigger value="list" className="gap-2">
+          <ListOrdered className="w-4 h-4" /> Lista
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="dashboard">
+        <ReviewDashboard reviews={reviews} />
+      </TabsContent>
+
+      <TabsContent value="list">
     <div className="space-y-6">
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -426,5 +443,7 @@ export const ReviewManager = () => {
         </DialogContent>
       </Dialog>
     </div>
+      </TabsContent>
+    </Tabs>
   );
 };
