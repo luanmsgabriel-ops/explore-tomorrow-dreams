@@ -874,6 +874,74 @@ export type Database = {
         }
         Relationships: []
       }
+      travel_reviews: {
+        Row: {
+          allows_sharing: string | null
+          client_name: string | null
+          conversation_status: string
+          created_at: string
+          current_step: string
+          destination_name: string | null
+          feedback_text: string | null
+          id: string
+          messages_history: Json | null
+          nps_score: number | null
+          phone_number: string
+          photo_url: string | null
+          route_score: number | null
+          sent_by: string | null
+          service_score: number | null
+          trip_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          allows_sharing?: string | null
+          client_name?: string | null
+          conversation_status?: string
+          created_at?: string
+          current_step?: string
+          destination_name?: string | null
+          feedback_text?: string | null
+          id?: string
+          messages_history?: Json | null
+          nps_score?: number | null
+          phone_number: string
+          photo_url?: string | null
+          route_score?: number | null
+          sent_by?: string | null
+          service_score?: number | null
+          trip_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          allows_sharing?: string | null
+          client_name?: string | null
+          conversation_status?: string
+          created_at?: string
+          current_step?: string
+          destination_name?: string | null
+          feedback_text?: string | null
+          id?: string
+          messages_history?: Json | null
+          nps_score?: number | null
+          phone_number?: string
+          photo_url?: string | null
+          route_score?: number | null
+          sent_by?: string | null
+          service_score?: number | null
+          trip_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "travel_reviews_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "client_trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip_checklist: {
         Row: {
           created_at: string
