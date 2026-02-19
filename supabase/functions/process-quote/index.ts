@@ -57,9 +57,12 @@ Instruções:
 
     console.log('🚀 Chamando Manus API...')
 
+    console.log('🔑 MANUS_API_KEY length:', MANUS_API_KEY?.length, 'starts with:', MANUS_API_KEY?.substring(0, 10));
+    
     const response = await fetch(MANUS_API_URL, {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${MANUS_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
