@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import {
   Star, Send, RefreshCw, Loader2, Eye, Trash2,
-  Phone, MessageCircle, CheckCircle, Clock, BarChart3, ListOrdered
+  Phone, MessageCircle, CheckCircle, Clock, BarChart3, ListOrdered, Link2, Copy
 } from 'lucide-react';
 import { ReviewDashboard } from './ReviewDashboard';
 
@@ -154,6 +154,39 @@ export const ReviewManager = () => {
     }
   };
 
+  const getReviewLink = (reviewId: string) => {
+    return `${window.location.origin}/avaliacao/${reviewId}`;
+  };
+
+  const copyReviewLink = (reviewId: string) => {
+    navigator.clipboard.writeText(getReviewLink(reviewId));
+    toast.success('Link copiado!');
+  };
+
+  const createReviewLink = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('travel_reviews')
+        .insert({
+          phone_number: 'link',
+          conversation_status: 'pending',
+          current_step: 'greeting',
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+
+      const link = getReviewLink(data.id);
+      await navigator.clipboard.writeText(link);
+      toast.success('Link criado e copiado!');
+      fetchReviews();
+    } catch (error) {
+      console.error('Error creating review link:', error);
+      toast.error('Erro ao criar link');
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('pt-BR', {
       day: '2-digit', month: '2-digit', year: 'numeric',
@@ -233,10 +266,15 @@ export const ReviewManager = () => {
       </div>
 
       {/* Actions */}
-      <div className="flex justify-between">
-        <Button onClick={() => setShowSendForm(true)}>
-          <Send className="w-4 h-4 mr-2" /> Enviar Avaliação
-        </Button>
+      <div className="flex justify-between flex-wrap gap-2">
+        <div className="flex gap-2">
+          <Button onClick={() => setShowSendForm(true)}>
+            <Send className="w-4 h-4 mr-2" /> Enviar Avaliação
+          </Button>
+          <Button variant="outline" onClick={createReviewLink}>
+            <Link2 className="w-4 h-4 mr-2" /> Criar Link
+          </Button>
+        </div>
         <Button variant="outline" onClick={fetchReviews}>
           <RefreshCw className="w-4 h-4 mr-2" /> Atualizar
         </Button>
@@ -288,7 +326,10 @@ export const ReviewManager = () => {
                         {formatDate(review.created_at)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="outline" onClick={() => copyReviewLink(review.id)} title="Copiar link">
+                            <Copy className="w-4 h-4" />
+                          </Button>
                           <Button size="sm" variant="outline" onClick={() => setSelectedReview(review)}>
                             <Eye className="w-4 h-4" />
                           </Button>

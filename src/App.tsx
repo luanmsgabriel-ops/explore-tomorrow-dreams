@@ -16,6 +16,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ClientLogin from "./pages/ClientLogin";
 import ClientDashboard from "./pages/ClientDashboard";
 import Install from "./pages/Install";
+import Avaliacao from "./pages/Avaliacao";
 import NotFound from "./pages/NotFound";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { FloatingWhatsApp } from "./components/FloatingWhatsApp";
@@ -27,7 +28,7 @@ const queryClient = new QueryClient();
 // Floating buttons that hide on client/admin areas
 const FloatingButtons = () => {
   const location = useLocation();
-  const hideOnRoutes = ['/cliente', '/minha-area', '/admin', '/admin/dashboard'];
+  const hideOnRoutes = ['/cliente', '/minha-area', '/admin', '/admin/dashboard', '/avaliacao'];
   const shouldHide = hideOnRoutes.some(route => location.pathname.startsWith(route));
   
   if (shouldHide) return null;
@@ -59,6 +60,7 @@ const App = () => (
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/cliente" element={<ClientLogin />} />
           <Route path="/minha-area" element={<ClientDashboard />} />
+          <Route path="/avaliacao/:id" element={<Avaliacao />} />
           <Route path="/install" element={<Install />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
