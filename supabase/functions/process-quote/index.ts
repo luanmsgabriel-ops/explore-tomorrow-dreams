@@ -60,15 +60,11 @@ Instruções:
     const response = await fetch(MANUS_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${MANUS_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
+        api_key: MANUS_API_KEY,
         prompt: prompt,
-        context: {
-          quote_id: record.id,
-          auto_process: true
-        }
       })
     })
 
