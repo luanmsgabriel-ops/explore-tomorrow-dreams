@@ -26,6 +26,118 @@ interface ReviewDashboardProps {
   reviews: TravelReview[];
 }
 
+const NpsGauge = ({ score, promoters, passives, detractors, total }: {
+  score: number | null;
+  promoters: number;
+  passives: number;
+  detractors: number;
+  total: number;
+}) => {
+  const nps = score ?? 0;
+  // NPS ranges from -100 to +100, map to 0-180 degrees
+  const angle = ((nps + 100) / 200) * 180;
+  const needleAngle = angle - 90; // SVG rotation offset
+
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <h3 className="text-sm font-semibold text-foreground mb-4 text-center">Medidor NPS</h3>
+        <div className="flex flex-col items-center">
+          <svg viewBox="0 0 200 120" className="w-64 h-36">
+            {/* Background arc segments */}
+            {/* Detractor zone: -100 to -1 (0° to ~89°) - Red */}
+            <path
+              d="M 20 100 A 80 80 0 0 1 100 20"
+              fill="none"
+              stroke="hsl(0 70% 45%)"
+              strokeWidth="16"
+              strokeLinecap="round"
+              opacity="0.3"
+            />
+            {/* Passive zone: 0 to 49 (90° to ~134°) - Amber */}
+            <path
+              d="M 100 20 A 80 80 0 0 1 156 44"
+              fill="none"
+              stroke="hsl(43 75% 50%)"
+              strokeWidth="16"
+              strokeLinecap="round"
+              opacity="0.3"
+            />
+            {/* Promoter zone: 50 to 100 (135° to 180°) - Green */}
+            <path
+              d="M 156 44 A 80 80 0 0 1 180 100"
+              fill="none"
+              stroke="hsl(152 60% 40%)"
+              strokeWidth="16"
+              strokeLinecap="round"
+              opacity="0.3"
+            />
+
+            {/* Active colored arc up to current value */}
+            {score !== null && (
+              <path
+                d={describeArc(100, 100, 80, 0, angle)}
+                fill="none"
+                stroke={nps >= 50 ? 'hsl(152 60% 45%)' : nps >= 0 ? 'hsl(43 75% 55%)' : 'hsl(0 70% 50%)'}
+                strokeWidth="16"
+                strokeLinecap="round"
+                style={{ transition: 'all 0.8s ease' }}
+              />
+            )}
+
+            {/* Needle */}
+            <g transform={`rotate(${needleAngle}, 100, 100)`} style={{ transition: 'transform 0.8s ease' }}>
+              <line x1="100" y1="100" x2="100" y2="32" stroke="hsl(var(--foreground))" strokeWidth="2.5" strokeLinecap="round" />
+              <circle cx="100" cy="100" r="5" fill="hsl(var(--foreground))" />
+            </g>
+
+            {/* Labels */}
+            <text x="16" y="115" fill="hsl(0 70% 50%)" fontSize="9" fontWeight="600">-100</text>
+            <text x="93" y="14" fill="hsl(43 75% 55%)" fontSize="9" fontWeight="600" textAnchor="middle">0</text>
+            <text x="178" y="115" fill="hsl(152 60% 45%)" fontSize="9" fontWeight="600" textAnchor="end">+100</text>
+          </svg>
+
+          {/* Score display */}
+          <div className="text-center -mt-4">
+            <p className={`text-4xl font-bold ${nps >= 50 ? 'text-emerald-400' : nps >= 0 ? 'text-accent' : 'text-red-400'}`}>
+              {score !== null ? `${nps > 0 ? '+' : ''}${nps}` : '-'}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Net Promoter Score</p>
+          </div>
+
+          {/* Legend */}
+          <div className="flex gap-6 mt-4 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" />
+              <span className="text-muted-foreground">Promotores <strong className="text-foreground">{promoters}</strong></span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-amber-500 inline-block" />
+              <span className="text-muted-foreground">Neutros <strong className="text-foreground">{passives}</strong></span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-red-500 inline-block" />
+              <span className="text-muted-foreground">Detratores <strong className="text-foreground">{detractors}</strong></span>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Helper to describe an SVG arc path
+function describeArc(cx: number, cy: number, r: number, startAngle: number, endAngle: number): string {
+  const startRad = ((startAngle - 90) * Math.PI) / 180;
+  const endRad = ((endAngle - 90) * Math.PI) / 180;
+  const x1 = cx + r * Math.cos(startRad);
+  const y1 = cy + r * Math.sin(startRad);
+  const x2 = cx + r * Math.cos(endRad);
+  const y2 = cy + r * Math.sin(endRad);
+  const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`;
+}
+
 const StarRating = ({ score }: { score: number | null }) => {
   const value = score ?? 0;
   const filled = Math.round(value / 2);
@@ -52,10 +164,10 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
   const [selectedCardIndex, setSelectedCardIndex] = useState(0);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const completed = reviews.filter(r => r.conversation_status === 'complete');
+  // Include reviews that have feedback regardless of status (not just 'complete')
   const withScores = reviews.filter(r => r.nps_score !== null);
-  const withFeedback = completed.filter(r => r.feedback_text && r.allows_sharing === 'sim');
-  const shareable = withFeedback.length > 0 ? withFeedback : completed.filter(r => r.feedback_text);
+  const withFeedback = reviews.filter(r => r.feedback_text);
+  const shareable = withFeedback.length > 0 ? withFeedback : [];
 
   const avgRoute = withScores.length > 0
     ? (withScores.reduce((s, r) => s + (r.route_score || 0), 0) / withScores.length).toFixed(1)
@@ -88,7 +200,6 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
       link.href = canvas.toDataURL('image/png');
       link.click();
     } catch {
-      // Fallback: copy as blob
       alert('Para compartilhar, faça uma captura de tela do card abaixo.');
     }
   };
@@ -129,45 +240,19 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
         </Card>
       </div>
 
-      {/* NPS Distribution Bar */}
+      {/* NPS Gauge */}
       {withScores.length > 0 && (
-        <Card>
-          <CardContent className="p-5">
-            <h3 className="text-sm font-semibold text-foreground mb-3">Distribuição NPS</h3>
-            <div className="flex rounded-full overflow-hidden h-4 bg-muted">
-              {promoters > 0 && (
-                <div
-                  className="bg-emerald-500 transition-all duration-500"
-                  style={{ width: `${(promoters / withScores.length) * 100}%` }}
-                  title={`Promotores: ${promoters}`}
-                />
-              )}
-              {passives > 0 && (
-                <div
-                  className="bg-amber-500 transition-all duration-500"
-                  style={{ width: `${(passives / withScores.length) * 100}%` }}
-                  title={`Neutros: ${passives}`}
-                />
-              )}
-              {detractors > 0 && (
-                <div
-                  className="bg-red-500 transition-all duration-500"
-                  style={{ width: `${(detractors / withScores.length) * 100}%` }}
-                  title={`Detratores: ${detractors}`}
-                />
-              )}
-            </div>
-            <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Promotores ({promoters})</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block" /> Neutros ({passives})</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> Detratores ({detractors})</span>
-            </div>
-          </CardContent>
-        </Card>
+        <NpsGauge
+          score={npsScore}
+          promoters={promoters}
+          passives={passives}
+          detractors={detractors}
+          total={withScores.length}
+        />
       )}
 
-      {/* Shareable Instagram Card */}
-      {shareable.length > 0 && (
+      {/* Shareable Instagram Card - always show if there are reviews with feedback */}
+      {shareable.length > 0 && currentReview && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-foreground">Cards para Instagram</h3>
@@ -220,7 +305,7 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
                     {[1, 2, 3, 4, 5].map(i => (
                       <Star
                         key={i}
-                        className={`w-4 h-4 ${i <= Math.round((currentReview?.nps_score || 0) / 2) ? 'fill-accent text-accent' : 'text-white/20'}`}
+                        className={`w-4 h-4 ${i <= Math.round((currentReview.nps_score || 0) / 2) ? 'fill-accent text-accent' : 'text-white/20'}`}
                       />
                     ))}
                   </div>
@@ -231,7 +316,7 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
                   <div>
                     <Quote className="w-8 h-8 text-primary/40 mb-2 scale-x-[-1]" />
                     <p className="text-white/90 text-sm leading-relaxed italic line-clamp-5" style={{ fontFamily: 'Playfair Display, serif' }}>
-                      {currentReview?.feedback_text || 'Experiência incrível!'}
+                      {currentReview.feedback_text || 'Experiência incrível!'}
                     </p>
                   </div>
                 </div>
@@ -239,15 +324,15 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
                 {/* Scores */}
                 <div className="flex items-center gap-4 mb-4">
                   <div className="flex-1 bg-white/5 rounded-xl p-3 text-center border border-white/10">
-                    <p className="text-2xl font-bold text-primary">{currentReview?.route_score ?? '-'}</p>
+                    <p className="text-2xl font-bold text-primary">{currentReview.route_score ?? '-'}</p>
                     <p className="text-[9px] text-white/50 uppercase tracking-wider mt-0.5">Roteiro</p>
                   </div>
                   <div className="flex-1 bg-white/5 rounded-xl p-3 text-center border border-white/10">
-                    <p className="text-2xl font-bold text-accent">{currentReview?.service_score ?? '-'}</p>
+                    <p className="text-2xl font-bold text-accent">{currentReview.service_score ?? '-'}</p>
                     <p className="text-[9px] text-white/50 uppercase tracking-wider mt-0.5">Atendimento</p>
                   </div>
                   <div className="flex-1 bg-white/5 rounded-xl p-3 text-center border border-white/10">
-                    <p className="text-2xl font-bold text-blue-400">{currentReview?.nps_score ?? '-'}</p>
+                    <p className="text-2xl font-bold text-blue-400">{currentReview.nps_score ?? '-'}</p>
                     <p className="text-[9px] text-white/50 uppercase tracking-wider mt-0.5">NPS</p>
                   </div>
                 </div>
@@ -256,9 +341,9 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
                 <div className="flex items-center justify-between border-t border-white/10 pt-3">
                   <div>
                     <p className="text-white font-semibold text-sm">
-                      {currentReview?.client_name || 'Cliente'}
+                      {currentReview.client_name || 'Cliente'}
                     </p>
-                    {currentReview?.destination_name && (
+                    {currentReview.destination_name && (
                       <p className="text-white/50 text-xs flex items-center gap-1 mt-0.5">
                         <MapPin className="w-3 h-3" /> {currentReview.destination_name}
                       </p>
@@ -294,7 +379,7 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
       {/* All Reviews with Feedback */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-foreground">Depoimentos</h3>
-        {completed.filter(r => r.feedback_text).length === 0 ? (
+        {withFeedback.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center text-muted-foreground">
               Nenhum depoimento recebido ainda.
@@ -302,7 +387,7 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {completed.filter(r => r.feedback_text).map(review => (
+            {withFeedback.map(review => (
               <Card key={review.id} className="bg-gradient-to-br from-card to-secondary/50 border-border/50 hover:border-primary/30 transition-colors">
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between mb-3">
