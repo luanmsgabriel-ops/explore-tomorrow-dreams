@@ -650,6 +650,7 @@ export type Database = {
           flight_time_preference: string | null
           follow_up_date: string | null
           follow_up_days: number | null
+          follow_up_enabled: boolean | null
           follow_up_message_sent: boolean | null
           follow_up_sent_at: string | null
           id: string
@@ -677,6 +678,7 @@ export type Database = {
           flight_time_preference?: string | null
           follow_up_date?: string | null
           follow_up_days?: number | null
+          follow_up_enabled?: boolean | null
           follow_up_message_sent?: boolean | null
           follow_up_sent_at?: string | null
           id?: string
@@ -704,6 +706,7 @@ export type Database = {
           flight_time_preference?: string | null
           follow_up_date?: string | null
           follow_up_days?: number | null
+          follow_up_enabled?: boolean | null
           follow_up_message_sent?: boolean | null
           follow_up_sent_at?: string | null
           id?: string
