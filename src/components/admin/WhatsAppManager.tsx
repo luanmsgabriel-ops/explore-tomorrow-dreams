@@ -72,9 +72,14 @@ export const WhatsAppManager = () => {
   };
 
   const deleteConversation = async (conversationId: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta conversa? Esta ação não pode ser desfeita.')) return;
+    if (!confirm('Tem certeza que deseja excluir esta conversa e a cotação vinculada? Esta ação não pode ser desfeita.')) return;
 
     try {
+      // First, get the conversation to find the linked quote_request_id
+      const conversation = conversations.find(c => c.id === conversationId);
+      const quoteRequestId = conversation?.quote_request_id;
+
+      // Delete the conversation
       const { error } = await supabase
         .from('whatsapp_conversations')
         .delete()
@@ -82,7 +87,23 @@ export const WhatsAppManager = () => {
 
       if (error) throw error;
 
-      toast.success('Conversa excluída com sucesso!');
+      // Also delete the linked quote request if it exists
+      if (quoteRequestId) {
+        const { error: quoteError } = await supabase
+          .from('quote_requests')
+          .delete()
+          .eq('id', quoteRequestId);
+
+        if (quoteError) {
+          console.error('Error deleting linked quote:', quoteError);
+          toast.warning('Conversa excluída, mas houve erro ao excluir a cotação vinculada');
+        } else {
+          toast.success('Conversa e cotação vinculada excluídas com sucesso!');
+        }
+      } else {
+        toast.success('Conversa excluída com sucesso!');
+      }
+
       fetchConversations();
       if (selectedConversation?.id === conversationId) {
         setSelectedConversation(null);
