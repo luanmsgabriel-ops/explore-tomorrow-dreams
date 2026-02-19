@@ -313,11 +313,21 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
                   </div>
                 </div>
 
+                {/* Destination highlight */}
+                {currentReview.destination_name && (
+                  <div className="flex items-center gap-2 mt-4 bg-white/10 rounded-lg px-3 py-2 border border-white/10">
+                    <MapPin className="w-5 h-5 text-accent shrink-0" />
+                    <p className="text-white font-bold text-base tracking-wide" style={{ fontFamily: 'Playfair Display, serif' }}>
+                      {currentReview.destination_name}
+                    </p>
+                  </div>
+                )}
+
                 {/* Feedback quote */}
-                <div className="flex-1 flex items-center py-5">
+                <div className="flex-1 flex items-center py-4">
                   <div>
                     <Quote className="w-8 h-8 text-primary/40 mb-3 scale-x-[-1]" />
-                    <p className="text-white/90 text-base leading-relaxed italic line-clamp-6" style={{ fontFamily: 'Playfair Display, serif' }}>
+                    <p className="text-white/90 text-base leading-relaxed italic line-clamp-5" style={{ fontFamily: 'Playfair Display, serif' }}>
                       {currentReview.feedback_text || 'Experiência incrível!'}
                     </p>
                   </div>
@@ -341,11 +351,11 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
 
                 {/* Client photo */}
                 {currentReview.photo_url && (
-                  <div className="rounded-xl overflow-hidden mb-4 border border-white/10">
+                  <div className="rounded-xl overflow-hidden mb-4 border border-white/10 bg-black/20">
                     <img
                       src={currentReview.photo_url}
                       alt={currentReview.client_name || 'Cliente'}
-                      className="w-full h-44 object-cover"
+                      className="w-full max-h-48 object-contain"
                       crossOrigin="anonymous"
                     />
                   </div>
@@ -366,11 +376,7 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
                       <p className="text-white font-semibold text-sm">
                         {currentReview.client_name || 'Cliente'}
                       </p>
-                      {currentReview.destination_name && (
-                        <p className="text-white/50 text-xs flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3 h-3" /> {currentReview.destination_name}
-                        </p>
-                      )}
+                      <p className="text-white/40 text-[9px] mt-0.5">Cliente Tomorrow Travel</p>
                     </div>
                   </div>
                   <p className="text-[9px] text-white/30">@tomorrowtravel</p>
