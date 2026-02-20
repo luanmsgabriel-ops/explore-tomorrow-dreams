@@ -89,7 +89,7 @@ Body JSON:
 
 IMPORTANTE: Este é o ÚNICO método para enviar mensagens ao cliente. NÃO tente enviar diretamente pela API do WhatsApp.
 
-Após enviar a cotação, envie outra mensagem pelo mesmo método perguntando se o cliente tem interesse em fechar ou se quer ver outras opções.
+REGRA CRÍTICA: Envie APENAS UMA ÚNICA mensagem ao cliente contendo a cotação E a pergunta de interesse. NÃO envie duas mensagens separadas. Inclua no FINAL da mensagem da cotação algo como "Gostou? Quer fechar ou ver outras opções? 😊". APENAS 1 chamada POST, NUNCA 2.
 
 Se não encontrar cotações ou o site apresentar erro, envie a seguinte mensagem EXATA (substituindo {customer_name} e {destination} pelos valores reais):
 "Olá {customer_name}! 👋
