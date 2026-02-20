@@ -55,31 +55,43 @@ DADOS DA COTAÇÃO:
 - Crianças: ${record.children || 0}
 - Telefone do cliente: ${record.phone_number}
 - Nome do cliente: ${record.customer_name || 'Cliente'}
-- Preferências: ${record.preferences || 'Nenhuma'}
 
-INSTRUÇÕES:
-1. Fazer login no Orinter com as credenciais acima em https://online.orinter.com.br/infotravel/admin/main.xhtml. NUNCA acessar www.orinter.com.br (site institucional).
-2. Buscar pacotes para o destino ${record.destination} saindo de ${record.origin}, de ${record.departure_date} a ${record.return_date}, ${record.adults} adulto(s) e ${record.children || 0} criança(s)
-3. Extrair o hotel mais econômico: nome, preço, categoria, regime alimentar
-4. Extrair voos: companhia, horários, paradas, preço
-5. Formatar a cotação de forma bonita com emojis para WhatsApp
+PASSO A PASSO OBRIGATÓRIO:
+1. Acessar https://online.orinter.com.br/infotravel/admin/main.xhtml
+2. Se não estiver logado, fazer login com as credenciais acima (Login e Senha)
+3. Clicar no menu lateral 'Booking'
+4. Clicar na aba 'LAZER' (ou 'Create your package')
+5. Preencher formulário:
+   - Origem: ${record.origin}
+   - Destino: ${record.destination}
+   - Data ida: ${record.departure_date} (converter para formato DD/MM/YYYY)
+   - Data volta: ${record.return_date} (converter para formato DD/MM/YYYY)
+   - Adultos: ${record.adults}
+   - Crianças: ${record.children || 0}
+6. Clicar em 'Search'
+7. Aguardar resultados carregarem completamente
+8. Selecionar o hotel mais econômico (menor preço total)
+9. Clicar em 'Add' do hotel selecionado
+10. Clicar em 'Details' para ver o resumo completo
+11. Extrair dados: nome do hotel, categoria (estrelas), preço por pessoa, preço total, número de noites, regime alimentar
 
 COMO ENVIAR A COTAÇÃO AO CLIENTE:
-Faça um POST HTTP para: ${whatsappWebhookUrl}
-Com o header: Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}
-Com Content-Type: application/json
-Com o body JSON:
+Após extrair os dados, formate uma mensagem bonita com emojis para WhatsApp e envie via POST HTTP:
+URL: ${whatsappWebhookUrl}
+Header: Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}
+Header: Content-Type: application/json
+Body JSON:
 {
   "action": "manual_send",
   "phone_number": "${record.phone_number}",
-  "message": "<AQUI A MENSAGEM FORMATADA COM A COTAÇÃO>"
+  "message": "<MENSAGEM FORMATADA COM A COTAÇÃO>"
 }
 
 IMPORTANTE: Este é o ÚNICO método para enviar mensagens ao cliente. NÃO tente enviar diretamente pela API do WhatsApp.
 
 Após enviar a cotação, envie outra mensagem pelo mesmo método perguntando se o cliente tem interesse em fechar ou se quer ver outras opções.
 
-Se não encontrar cotações, envie uma mensagem informando que não encontrou opções para essas datas e que um especialista entrará em contato.
+Se não encontrar cotações ou o site apresentar erro, envie uma mensagem informando que não encontrou opções para essas datas e que um especialista entrará em contato em breve.
 
 NÃO PERGUNTAR NADA. EXECUTAR TUDO AUTOMATICAMENTE.
 `
