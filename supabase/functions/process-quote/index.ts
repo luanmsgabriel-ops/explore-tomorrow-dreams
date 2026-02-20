@@ -36,10 +36,12 @@ serve(async (req) => {
     const whatsappWebhookUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`
 
     const prompt = `
-Processar cotação de viagem automaticamente.
+Processar cotação de viagem.
+
+IMPORTANTE: Sempre acessar https://online.orinter.com.br/infotravel/admin/main.xhtml para fazer login e buscar pacotes. NUNCA acessar www.orinter.com.br (site institucional).
 
 DADOS DA COTAÇÃO:
-- ID: ${record.id}
+- ID da cotação: ${record.id}
 - Destino: ${record.destination}
 - Origem: ${record.origin}
 - Data ida: ${record.departure_date}
@@ -51,7 +53,7 @@ DADOS DA COTAÇÃO:
 - Preferências: ${record.preferences || 'Nenhuma'}
 
 INSTRUÇÕES:
-1. Navegar no Orinter (já logado)
+1. Acessar https://online.orinter.com.br/infotravel/admin/main.xhtml e fazer login
 2. Buscar pacotes para o destino ${record.destination} saindo de ${record.origin}, de ${record.departure_date} a ${record.return_date}, ${record.adults} adulto(s) e ${record.children || 0} criança(s)
 3. Extrair as melhores opções: hotel (nome, preço, categoria, regime), voos (companhia, horários, paradas), preço total e por pessoa
 4. Formatar a cotação de forma bonita com emojis para WhatsApp
