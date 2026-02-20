@@ -9,6 +9,8 @@ const MANUS_API_KEY = Deno.env.get('MANUS_API_KEY')
 const MANUS_API_URL = 'https://api.manus.im/v1/tasks'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wimdgvdpefkmjzzsklnt.supabase.co'
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+const ORINTER_LOGIN = Deno.env.get('ORINTER_LOGIN')
+const ORINTER_PASSWORD = Deno.env.get('ORINTER_PASSWORD')
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -36,9 +38,12 @@ serve(async (req) => {
     const whatsappWebhookUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`
 
     const prompt = `
-Processar cotação de viagem.
+Processar cotação de viagem automaticamente SEM PERGUNTAR NADA.
 
-IMPORTANTE: Sempre acessar https://online.orinter.com.br/infotravel/admin/main.xhtml para fazer login e buscar pacotes. NUNCA acessar www.orinter.com.br (site institucional).
+CREDENCIAIS ORINTER:
+- URL: https://online.orinter.com.br/infotravel/admin/main.xhtml
+- Login: ${ORINTER_LOGIN}
+- Senha: ${ORINTER_PASSWORD}
 
 DADOS DA COTAÇÃO:
 - ID da cotação: ${record.id}
@@ -53,10 +58,11 @@ DADOS DA COTAÇÃO:
 - Preferências: ${record.preferences || 'Nenhuma'}
 
 INSTRUÇÕES:
-1. Acessar https://online.orinter.com.br/infotravel/admin/main.xhtml e fazer login
+1. Fazer login no Orinter com as credenciais acima em https://online.orinter.com.br/infotravel/admin/main.xhtml. NUNCA acessar www.orinter.com.br (site institucional).
 2. Buscar pacotes para o destino ${record.destination} saindo de ${record.origin}, de ${record.departure_date} a ${record.return_date}, ${record.adults} adulto(s) e ${record.children || 0} criança(s)
-3. Extrair as melhores opções: hotel (nome, preço, categoria, regime), voos (companhia, horários, paradas), preço total e por pessoa
-4. Formatar a cotação de forma bonita com emojis para WhatsApp
+3. Extrair o hotel mais econômico: nome, preço, categoria, regime alimentar
+4. Extrair voos: companhia, horários, paradas, preço
+5. Formatar a cotação de forma bonita com emojis para WhatsApp
 
 COMO ENVIAR A COTAÇÃO AO CLIENTE:
 Faça um POST HTTP para: ${whatsappWebhookUrl}
@@ -74,6 +80,8 @@ IMPORTANTE: Este é o ÚNICO método para enviar mensagens ao cliente. NÃO tent
 Após enviar a cotação, envie outra mensagem pelo mesmo método perguntando se o cliente tem interesse em fechar ou se quer ver outras opções.
 
 Se não encontrar cotações, envie uma mensagem informando que não encontrou opções para essas datas e que um especialista entrará em contato.
+
+NÃO PERGUNTAR NADA. EXECUTAR TUDO AUTOMATICAMENTE.
 `
 
     console.log('🚀 Chamando Manus API...')
