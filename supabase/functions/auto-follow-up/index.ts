@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const TEO_VOICE_ID = "cjVigY5qzO86Huf0OWal"; // Eric voice
+const TEO_VOICE_ID = "l88WmPeLH7L0O0VA9lqm"; // Lax2 - funny, cheerful and relaxing voice
 
 // Follow-up messages organized by stage (day 1, 3, 7, 14)
 const TEO_FOLLOW_UP_DAY1 = (name: string, dest: string) =>
