@@ -85,6 +85,178 @@ Tudo coletado e confirmado:
 Cliente quer falar com humano:
 [STATUS:human_takeover]`;
 
+// ========== Audio Helper Functions (ElevenLabs TTS/STT) ==========
+
+const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
+const TEO_VOICE_ID = "cjVigY5qzO86Huf0OWal"; // Eric - young male voice
+
+function cleanTextForAudio(text: string): string {
+  return text
+    .replace(/[\u{1F600}-\u{1F64F}]/gu, "")
+    .replace(/[\u{1F300}-\u{1F5FF}]/gu, "")
+    .replace(/[\u{1F680}-\u{1F6FF}]/gu, "")
+    .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, "")
+    .replace(/[\u{2600}-\u{26FF}]/gu, "")
+    .replace(/[\u{2700}-\u{27BF}]/gu, "")
+    .replace(/[\u{FE00}-\u{FE0F}]/gu, "")
+    .replace(/[\u{1F900}-\u{1F9FF}]/gu, "")
+    .replace(/[\u{1FA00}-\u{1FA6F}]/gu, "")
+    .replace(/[\u{1FA70}-\u{1FAFF}]/gu, "")
+    .replace(/[\u{200D}]/gu, "")
+    .replace(/\*+/g, "")
+    .replace(/_+/g, "")
+    .replace(/~+/g, "")
+    .replace(/━+/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+async function convertTextToAudio(text: string): Promise<ArrayBuffer | null> {
+  if (!ELEVENLABS_API_KEY) {
+    console.error("ELEVENLABS_API_KEY not configured");
+    return null;
+  }
+
+  const cleanText = cleanTextForAudio(text);
+  if (!cleanText || cleanText.length < 5) return null;
+
+  try {
+    const response = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${TEO_VOICE_ID}?output_format=mp3_44100_128`,
+      {
+        method: "POST",
+        headers: {
+          "xi-api-key": ELEVENLABS_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: cleanText,
+          model_id: "eleven_multilingual_v2",
+          voice_settings: {
+            stability: 0.3,
+            similarity_boost: 0.75,
+            style: 0.5,
+            use_speaker_boost: true,
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("ElevenLabs TTS error:", response.status, errText);
+      return null;
+    }
+
+    return await response.arrayBuffer();
+  } catch (err) {
+    console.error("ElevenLabs TTS exception:", err);
+    return null;
+  }
+}
+
+async function transcribeAudio(audioBuffer: ArrayBuffer): Promise<string | null> {
+  if (!ELEVENLABS_API_KEY) {
+    console.error("ELEVENLABS_API_KEY not configured for STT");
+    return null;
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append("file", new Blob([audioBuffer], { type: "audio/ogg" }), "audio.ogg");
+    formData.append("model_id", "scribe_v2");
+    formData.append("language_code", "por");
+
+    const response = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+      method: "POST",
+      headers: {
+        "xi-api-key": ELEVENLABS_API_KEY,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("ElevenLabs STT error:", response.status, errText);
+      return null;
+    }
+
+    const result = await response.json();
+    return result.text || null;
+  } catch (err) {
+    console.error("ElevenLabs STT exception:", err);
+    return null;
+  }
+}
+
+async function uploadAudioToStorage(audioBuffer: ArrayBuffer, phone: string): Promise<string | null> {
+  const fileName = `teo-audio/${phone}/${Date.now()}.mp3`;
+  const { data, error } = await supabase.storage
+    .from("destination-images")
+    .upload(fileName, new Blob([audioBuffer], { type: "audio/mpeg" }), {
+      contentType: "audio/mpeg",
+      upsert: true,
+    });
+
+  if (error) {
+    console.error("Audio upload error:", error);
+    return null;
+  }
+
+  const { data: publicUrlData } = supabase.storage
+    .from("destination-images")
+    .getPublicUrl(fileName);
+
+  return publicUrlData.publicUrl;
+}
+
+async function sendWhatsAppAudio(to: string, audioUrl: string) {
+  const response = await fetch(
+    `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to,
+        type: "audio",
+        audio: { link: audioUrl },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("WhatsApp Audio API error:", errorText);
+    throw new Error(`WhatsApp Audio API error: ${response.status}`);
+  }
+}
+
+async function downloadWhatsAppMedia(mediaId: string): Promise<ArrayBuffer | null> {
+  try {
+    const mediaResponse = await fetch(
+      `https://graph.facebook.com/v21.0/${mediaId}`,
+      { headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` } }
+    );
+    if (!mediaResponse.ok) return null;
+
+    const mediaData = await mediaResponse.json();
+    const audioResponse = await fetch(mediaData.url, {
+      headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
+    });
+    if (!audioResponse.ok) return null;
+
+    return await audioResponse.arrayBuffer();
+  } catch (err) {
+    console.error("Error downloading WhatsApp media:", err);
+    return null;
+  }
+}
+
 // ========== Helper Functions ==========
 
 function extractCollectedData(aiResponse: string, existingData: Record<string, any>): { data: Record<string, any>; status: string | null } {
@@ -585,9 +757,34 @@ serve(async (req) => {
 
       const message = value.messages[0];
       const phoneNumber = message.from;
-      const messageText = message.text?.body || "";
+      let messageText = message.text?.body || "";
       const contactName = value.contacts?.[0]?.profile?.name || null;
       const messageType = message.type; // text, image, video, audio, document, etc.
+      let incomingWasAudio = false;
+
+      // Handle audio messages: transcribe to text
+      if (messageType === "audio" && message.audio?.id) {
+        incomingWasAudio = true;
+        console.log(`Audio message received from ${phoneNumber}, downloading and transcribing...`);
+        try {
+          const audioBuffer = await downloadWhatsAppMedia(message.audio.id);
+          if (audioBuffer) {
+            const transcription = await transcribeAudio(audioBuffer);
+            if (transcription) {
+              messageText = transcription;
+              console.log(`Audio transcribed: "${transcription}"`);
+            } else {
+              messageText = "(Áudio recebido - transcrição indisponível)";
+              console.log("Audio transcription failed, asking for text");
+            }
+          } else {
+            messageText = "(Áudio recebido - não foi possível baixar)";
+          }
+        } catch (audioErr) {
+          console.error("Error processing incoming audio:", audioErr);
+          messageText = "(Áudio recebido - erro ao processar)";
+        }
+      }
 
       // Extract image URL if message is an image
       let imageUrl: string | null = null;
@@ -1025,6 +1222,22 @@ serve(async (req) => {
           is_ai_active: newState !== "human_takeover" && newState !== "completed",
         })
         .eq("id", conversation.id);
+
+      // If the incoming message was audio, respond with audio too
+      if (incomingWasAudio && cleanResponse) {
+        try {
+          const audioBuffer = await convertTextToAudio(cleanResponse);
+          if (audioBuffer) {
+            const audioUrl = await uploadAudioToStorage(audioBuffer, phoneNumber);
+            if (audioUrl) {
+              await sendWhatsAppAudio(phoneNumber, audioUrl);
+              console.log("Audio response sent to", phoneNumber);
+            }
+          }
+        } catch (audioErr) {
+          console.error("Error sending audio response:", audioErr);
+        }
+      }
 
       await sendWhatsAppMessage(phoneNumber, cleanResponse);
 

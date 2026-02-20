@@ -6,6 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const TEO_VOICE_ID = "cjVigY5qzO86Huf0OWal"; // Eric voice
+
 // Follow-up messages organized by stage (day 1, 3, 7, 14)
 const TEO_FOLLOW_UP_DAY1 = (name: string, dest: string) =>
   `Oi ${name}! Tudo bem? 😊\n\nVi que te enviei algumas opções de viagem para ${dest} ontem. Conseguiu dar uma olhada?\n\nSe tiver alguma dúvida ou quiser ajustar algo, é só me chamar! Estou aqui para ajudar.\n\nAh, e se preferir, posso te mostrar outras opções de datas ou hotéis! 🏨✈️`;
@@ -41,6 +43,85 @@ serve(async (req) => {
     const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     const ADMIN_EMAIL = Deno.env.get("ADMIN_NOTIFICATION_EMAIL");
+    const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
+
+    // Helper: generate audio from text via ElevenLabs TTS
+    async function convertTextToAudio(text: string): Promise<ArrayBuffer | null> {
+      if (!ELEVENLABS_API_KEY) return null;
+      try {
+        const response = await fetch(
+          `https://api.elevenlabs.io/v1/text-to-speech/${TEO_VOICE_ID}?output_format=mp3_44100_128`,
+          {
+            method: "POST",
+            headers: {
+              "xi-api-key": ELEVENLABS_API_KEY,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              text,
+              model_id: "eleven_multilingual_v2",
+              voice_settings: {
+                stability: 0.3,
+                similarity_boost: 0.75,
+                style: 0.5,
+                use_speaker_boost: true,
+              },
+            }),
+          }
+        );
+        if (!response.ok) {
+          console.error("ElevenLabs TTS error:", response.status, await response.text());
+          return null;
+        }
+        return await response.arrayBuffer();
+      } catch (err) {
+        console.error("ElevenLabs TTS exception:", err);
+        return null;
+      }
+    }
+
+    // Helper: upload audio to storage
+    async function uploadAudioToStorage(audioBuffer: ArrayBuffer, phone: string): Promise<string | null> {
+      const fileName = `teo-audio/${phone}/${Date.now()}.mp3`;
+      const { error } = await supabase.storage
+        .from("destination-images")
+        .upload(fileName, new Blob([audioBuffer], { type: "audio/mpeg" }), {
+          contentType: "audio/mpeg",
+          upsert: true,
+        });
+      if (error) {
+        console.error("Audio upload error:", error);
+        return null;
+      }
+      const { data: publicUrlData } = supabase.storage
+        .from("destination-images")
+        .getPublicUrl(fileName);
+      return publicUrlData.publicUrl;
+    }
+
+    // Helper: send audio via WhatsApp
+    async function sendWhatsAppAudio(to: string, audioUrl: string) {
+      const response = await fetch(
+        `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to,
+            type: "audio",
+            audio: { link: audioUrl },
+          }),
+        }
+      );
+      if (!response.ok) {
+        console.error("WhatsApp Audio error:", await response.text());
+      }
+    }
 
     // Find quotes that need follow-up:
     // - status is 'quoted' or 'pending' or 'in_progress'
@@ -93,6 +174,46 @@ serve(async (req) => {
         const message = config.getMessage(clientName, destination);
 
         try {
+          // Stage 0 (Day 1): Send curiosity audio + "Urgente!!" before the regular message
+          if (currentStage === 0 && ELEVENLABS_API_KEY) {
+            try {
+              const audioText = `Ei ${clientName}! Ficou curioso né? hahaha! É só para te lembrar que eu ainda tô aqui, pronto para te ajudar a montar a viagem perfeita! Me chama quando quiser!`;
+              const audioBuffer = await convertTextToAudio(audioText);
+              if (audioBuffer) {
+                const audioUrl = await uploadAudioToStorage(audioBuffer, phone);
+                if (audioUrl) {
+                  await sendWhatsAppAudio(phone, audioUrl);
+                  console.log(`Curiosity audio sent to ${phone}`);
+                  // Small delay before sending "Urgente!!"
+                  await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+              }
+            } catch (audioErr) {
+              console.error(`Error sending curiosity audio to ${phone}:`, audioErr);
+            }
+
+            // Send "Urgente!!" text
+            await fetch(
+              `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
+              {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  messaging_product: "whatsapp",
+                  recipient_type: "individual",
+                  to: phone,
+                  type: "text",
+                  text: { body: "Urgente!! 🚨" },
+                }),
+              }
+            );
+            // Small delay before follow-up text
+            await new Promise(resolve => setTimeout(resolve, 1500));
+          }
+
           const waResponse = await fetch(
             `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
             {
@@ -119,6 +240,7 @@ serve(async (req) => {
             client: clientName,
             phone,
             whatsapp_sent: waResponse.ok,
+            audio_sent: currentStage === 0,
           });
         } catch (waError) {
           console.error(`Error sending WhatsApp to ${phone}:`, waError);
