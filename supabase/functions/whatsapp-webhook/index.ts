@@ -88,7 +88,7 @@ Cliente quer falar com humano:
 // ========== Audio Helper Functions (ElevenLabs TTS/STT) ==========
 
 const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
-const TEO_VOICE_ID = "cjVigY5qzO86Huf0OWal"; // Eric - young male voice
+const TEO_VOICE_ID = "l88WmPeLH7L0O0VA9lqm"; // Lax2 - funny, cheerful and relaxing voice
 
 function cleanTextForAudio(text: string): string {
   return text
