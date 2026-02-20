@@ -699,6 +699,126 @@ serve(async (req) => {
         });
       }
 
+      // Handle send custom audio from admin panel
+      if (body.action === "send_audio") {
+        const phone = body.phone_number;
+        const text = body.text;
+        if (!phone || !text) {
+          return new Response(JSON.stringify({ error: "phone_number and text are required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        console.log(`Admin send_audio to ${phone}: ${text.substring(0, 80)}...`);
+        const audioBuffer = await convertTextToAudio(text);
+        if (!audioBuffer) {
+          return new Response(JSON.stringify({ error: "Falha ao gerar áudio via ElevenLabs" }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const audioUrl = await uploadAudioToStorage(audioBuffer, phone);
+        if (!audioUrl) {
+          return new Response(JSON.stringify({ error: "Falha ao fazer upload do áudio" }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        await sendWhatsAppAudio(phone, audioUrl);
+
+        // Save to conversation history
+        try {
+          const { data: conv } = await supabase
+            .from("whatsapp_conversations")
+            .select("id, messages_history")
+            .eq("phone_number", phone)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (conv) {
+            const updatedHistory = [
+              ...((conv.messages_history as any[]) || []),
+              { role: "assistant", content: `🔊 [Áudio enviado]: ${text}`, timestamp: new Date().toISOString() },
+            ];
+            await supabase.from("whatsapp_conversations").update({ messages_history: updatedHistory }).eq("id", conv.id);
+          }
+        } catch (err) {
+          console.error("Error saving audio message to history:", err);
+        }
+
+        return new Response(JSON.stringify({ status: "ok", audio_sent: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Handle curiosity audio from admin panel
+      if (body.action === "send_curiosity_audio") {
+        const phone = body.phone_number;
+        const clientName = body.client_name || "";
+        if (!phone) {
+          return new Response(JSON.stringify({ error: "phone_number is required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const greeting = clientName ? `Ei ${clientName}!` : "Ei!";
+        const curiosityText = `${greeting} Ficou curioso né? hahaha! É só para te lembrar que eu ainda tô aqui, pronto para te ajudar a montar a viagem perfeita! Me chama quando quiser!`;
+
+        console.log(`Admin send_curiosity_audio to ${phone}`);
+        const audioBuffer = await convertTextToAudio(curiosityText);
+        if (!audioBuffer) {
+          return new Response(JSON.stringify({ error: "Falha ao gerar áudio de curiosidade" }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const audioUrl = await uploadAudioToStorage(audioBuffer, phone);
+        if (!audioUrl) {
+          return new Response(JSON.stringify({ error: "Falha ao fazer upload do áudio" }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Send audio first, then "Urgente!!" text
+        await sendWhatsAppAudio(phone, audioUrl);
+        await sendWhatsAppMessage(phone, "Urgente!! 🚨");
+
+        // Save to conversation history
+        try {
+          const { data: conv } = await supabase
+            .from("whatsapp_conversations")
+            .select("id, messages_history")
+            .eq("phone_number", phone)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (conv) {
+            const updatedHistory = [
+              ...((conv.messages_history as any[]) || []),
+              { role: "assistant", content: `🔊 [Áudio de curiosidade enviado]`, timestamp: new Date().toISOString() },
+              { role: "assistant", content: "Urgente!! 🚨", timestamp: new Date().toISOString() },
+            ];
+            await supabase.from("whatsapp_conversations").update({ messages_history: updatedHistory }).eq("id", conv.id);
+          }
+        } catch (err) {
+          console.error("Error saving curiosity audio to history:", err);
+        }
+
+        return new Response(JSON.stringify({ status: "ok", curiosity_audio_sent: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Handle delayed tips (self-invoked after generating tips)
       if (body.action === "delayed_tips") {
         const phone = body.phone_number;
