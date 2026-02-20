@@ -351,14 +351,19 @@ export const ReviewDashboard = ({ reviews }: ReviewDashboardProps) => {
 
                 {/* Client photo */}
                 {currentReview.photo_url && (
-                  <div className="rounded-xl overflow-hidden mb-4 border border-white/10 bg-black/20">
-                    <img
-                      src={currentReview.photo_url}
-                      alt={currentReview.client_name || 'Cliente'}
-                      className="w-full max-h-48 object-contain"
-                      crossOrigin="anonymous"
-                    />
-                  </div>
+                  <div
+                    className="rounded-xl overflow-hidden mb-4 border border-white/10 bg-black/20"
+                    style={{
+                      width: '100%',
+                      height: '192px',
+                      backgroundImage: `url(${currentReview.photo_url})`,
+                      backgroundSize: 'contain',
+                      backgroundPosition: 'center',
+                      backgroundRepeat: 'no-repeat',
+                    }}
+                    role="img"
+                    aria-label={currentReview.client_name || 'Cliente'}
+                  />
                 )}
 
                 {/* Footer */}
