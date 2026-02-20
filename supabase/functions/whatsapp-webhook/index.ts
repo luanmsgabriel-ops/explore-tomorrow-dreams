@@ -516,6 +516,50 @@ serve(async (req) => {
         });
       }
 
+      // Handle delayed tips (self-invoked after generating tips)
+      if (body.action === "delayed_tips") {
+        const phone = body.phone_number;
+        const tipMessage = body.message;
+        const delaySec = body.delay_seconds || 30;
+
+        if (phone && tipMessage) {
+          console.log(`Delayed tips: waiting ${delaySec}s before sending to ${phone}`);
+          await new Promise(resolve => setTimeout(resolve, delaySec * 1000));
+          await sendWhatsAppMessage(phone, tipMessage);
+
+          // Save tips to conversation history
+          try {
+            const { data: conv } = await supabase
+              .from("whatsapp_conversations")
+              .select("id, messages_history")
+              .eq("phone_number", phone)
+              .order("updated_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (conv) {
+              const updatedHistory = [
+                ...((conv.messages_history as any[]) || []),
+                { role: "assistant", content: tipMessage, timestamp: new Date().toISOString() },
+              ];
+              await supabase
+                .from("whatsapp_conversations")
+                .update({ messages_history: updatedHistory })
+                .eq("id", conv.id);
+            }
+          } catch (histErr) {
+            console.error("Error saving tips to history:", histErr);
+          }
+
+          console.log("Delayed tips sent successfully");
+        }
+
+        return new Response(JSON.stringify({ status: "ok", delayed_tips_sent: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Meta sends various webhook events; we only care about messages
       const entry = body.entry?.[0];
       const changes = entry?.changes?.[0];
@@ -770,14 +814,29 @@ serve(async (req) => {
         if (saveResult.success) {
           quotationMsg = `Recebi sua solicitação! 🌴✨\n\nEstou processando as melhores opções para ${quotationData.destino}. Aguarde aproximadamente 1 minuto! ✈️🏨`;
           
-          // Generate exactly 4 destination tips (one-time, synchronous)
+          // Generate tips now, schedule sending after 30s via self-invocation
+          const destino = quotationData.destino;
           try {
             const tipsResponse = await getAiResponse([
-              { role: "user", content: `Me dê exatamente 4 dicas rápidas de passeios em ${quotationData.destino}. Breve, divertido, com emojis. Uma dica por linha. Comece com "Enquanto preparo tudo, olha só o que te espera:" e depois as 4 dicas. APENAS 4 dicas, nada mais.` }
+              { role: "user", content: `Me dê exatamente 4 dicas rápidas de passeios imperdíveis em ${destino}. Breve, divertido, com emojis. Uma dica por linha numerada. Comece EXATAMENTE com "Enquanto você aguarda, olha só o que te espera em ${destino}! 🗺️✨" e depois as 4 dicas. APENAS 4 dicas, nada mais.` }
             ]);
             const cleanTips = cleanAiResponse(tipsResponse);
             if (cleanTips && cleanTips.length > 20) {
-              await sendWhatsAppMessage(phoneNumber, cleanTips);
+              // Schedule delayed tips via self-invocation (non-blocking)
+              const selfUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
+              fetch(selfUrl, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                },
+                body: JSON.stringify({
+                  action: "delayed_tips",
+                  phone_number: phoneNumber,
+                  message: cleanTips,
+                  delay_seconds: 30,
+                }),
+              }).catch(err => console.error("Error scheduling delayed tips:", err));
             }
           } catch (tipErr) {
             console.error("Error generating tips:", tipErr);
