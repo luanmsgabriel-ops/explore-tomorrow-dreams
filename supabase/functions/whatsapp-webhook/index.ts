@@ -293,7 +293,7 @@ function extractCollectedData(aiResponse: string, existingData: Record<string, a
 
 function cleanAiResponse(response: string): string {
   return response
-    .replace(/\[DADOS:\w+=.+?\]/g, "")
+    .replace(/\[DADOS:\w+=.*?\]/g, "")
     .replace(/\[STATUS:\w+\]/g, "")
     .replace(/\[COTAR_VIAGEM:\s*\{.*?\}\s*\]/gs, "")
     .replace(/\[DESTINO_ESCOLHIDO:\s*[^\]]+\]/gi, "")
