@@ -1031,6 +1031,31 @@ serve(async (req) => {
           throw insertError;
         }
         conversation = newConv;
+
+        // Notify admin via email about new WhatsApp conversation
+        try {
+          await fetch(
+            `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-admin-notification`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+              },
+              body: JSON.stringify({
+                type: "chat_session",
+                data: {
+                  user_name: contactName || phoneNumber,
+                  user_whatsapp: phoneNumber,
+                  destination_name: "WhatsApp",
+                },
+              }),
+            }
+          );
+          console.log("Admin notified about new WhatsApp conversation");
+        } catch (notifErr) {
+          console.error("Failed to send admin notification:", notifErr);
+        }
       }
 
       // If AI is disabled or conversation is completed, just store the message and skip AI response
