@@ -91,7 +91,14 @@ IMPORTANTE: Este é o ÚNICO método para enviar mensagens ao cliente. NÃO tent
 
 Após enviar a cotação, envie outra mensagem pelo mesmo método perguntando se o cliente tem interesse em fechar ou se quer ver outras opções.
 
-Se não encontrar cotações ou o site apresentar erro, envie uma mensagem informando que não encontrou opções para essas datas e que um especialista entrará em contato em breve.
+Se não encontrar cotações ou o site apresentar erro, envie a seguinte mensagem EXATA (substituindo {customer_name} e {destination} pelos valores reais):
+"Olá {customer_name}! 👋
+
+Estamos trabalhando para encontrar as melhores opções para sua viagem a {destination}! ✈️
+
+Para garantir que você tenha o pacote perfeito, vamos precisar do apoio de um especialista no destino. Em breve, um de nossos consultores da Tomorrow Travel entrará em contato para personalizar sua experiência e encontrar a melhor opção para você! 🏖️
+
+Aguarde nosso retorno! 😊"
 
 NÃO PERGUNTAR NADA. EXECUTAR TUDO AUTOMATICAMENTE.
 `
