@@ -10,7 +10,7 @@ const corsHeaders = {
 };
 
 interface NotificationRequest {
-  type: 'quote_request' | 'chat_session' | 'ai_itinerary' | 'ai_image';
+  type: 'quote_request' | 'chat_session' | 'ai_itinerary' | 'ai_image' | 'change_request';
   data: Record<string, any>;
 }
 
@@ -119,6 +119,30 @@ const getEmailContent = (type: string, data: Record<string, any>) => {
             </div>
             <div class="footer">
               <p>Tomorrow Travel - Acesse o painel administrativo para ver a imagem</p>
+            </div>
+          </div>
+        `
+      };
+
+    case 'change_request':
+      return {
+        subject: `🔄 Solicitação de Alteração - ${data.client_name || 'Cliente'} - ${data.destination || 'Destino'}`,
+        html: `
+          ${baseStyle}
+          <div class="container">
+            <div class="header">
+              <h1>🔄 Solicitação de Alteração na Cotação!</h1>
+            </div>
+            <div class="content">
+              <p>Um cliente solicitou alterações na sua cotação:</p>
+              <div class="info-row"><span class="label">👤 Cliente:</span> <span class="highlight">${data.client_name || 'N/A'}</span></div>
+              <div class="info-row"><span class="label">📱 Telefone:</span> ${data.phone_number || 'N/A'}</div>
+              <div class="info-row"><span class="label">📍 Destino:</span> ${data.destination || 'N/A'}</div>
+              <div class="info-row"><span class="label">📝 O que quer alterar:</span> <span class="highlight">${data.change_description || 'N/A'}</span></div>
+              <div class="info-row"><span class="label">💬 Mensagem original:</span> ${data.original_message || 'N/A'}</div>
+            </div>
+            <div class="footer">
+              <p>Tomorrow Travel - Entre em contato com o cliente para personalizar a cotação</p>
             </div>
           </div>
         `

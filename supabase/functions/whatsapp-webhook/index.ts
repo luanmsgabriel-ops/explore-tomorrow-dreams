@@ -52,7 +52,12 @@ Se o usuário enviar UMA MENSAGEM com TODAS as informações (destino, datas, vi
    ⚠️ NÃO envie mais dicas de passeio depois que já tiver enviado. Máximo de 4 dicas no total durante toda a conversa.
    ⚠️ Após a cotação ser disparada, responda APENAS se o cliente enviar uma nova mensagem. Seja breve e direto.
 
-5. RESPOSTAS CONTEXTUAIS:
+5. DETECÇÃO DE ALTERAÇÕES:
+   Se o cliente, APÓS já ter recebido uma cotação ou ter uma cotação em processamento, pedir qualquer tipo de alteração (mudar datas, trocar destino, mais/menos pessoas, upgrade, downgrade, customização), NÃO crie nova cotação. Em vez disso, ADICIONE a tag:
+   [ALTERAR_COTACAO:descrição do que o cliente quer mudar]
+   E NÃO dispare [COTAR_VIAGEM] novamente.
+
+6. RESPOSTAS CONTEXTUAIS:
    - "Achei caro" → Alternativas econômicas, pergunte orçamento ideal
    - "Vou pensar" → 1-2 dicas rápidas sobre o destino
    - "Quero fechar!" → Celebre e passe para equipe
@@ -105,7 +110,13 @@ function cleanAiResponse(response: string): string {
     .replace(/\[STATUS:\w+\]/g, "")
     .replace(/\[COTAR_VIAGEM:\s*\{.*?\}\s*\]/gs, "")
     .replace(/\[DESTINO_ESCOLHIDO:\s*[^\]]+\]/gi, "")
+    .replace(/\[ALTERAR_COTACAO:\s*[^\]]+\]/gi, "")
     .trim();
+}
+
+function parseChangeRequestTag(content: string): string | null {
+  const match = content.match(/\[ALTERAR_COTACAO:\s*([^\]]+)\]/i);
+  return match ? match[1].trim() : null;
 }
 
 function parseQuotationTag(content: string): Record<string, any> | null {
@@ -726,7 +737,7 @@ serve(async (req) => {
           updatedData._quotation_request = collectedData._quotation_request;
           responseMsg = "❌ Código inválido ou expirado. Por favor, verifique seu e-mail e envie o código correto.";
         } else {
-          responseMsg = "Eita, parece que a tecnologia resolveu tirar férias antes de você! 😅🏖️\n\nMas relaxa, isso não vai atrasar seu sonho não! Nosso time de especialistas já tá de olho no seu pedido e vai montar uma cotação COMPLETA com toda a experiência que você merece — daquelas que dá vontade de postar no Instagram inteiro! 📸✨\n\nVamos te chamar aqui mesmo no WhatsApp rapidinho. Enquanto isso, já vai separando o protetor solar! ☀️🧴";
+          responseMsg = `Olá ${collectedData.nome || 'amigo(a)'}! 👋\n\nEstamos trabalhando para encontrar as melhores opções para sua viagem a ${collectedData.destino || 'seu destino'}! ✈️\n\nPara garantir que você tenha o pacote perfeito, vamos precisar do apoio de um especialista no destino. Em breve, um de nossos consultores da Tomorrow Travel entrará em contato para personalizar sua experiência e encontrar a melhor opção para você! 🏖️\n\nAguarde nosso retorno! 😊`;
           // Mark as failed and finalize
           updatedData._quotation_failed = true;
           // Create lead if needed
@@ -842,7 +853,7 @@ serve(async (req) => {
             console.error("Error generating tips:", tipErr);
           }
         } else {
-          quotationMsg = "Opa, o sistema deu aquela travadinha clássica de segunda-feira! 😂🔧\n\nMas fica tranquilo(a)! A gente não vai deixar sua viagem dos sonhos escapar, não! Nosso time de especialistas já foi acionado e tá preparando uma cotação personalizada com tudo que você merece — porque viagem boa é viagem bem planejada! 🗺️✨\n\nVamos te retornar aqui no WhatsApp bem rapidinho. Pode ir escolhendo a playlist da viagem enquanto isso! 🎶🌴";
+          quotationMsg = `Olá ${newCollectedData.nome || conversation.client_name || 'amigo(a)'}! 👋\n\nEstamos trabalhando para encontrar as melhores opções para sua viagem a ${quotationData.destino}! ✈️\n\nPara garantir que você tenha o pacote perfeito, vamos precisar do apoio de um especialista no destino. Em breve, um de nossos consultores da Tomorrow Travel entrará em contato para personalizar sua experiência e encontrar a melhor opção para você! 🏖️\n\nAguarde nosso retorno! 😊`;
           // Create lead as fallback
           if (!quoteRequestId) {
             try {
@@ -895,6 +906,88 @@ serve(async (req) => {
         await sendWhatsAppMessage(phoneNumber, quotationMsg);
 
         return new Response(JSON.stringify({ status: "ok", state: newState, quotation: true, saved: saveResult.success }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Check for change request tag from AI
+      const changeRequest = parseChangeRequestTag(aiResponse);
+      if (changeRequest) {
+        console.log("Change request detected:", changeRequest);
+
+        const changeMsg = `Entendi que você gostaria de personalizar sua viagem! 😊\n\nPara garantir que montemos o pacote perfeito para você, vou encaminhar sua solicitação para um de nossos especialistas no destino.\n\nEm breve, um consultor da Tomorrow Travel entrará em contato para criar uma experiência sob medida para sua viagem! ✈️🏖️\n\nAguarde nosso retorno!`;
+
+        // Save change request to travel_quote_requests if we have one
+        if (conversation.quote_request_id || collectedData._last_quote_id) {
+          const quoteId = collectedData._last_quote_id || null;
+          if (quoteId) {
+            await supabase
+              .from("travel_quote_requests")
+              .update({ change_request: changeRequest })
+              .eq("id", quoteId);
+          }
+        }
+
+        // Also save to quote_requests for team visibility
+        try {
+          const existingQuoteId = conversation.quote_request_id;
+          if (existingQuoteId) {
+            await supabase
+              .from("quote_requests")
+              .update({ 
+                notes: `Solicitação de alteração: ${changeRequest}`,
+                status: "change_requested" 
+              })
+              .eq("id", existingQuoteId);
+          }
+        } catch (err) {
+          console.error("Error updating quote with change request:", err);
+        }
+
+        // Notify admin via email
+        try {
+          const notifyUrl = `${SUPABASE_URL}/functions/v1/send-admin-notification`;
+          await fetch(notifyUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            },
+            body: JSON.stringify({
+              type: "change_request",
+              data: {
+                client_name: newCollectedData.nome || conversation.client_name || contactName,
+                phone_number: phoneNumber,
+                destination: newCollectedData.destino || collectedData.destino || "Não informado",
+                change_description: changeRequest,
+                original_message: messageText,
+              },
+            }),
+          });
+        } catch (notifyErr) {
+          console.error("Error sending change request notification:", notifyErr);
+        }
+
+        const updatedHistory = [
+          ...(conversation.messages_history as any[] || []),
+          { role: "user", content: messageText, timestamp: new Date().toISOString() },
+          { role: "assistant", content: changeMsg, timestamp: new Date().toISOString() },
+        ];
+
+        await supabase
+          .from("whatsapp_conversations")
+          .update({
+            collected_data: { ...newCollectedData, _change_requested: true },
+            messages_history: updatedHistory,
+            conversation_state: "human_takeover",
+            is_ai_active: false,
+          })
+          .eq("id", conversation.id);
+
+        await sendWhatsAppMessage(phoneNumber, changeMsg);
+
+        return new Response(JSON.stringify({ status: "ok", change_request: true }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

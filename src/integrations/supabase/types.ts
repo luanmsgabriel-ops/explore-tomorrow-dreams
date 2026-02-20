@@ -814,6 +814,7 @@ export type Database = {
       travel_quote_requests: {
         Row: {
           adults: number
+          change_request: string | null
           children: number
           children_ages: number[] | null
           created_at: string
@@ -834,6 +835,7 @@ export type Database = {
         }
         Insert: {
           adults?: number
+          change_request?: string | null
           children?: number
           children_ages?: number[] | null
           created_at?: string
@@ -854,6 +856,7 @@ export type Database = {
         }
         Update: {
           adults?: number
+          change_request?: string | null
           children?: number
           children_ages?: number[] | null
           created_at?: string
