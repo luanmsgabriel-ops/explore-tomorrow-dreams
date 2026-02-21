@@ -41,6 +41,33 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_access_logs: {
+        Row: {
+          command_text: string
+          created_at: string
+          id: string
+          phone_number: string
+          query_type: string
+          response_summary: string | null
+        }
+        Insert: {
+          command_text: string
+          created_at?: string
+          id?: string
+          phone_number: string
+          query_type: string
+          response_summary?: string | null
+        }
+        Update: {
+          command_text?: string
+          created_at?: string
+          id?: string
+          phone_number?: string
+          query_type?: string
+          response_summary?: string | null
+        }
+        Relationships: []
+      }
       ai_generated_images: {
         Row: {
           created_at: string
