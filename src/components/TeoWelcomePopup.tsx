@@ -3,7 +3,7 @@ import { X, MessageCircle, Star, Shield, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import teoCharacter from '@/assets/teo-character.png';
 
-const WHATSAPP_LINK = 'https://wa.me/5515998389220?text=Olá!%20Vim%20pelo%20site%20e%20quero%20conhecer%20o%20Téo!';
+const WHATSAPP_LINK = 'https://wa.me/5515991833448?text=Olá!%20Vim%20pelo%20site%20e%20quero%20conhecer%20o%20Téo!';
 const STORAGE_KEY = 'hasSeenTeoPopup';
 
 export const TeoWelcomePopup = () => {
