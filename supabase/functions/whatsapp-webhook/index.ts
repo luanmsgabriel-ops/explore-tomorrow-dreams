@@ -16,6 +16,410 @@ const EXTERNAL_API_URL = "http://212.85.21.28:5000/cotar_viagem";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+const ADMIN_PHONE_NUMBER = "5515998389220";
+
+// ========== Admin Assistant ==========
+
+const ADMIN_SYSTEM_PROMPT = `Você é o assistente administrativo da Tomorrow Travel. Você responde APENAS ao administrador autorizado via WhatsApp.
+
+Sua função é interpretar comandos do admin e retornar EXATAMENTE UMA tag de ação para que o sistema execute a consulta correta no banco de dados.
+
+TAGS DISPONÍVEIS (use EXATAMENTE uma por resposta):
+- [ADMIN_QUERY:sales_report] - Relatório de vendas (mês atual por padrão)
+- [ADMIN_QUERY:sales_report:MM/YYYY] - Relatório de vendas de um mês específico
+- [ADMIN_QUERY:pending_quotes] - Cotações pendentes
+- [ADMIN_QUERY:contacts] - Lista de contatos/clientes
+- [ADMIN_QUERY:general_stats] - Estatísticas gerais do sistema
+- [ADMIN_QUERY:top_destinations] - Destinos mais solicitados
+- [ADMIN_QUERY:cancel_quote:ID] - Cancelar cotação por ID
+- [ADMIN_QUERY:expire_old_quotes] - Expirar cotações antigas (>7 dias)
+- [ADMIN_QUERY:help] - Menu de ajuda com comandos disponíveis
+
+REGRAS:
+- Analise a mensagem do admin e identifique a intenção
+- Retorne APENAS a tag correspondente, nada mais
+- Se não entender o comando, retorne [ADMIN_QUERY:help]
+- Para relatórios de vendas com mês específico, extraia mês/ano da mensagem
+- Para cancelar cotação, extraia o ID da mensagem
+
+Exemplos:
+- "vendas do mês" → [ADMIN_QUERY:sales_report]
+- "vendas de janeiro 2026" → [ADMIN_QUERY:sales_report:01/2026]
+- "pendentes" → [ADMIN_QUERY:pending_quotes]
+- "contatos" → [ADMIN_QUERY:contacts]
+- "estatísticas" → [ADMIN_QUERY:general_stats]
+- "destinos em alta" → [ADMIN_QUERY:top_destinations]
+- "cancelar cotação abc-123" → [ADMIN_QUERY:cancel_quote:abc-123]
+- "limpar pendentes antigas" → [ADMIN_QUERY:expire_old_quotes]
+- "ajuda" → [ADMIN_QUERY:help]
+- "como tá o sistema?" → [ADMIN_QUERY:general_stats]
+- "dashboard" → [ADMIN_QUERY:general_stats]`;
+
+function maskPhone(phone: string): string {
+  if (!phone || phone.length < 8) return phone;
+  return phone.substring(0, 4) + "****" + phone.substring(phone.length - 4);
+}
+
+async function getAdminSalesReport(month?: number, year?: number): Promise<string> {
+  const now = new Date();
+  const targetMonth = month || (now.getMonth() + 1);
+  const targetYear = year || now.getFullYear();
+  const startDate = new Date(targetYear, targetMonth - 1, 1).toISOString();
+  const endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59).toISOString();
+  const monthNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+  const { data: quotes } = await supabase
+    .from("travel_quote_requests")
+    .select("id, status, destination, created_at")
+    .gte("created_at", startDate)
+    .lte("created_at", endDate);
+
+  const { data: sales } = await supabase
+    .from("sales")
+    .select("id, total_value, destination_name, sale_date")
+    .gte("sale_date", `${targetYear}-${String(targetMonth).padStart(2,'0')}-01`)
+    .lte("sale_date", `${targetYear}-${String(targetMonth).padStart(2,'0')}-31`);
+
+  const totalQuotes = quotes?.length || 0;
+  const processed = quotes?.filter(q => q.status === "completed").length || 0;
+  const pending = quotes?.filter(q => q.status === "pending").length || 0;
+  const failed = quotes?.filter(q => q.status === "failed").length || 0;
+  const cancelled = quotes?.filter(q => q.status === "cancelled").length || 0;
+  const conversionRate = totalQuotes > 0 ? ((processed / totalQuotes) * 100).toFixed(1) : "0";
+
+  const destCount: Record<string, number> = {};
+  quotes?.forEach(q => {
+    if (q.destination) destCount[q.destination] = (destCount[q.destination] || 0) + 1;
+  });
+  const topDest = Object.entries(destCount).sort((a,b) => b[1] - a[1]).slice(0, 3);
+
+  const totalSalesValue = sales?.reduce((sum, s) => sum + Number(s.total_value || 0), 0) || 0;
+  const totalSalesCount = sales?.length || 0;
+
+  const prevMonth = targetMonth === 1 ? 12 : targetMonth - 1;
+  const prevYear = targetMonth === 1 ? targetYear - 1 : targetYear;
+  const prevStart = new Date(prevYear, prevMonth - 1, 1).toISOString();
+  const prevEnd = new Date(prevYear, prevMonth, 0, 23, 59, 59).toISOString();
+  const { data: prevQuotes } = await supabase
+    .from("travel_quote_requests")
+    .select("id")
+    .gte("created_at", prevStart)
+    .lte("created_at", prevEnd);
+  const prevTotal = prevQuotes?.length || 0;
+  const diff = prevTotal > 0 ? (((totalQuotes - prevTotal) / prevTotal) * 100).toFixed(0) : "N/A";
+
+  let msg = `📊 *RELATÓRIO DE VENDAS - ${monthNames[targetMonth-1].toUpperCase()} ${targetYear}*\n\n`;
+  msg += `✅ Cotações Processadas: ${processed}\n`;
+  msg += `⏳ Cotações Pendentes: ${pending}\n`;
+  msg += `❌ Cotações com Erro: ${failed}\n`;
+  msg += `🚫 Canceladas: ${cancelled}\n`;
+  msg += `📈 Total de Cotações: ${totalQuotes}\n`;
+  msg += `📊 Taxa de Conversão: ${conversionRate}%\n\n`;
+
+  if (totalSalesCount > 0) {
+    msg += `💰 *VENDAS REGISTRADAS:* ${totalSalesCount}\n`;
+    msg += `💵 Faturamento: R$ ${totalSalesValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n\n`;
+  }
+
+  if (topDest.length > 0) {
+    msg += `🏆 *TOP DESTINOS:*\n`;
+    topDest.forEach(([dest, count], i) => {
+      msg += `${i+1}. ${dest} (${count} cotações)\n`;
+    });
+    msg += `\n`;
+  }
+
+  if (diff !== "N/A") {
+    const symbol = Number(diff) >= 0 ? "+" : "";
+    const emoji = Number(diff) >= 0 ? "🎉" : "📉";
+    msg += `📅 Comparação com ${monthNames[prevMonth-1]}: ${symbol}${diff}% em cotações ${emoji}\n`;
+  }
+
+  msg += `\nDeseja ver mais detalhes? Responda:\n• "Cotações pendentes"\n• "Top destinos"\n• "Estatísticas gerais"`;
+  return msg;
+}
+
+async function getAdminPendingQuotes(): Promise<string> {
+  const { data: quotes } = await supabase
+    .from("travel_quote_requests")
+    .select("id, destination, origin, departure_date, return_date, adults, children, phone_number, customer_name, created_at")
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+
+  if (!quotes || quotes.length === 0) {
+    return "✅ *Nenhuma cotação pendente!* Tudo em dia! 🎉";
+  }
+
+  const now = new Date();
+  let alertCount = 0;
+  let msg = `⏳ *COTAÇÕES PENDENTES*\n\nTotal: ${quotes.length} cotações aguardando\n\n`;
+
+  quotes.forEach((q, i) => {
+    const created = new Date(q.created_at);
+    const diffMs = now.getTime() - created.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMin / 60);
+    const waitTime = diffMin < 60 ? `${diffMin} minutos` : `${diffHours}h${diffMin % 60 > 0 ? ` ${diffMin%60}min` : ""}`;
+    const alert = diffMin > 60 ? " ⚠️" : "";
+    if (diffMin > 60) alertCount++;
+
+    msg += `${i+1}️⃣ *${q.destination}*\n`;
+    msg += `   • Origem: ${q.origin}\n`;
+    msg += `   • Datas: ${q.departure_date} a ${q.return_date}\n`;
+    msg += `   • ${q.adults} adulto(s)${q.children > 0 ? `, ${q.children} criança(s)` : ""}\n`;
+    msg += `   • Cliente: ${maskPhone(q.phone_number)}\n`;
+    msg += `   • Aguardando: ${waitTime}${alert}\n\n`;
+  });
+
+  if (alertCount > 0) {
+    msg += `⚠️ *Atenção:* ${alertCount} cotação(ões) pendente(s) há mais de 1 hora!\n\n`;
+  }
+
+  msg += `Deseja processar alguma? Responda:\n• "Detalhes [número]"\n• "Cancelar cotação [ID]"`;
+  return msg;
+}
+
+async function getAdminContacts(): Promise<string> {
+  const { data: quotes } = await supabase
+    .from("travel_quote_requests")
+    .select("phone_number, customer_name, created_at, destination")
+    .order("created_at", { ascending: false });
+
+  if (!quotes || quotes.length === 0) {
+    return "📭 Nenhum contato encontrado.";
+  }
+
+  const phoneMap: Record<string, { name: string | null; count: number; lastDate: string; destinations: string[] }> = {};
+  quotes.forEach(q => {
+    if (!phoneMap[q.phone_number]) {
+      phoneMap[q.phone_number] = { name: q.customer_name, count: 0, lastDate: q.created_at, destinations: [] };
+    }
+    phoneMap[q.phone_number].count++;
+    if (q.destination && !phoneMap[q.phone_number].destinations.includes(q.destination)) {
+      phoneMap[q.phone_number].destinations.push(q.destination);
+    }
+  });
+
+  const uniquePhones = Object.keys(phoneMap);
+  const sorted = Object.entries(phoneMap).sort((a,b) => b[1].count - a[1].count);
+
+  let msg = `📱 *CONTATOS DO WHATSAPP*\n\n`;
+  msg += `📊 Total de números únicos: ${uniquePhones.length}\n\n`;
+
+  msg += `🏆 *Mais ativos:*\n`;
+  sorted.slice(0, 5).forEach(([phone, info], i) => {
+    msg += `${i+1}. ${info.name || "Sem nome"} (${maskPhone(phone)}) - ${info.count} solicitações\n`;
+  });
+
+  msg += `\n📋 *Últimos 10 contatos:*\n`;
+  const recent = Object.entries(phoneMap)
+    .sort((a,b) => new Date(b[1].lastDate).getTime() - new Date(a[1].lastDate).getTime())
+    .slice(0, 10);
+  recent.forEach(([phone, info]) => {
+    const date = new Date(info.lastDate).toLocaleDateString("pt-BR");
+    msg += `• ${info.name || "Sem nome"} (${maskPhone(phone)}) - ${date}\n`;
+  });
+
+  return msg;
+}
+
+async function getAdminGeneralStats(): Promise<string> {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).toISOString();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+  const { data: allQuotes } = await supabase.from("travel_quote_requests").select("id, status, created_at");
+  const { data: todayQuotes } = await supabase.from("travel_quote_requests").select("id").gte("created_at", todayStart);
+  const { data: weekQuotes } = await supabase.from("travel_quote_requests").select("id").gte("created_at", weekStart);
+  const { data: monthQuotes } = await supabase.from("travel_quote_requests").select("id").gte("created_at", monthStart);
+
+  const total = allQuotes?.length || 0;
+  const completed = allQuotes?.filter(q => q.status === "completed").length || 0;
+  const pending = allQuotes?.filter(q => q.status === "pending").length || 0;
+  const convRate = total > 0 ? ((completed / total) * 100).toFixed(1) : "0";
+
+  const hourCount: Record<number, number> = {};
+  allQuotes?.forEach(q => {
+    const h = new Date(q.created_at).getHours();
+    hourCount[h] = (hourCount[h] || 0) + 1;
+  });
+  const peakHours = Object.entries(hourCount).sort((a,b) => Number(b[1]) - Number(a[1])).slice(0, 3);
+
+  const { data: allSales } = await supabase.from("sales").select("id, total_value");
+  const totalRevenue = allSales?.reduce((sum, s) => sum + Number(s.total_value || 0), 0) || 0;
+
+  let msg = `📊 *ESTATÍSTICAS GERAIS*\n\n`;
+  msg += `📅 Hoje: ${todayQuotes?.length || 0} cotações\n`;
+  msg += `📅 Esta semana: ${weekQuotes?.length || 0} cotações\n`;
+  msg += `📅 Este mês: ${monthQuotes?.length || 0} cotações\n`;
+  msg += `📅 Total (all-time): ${total} cotações\n\n`;
+  msg += `✅ Processadas: ${completed}\n`;
+  msg += `⏳ Pendentes: ${pending}\n`;
+  msg += `📈 Taxa de conversão: ${convRate}%\n\n`;
+
+  if (allSales && allSales.length > 0) {
+    msg += `💰 Vendas registradas: ${allSales.length}\n`;
+    msg += `💵 Faturamento total: R$ ${totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n\n`;
+  }
+
+  if (peakHours.length > 0) {
+    msg += `⏰ *Horários de pico:*\n`;
+    peakHours.forEach(([h, count]) => {
+      msg += `• ${h}h - ${count} solicitações\n`;
+    });
+  }
+
+  return msg;
+}
+
+async function getAdminTopDestinations(): Promise<string> {
+  const { data: quotes } = await supabase.from("travel_quote_requests").select("destination");
+
+  if (!quotes || quotes.length === 0) {
+    return "📭 Nenhuma cotação encontrada.";
+  }
+
+  const destCount: Record<string, number> = {};
+  quotes.forEach(q => {
+    if (q.destination) destCount[q.destination] = (destCount[q.destination] || 0) + 1;
+  });
+
+  const total = quotes.length;
+  const sorted = Object.entries(destCount).sort((a,b) => b[1] - a[1]).slice(0, 10);
+
+  let msg = `🏆 *TOP DESTINOS MAIS SOLICITADOS*\n\n`;
+  sorted.forEach(([dest, count], i) => {
+    const pct = ((count / total) * 100).toFixed(1);
+    msg += `${i+1}. *${dest}* - ${count} cotações (${pct}%)\n`;
+  });
+
+  msg += `\n📊 Total de cotações: ${total}`;
+  return msg;
+}
+
+async function adminCancelQuote(quoteId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from("travel_quote_requests")
+    .update({ status: "cancelled" })
+    .eq("id", quoteId)
+    .select("id, destination")
+    .single();
+
+  if (error || !data) {
+    return `❌ Não foi possível cancelar a cotação. Verifique o ID: ${quoteId}`;
+  }
+
+  return `✅ Cotação cancelada com sucesso!\n\n🆔 ID: ${data.id}\n📍 Destino: ${data.destination}`;
+}
+
+async function adminExpireOldQuotes(): Promise<string> {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const { data, error } = await supabase
+    .from("travel_quote_requests")
+    .update({ status: "expired" })
+    .eq("status", "pending")
+    .lt("created_at", sevenDaysAgo.toISOString())
+    .select("id");
+
+  if (error) {
+    return "❌ Erro ao expirar cotações antigas.";
+  }
+
+  const count = data?.length || 0;
+  if (count === 0) {
+    return "✅ Nenhuma cotação antiga para expirar. Tudo limpo! 🎉";
+  }
+
+  return `✅ ${count} cotação(ões) pendente(s) com mais de 7 dias marcada(s) como expirada(s).`;
+}
+
+function getAdminHelpMessage(): string {
+  return `🤖 *ASSISTENTE ADMINISTRATIVO - TOMORROW TRAVEL*\n\n📋 *Comandos disponíveis:*\n\n📊 *Relatórios:*\n• "Relatório de vendas" ou "Vendas do mês"\n• "Vendas de [mês/ano]"\n• "Estatísticas gerais" ou "Dashboard"\n\n⏳ *Cotações:*\n• "Cotações pendentes" ou "Pendentes"\n• "Cancelar cotação [ID]"\n• "Limpar pendentes antigas"\n\n📱 *Contatos:*\n• "Contatos" ou "Lista de clientes"\n\n🏆 *Destinos:*\n• "Top destinos" ou "Destinos em alta"\n\n❓ *Outros:*\n• "Ajuda" - Este menu\n\nEnvie qualquer comando para começar! 😊`;
+}
+
+async function handleAdminMessage(phoneNumber: string, messageText: string): Promise<void> {
+  console.log(`[ADMIN] Command from ${phoneNumber}: ${messageText}`);
+
+  // Get AI to parse the command
+  const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash-lite",
+      messages: [
+        { role: "system", content: ADMIN_SYSTEM_PROMPT },
+        { role: "user", content: messageText },
+      ],
+    }),
+  });
+
+  let queryType = "help";
+  let queryParam = "";
+
+  if (aiResponse.ok) {
+    const aiData = await aiResponse.json();
+    const content = aiData.choices?.[0]?.message?.content || "";
+    const match = content.match(/\[ADMIN_QUERY:([^\]]+)\]/);
+    if (match) {
+      const parts = match[1].split(":");
+      queryType = parts[0];
+      queryParam = parts.slice(1).join(":");
+    }
+  }
+
+  console.log(`[ADMIN] Query type: ${queryType}, param: ${queryParam}`);
+
+  let response: string;
+
+  switch (queryType) {
+    case "sales_report": {
+      let month: number | undefined;
+      let year: number | undefined;
+      if (queryParam) {
+        const parts = queryParam.split("/");
+        if (parts.length === 2) {
+          month = parseInt(parts[0], 10);
+          year = parseInt(parts[1], 10);
+        }
+      }
+      response = await getAdminSalesReport(month, year);
+      break;
+    }
+    case "pending_quotes":
+      response = await getAdminPendingQuotes();
+      break;
+    case "contacts":
+      response = await getAdminContacts();
+      break;
+    case "general_stats":
+      response = await getAdminGeneralStats();
+      break;
+    case "top_destinations":
+      response = await getAdminTopDestinations();
+      break;
+    case "cancel_quote":
+      response = queryParam ? await adminCancelQuote(queryParam) : "❌ Informe o ID da cotação. Ex: Cancelar cotação abc-123";
+      break;
+    case "expire_old_quotes":
+      response = await adminExpireOldQuotes();
+      break;
+    case "help":
+    default:
+      response = getAdminHelpMessage();
+      break;
+  }
+
+  await sendWhatsAppMessage(phoneNumber, response);
+}
+
+// ========== Teo System Prompt ==========
+
 const TEO_SYSTEM_PROMPT = `Você é o Téo, assistente virtual da Tomorrow Travel, especializado em viagens personalizadas e inesquecíveis! 🌍
 
 IDENTIDADE E PERSONALIDADE:
@@ -902,16 +1306,16 @@ serve(async (req) => {
         });
       }
 
-      // Handle delayed tips (self-invoked after generating tips)
+      // Handle delayed tips (self-invoked after quotation)
       if (body.action === "delayed_tips") {
         const phone = body.phone_number;
-        const tipMessage = body.message;
-        const delaySec = body.delay_seconds || 30;
+        const message = body.message;
+        const delaySeconds = body.delay_seconds || 30;
 
-        if (phone && tipMessage) {
-          console.log(`Delayed tips: waiting ${delaySec}s before sending to ${phone}`);
-          await new Promise(resolve => setTimeout(resolve, delaySec * 1000));
-          await sendWhatsAppMessage(phone, tipMessage);
+        if (phone && message) {
+          console.log(`Delayed tips: waiting ${delaySeconds}s before sending to ${phone}`);
+          await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+          await sendWhatsAppMessage(phone, message);
 
           // Save tips to conversation history
           try {
@@ -926,33 +1330,47 @@ serve(async (req) => {
             if (conv) {
               const updatedHistory = [
                 ...((conv.messages_history as any[]) || []),
-                { role: "assistant", content: tipMessage, timestamp: new Date().toISOString() },
+                { role: "assistant", content: message, timestamp: new Date().toISOString() },
               ];
               await supabase
                 .from("whatsapp_conversations")
                 .update({ messages_history: updatedHistory })
                 .eq("id", conv.id);
             }
-          } catch (histErr) {
-            console.error("Error saving tips to history:", histErr);
+          } catch (err) {
+            console.error("Error saving delayed tips to history:", err);
           }
 
           console.log("Delayed tips sent successfully");
         }
 
-        return new Response(JSON.stringify({ status: "ok", delayed_tips_sent: true }), {
+        return new Response(JSON.stringify({ status: "ok", tips_sent: true }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Meta sends various webhook events; we only care about messages
+      // Handle follow-up messages
+      if (body.action === "follow_up") {
+        const phone = body.phone_number;
+        const message = body.message;
+        if (phone && message) {
+          console.log(`Follow-up to ${phone}: ${message.substring(0, 100)}...`);
+          await sendWhatsAppMessage(phone, message);
+        }
+        return new Response(JSON.stringify({ status: "ok", follow_up_sent: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Process incoming WhatsApp message
       const entry = body.entry?.[0];
       const changes = entry?.changes?.[0];
       const value = changes?.value;
 
-      if (!value?.messages || value.messages.length === 0) {
-        return new Response(JSON.stringify({ status: "ok" }), {
+      if (!value?.messages?.[0]) {
+        return new Response(JSON.stringify({ status: "ok", no_message: true }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -960,73 +1378,74 @@ serve(async (req) => {
 
       const message = value.messages[0];
       const phoneNumber = message.from;
-      let messageText = message.text?.body || "";
-      const contactName = value.contacts?.[0]?.profile?.name || null;
-      const messageType = message.type; // text, image, video, audio, document, etc.
+      const contactName = value.contacts?.[0]?.profile?.name || "";
+      const messageType = message.type;
+      let messageText = "";
       let incomingWasAudio = false;
+      let imageUrl: string | null = null;
 
-      // Handle audio messages: transcribe to text
-      if (messageType === "audio" && message.audio?.id) {
+      // Handle different message types
+      if (messageType === "text") {
+        messageText = message.text?.body || "";
+      } else if (messageType === "audio") {
         incomingWasAudio = true;
-        console.log(`Audio message received from ${phoneNumber}, downloading and transcribing...`);
-        try {
-          const audioBuffer = await downloadWhatsAppMedia(message.audio.id);
+        const audioId = message.audio?.id;
+        if (audioId) {
+          const audioBuffer = await downloadWhatsAppMedia(audioId);
           if (audioBuffer) {
             const transcription = await transcribeAudio(audioBuffer);
             if (transcription) {
               messageText = transcription;
-              console.log(`Audio transcribed: "${transcription}"`);
+              console.log(`Audio transcribed: ${messageText}`);
             } else {
-              messageText = "(Áudio recebido - transcrição indisponível)";
-              console.log("Audio transcription failed, asking for text");
+              messageText = "[Áudio não reconhecido]";
             }
           } else {
-            messageText = "(Áudio recebido - não foi possível baixar)";
+            messageText = "[Áudio não pôde ser baixado]";
           }
-        } catch (audioErr) {
-          console.error("Error processing incoming audio:", audioErr);
-          messageText = "(Áudio recebido - erro ao processar)";
         }
-      }
-
-      // Extract image URL if message is an image
-      let imageUrl: string | null = null;
-      if (messageType === "image" && message.image?.id) {
-        try {
-          // Get media URL from WhatsApp API
-          const mediaResponse = await fetch(
-            `https://graph.facebook.com/v21.0/${message.image.id}`,
-            {
-              headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
-            }
-          );
-          if (mediaResponse.ok) {
-            const mediaData = await mediaResponse.json();
-            // Download the actual image
-            const imageResponse = await fetch(mediaData.url, {
-              headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
-            });
-            if (imageResponse.ok) {
-              const imageBlob = await imageResponse.blob();
-              const fileName = `review-photos/${phoneNumber}/${Date.now()}.jpg`;
-              const { data: uploadData, error: uploadError } = await supabase.storage
-                .from("destination-images")
-                .upload(fileName, imageBlob, { contentType: "image/jpeg", upsert: true });
-              
-              if (!uploadError && uploadData) {
-                const { data: publicUrlData } = supabase.storage
+      } else if (messageType === "image") {
+        messageText = message.image?.caption || "Enviou uma foto";
+        // Try to download and store the image
+        const imageId = message.image?.id;
+        if (imageId) {
+          try {
+            const mediaResponse = await fetch(
+              `https://graph.facebook.com/v21.0/${imageId}`,
+              {
+                headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
+              }
+            );
+            if (mediaResponse.ok) {
+              const mediaData = await mediaResponse.json();
+              // Download the actual image
+              const imageResponse = await fetch(mediaData.url, {
+                headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
+              });
+              if (imageResponse.ok) {
+                const imageBlob = await imageResponse.blob();
+                const fileName = `review-photos/${phoneNumber}/${Date.now()}.jpg`;
+                const { data: uploadData, error: uploadError } = await supabase.storage
                   .from("destination-images")
-                  .getPublicUrl(fileName);
-                imageUrl = publicUrlData.publicUrl;
-                console.log("Image uploaded successfully:", imageUrl);
-              } else {
-                console.error("Image upload error:", uploadError);
+                  .upload(fileName, imageBlob, { contentType: "image/jpeg", upsert: true });
+                
+                if (!uploadError && uploadData) {
+                  const { data: publicUrlData } = supabase.storage
+                    .from("destination-images")
+                    .getPublicUrl(fileName);
+                  imageUrl = publicUrlData.publicUrl;
+                  console.log("Image uploaded successfully:", imageUrl);
+                } else {
+                  console.error("Image upload error:", uploadError);
+                }
               }
             }
+          } catch (imgErr) {
+            console.error("Error processing image:", imgErr);
           }
-        } catch (imgErr) {
-          console.error("Error processing image:", imgErr);
         }
+      } else {
+        messageText = `[${messageType}]`;
       }
 
       console.log(`Message from ${phoneNumber} (type: ${messageType}): ${messageText}`);
@@ -1064,6 +1483,22 @@ serve(async (req) => {
         console.log("Review webhook result:", reviewResult);
 
         return new Response(JSON.stringify({ status: "ok", routed_to: "review", ...reviewResult }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // ========== ADMIN ROUTING ==========
+      // If the message is from the admin phone number, route to admin assistant
+      if (phoneNumber === ADMIN_PHONE_NUMBER) {
+        console.log(`[ADMIN] Message from admin: ${messageText}`);
+        try {
+          await handleAdminMessage(phoneNumber, messageText);
+        } catch (adminErr) {
+          console.error("[ADMIN] Error handling admin message:", adminErr);
+          await sendWhatsAppMessage(phoneNumber, "❌ Erro ao processar comando. Tente novamente.");
+        }
+        return new Response(JSON.stringify({ status: "ok", routed_to: "admin" }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
