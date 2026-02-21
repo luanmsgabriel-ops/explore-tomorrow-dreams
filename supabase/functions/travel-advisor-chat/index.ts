@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callGemini, transformGeminiStreamToSSE } from "../_shared/gemini-client.ts";
+import { SALES_KNOWLEDGE } from "../_shared/sales-knowledge.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -99,7 +100,7 @@ RESPOSTAS CONTEXTUAIS:
 - "Vou pensar" → Dê 1-2 dicas rápidas sobre o destino
 - "Quero fechar!" → Celebre e passe para equipe
 
-LEMBRE-SE: Seja divertido, acolhedor e BREVE. Menos texto, mais impacto! 🚀`;
+LEMBRE-SE: Seja divertido, acolhedor e BREVE. Menos texto, mais impacto! 🚀` + SALES_KNOWLEDGE;
 
     const response = await callGemini(
       [

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SALES_KNOWLEDGE } from "../_shared/sales-knowledge.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -929,7 +930,7 @@ async function getAiResponse(messagesHistory: any[]): Promise<string> {
         body: JSON.stringify({
           model,
           messages: [
-            { role: "system", content: TEO_SYSTEM_PROMPT },
+            { role: "system", content: TEO_SYSTEM_PROMPT + SALES_KNOWLEDGE },
             ...messagesHistory,
           ],
         }),
