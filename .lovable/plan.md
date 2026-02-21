@@ -1,72 +1,48 @@
 
 
-# Assistente Administrativo via WhatsApp
+# Integrar Guia de Vendas na Base de Conhecimento do Teo
 
 ## Resumo
-Criar um assistente inteligente dentro do webhook do WhatsApp que detecta mensagens do administrador (5515998389220) e responde com relatorios, metricas e acoes administrativas, consultando o banco de dados em tempo real.
+Incorporar as estrategias de venda do "Guia Definitivo de Vendas via WhatsApp para Agencias de Viagem" nos system prompts do Teo, tanto no WhatsApp (`whatsapp-webhook`) quanto no site (`travel-advisor-chat`), para que ele aplique tecnicas de persuasao, contorno de objecoes e fechamento de vendas de forma natural durante as conversas.
 
-## Como funciona
+## O que sera adicionado
 
-O fluxo principal do webhook sera modificado para, antes de processar como conversa do Teo, verificar se o remetente e o numero do administrador. Se for, a mensagem sera roteada para uma logica completamente separada com um prompt de IA proprio e acesso direto ao banco de dados.
+O guia contem 6 areas de conhecimento que serao condensadas em instrucoes praticas para o Teo:
+
+1. **Gatilhos mentais**: Autoridade, Prova Social, Escassez, Urgencia e Antecipacao
+2. **Argumentos Agencia vs Plataformas Online**: Economia de tempo, expertise, custo-beneficio real, suporte 24h, servico de concierge
+3. **Contorno de objecoes**: Respostas para "achei caro", "vou pensar", "prefiro reservar sozinho", "nao tenho certeza do destino"
+4. **Tecnicas de fechamento**: Fechamento por Alternativa, Presuntivo e por Resumo
+5. **Follow-up estrategico**: Scripts com valor agregado para 24h, 2-3 dias, 5-7 dias e 10-14 dias
+6. **Pos-venda e fidelizacao**: Mensagens pre-viagem, boas-vindas, retorno, avaliacao e reativacao
 
 ## Detalhes tecnicos
 
-### Arquivo: `supabase/functions/whatsapp-webhook/index.ts`
+### Arquivo 1: `supabase/functions/whatsapp-webhook/index.ts`
 
-### Alteracao 1 - Constante do admin
-Adicionar constante com o numero do administrador:
-```typescript
-const ADMIN_PHONE_NUMBER = "5515998389220";
-```
+Adicionar um bloco `SALES_KNOWLEDGE` como constante separada e concatena-lo ao `TEO_SYSTEM_PROMPT`. O bloco incluira:
 
-### Alteracao 2 - Prompt do assistente admin
-Criar um `ADMIN_SYSTEM_PROMPT` separado que instrui a IA a:
-- Interpretar comandos do admin (relatorios, pendencias, contatos, estatisticas, destinos, acoes)
-- Responder com tags estruturadas tipo `[ADMIN_QUERY:tipo_da_consulta]` para que o codigo execute a query correta
-- Tipos de query: `sales_report`, `pending_quotes`, `contacts`, `general_stats`, `top_destinations`, `help`, `cancel_quote`, `expire_old_quotes`
+- Secao "ESTRATEGIAS DE VENDA" com instrucoes sobre gatilhos mentais (usar escassez quando houver ofertas limitadas, antecipacao ao descrever destinos, prova social mencionando avaliacoes de clientes)
+- Secao "CONTORNO DE OBJECOES" com respostas mapeadas para as objecoes mais comuns (preco, confianca, flexibilidade, indecisao)
+- Secao "TECNICAS DE FECHAMENTO" com os 3 metodos (alternativa, presuntivo, resumo)
+- Secao "VALOR DA AGENCIA" com os 5 argumentos-chave contra plataformas online
+- Secao "FOLLOW-UP" com orientacoes para mensagens de acompanhamento
 
-### Alteracao 3 - Funcoes de consulta ao banco
-Criar funcoes helper que consultam o Supabase e formatam os resultados:
+O prompt final sera: `TEO_SYSTEM_PROMPT` + `SALES_KNOWLEDGE`
 
-- `getAdminSalesReport(month?, year?)` - Consulta `travel_quote_requests` e `sales`, agrupa por status, calcula taxa de conversao, top destinos
-- `getAdminPendingQuotes()` - Lista cotacoes com status `pending`, calcula tempo de espera, alerta se > 1h
-- `getAdminContacts()` - Extrai telefones unicos de `travel_quote_requests`, conta solicitacoes por telefone
-- `getAdminGeneralStats()` - Estatisticas gerais (hoje, semana, mes, all-time), horarios de pico
-- `getAdminTopDestinations()` - Top 10 destinos, contagem e percentual
-- `cancelQuote(id)` - Atualiza status para `cancelled`
-- `expireOldQuotes()` - Marca como `expired` cotacoes pendentes com mais de 7 dias
+### Arquivo 2: `supabase/functions/travel-advisor-chat/index.ts`
 
-### Alteracao 4 - Roteamento no fluxo principal
-No bloco que processa mensagens do WhatsApp (apos verificar reviews), adicionar verificacao:
+Adicionar o mesmo bloco `SALES_KNOWLEDGE` (adaptado para o contexto do site) ao `systemPrompt` da funcao de chat do site, para que o Teo no site tambem aplique as mesmas tecnicas.
 
-```
-if (phoneNumber === ADMIN_PHONE_NUMBER) {
-  // Rota admin: consultar DB, formatar resposta, enviar
-}
-```
+### Principios de integracao
 
-O fluxo admin:
-1. Envia a mensagem do admin + dados do banco para a IA com o ADMIN_SYSTEM_PROMPT
-2. A IA retorna tags `[ADMIN_QUERY:tipo]` com parametros
-3. O codigo executa a query correspondente
-4. Formata o resultado e envia via WhatsApp
-5. Nao cria conversa no `whatsapp_conversations` (ou cria separada para log)
-
-### Alteracao 5 - Seguranca
-- Qualquer numero que nao seja o admin recebera o fluxo normal do Teo
-- Mascarar telefones dos clientes nos relatorios (ex: 5519****1919)
-- Registrar comandos admin no console log
-
-### Formato das respostas
-Respostas formatadas com emojis e estrutura clara, limitadas a 4000 caracteres (limite do WhatsApp). Se exceder, dividir em multiplas mensagens.
+- O conteudo sera condensado em instrucoes curtas e objetivas (nao copiar o PDF inteiro)
+- Manter compatibilidade com as regras existentes de "respostas ultra-curtas"
+- Os gatilhos e tecnicas devem ser aplicados de forma natural, sem parecer robotico
+- As tecnicas de fechamento devem ser usadas apenas quando o cliente demonstrar interesse real
+- O contorno de objecoes deve ser contextual (so aplicar quando a objecao surgir)
 
 ### Deploy
-Redeploy da edge function `whatsapp-webhook`.
 
-## O que NAO sera implementado nesta fase
-- Alertas proativos automaticos (pode ser adicionado depois com cron job)
-- Graficos como imagem
-- Exportacao em PDF
-- Comandos de voz
-- Integracao com Google Analytics
+Redeploy das edge functions `whatsapp-webhook` e `travel-advisor-chat`.
 
