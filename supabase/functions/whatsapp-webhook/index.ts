@@ -33,6 +33,8 @@ TAGS DISPONÍVEIS (use EXATAMENTE uma por resposta):
 - [ADMIN_QUERY:top_destinations] - Destinos mais solicitados
 - [ADMIN_QUERY:cancel_quote:ID] - Cancelar cotação por ID
 - [ADMIN_QUERY:expire_old_quotes] - Expirar cotações antigas (>7 dias)
+- [ADMIN_QUERY:process_quote:ID] - Processar/acionar Manus para cotação específica
+- [ADMIN_QUERY:reprocess_quote:ID] - Reprocessar cotação com erro
 - [ADMIN_QUERY:help] - Menu de ajuda com comandos disponíveis
 
 REGRAS:
@@ -40,7 +42,7 @@ REGRAS:
 - Retorne APENAS a tag correspondente, nada mais
 - Se não entender o comando, retorne [ADMIN_QUERY:help]
 - Para relatórios de vendas com mês específico, extraia mês/ano da mensagem
-- Para cancelar cotação, extraia o ID da mensagem
+- Para cancelar/processar/reprocessar cotação, extraia o ID da mensagem
 
 Exemplos:
 - "vendas do mês" → [ADMIN_QUERY:sales_report]
@@ -51,7 +53,8 @@ Exemplos:
 - "destinos em alta" → [ADMIN_QUERY:top_destinations]
 - "cancelar cotação abc-123" → [ADMIN_QUERY:cancel_quote:abc-123]
 - "limpar pendentes antigas" → [ADMIN_QUERY:expire_old_quotes]
-- "ajuda" → [ADMIN_QUERY:help]
+- "processar cotação abc-123" → [ADMIN_QUERY:process_quote:abc-123]
+- "reprocessar abc-123" → [ADMIN_QUERY:reprocess_quote:abc-123]
 - "como tá o sistema?" → [ADMIN_QUERY:general_stats]
 - "dashboard" → [ADMIN_QUERY:general_stats]`;
 
@@ -336,8 +339,127 @@ async function adminExpireOldQuotes(): Promise<string> {
   return `✅ ${count} cotação(ões) pendente(s) com mais de 7 dias marcada(s) como expirada(s).`;
 }
 
+async function adminProcessQuote(quoteId: string): Promise<string> {
+  // Find the quote
+  const { data: quote, error } = await supabase
+    .from("travel_quote_requests")
+    .select("id, destination, origin, status, phone_number")
+    .eq("id", quoteId)
+    .single();
+
+  if (error || !quote) {
+    return `❌ Cotação não encontrada. Verifique o ID: ${quoteId}`;
+  }
+
+  if (quote.status === "completed") {
+    return `✅ Esta cotação já foi processada!\n📍 Destino: ${quote.destination}`;
+  }
+
+  if (quote.status === "processing") {
+    return `⏳ Esta cotação já está sendo processada.\n📍 Destino: ${quote.destination}`;
+  }
+
+  // Reset status to pending to trigger the process-quote function
+  const { error: updateError } = await supabase
+    .from("travel_quote_requests")
+    .update({ status: "pending", error_message: null, processed_at: null })
+    .eq("id", quoteId);
+
+  if (updateError) {
+    return `❌ Erro ao acionar processamento: ${updateError.message}`;
+  }
+
+  // Call process-quote edge function directly
+  try {
+    const processUrl = `${SUPABASE_URL}/functions/v1/process-quote`;
+    const processResponse = await fetch(processUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({ record: { ...quote, status: "pending" } }),
+    });
+
+    if (!processResponse.ok) {
+      const errText = await processResponse.text();
+      console.error("[ADMIN] Process quote error:", errText);
+    }
+  } catch (e) {
+    console.error("[ADMIN] Process quote call error:", e);
+  }
+
+  return `🚀 Cotação acionada para processamento!\n\n🆔 ID: ${quote.id}\n📍 Destino: ${quote.destination}\n📍 Origem: ${quote.origin}\n📱 Cliente: ${maskPhone(quote.phone_number)}\n\nO Manus irá processar a cotação. Aguarde alguns minutos.`;
+}
+
+async function adminReprocessQuote(quoteId: string): Promise<string> {
+  const { data: quote, error } = await supabase
+    .from("travel_quote_requests")
+    .select("id, destination, origin, status, phone_number, error_message")
+    .eq("id", quoteId)
+    .single();
+
+  if (error || !quote) {
+    return `❌ Cotação não encontrada. Verifique o ID: ${quoteId}`;
+  }
+
+  if (quote.status === "completed") {
+    return `✅ Esta cotação já foi processada com sucesso!\n📍 Destino: ${quote.destination}\n\nDeseja forçar reprocessamento? Responda "processar cotação ${quoteId}"`;
+  }
+
+  // Reset to pending and clear error
+  const { error: updateError } = await supabase
+    .from("travel_quote_requests")
+    .update({ 
+      status: "pending", 
+      error_message: null, 
+      processed_at: null,
+      processing_details: {} 
+    })
+    .eq("id", quoteId);
+
+  if (updateError) {
+    return `❌ Erro ao reprocessar: ${updateError.message}`;
+  }
+
+  // Call process-quote edge function
+  try {
+    const processUrl = `${SUPABASE_URL}/functions/v1/process-quote`;
+    await fetch(processUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({ record: { ...quote, status: "pending" } }),
+    });
+  } catch (e) {
+    console.error("[ADMIN] Reprocess quote call error:", e);
+  }
+
+  let msg = `🔄 Cotação enviada para reprocessamento!\n\n🆔 ID: ${quote.id}\n📍 Destino: ${quote.destination}\n📍 Origem: ${quote.origin}`;
+  if (quote.error_message) {
+    msg += `\n\n⚠️ Erro anterior: ${quote.error_message}`;
+  }
+  msg += `\n\nAguarde alguns minutos para o resultado.`;
+  return msg;
+}
+
+async function logAdminAccess(phoneNumber: string, commandText: string, queryType: string, responseSummary?: string): Promise<void> {
+  try {
+    await supabase.from("admin_access_logs").insert({
+      phone_number: phoneNumber,
+      command_text: commandText,
+      query_type: queryType,
+      response_summary: responseSummary?.substring(0, 500),
+    });
+  } catch (e) {
+    console.error("[ADMIN] Failed to log access:", e);
+  }
+}
+
 function getAdminHelpMessage(): string {
-  return `🤖 *ASSISTENTE ADMINISTRATIVO - TOMORROW TRAVEL*\n\n📋 *Comandos disponíveis:*\n\n📊 *Relatórios:*\n• "Relatório de vendas" ou "Vendas do mês"\n• "Vendas de [mês/ano]"\n• "Estatísticas gerais" ou "Dashboard"\n\n⏳ *Cotações:*\n• "Cotações pendentes" ou "Pendentes"\n• "Cancelar cotação [ID]"\n• "Limpar pendentes antigas"\n\n📱 *Contatos:*\n• "Contatos" ou "Lista de clientes"\n\n🏆 *Destinos:*\n• "Top destinos" ou "Destinos em alta"\n\n❓ *Outros:*\n• "Ajuda" - Este menu\n\nEnvie qualquer comando para começar! 😊`;
+  return `🤖 *ASSISTENTE ADMINISTRATIVO - TOMORROW TRAVEL*\n\n📋 *Comandos disponíveis:*\n\n📊 *Relatórios:*\n• "Relatório de vendas" ou "Vendas do mês"\n• "Vendas de [mês/ano]"\n• "Estatísticas gerais" ou "Dashboard"\n\n⏳ *Cotações:*\n• "Cotações pendentes" ou "Pendentes"\n• "Processar cotação [ID]"\n• "Reprocessar [ID]"\n• "Cancelar cotação [ID]"\n• "Limpar pendentes antigas"\n\n📱 *Contatos:*\n• "Contatos" ou "Lista de clientes"\n\n🏆 *Destinos:*\n• "Top destinos" ou "Destinos em alta"\n\n❓ *Outros:*\n• "Ajuda" - Este menu\n\nEnvie qualquer comando para começar! 😊`;
 }
 
 async function handleAdminMessage(phoneNumber: string, messageText: string): Promise<void> {
@@ -406,6 +528,12 @@ async function handleAdminMessage(phoneNumber: string, messageText: string): Pro
     case "cancel_quote":
       response = queryParam ? await adminCancelQuote(queryParam) : "❌ Informe o ID da cotação. Ex: Cancelar cotação abc-123";
       break;
+    case "process_quote":
+      response = queryParam ? await adminProcessQuote(queryParam) : "❌ Informe o ID da cotação. Ex: Processar cotação abc-123";
+      break;
+    case "reprocess_quote":
+      response = queryParam ? await adminReprocessQuote(queryParam) : "❌ Informe o ID da cotação. Ex: Reprocessar abc-123";
+      break;
     case "expire_old_quotes":
       response = await adminExpireOldQuotes();
       break;
@@ -414,6 +542,9 @@ async function handleAdminMessage(phoneNumber: string, messageText: string): Pro
       response = getAdminHelpMessage();
       break;
   }
+
+  // Log admin access
+  await logAdminAccess(phoneNumber, messageText, queryType, response);
 
   await sendWhatsAppMessage(phoneNumber, response);
 }
