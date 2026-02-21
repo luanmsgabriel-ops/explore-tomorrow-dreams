@@ -123,7 +123,18 @@ export const PromotionalCarousel = () => {
       return;
     }
 
-    fetchOffers();
+    // Check if popup is enabled in site settings
+    const checkAndFetch = async () => {
+      const { data } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'popup_offers_enabled')
+        .single();
+      
+      if (data?.value === false) return;
+      fetchOffers();
+    };
+    checkAndFetch();
   }, []);
 
   // Track which offer is being viewed in carousel

@@ -3,8 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
   Loader2, Trash2, Edit, Clock, Calendar, 
-  DollarSign, Tag, Sparkles, MapPin, Save, X, Plus, Image, ArrowUp, ArrowDown
+  DollarSign, Tag, Sparkles, MapPin, Save, X, Plus, Image, ArrowUp, ArrowDown, Eye, EyeOff
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { BannerGenerator } from './BannerGenerator';
 import { PromotionalOfferModal } from './PromotionalOfferModal';
 interface PromotionalOffer {
@@ -38,6 +39,8 @@ export const PromotionalOffersManager = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingTagline, setIsGeneratingTagline] = useState(false);
+  const [popupEnabled, setPopupEnabled] = useState(true);
+  const [isTogglingPopup, setIsTogglingPopup] = useState(false);
 
   // Edit form state
   const [formData, setFormData] = useState({
@@ -56,7 +59,36 @@ export const PromotionalOffersManager = () => {
 
   useEffect(() => {
     fetchOffers();
+    fetchPopupSetting();
   }, []);
+
+  const fetchPopupSetting = async () => {
+    const { data } = await supabase
+      .from('site_settings')
+      .select('value')
+      .eq('key', 'popup_offers_enabled')
+      .single();
+    if (data) setPopupEnabled(data.value === true);
+  };
+
+  const handleTogglePopup = async () => {
+    setIsTogglingPopup(true);
+    try {
+      const newValue = !popupEnabled;
+      const { error } = await supabase
+        .from('site_settings')
+        .update({ value: newValue, updated_at: new Date().toISOString() })
+        .eq('key', 'popup_offers_enabled');
+      if (error) throw error;
+      setPopupEnabled(newValue);
+      toast.success(`Pop-up de ofertas ${newValue ? 'ativado' : 'desativado'}`);
+    } catch (error) {
+      console.error('Error toggling popup:', error);
+      toast.error('Erro ao alterar configuração');
+    } finally {
+      setIsTogglingPopup(false);
+    }
+  };
 
   const fetchOffers = async () => {
     setIsLoading(true);
@@ -303,7 +335,16 @@ export const PromotionalOffersManager = () => {
         <h1 className="font-serif text-3xl font-bold text-foreground">
           Ofertas Promocionais
         </h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/50 border border-border">
+            {popupEnabled ? <Eye className="w-4 h-4 text-primary" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
+            <span className="text-sm font-medium text-foreground">Pop-up</span>
+            <Switch
+              checked={popupEnabled}
+              onCheckedChange={handleTogglePopup}
+              disabled={isTogglingPopup}
+            />
+          </div>
           <button
             onClick={() => setShowCreateModal(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90 transition-opacity text-sm font-medium"
