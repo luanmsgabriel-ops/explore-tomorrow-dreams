@@ -35,6 +35,13 @@ REGRAS DE RESPOSTAS ULTRA-CURTAS:
 - Um emoji ou piada curta por mensagem, no máximo
 - NÃO faça comentários longos sobre o destino, apenas reaja brevemente (ex: "Boa escolha! 🔥")
 
+REGRA DE PRIORIDADE:
+- Se o cliente perguntar algo (dúvida, curiosidade, dica, info sobre destino, qualquer assunto), RESPONDA primeiro. Não force a coleta de dados.
+- Acompanhe a conversa naturalmente. Você é um consultor de viagens, não um formulário.
+- O fluxo de coleta só começa quando o cliente demonstra interesse em cotar ("quero cotar", "quanto custa", "quero viajar pra X") ou quando você sugere a cotação.
+- Se o cliente já informou o destino em uma pergunta, guarde essa info e use quando for cotar.
+- Se o cliente perguntar sobre clima, gastronomia, cultura, dicas de um destino, responda com entusiasmo e conhecimento. Só depois, naturalmente, sugira a cotação se fizer sentido.
+
 FLUXO DE ATENDIMENTO:
 1. RECEPÇÃO - Cumprimente brevemente e pergunte o nome (1-2 linhas apenas)
 2. COLETA (ULTRA-BREVE - máximo 2 linhas por mensagem):
@@ -838,6 +845,63 @@ serve(async (req) => {
         });
       }
 
+      // Handle follow-up quote (self-invoked after 60s of inactivity)
+      if (body.action === "follow_up_quote") {
+        const phone = body.phone_number;
+        const conversationId = body.conversation_id;
+        const savedUpdatedAt = body.saved_updated_at;
+
+        if (phone && conversationId && savedUpdatedAt) {
+          console.log(`Follow-up quote: waiting 60s before checking inactivity for ${phone}`);
+          await new Promise(resolve => setTimeout(resolve, 60000));
+
+          // Check if conversation was updated since we scheduled this
+          const { data: currentConv } = await supabase
+            .from("whatsapp_conversations")
+            .select("updated_at, is_ai_active, quote_request_id, client_name, messages_history, collected_data")
+            .eq("id", conversationId)
+            .single();
+
+          if (currentConv) {
+            const wasUpdated = currentConv.updated_at !== savedUpdatedAt;
+            const hasQuote = !!currentConv.quote_request_id;
+            const aiActive = currentConv.is_ai_active;
+            const collectedData = (currentConv.collected_data as Record<string, any>) || {};
+            const alreadyTriggered = !!collectedData._quotation_triggered;
+
+            console.log(`Follow-up check: wasUpdated=${wasUpdated}, hasQuote=${hasQuote}, aiActive=${aiActive}, alreadyTriggered=${alreadyTriggered}`);
+
+            if (!wasUpdated && !hasQuote && aiActive && !alreadyTriggered) {
+              const clientName = currentConv.client_name || "";
+              const greeting = clientName ? `Ei ${clientName}` : "Ei";
+              const destino = collectedData.destino ? ` pra ${collectedData.destino}` : "";
+              const followUpMsg = `${greeting}! Se quiser, posso buscar uma cotação${destino} pra você. É só me dizer! ✈️😊`;
+
+              await sendWhatsAppMessage(phone, followUpMsg);
+
+              // Save to history
+              const updatedHistory = [
+                ...((currentConv.messages_history as any[]) || []),
+                { role: "assistant", content: followUpMsg, timestamp: new Date().toISOString() },
+              ];
+              await supabase
+                .from("whatsapp_conversations")
+                .update({ messages_history: updatedHistory })
+                .eq("id", conversationId);
+
+              console.log("Follow-up quote sent successfully");
+            } else {
+              console.log("Follow-up cancelled: conversation was updated or quote already exists");
+            }
+          }
+        }
+
+        return new Response(JSON.stringify({ status: "ok", follow_up_processed: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Handle delayed tips (self-invoked after generating tips)
       if (body.action === "delayed_tips") {
         const phone = body.phone_number;
@@ -1404,6 +1468,37 @@ serve(async (req) => {
       }
 
       await sendWhatsAppMessage(phoneNumber, cleanResponse);
+
+      // Schedule follow-up quote if no quotation was triggered yet
+      if (newState !== "completed" && newState !== "human_takeover" && !newCollectedData._quotation_triggered && !conversation.quote_request_id) {
+        try {
+          const selfUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
+          // Get the updated_at from the DB after our update
+          const { data: updatedConv } = await supabase
+            .from("whatsapp_conversations")
+            .select("updated_at")
+            .eq("id", conversation.id)
+            .single();
+
+          if (updatedConv) {
+            fetch(selfUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              },
+              body: JSON.stringify({
+                action: "follow_up_quote",
+                phone_number: phoneNumber,
+                conversation_id: conversation.id,
+                saved_updated_at: updatedConv.updated_at,
+              }),
+            }).catch(err => console.error("Error scheduling follow-up quote:", err));
+          }
+        } catch (fuErr) {
+          console.error("Error scheduling follow-up:", fuErr);
+        }
+      }
 
       return new Response(JSON.stringify({ status: "ok", state: newState }), {
         status: 200,
