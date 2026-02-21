@@ -131,7 +131,8 @@ export const PromotionalCarousel = () => {
         .eq('key', 'popup_offers_enabled')
         .single();
       
-      if (data?.value === false) return;
+      // value is stored as JSON – could be boolean false or string "false"
+      if (data?.value === false || data?.value === 'false') return;
       fetchOffers();
     };
     checkAndFetch();
