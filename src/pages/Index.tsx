@@ -4,6 +4,7 @@ import { DestinationCarousel } from '@/components/DestinationCarousel';
 import { PromotionalCarousel } from '@/components/PromotionalCarousel';
 import { ActiveOffersCarousel } from '@/components/ActiveOffersCarousel';
 import { Footer } from '@/components/Footer';
+import { TeoWelcomePopup } from '@/components/TeoWelcomePopup';
 import { useDestinations } from '@/hooks/useDestinations';
 import { Compass, Globe, MapPin, Sparkles, Play, MessageCircle, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -18,6 +19,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <TeoWelcomePopup />
       
       {/* Promotional Popup Carousel */}
       <PromotionalCarousel />
