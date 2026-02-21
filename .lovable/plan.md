@@ -1,43 +1,72 @@
 
-# Teo: Priorizar assunto do cliente + Follow-up de cotacao apos inatividade
 
-## O que muda
+# Assistente Administrativo via WhatsApp
 
-### 1. Prompt do Teo (TEO_SYSTEM_PROMPT)
-Adicionar instrucoes para que o Teo:
-- **Priorize o que a pessoa perguntar** - Se o cliente fizer uma pergunta sobre destino, duvida, curiosidade ou qualquer assunto, o Teo deve responder de forma natural e util, sem forcar a coleta de dados imediatamente.
-- **Interaja livremente** - O Teo deve acompanhar o fluxo da conversa do cliente, respondendo perguntas, dando dicas, tirando duvidas, como um consultor de verdade.
-- **Nao force a cotacao** - O fluxo de coleta de dados so deve ser iniciado quando o cliente demonstrar interesse em cotar, ou apos o follow-up de inatividade.
+## Resumo
+Criar um assistente inteligente dentro do webhook do WhatsApp que detecta mensagens do administrador (5515998389220) e responde com relatorios, metricas e acoes administrativas, consultando o banco de dados em tempo real.
 
-### 2. Follow-up automatico apos 1 minuto de inatividade
-Quando o Teo responder uma mensagem que NAO resultou em cotacao, agendar um follow-up via self-invocation (mesmo padrao do `delayed_tips`):
-- Apos 60 segundos, verificar se houve nova mensagem do cliente.
-- Se NAO houve, enviar uma mensagem perguntando se gostaria de fazer uma cotacao.
-- Se JA houve, cancelar o follow-up (o cliente voltou a conversar).
+## Como funciona
 
-### Detalhes tecnicos
+O fluxo principal do webhook sera modificado para, antes de processar como conversa do Teo, verificar se o remetente e o numero do administrador. Se for, a mensagem sera roteada para uma logica completamente separada com um prompt de IA proprio e acesso direto ao banco de dados.
 
-**Arquivo:** `supabase/functions/whatsapp-webhook/index.ts`
+## Detalhes tecnicos
 
-**Alteracao 1 - Prompt (linhas 19-105):**
-Adicionar na secao "FLUXO DE ATENDIMENTO" uma regra de prioridade:
-```
-REGRA DE PRIORIDADE:
-- Se o cliente perguntar algo (duvida, curiosidade, dica, info sobre destino), RESPONDA primeiro. Nao force a coleta.
-- Acompanhe a conversa naturalmente. Voce e um consultor, nao um formulario.
-- O fluxo de coleta so comeca quando o cliente demonstra interesse em cotar ou quando voce sugere a cotacao.
-- Se o cliente ja informou o destino em uma pergunta, use essa info quando for cotar.
+### Arquivo: `supabase/functions/whatsapp-webhook/index.ts`
+
+### Alteracao 1 - Constante do admin
+Adicionar constante com o numero do administrador:
+```typescript
+const ADMIN_PHONE_NUMBER = "5515998389220";
 ```
 
-**Alteracao 2 - Nova action `follow_up_quote` (novo bloco):**
-Criar um handler para `action === "follow_up_quote"` similar ao `delayed_tips`:
-- Recebe `phone_number` e `conversation_id`
-- Espera 60 segundos
-- Verifica se `updated_at` da conversa mudou (se mudou, o cliente mandou mensagem, cancela)
-- Se nao mudou e nao tem cotacao disparada, envia mensagem: "Ei [nome]! Se quiser, posso buscar uma cotacao pra voce. So me dizer! ✈️"
-- Salva no historico
+### Alteracao 2 - Prompt do assistente admin
+Criar um `ADMIN_SYSTEM_PROMPT` separado que instrui a IA a:
+- Interpretar comandos do admin (relatorios, pendencias, contatos, estatisticas, destinos, acoes)
+- Responder com tags estruturadas tipo `[ADMIN_QUERY:tipo_da_consulta]` para que o codigo execute a query correta
+- Tipos de query: `sales_report`, `pending_quotes`, `contacts`, `general_stats`, `top_destinations`, `help`, `cancel_quote`, `expire_old_quotes`
 
-**Alteracao 3 - Agendar follow-up no fluxo standard (linhas ~1357-1410):**
-Apos o fluxo standard (sem cotacao), verificar se a conversa ainda nao tem cotacao disparada. Se nao tiver, agendar o follow-up via `fetch` (non-blocking, mesmo padrao do `delayed_tips`).
+### Alteracao 3 - Funcoes de consulta ao banco
+Criar funcoes helper que consultam o Supabase e formatam os resultados:
 
-**Deploy:** Redeploy da edge function `whatsapp-webhook`.
+- `getAdminSalesReport(month?, year?)` - Consulta `travel_quote_requests` e `sales`, agrupa por status, calcula taxa de conversao, top destinos
+- `getAdminPendingQuotes()` - Lista cotacoes com status `pending`, calcula tempo de espera, alerta se > 1h
+- `getAdminContacts()` - Extrai telefones unicos de `travel_quote_requests`, conta solicitacoes por telefone
+- `getAdminGeneralStats()` - Estatisticas gerais (hoje, semana, mes, all-time), horarios de pico
+- `getAdminTopDestinations()` - Top 10 destinos, contagem e percentual
+- `cancelQuote(id)` - Atualiza status para `cancelled`
+- `expireOldQuotes()` - Marca como `expired` cotacoes pendentes com mais de 7 dias
+
+### Alteracao 4 - Roteamento no fluxo principal
+No bloco que processa mensagens do WhatsApp (apos verificar reviews), adicionar verificacao:
+
+```
+if (phoneNumber === ADMIN_PHONE_NUMBER) {
+  // Rota admin: consultar DB, formatar resposta, enviar
+}
+```
+
+O fluxo admin:
+1. Envia a mensagem do admin + dados do banco para a IA com o ADMIN_SYSTEM_PROMPT
+2. A IA retorna tags `[ADMIN_QUERY:tipo]` com parametros
+3. O codigo executa a query correspondente
+4. Formata o resultado e envia via WhatsApp
+5. Nao cria conversa no `whatsapp_conversations` (ou cria separada para log)
+
+### Alteracao 5 - Seguranca
+- Qualquer numero que nao seja o admin recebera o fluxo normal do Teo
+- Mascarar telefones dos clientes nos relatorios (ex: 5519****1919)
+- Registrar comandos admin no console log
+
+### Formato das respostas
+Respostas formatadas com emojis e estrutura clara, limitadas a 4000 caracteres (limite do WhatsApp). Se exceder, dividir em multiplas mensagens.
+
+### Deploy
+Redeploy da edge function `whatsapp-webhook`.
+
+## O que NAO sera implementado nesta fase
+- Alertas proativos automaticos (pode ser adicionado depois com cron job)
+- Graficos como imagem
+- Exportacao em PDF
+- Comandos de voz
+- Integracao com Google Analytics
+
