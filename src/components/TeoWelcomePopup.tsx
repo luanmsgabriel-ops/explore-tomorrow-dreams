@@ -48,7 +48,7 @@ export const TeoWelcomePopup = () => {
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="fixed inset-0 flex items-center justify-center z-[101] p-4"
           >
-            <div className="relative w-full max-w-md rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-b from-card to-background border border-border">
+            <div className="relative w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-b from-card to-background border border-border">
               {/* Close */}
               <button
                 onClick={handleClose}
@@ -61,12 +61,12 @@ export const TeoWelcomePopup = () => {
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
 
               {/* Content */}
-              <div className="relative px-6 pt-6 pb-8 text-center">
+              <div className="relative px-8 pt-8 pb-10 text-center">
                 {/* Teo avatar */}
                 <motion.div
                   animate={{ y: [0, -6, 0] }}
                   transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-                  className="mx-auto mb-4 w-24 h-24 md:w-28 md:h-28"
+                  className="mx-auto mb-5 w-28 h-28 md:w-32 md:h-32"
                 >
                   <img
                     src={teoCharacter}
@@ -91,7 +91,7 @@ export const TeoWelcomePopup = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="font-serif text-xl md:text-2xl font-bold text-foreground mb-1"
+                  className="font-serif text-2xl md:text-3xl font-bold text-foreground mb-2"
                 >
                   Conheça o Téo! 🌍
                 </motion.h2>
@@ -101,7 +101,7 @@ export const TeoWelcomePopup = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.25 }}
-                  className="text-sm md:text-base font-semibold gradient-text-gold mb-3"
+                  className="text-base md:text-lg font-semibold gradient-text-gold mb-4"
                 >
                   ⚡ Sua cotação em minutos
                 </motion.p>
@@ -111,7 +111,7 @@ export const TeoWelcomePopup = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="text-sm md:text-base text-muted-foreground mb-5 leading-relaxed"
+                  className="text-base md:text-lg text-muted-foreground mb-6 leading-relaxed"
                 >
                   Receba cotações em minutos, tire dúvidas sobre destinos e monte sua viagem dos sonhos com IA.{' '}
                   <span className="text-foreground font-medium">Disponível 24/7 no WhatsApp!</span>
