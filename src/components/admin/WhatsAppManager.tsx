@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { 
   MessageCircle, Eye, Bot, UserCheck, RefreshCw, Send, Phone, Clock, 
-  CheckCircle, AlertCircle, Loader2, FileText, Trash2 
+  CheckCircle, AlertCircle, Loader2, FileText, Trash2, CheckCheck
 } from 'lucide-react';
 
 interface WhatsAppConversation {
@@ -348,25 +348,42 @@ export const WhatsAppManager = () => {
 
               {/* Messages Timeline */}
               <div className="space-y-3 max-h-96 overflow-y-auto p-2">
-                {selectedConversation.messages_history.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}
-                  >
+                {selectedConversation.messages_history.map((msg, idx) => {
+                  const isAssistant = msg.role === 'assistant';
+                  // "Read" = there's a user reply after this assistant message
+                  const wasRead = isAssistant && selectedConversation.messages_history
+                    .slice(idx + 1)
+                    .some(m => m.role === 'user');
+
+                  return (
                     <div
-                      className={`max-w-[80%] rounded-xl px-4 py-2 text-sm ${
-                        msg.role === 'user'
-                          ? 'bg-secondary text-secondary-foreground'
-                          : 'bg-primary text-primary-foreground'
-                      }`}
+                      key={idx}
+                      className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}
                     >
-                      <p>{msg.content}</p>
-                      <p className="text-[10px] opacity-70 mt-1">
-                        {msg.timestamp ? formatDate(msg.timestamp) : ''}
-                      </p>
+                      <div
+                        className={`max-w-[80%] rounded-xl px-4 py-2 text-sm ${
+                          msg.role === 'user'
+                            ? 'bg-secondary text-secondary-foreground'
+                            : 'bg-primary text-primary-foreground'
+                        }`}
+                      >
+                        <p className="whitespace-pre-wrap">{msg.content}</p>
+                        <div className="flex items-center justify-end gap-1 mt-1">
+                          <span className="text-[10px] opacity-70">
+                            {msg.timestamp ? formatDate(msg.timestamp) : ''}
+                          </span>
+                          {isAssistant && (
+                            wasRead ? (
+                              <CheckCheck className="w-3.5 h-3.5 text-blue-400" />
+                            ) : (
+                              <CheckCheck className="w-3.5 h-3.5 opacity-50" />
+                            )
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Manual Message (when AI is off) */}
