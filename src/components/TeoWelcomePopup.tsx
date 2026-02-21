@@ -80,10 +80,10 @@ export const TeoWelcomePopup = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.15 }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 text-primary text-xs font-semibold mb-3"
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-primary/20 text-primary text-xs md:text-sm font-bold mb-3 border border-primary/30 shadow-sm shadow-primary/10"
                 >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Primeiro Agente de IA de Viagens do Brasil
+                  <Sparkles className="w-4 h-4" />
+                  🇧🇷 1º Agente de IA de Viagens do Brasil
                 </motion.div>
 
                 {/* Title */}
@@ -91,10 +91,20 @@ export const TeoWelcomePopup = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="font-serif text-xl md:text-2xl font-bold text-foreground mb-2"
+                  className="font-serif text-xl md:text-2xl font-bold text-foreground mb-1"
                 >
                   Conheça o Téo! 🌍
                 </motion.h2>
+
+                {/* Subtitle */}
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
+                  className="text-sm md:text-base font-semibold gradient-text-gold mb-3"
+                >
+                  ⚡ Sua cotação em minutos
+                </motion.p>
 
                 {/* Description */}
                 <motion.p
