@@ -1582,6 +1582,80 @@ serve(async (req) => {
 
       console.log(`Message from ${phoneNumber} (type: ${messageType}): ${messageText}`);
 
+      // ========== ALWAYS SAVE MESSAGE TO CONVERSATION ==========
+      // Ensure every incoming message is recorded, regardless of routing
+      const ensureConversationAndSaveMessage = async (phone: string, name: string, text: string) => {
+        // Get or create conversation for this phone number
+        let { data: conv } = await supabase
+          .from("whatsapp_conversations")
+          .select("id, messages_history, is_ai_active, conversation_state, collected_data, quote_request_id, client_name")
+          .eq("phone_number", phone)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!conv) {
+          const { data: newConv, error: insertError } = await supabase
+            .from("whatsapp_conversations")
+            .insert({
+              phone_number: phone,
+              client_name: name,
+              conversation_state: "greeting",
+              collected_data: {},
+              messages_history: [{ role: "user", content: text, timestamp: new Date().toISOString() }],
+              is_ai_active: true,
+            })
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error("Error creating conversation for message save:", insertError);
+            return null;
+          }
+
+          // Notify admin about new conversation
+          try {
+            await fetch(
+              `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-admin-notification`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+                },
+                body: JSON.stringify({
+                  type: "chat_session",
+                  data: {
+                    user_name: name || phone,
+                    user_whatsapp: phone,
+                    destination_name: "WhatsApp",
+                  },
+                }),
+              }
+            );
+          } catch (notifErr) {
+            console.error("Failed to send admin notification:", notifErr);
+          }
+
+          console.log(`New conversation created and message saved for ${phone}`);
+          return newConv;
+        } else {
+          // Conversation exists, append the message
+          const updatedHistory = [
+            ...((conv.messages_history as any[]) || []),
+            { role: "user", content: text, timestamp: new Date().toISOString() },
+          ];
+
+          await supabase
+            .from("whatsapp_conversations")
+            .update({ messages_history: updatedHistory, updated_at: new Date().toISOString() })
+            .eq("id", conv.id);
+
+          console.log(`Message saved to existing conversation ${conv.id}`);
+          return { ...conv, messages_history: updatedHistory };
+        }
+      };
+
       // Check if there's an active review for this phone number
       const { data: activeReview } = await supabase
         .from("travel_reviews")
@@ -1593,6 +1667,9 @@ serve(async (req) => {
         .maybeSingle();
 
       if (activeReview) {
+        // Save message to conversation before routing to review
+        await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+        
         // Route to review webhook
         console.log(`Routing to review webhook for review ${activeReview.id}`);
         const reviewUrl = `${SUPABASE_URL}/functions/v1/review-webhook`;
@@ -1623,6 +1700,9 @@ serve(async (req) => {
       // ========== ADMIN ROUTING ==========
       // If the message is from the admin phone number, route to admin assistant
       if (phoneNumber === ADMIN_PHONE_NUMBER) {
+        // Save admin messages too so they appear in conversations
+        await ensureConversationAndSaveMessage(phoneNumber, contactName || "Admin", messageText);
+        
         console.log(`[ADMIN] Message from admin: ${messageText}`);
         try {
           await handleAdminMessage(phoneNumber, messageText);
@@ -1636,71 +1716,32 @@ serve(async (req) => {
         });
       }
 
-      // Get or create conversation
+      // Get or create conversation (message is already saved by ensureConversationAndSaveMessage)
+      const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+      
+      if (!savedConv) {
+        return new Response(JSON.stringify({ status: "error", message: "Failed to create conversation" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Re-fetch the full conversation to get all fields
       let { data: conversation } = await supabase
         .from("whatsapp_conversations")
         .select("*")
-        .eq("phone_number", phoneNumber)
+        .eq("id", savedConv.id)
         .single();
 
       if (!conversation) {
-        const { data: newConv, error: insertError } = await supabase
-          .from("whatsapp_conversations")
-          .insert({
-            phone_number: phoneNumber,
-            client_name: contactName,
-            conversation_state: "greeting",
-            collected_data: {},
-            messages_history: [],
-            is_ai_active: true,
-          })
-          .select()
-          .single();
-
-        if (insertError) {
-          console.error("Error creating conversation:", insertError);
-          throw insertError;
-        }
-        conversation = newConv;
-
-        // Notify admin via email about new WhatsApp conversation
-        try {
-          await fetch(
-            `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-admin-notification`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
-              },
-              body: JSON.stringify({
-                type: "chat_session",
-                data: {
-                  user_name: contactName || phoneNumber,
-                  user_whatsapp: phoneNumber,
-                  destination_name: "WhatsApp",
-                },
-              }),
-            }
-          );
-          console.log("Admin notified about new WhatsApp conversation");
-        } catch (notifErr) {
-          console.error("Failed to send admin notification:", notifErr);
-        }
+        return new Response(JSON.stringify({ status: "error", message: "Conversation not found after save" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
-      // If AI is disabled or conversation is completed, just store the message and skip AI response
+      // If AI is disabled or conversation is completed, message is already saved, just skip AI response
       if (!conversation.is_ai_active || conversation.conversation_state === "completed") {
-        const updatedHistory = [
-          ...(conversation.messages_history as any[] || []),
-          { role: "user", content: messageText, timestamp: new Date().toISOString() },
-        ];
-
-        await supabase
-          .from("whatsapp_conversations")
-          .update({ messages_history: updatedHistory })
-          .eq("id", conversation.id);
-
         return new Response(JSON.stringify({ status: "ok", ai_disabled: true, state: conversation.conversation_state }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -1745,7 +1786,6 @@ serve(async (req) => {
 
         const updatedHistory = [
           ...(conversation.messages_history as any[] || []),
-          { role: "user", content: messageText, timestamp: new Date().toISOString() },
           { role: "assistant", content: responseMsg, timestamp: new Date().toISOString() },
         ];
 
@@ -1768,12 +1808,11 @@ serve(async (req) => {
         });
       }
 
-      // Build messages for AI
+      // Build messages for AI (user message is already in conversation.messages_history)
       const historyForAi = (conversation.messages_history as any[] || []).map((msg: any) => ({
         role: msg.role === "user" ? "user" : "assistant",
         content: msg.content,
       }));
-      historyForAi.push({ role: "user", content: messageText });
 
       // Get AI response
       const aiResponse = await getAiResponse(historyForAi);
@@ -1860,7 +1899,6 @@ serve(async (req) => {
         // Update history with all messages
         const updatedHistory = [
           ...(conversation.messages_history as any[] || []),
-          { role: "user", content: messageText, timestamp: new Date().toISOString() },
           { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
           { role: "assistant", content: quotationMsg, timestamp: new Date().toISOString() },
         ];
@@ -1963,7 +2001,6 @@ serve(async (req) => {
 
         const updatedHistory = [
           ...(conversation.messages_history as any[] || []),
-          { role: "user", content: messageText, timestamp: new Date().toISOString() },
           { role: "assistant", content: changeMsg, timestamp: new Date().toISOString() },
         ];
 
@@ -1988,7 +2025,6 @@ serve(async (req) => {
       // Standard flow (no quotation)
       const updatedHistory = [
         ...(conversation.messages_history as any[] || []),
-        { role: "user", content: messageText, timestamp: new Date().toISOString() },
         { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
       ];
 
