@@ -19,431 +19,256 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const ADMIN_PHONE_NUMBER = "5515998389220";
 
-// ========== Admin Assistant ==========
+// ========== Admin Assistant (Intelligent) ==========
 
-const ADMIN_SYSTEM_PROMPT = `Você é o assistente administrativo da Tomorrow Travel. Você responde APENAS ao administrador autorizado via WhatsApp.
+const ADMIN_TABLES_SCHEMA = `
+TABELAS DISPONÍVEIS NO BANCO DE DADOS:
 
-Sua função é interpretar comandos do admin e retornar EXATAMENTE UMA tag de ação para que o sistema execute a consulta correta no banco de dados.
+1. travel_quote_requests - Cotações de viagem (via WhatsApp/Manus)
+   Colunas: id, phone_number, origin, destination, departure_date, return_date, adults, children, children_ages, customer_name, preferences, status (pending/processing/completed/failed/cancelled/expired), error_message, change_request, created_at, processed_at, raw_request, processing_details
 
-TAGS DISPONÍVEIS (use EXATAMENTE uma por resposta):
-- [ADMIN_QUERY:sales_report] - Relatório de vendas (mês atual por padrão)
-- [ADMIN_QUERY:sales_report:MM/YYYY] - Relatório de vendas de um mês específico
-- [ADMIN_QUERY:pending_quotes] - Cotações pendentes
-- [ADMIN_QUERY:contacts] - Lista de contatos/clientes
-- [ADMIN_QUERY:general_stats] - Estatísticas gerais do sistema
-- [ADMIN_QUERY:top_destinations] - Destinos mais solicitados
-- [ADMIN_QUERY:cancel_quote:ID] - Cancelar cotação por ID
-- [ADMIN_QUERY:expire_old_quotes] - Expirar cotações antigas (>7 dias)
-- [ADMIN_QUERY:process_quote:ID] - Processar/acionar Manus para cotação específica
-- [ADMIN_QUERY:reprocess_quote:ID] - Reprocessar cotação com erro
-- [ADMIN_QUERY:help] - Menu de ajuda com comandos disponíveis
+2. quote_requests - Leads/cotações do site e manuais
+   Colunas: id, client_name, email, whatsapp, destination_id, destination_name, travel_date, num_people, travel_type, status (pending/in_progress/quoted/completed), source_channel (website/instagram/whatsapp/telefone/indicacao), notes, special_requests, travel_word, preferred_airport, flight_time_preference, preferred_contact_time, preferred_contact_channel, traveling_with_children, follow_up_enabled, follow_up_date, follow_up_days, follow_up_stage, follow_up_message_sent, follow_up_sent_at, is_manual, created_at
+
+3. sales - Vendas registradas
+   Colunas: id, client_name, client_email, client_phone, destination_name, total_value, commission_value, sale_date, departure_date, return_date, payment_method, payment_status (pending/partial/paid), source_channel, notes, quote_id, trip_id, created_by, created_at
+
+4. whatsapp_conversations - Conversas do WhatsApp com clientes
+   Colunas: id, phone_number, client_name, conversation_state, is_ai_active, collected_data (JSON), messages_history (JSON array), quote_request_id, created_at, updated_at
+
+5. client_trips - Viagens dos clientes
+   Colunas: id, user_id, destination_name, destination_id, departure_date, return_date, trip_status (confirmed/in_progress/completed/cancelled), flight_number, flight_locator, flight_departure_time, flight_return_number, flight_return_time, hotel_name, hotel_address, hotel_link, hotel_checkin_date, hotel_checkout_date, hotel_checkin_time, hotel_checkout_time, trip_tips, notes, welcome_image_url, welcome_caption, created_at, updated_at
+
+6. destinations - Destinos cadastrados
+   Colunas: id, name, slug, location, category, type, description, best_time, ideal_duration, for_who, image_url, is_active, is_featured, videos, best_price_periods, created_at
+
+7. promotional_offers - Ofertas promocionais
+   Colunas: id, destination_id, title, total_price, cash_price, installments, installment_value, inclusions, tagline, promo_image_url, is_active, valid_from, valid_until, departure_date, return_date, created_at
+
+8. profiles - Perfis de usuários/clientes
+   Colunas: id, user_id, email, full_name, created_at
+
+9. ai_itineraries - Roteiros gerados por IA
+   Colunas: id, destination_name, destination_id, user_email, user_whatsapp, preferences, travel_mood, itinerary_content, status, quote_requested, created_at
+
+10. ai_generated_images - Imagens geradas por IA
+    Colunas: id, destination_name, destination_id, user_email, user_whatsapp, prompt, image_url, status, created_at
+
+11. chat_sessions - Sessões de chat do site (Téo no site)
+    Colunas: id, session_id, destination_id, destination_name, user_name, user_whatsapp, created_at, updated_at
+
+12. chat_messages - Mensagens de chat do site
+    Colunas: id, session_id, destination_id, role, content, user_name, user_whatsapp, created_at
+
+13. analytics_events - Eventos de analytics do site
+    Colunas: id, event_type, page_path, referrer, user_agent, session_id, ip_hash, event_data, user_id, created_at
+
+14. travel_reviews - Avaliações de viagens
+    Colunas: id, phone_number, client_name, destination_name, trip_id, nps_score, route_score, service_score, feedback_text, allows_sharing, photo_url, conversation_status, current_step, messages_history, sent_by, created_at
+
+15. banner_history - Histórico de banners gerados
+    Colunas: id, offer_id, offer_title, destination_name, format, image_url, caption, created_at
+
+16. site_settings - Configurações do site
+    Colunas: key, value (JSON), updated_at
+
+17. admin_access_logs - Logs de acesso administrativo
+    Colunas: id, phone_number, command_text, query_type, response_summary, created_at
+
+18. trip_checklist - Checklist de viagens dos clientes
+    Colunas: id, trip_id, item_text, is_completed, is_default_item, sort_order, created_at
+
+19. trip_documents - Documentos de viagens
+    Colunas: id, trip_id, document_type, document_name, file_url, file_type, file_size, uploaded_by, created_at
+
+20. trip_consultants - Consultores de viagem
+    Colunas: id, trip_id, consultant_name, consultant_phone, consultant_email, consultant_photo_url, is_primary, notes, created_at
+
+21. trip_emergency_contacts - Contatos de emergência
+    Colunas: id, trip_id, contact_type, contact_name, phone, email, notes, sort_order, created_at
+
+22. notification_logs - Logs de notificações
+    Colunas: id, user_id, trip_id, notification_type, title, body, status, error_message, data, sent_at, created_at
+
+23. checklist_items_default - Itens padrão de checklist
+    Colunas: id, item_text, category, is_active, sort_order, created_at
+
+24. account_shared_access - Acesso compartilhado
+    Colunas: id, primary_user_id, shared_user_id, shared_email, created_by, created_at
+`;
+
+const ADMIN_PLANNER_PROMPT = `Você é o módulo de planejamento do assistente administrativo da Tomorrow Travel.
+Sua função é analisar a mensagem do administrador e gerar um plano de consultas ao banco de dados.
+
+${ADMIN_TABLES_SCHEMA}
+
+INSTRUÇÕES:
+- Analise a mensagem do admin e identifique quais dados são necessários
+- Retorne um JSON com as consultas necessárias
+- Cada consulta especifica: tabela, colunas, filtros, ordenação e limite
+- Use filtros inteligentes (ex: para "hoje", filtre por data de hoje; para "este mês", filtre pelo mês atual)
+- Para perguntas complexas, combine várias consultas
+- Para AÇÕES (cancelar, processar, atualizar), use o campo "action" 
+
+Data/hora atual: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}
+
+FORMATO DE RESPOSTA (JSON puro, sem markdown):
+{
+  "intent": "descrição curta da intenção do admin",
+  "queries": [
+    {
+      "id": "q1",
+      "table": "nome_da_tabela",
+      "select": "col1, col2, col3",
+      "filters": [
+        {"column": "status", "op": "eq", "value": "pending"},
+        {"column": "created_at", "op": "gte", "value": "2026-02-01T00:00:00"}
+      ],
+      "order": {"column": "created_at", "ascending": false},
+      "limit": 20
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "type": "update",
+      "table": "travel_quote_requests",
+      "filters": [{"column": "id", "op": "eq", "value": "uuid-here"}],
+      "data": {"status": "cancelled"}
+    }
+  ]
+}
+
+OPERADORES DISPONÍVEIS para filtros: eq, neq, gt, gte, lt, lte, like, ilike, is, in
+- Para "is", use value: "null" ou "not.null"
+- Para "in", use value como array: ["pending","processing"]
+- Para "like"/"ilike", use % como wildcard: "%fernando%"
+
+Se o admin pedir algo que NÃO requer consulta ao banco (ex: "quem é você?", "bom dia"), retorne:
+{"intent": "conversa", "queries": [], "actions": [], "direct_answer": "sua resposta direta aqui"}
 
 REGRAS:
-- Analise a mensagem do admin e identifique a intenção
-- Retorne APENAS a tag correspondente, nada mais
-- Se não entender o comando, retorne [ADMIN_QUERY:help]
-- Para relatórios de vendas com mês específico, extraia mês/ano da mensagem
-- Para cancelar/processar/reprocessar cotação, extraia o ID da mensagem
+- SEMPRE retorne JSON válido, sem código markdown
+- Limite padrão de 50 registros
+- Para contagens, use select mínimo (ex: "id")
+- Para dados sensíveis (telefone), inclua a coluna normalmente - o sistema mascarará se necessário
+- Para processar/reprocessar cotação, use action type "process_quote" com o ID
+- Para enviar mensagem WhatsApp para cliente, use action type "send_whatsapp"`;
 
-Exemplos:
-- "vendas do mês" → [ADMIN_QUERY:sales_report]
-- "vendas de janeiro 2026" → [ADMIN_QUERY:sales_report:01/2026]
-- "pendentes" → [ADMIN_QUERY:pending_quotes]
-- "contatos" → [ADMIN_QUERY:contacts]
-- "estatísticas" → [ADMIN_QUERY:general_stats]
-- "destinos em alta" → [ADMIN_QUERY:top_destinations]
-- "cancelar cotação abc-123" → [ADMIN_QUERY:cancel_quote:abc-123]
-- "limpar pendentes antigas" → [ADMIN_QUERY:expire_old_quotes]
-- "processar cotação abc-123" → [ADMIN_QUERY:process_quote:abc-123]
-- "reprocessar abc-123" → [ADMIN_QUERY:reprocess_quote:abc-123]
-- "como tá o sistema?" → [ADMIN_QUERY:general_stats]
-- "dashboard" → [ADMIN_QUERY:general_stats]`;
+const ADMIN_FORMATTER_PROMPT = `Você é o assistente administrativo da Tomorrow Travel respondendo ao dono da agência via WhatsApp.
+
+PERSONALIDADE:
+- Profissional mas amigável
+- Use emojis de forma moderada (2-4 por mensagem)
+- Formate para WhatsApp: *negrito*, _itálico_
+- Seja conciso mas completo
+- Use listas com bullet points quando apropriado
+- Mascare telefones parcialmente (ex: 5515****3448)
+- Formate valores em R$ com separador de milhar
+
+REGRAS:
+- Responda em português brasileiro
+- Se houver dados, apresente-os de forma organizada
+- Se não houver dados, informe claramente
+- Se uma ação foi executada, confirme o resultado
+- NUNCA invente dados que não estão nos resultados
+- Para tabelas grandes, destaque os pontos mais importantes
+- Máximo ~1500 caracteres por resposta (limite do WhatsApp)
+- Se os dados forem muito extensos, resuma e ofereça "quer ver mais detalhes de X?"
+
+CONTEXTO: Você tem acesso a TODAS as tabelas do sistema. Pode consultar vendas, cotações, conversas do WhatsApp, viagens de clientes, destinos, ofertas, analytics, avaliações, e qualquer outro dado do painel administrativo.`;
 
 function maskPhone(phone: string): string {
   if (!phone || phone.length < 8) return phone;
   return phone.substring(0, 4) + "****" + phone.substring(phone.length - 4);
 }
 
-async function getAdminSalesReport(month?: number, year?: number): Promise<string> {
-  const now = new Date();
-  const targetMonth = month || (now.getMonth() + 1);
-  const targetYear = year || now.getFullYear();
-  const startDate = new Date(targetYear, targetMonth - 1, 1).toISOString();
-  const endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59).toISOString();
-  const monthNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-
-  const { data: quotes } = await supabase
-    .from("travel_quote_requests")
-    .select("id, status, destination, created_at")
-    .gte("created_at", startDate)
-    .lte("created_at", endDate);
-
-  const { data: sales } = await supabase
-    .from("sales")
-    .select("id, total_value, destination_name, sale_date")
-    .gte("sale_date", `${targetYear}-${String(targetMonth).padStart(2,'0')}-01`)
-    .lte("sale_date", `${targetYear}-${String(targetMonth).padStart(2,'0')}-31`);
-
-  const totalQuotes = quotes?.length || 0;
-  const processed = quotes?.filter(q => q.status === "completed").length || 0;
-  const pending = quotes?.filter(q => q.status === "pending").length || 0;
-  const failed = quotes?.filter(q => q.status === "failed").length || 0;
-  const cancelled = quotes?.filter(q => q.status === "cancelled").length || 0;
-  const conversionRate = totalQuotes > 0 ? ((processed / totalQuotes) * 100).toFixed(1) : "0";
-
-  const destCount: Record<string, number> = {};
-  quotes?.forEach(q => {
-    if (q.destination) destCount[q.destination] = (destCount[q.destination] || 0) + 1;
-  });
-  const topDest = Object.entries(destCount).sort((a,b) => b[1] - a[1]).slice(0, 3);
-
-  const totalSalesValue = sales?.reduce((sum, s) => sum + Number(s.total_value || 0), 0) || 0;
-  const totalSalesCount = sales?.length || 0;
-
-  const prevMonth = targetMonth === 1 ? 12 : targetMonth - 1;
-  const prevYear = targetMonth === 1 ? targetYear - 1 : targetYear;
-  const prevStart = new Date(prevYear, prevMonth - 1, 1).toISOString();
-  const prevEnd = new Date(prevYear, prevMonth, 0, 23, 59, 59).toISOString();
-  const { data: prevQuotes } = await supabase
-    .from("travel_quote_requests")
-    .select("id")
-    .gte("created_at", prevStart)
-    .lte("created_at", prevEnd);
-  const prevTotal = prevQuotes?.length || 0;
-  const diff = prevTotal > 0 ? (((totalQuotes - prevTotal) / prevTotal) * 100).toFixed(0) : "N/A";
-
-  let msg = `📊 *RELATÓRIO DE VENDAS - ${monthNames[targetMonth-1].toUpperCase()} ${targetYear}*\n\n`;
-  msg += `✅ Cotações Processadas: ${processed}\n`;
-  msg += `⏳ Cotações Pendentes: ${pending}\n`;
-  msg += `❌ Cotações com Erro: ${failed}\n`;
-  msg += `🚫 Canceladas: ${cancelled}\n`;
-  msg += `📈 Total de Cotações: ${totalQuotes}\n`;
-  msg += `📊 Taxa de Conversão: ${conversionRate}%\n\n`;
-
-  if (totalSalesCount > 0) {
-    msg += `💰 *VENDAS REGISTRADAS:* ${totalSalesCount}\n`;
-    msg += `💵 Faturamento: R$ ${totalSalesValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n\n`;
-  }
-
-  if (topDest.length > 0) {
-    msg += `🏆 *TOP DESTINOS:*\n`;
-    topDest.forEach(([dest, count], i) => {
-      msg += `${i+1}. ${dest} (${count} cotações)\n`;
-    });
-    msg += `\n`;
-  }
-
-  if (diff !== "N/A") {
-    const symbol = Number(diff) >= 0 ? "+" : "";
-    const emoji = Number(diff) >= 0 ? "🎉" : "📉";
-    msg += `📅 Comparação com ${monthNames[prevMonth-1]}: ${symbol}${diff}% em cotações ${emoji}\n`;
-  }
-
-  msg += `\nDeseja ver mais detalhes? Responda:\n• "Cotações pendentes"\n• "Top destinos"\n• "Estatísticas gerais"`;
-  return msg;
-}
-
-async function getAdminPendingQuotes(): Promise<string> {
-  const { data: quotes } = await supabase
-    .from("travel_quote_requests")
-    .select("id, destination, origin, departure_date, return_date, adults, children, phone_number, customer_name, created_at")
-    .eq("status", "pending")
-    .order("created_at", { ascending: true });
-
-  if (!quotes || quotes.length === 0) {
-    return "✅ *Nenhuma cotação pendente!* Tudo em dia! 🎉";
-  }
-
-  const now = new Date();
-  let alertCount = 0;
-  let msg = `⏳ *COTAÇÕES PENDENTES*\n\nTotal: ${quotes.length} cotações aguardando\n\n`;
-
-  quotes.forEach((q, i) => {
-    const created = new Date(q.created_at);
-    const diffMs = now.getTime() - created.getTime();
-    const diffMin = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMin / 60);
-    const waitTime = diffMin < 60 ? `${diffMin} minutos` : `${diffHours}h${diffMin % 60 > 0 ? ` ${diffMin%60}min` : ""}`;
-    const alert = diffMin > 60 ? " ⚠️" : "";
-    if (diffMin > 60) alertCount++;
-
-    msg += `${i+1}️⃣ *${q.destination}*\n`;
-    msg += `   • Origem: ${q.origin}\n`;
-    msg += `   • Datas: ${q.departure_date} a ${q.return_date}\n`;
-    msg += `   • ${q.adults} adulto(s)${q.children > 0 ? `, ${q.children} criança(s)` : ""}\n`;
-    msg += `   • Cliente: ${maskPhone(q.phone_number)}\n`;
-    msg += `   • Aguardando: ${waitTime}${alert}\n\n`;
-  });
-
-  if (alertCount > 0) {
-    msg += `⚠️ *Atenção:* ${alertCount} cotação(ões) pendente(s) há mais de 1 hora!\n\n`;
-  }
-
-  msg += `Deseja processar alguma? Responda:\n• "Detalhes [número]"\n• "Cancelar cotação [ID]"`;
-  return msg;
-}
-
-async function getAdminContacts(): Promise<string> {
-  const { data: quotes } = await supabase
-    .from("travel_quote_requests")
-    .select("phone_number, customer_name, created_at, destination")
-    .order("created_at", { ascending: false });
-
-  if (!quotes || quotes.length === 0) {
-    return "📭 Nenhum contato encontrado.";
-  }
-
-  const phoneMap: Record<string, { name: string | null; count: number; lastDate: string; destinations: string[] }> = {};
-  quotes.forEach(q => {
-    if (!phoneMap[q.phone_number]) {
-      phoneMap[q.phone_number] = { name: q.customer_name, count: 0, lastDate: q.created_at, destinations: [] };
-    }
-    phoneMap[q.phone_number].count++;
-    if (q.destination && !phoneMap[q.phone_number].destinations.includes(q.destination)) {
-      phoneMap[q.phone_number].destinations.push(q.destination);
-    }
-  });
-
-  const uniquePhones = Object.keys(phoneMap);
-  const sorted = Object.entries(phoneMap).sort((a,b) => b[1].count - a[1].count);
-
-  let msg = `📱 *CONTATOS DO WHATSAPP*\n\n`;
-  msg += `📊 Total de números únicos: ${uniquePhones.length}\n\n`;
-
-  msg += `🏆 *Mais ativos:*\n`;
-  sorted.slice(0, 5).forEach(([phone, info], i) => {
-    msg += `${i+1}. ${info.name || "Sem nome"} (${maskPhone(phone)}) - ${info.count} solicitações\n`;
-  });
-
-  msg += `\n📋 *Últimos 10 contatos:*\n`;
-  const recent = Object.entries(phoneMap)
-    .sort((a,b) => new Date(b[1].lastDate).getTime() - new Date(a[1].lastDate).getTime())
-    .slice(0, 10);
-  recent.forEach(([phone, info]) => {
-    const date = new Date(info.lastDate).toLocaleDateString("pt-BR");
-    msg += `• ${info.name || "Sem nome"} (${maskPhone(phone)}) - ${date}\n`;
-  });
-
-  return msg;
-}
-
-async function getAdminGeneralStats(): Promise<string> {
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).toISOString();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-
-  const { data: allQuotes } = await supabase.from("travel_quote_requests").select("id, status, created_at");
-  const { data: todayQuotes } = await supabase.from("travel_quote_requests").select("id").gte("created_at", todayStart);
-  const { data: weekQuotes } = await supabase.from("travel_quote_requests").select("id").gte("created_at", weekStart);
-  const { data: monthQuotes } = await supabase.from("travel_quote_requests").select("id").gte("created_at", monthStart);
-
-  const total = allQuotes?.length || 0;
-  const completed = allQuotes?.filter(q => q.status === "completed").length || 0;
-  const pending = allQuotes?.filter(q => q.status === "pending").length || 0;
-  const convRate = total > 0 ? ((completed / total) * 100).toFixed(1) : "0";
-
-  const hourCount: Record<number, number> = {};
-  allQuotes?.forEach(q => {
-    const h = new Date(q.created_at).getHours();
-    hourCount[h] = (hourCount[h] || 0) + 1;
-  });
-  const peakHours = Object.entries(hourCount).sort((a,b) => Number(b[1]) - Number(a[1])).slice(0, 3);
-
-  const { data: allSales } = await supabase.from("sales").select("id, total_value");
-  const totalRevenue = allSales?.reduce((sum, s) => sum + Number(s.total_value || 0), 0) || 0;
-
-  let msg = `📊 *ESTATÍSTICAS GERAIS*\n\n`;
-  msg += `📅 Hoje: ${todayQuotes?.length || 0} cotações\n`;
-  msg += `📅 Esta semana: ${weekQuotes?.length || 0} cotações\n`;
-  msg += `📅 Este mês: ${monthQuotes?.length || 0} cotações\n`;
-  msg += `📅 Total (all-time): ${total} cotações\n\n`;
-  msg += `✅ Processadas: ${completed}\n`;
-  msg += `⏳ Pendentes: ${pending}\n`;
-  msg += `📈 Taxa de conversão: ${convRate}%\n\n`;
-
-  if (allSales && allSales.length > 0) {
-    msg += `💰 Vendas registradas: ${allSales.length}\n`;
-    msg += `💵 Faturamento total: R$ ${totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n\n`;
-  }
-
-  if (peakHours.length > 0) {
-    msg += `⏰ *Horários de pico:*\n`;
-    peakHours.forEach(([h, count]) => {
-      msg += `• ${h}h - ${count} solicitações\n`;
-    });
-  }
-
-  return msg;
-}
-
-async function getAdminTopDestinations(): Promise<string> {
-  const { data: quotes } = await supabase.from("travel_quote_requests").select("destination");
-
-  if (!quotes || quotes.length === 0) {
-    return "📭 Nenhuma cotação encontrada.";
-  }
-
-  const destCount: Record<string, number> = {};
-  quotes.forEach(q => {
-    if (q.destination) destCount[q.destination] = (destCount[q.destination] || 0) + 1;
-  });
-
-  const total = quotes.length;
-  const sorted = Object.entries(destCount).sort((a,b) => b[1] - a[1]).slice(0, 10);
-
-  let msg = `🏆 *TOP DESTINOS MAIS SOLICITADOS*\n\n`;
-  sorted.forEach(([dest, count], i) => {
-    const pct = ((count / total) * 100).toFixed(1);
-    msg += `${i+1}. *${dest}* - ${count} cotações (${pct}%)\n`;
-  });
-
-  msg += `\n📊 Total de cotações: ${total}`;
-  return msg;
-}
-
-async function adminCancelQuote(quoteId: string): Promise<string> {
-  const { data, error } = await supabase
-    .from("travel_quote_requests")
-    .update({ status: "cancelled" })
-    .eq("id", quoteId)
-    .select("id, destination")
-    .single();
-
-  if (error || !data) {
-    return `❌ Não foi possível cancelar a cotação. Verifique o ID: ${quoteId}`;
-  }
-
-  return `✅ Cotação cancelada com sucesso!\n\n🆔 ID: ${data.id}\n📍 Destino: ${data.destination}`;
-}
-
-async function adminExpireOldQuotes(): Promise<string> {
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-  const { data, error } = await supabase
-    .from("travel_quote_requests")
-    .update({ status: "expired" })
-    .eq("status", "pending")
-    .lt("created_at", sevenDaysAgo.toISOString())
-    .select("id");
-
-  if (error) {
-    return "❌ Erro ao expirar cotações antigas.";
-  }
-
-  const count = data?.length || 0;
-  if (count === 0) {
-    return "✅ Nenhuma cotação antiga para expirar. Tudo limpo! 🎉";
-  }
-
-  return `✅ ${count} cotação(ões) pendente(s) com mais de 7 dias marcada(s) como expirada(s).`;
-}
-
-async function adminProcessQuote(quoteId: string): Promise<string> {
-  // Find the quote
-  const { data: quote, error } = await supabase
-    .from("travel_quote_requests")
-    .select("id, destination, origin, status, phone_number")
-    .eq("id", quoteId)
-    .single();
-
-  if (error || !quote) {
-    return `❌ Cotação não encontrada. Verifique o ID: ${quoteId}`;
-  }
-
-  if (quote.status === "completed") {
-    return `✅ Esta cotação já foi processada!\n📍 Destino: ${quote.destination}`;
-  }
-
-  if (quote.status === "processing") {
-    return `⏳ Esta cotação já está sendo processada.\n📍 Destino: ${quote.destination}`;
-  }
-
-  // Reset status to pending to trigger the process-quote function
-  const { error: updateError } = await supabase
-    .from("travel_quote_requests")
-    .update({ status: "pending", error_message: null, processed_at: null })
-    .eq("id", quoteId);
-
-  if (updateError) {
-    return `❌ Erro ao acionar processamento: ${updateError.message}`;
-  }
-
-  // Call process-quote edge function directly
+async function executeAdminQuery(query: any): Promise<any> {
   try {
-    const processUrl = `${SUPABASE_URL}/functions/v1/process-quote`;
-    const processResponse = await fetch(processUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      },
-      body: JSON.stringify({ record: { ...quote, status: "pending" } }),
-    });
+    let q = supabase.from(query.table).select(query.select || "*");
 
-    if (!processResponse.ok) {
-      const errText = await processResponse.text();
-      console.error("[ADMIN] Process quote error:", errText);
+    if (query.filters) {
+      for (const f of query.filters) {
+        switch (f.op) {
+          case "eq": q = q.eq(f.column, f.value); break;
+          case "neq": q = q.neq(f.column, f.value); break;
+          case "gt": q = q.gt(f.column, f.value); break;
+          case "gte": q = q.gte(f.column, f.value); break;
+          case "lt": q = q.lt(f.column, f.value); break;
+          case "lte": q = q.lte(f.column, f.value); break;
+          case "like": q = q.like(f.column, f.value); break;
+          case "ilike": q = q.ilike(f.column, f.value); break;
+          case "is": q = f.value === "null" ? q.is(f.column, null) : q.not(f.column, "is", null); break;
+          case "in": q = q.in(f.column, f.value); break;
+        }
+      }
     }
-  } catch (e) {
-    console.error("[ADMIN] Process quote call error:", e);
-  }
 
-  return `🚀 Cotação acionada para processamento!\n\n🆔 ID: ${quote.id}\n📍 Destino: ${quote.destination}\n📍 Origem: ${quote.origin}\n📱 Cliente: ${maskPhone(quote.phone_number)}\n\nO Manus irá processar a cotação. Aguarde alguns minutos.`;
+    if (query.order) {
+      q = q.order(query.order.column, { ascending: query.order.ascending ?? false });
+    }
+
+    q = q.limit(query.limit || 50);
+
+    const { data, error } = await q;
+    if (error) return { error: error.message };
+    return { data, count: data?.length || 0 };
+  } catch (e) {
+    return { error: String(e) };
+  }
 }
 
-async function adminReprocessQuote(quoteId: string): Promise<string> {
-  const { data: quote, error } = await supabase
-    .from("travel_quote_requests")
-    .select("id, destination, origin, status, phone_number, error_message")
-    .eq("id", quoteId)
-    .single();
-
-  if (error || !quote) {
-    return `❌ Cotação não encontrada. Verifique o ID: ${quoteId}`;
-  }
-
-  if (quote.status === "completed") {
-    return `✅ Esta cotação já foi processada com sucesso!\n📍 Destino: ${quote.destination}\n\nDeseja forçar reprocessamento? Responda "processar cotação ${quoteId}"`;
-  }
-
-  // Reset to pending and clear error
-  const { error: updateError } = await supabase
-    .from("travel_quote_requests")
-    .update({ 
-      status: "pending", 
-      error_message: null, 
-      processed_at: null,
-      processing_details: {} 
-    })
-    .eq("id", quoteId);
-
-  if (updateError) {
-    return `❌ Erro ao reprocessar: ${updateError.message}`;
-  }
-
-  // Call process-quote edge function
+async function executeAdminAction(action: any): Promise<any> {
   try {
-    const processUrl = `${SUPABASE_URL}/functions/v1/process-quote`;
-    await fetch(processUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      },
-      body: JSON.stringify({ record: { ...quote, status: "pending" } }),
-    });
-  } catch (e) {
-    console.error("[ADMIN] Reprocess quote call error:", e);
-  }
+    if (action.type === "update") {
+      let q = supabase.from(action.table).update(action.data);
+      for (const f of action.filters) {
+        if (f.op === "eq") q = q.eq(f.column, f.value);
+      }
+      const { data, error } = await q.select();
+      if (error) return { error: error.message };
+      return { success: true, data };
+    }
+    
+    if (action.type === "process_quote") {
+      const quoteId = action.quote_id || action.filters?.[0]?.value;
+      const { data: quote, error } = await supabase
+        .from("travel_quote_requests")
+        .select("*")
+        .eq("id", quoteId)
+        .single();
+      
+      if (error || !quote) return { error: `Cotação ${quoteId} não encontrada` };
+      
+      await supabase.from("travel_quote_requests")
+        .update({ status: "pending", error_message: null, processed_at: null })
+        .eq("id", quoteId);
+      
+      try {
+        await fetch(`${SUPABASE_URL}/functions/v1/process-quote`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          },
+          body: JSON.stringify({ record: { ...quote, status: "pending" } }),
+        });
+      } catch (e) {
+        console.error("[ADMIN] Process quote call error:", e);
+      }
+      
+      return { success: true, message: `Cotação ${quoteId} enviada para processamento` };
+    }
 
-  let msg = `🔄 Cotação enviada para reprocessamento!\n\n🆔 ID: ${quote.id}\n📍 Destino: ${quote.destination}\n📍 Origem: ${quote.origin}`;
-  if (quote.error_message) {
-    msg += `\n\n⚠️ Erro anterior: ${quote.error_message}`;
+    if (action.type === "send_whatsapp") {
+      await sendWhatsAppMessage(action.phone_number, action.message);
+      return { success: true, message: `Mensagem enviada para ${action.phone_number}` };
+    }
+    
+    return { error: "Tipo de ação não suportado: " + action.type };
+  } catch (e) {
+    return { error: String(e) };
   }
-  msg += `\n\nAguarde alguns minutos para o resultado.`;
-  return msg;
 }
 
 async function logAdminAccess(phoneNumber: string, commandText: string, queryType: string, responseSummary?: string): Promise<void> {
@@ -459,95 +284,119 @@ async function logAdminAccess(phoneNumber: string, commandText: string, queryTyp
   }
 }
 
-function getAdminHelpMessage(): string {
-  return `🤖 *ASSISTENTE ADMINISTRATIVO - TOMORROW TRAVEL*\n\n📋 *Comandos disponíveis:*\n\n📊 *Relatórios:*\n• "Relatório de vendas" ou "Vendas do mês"\n• "Vendas de [mês/ano]"\n• "Estatísticas gerais" ou "Dashboard"\n\n⏳ *Cotações:*\n• "Cotações pendentes" ou "Pendentes"\n• "Processar cotação [ID]"\n• "Reprocessar [ID]"\n• "Cancelar cotação [ID]"\n• "Limpar pendentes antigas"\n\n📱 *Contatos:*\n• "Contatos" ou "Lista de clientes"\n\n🏆 *Destinos:*\n• "Top destinos" ou "Destinos em alta"\n\n❓ *Outros:*\n• "Ajuda" - Este menu\n\nEnvie qualquer comando para começar! 😊`;
-}
-
 async function handleAdminMessage(phoneNumber: string, messageText: string): Promise<void> {
-  console.log(`[ADMIN] Command from ${phoneNumber}: ${messageText}`);
+  console.log(`[ADMIN] Message from ${phoneNumber}: ${messageText}`);
 
-  // Get AI to parse the command
-  const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash-lite",
-      messages: [
-        { role: "system", content: ADMIN_SYSTEM_PROMPT },
-        { role: "user", content: messageText },
-      ],
-    }),
-  });
+  try {
+    // Pass 1: AI plans what data to fetch
+    const plannerResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: ADMIN_PLANNER_PROMPT },
+          { role: "user", content: messageText },
+        ],
+      }),
+    });
 
-  let queryType = "help";
-  let queryParam = "";
-
-  if (aiResponse.ok) {
-    const aiData = await aiResponse.json();
-    const content = aiData.choices?.[0]?.message?.content || "";
-    const match = content.match(/\[ADMIN_QUERY:([^\]]+)\]/);
-    if (match) {
-      const parts = match[1].split(":");
-      queryType = parts[0];
-      queryParam = parts.slice(1).join(":");
+    if (!plannerResponse.ok) {
+      console.error("[ADMIN] Planner AI error:", await plannerResponse.text());
+      await sendWhatsAppMessage(phoneNumber, "❌ Erro ao processar seu comando. Tente novamente.");
+      return;
     }
-  }
 
-  console.log(`[ADMIN] Query type: ${queryType}, param: ${queryParam}`);
+    const plannerData = await plannerResponse.json();
+    let planContent = plannerData.choices?.[0]?.message?.content || "";
+    
+    // Clean markdown if present
+    planContent = planContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    
+    console.log("[ADMIN] Plan:", planContent);
 
-  let response: string;
+    let plan: any;
+    try {
+      plan = JSON.parse(planContent);
+    } catch (e) {
+      console.error("[ADMIN] Failed to parse plan:", e, planContent);
+      await sendWhatsAppMessage(phoneNumber, "❌ Não consegui entender o comando. Pode reformular?");
+      return;
+    }
 
-  switch (queryType) {
-    case "sales_report": {
-      let month: number | undefined;
-      let year: number | undefined;
-      if (queryParam) {
-        const parts = queryParam.split("/");
-        if (parts.length === 2) {
-          month = parseInt(parts[0], 10);
-          year = parseInt(parts[1], 10);
-        }
+    // Direct answer (no DB needed)
+    if (plan.direct_answer) {
+      await logAdminAccess(phoneNumber, messageText, plan.intent || "conversa", plan.direct_answer);
+      await sendWhatsAppMessage(phoneNumber, plan.direct_answer);
+      return;
+    }
+
+    // Execute queries
+    const queryResults: Record<string, any> = {};
+    if (plan.queries?.length > 0) {
+      for (const query of plan.queries) {
+        queryResults[query.id] = await executeAdminQuery(query);
       }
-      response = await getAdminSalesReport(month, year);
-      break;
     }
-    case "pending_quotes":
-      response = await getAdminPendingQuotes();
-      break;
-    case "contacts":
-      response = await getAdminContacts();
-      break;
-    case "general_stats":
-      response = await getAdminGeneralStats();
-      break;
-    case "top_destinations":
-      response = await getAdminTopDestinations();
-      break;
-    case "cancel_quote":
-      response = queryParam ? await adminCancelQuote(queryParam) : "❌ Informe o ID da cotação. Ex: Cancelar cotação abc-123";
-      break;
-    case "process_quote":
-      response = queryParam ? await adminProcessQuote(queryParam) : "❌ Informe o ID da cotação. Ex: Processar cotação abc-123";
-      break;
-    case "reprocess_quote":
-      response = queryParam ? await adminReprocessQuote(queryParam) : "❌ Informe o ID da cotação. Ex: Reprocessar abc-123";
-      break;
-    case "expire_old_quotes":
-      response = await adminExpireOldQuotes();
-      break;
-    case "help":
-    default:
-      response = getAdminHelpMessage();
-      break;
+
+    // Execute actions
+    const actionResults: Record<string, any> = {};
+    if (plan.actions?.length > 0) {
+      for (const action of plan.actions) {
+        actionResults[action.id] = await executeAdminAction(action);
+      }
+    }
+
+    console.log("[ADMIN] Query results keys:", Object.keys(queryResults));
+    console.log("[ADMIN] Action results:", actionResults);
+
+    // Pass 2: AI formats the response
+    const formatterResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: ADMIN_FORMATTER_PROMPT },
+          { role: "user", content: `PEDIDO DO ADMIN: "${messageText}"
+
+INTENÇÃO DETECTADA: ${plan.intent}
+
+RESULTADOS DAS CONSULTAS:
+${JSON.stringify(queryResults, null, 2)}
+
+RESULTADOS DAS AÇÕES:
+${JSON.stringify(actionResults, null, 2)}
+
+Formate uma resposta clara e organizada para WhatsApp. Se houver telefones, mascare parcialmente.` },
+        ],
+      }),
+    });
+
+    let finalResponse = "❌ Erro ao formatar a resposta.";
+    if (formatterResponse.ok) {
+      const formatterData = await formatterResponse.json();
+      finalResponse = formatterData.choices?.[0]?.message?.content || finalResponse;
+    }
+
+    // Truncate if too long for WhatsApp
+    if (finalResponse.length > 4000) {
+      finalResponse = finalResponse.substring(0, 3900) + "\n\n_...resposta truncada. Peça mais detalhes específicos._";
+    }
+
+    await logAdminAccess(phoneNumber, messageText, plan.intent || "unknown", finalResponse);
+    await sendWhatsAppMessage(phoneNumber, finalResponse);
+
+  } catch (e) {
+    console.error("[ADMIN] Error handling admin message:", e);
+    await sendWhatsAppMessage(phoneNumber, "❌ Erro inesperado. Tente novamente em alguns segundos.");
   }
-
-  // Log admin access
-  await logAdminAccess(phoneNumber, messageText, queryType, response);
-
-  await sendWhatsAppMessage(phoneNumber, response);
 }
 
 // ========== Teo System Prompt ==========
