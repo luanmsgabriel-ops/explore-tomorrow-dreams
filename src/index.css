@@ -231,3 +231,9 @@
     overflow: hidden;
   }
 }
+
+/* Soro Blog - force white text */
+.soro-blog-container,
+.soro-blog-container * {
+  color: hsl(0 0% 100%) !important;
+}
