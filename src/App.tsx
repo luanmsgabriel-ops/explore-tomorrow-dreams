@@ -18,6 +18,7 @@ import ClientDashboard from "./pages/ClientDashboard";
 import Install from "./pages/Install";
 import Avaliacao from "./pages/Avaliacao";
 import NotFound from "./pages/NotFound";
+import Blog from "./pages/Blog";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { FloatingWhatsApp } from "./components/FloatingWhatsApp";
 import { TravelAdvisorChat } from "./components/TravelAdvisorChat";
@@ -62,6 +63,7 @@ const App = () => (
           <Route path="/minha-area" element={<ClientDashboard />} />
           <Route path="/avaliacao/:id" element={<Avaliacao />} />
           <Route path="/install" element={<Install />} />
+          <Route path="/blog" element={<Blog />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <AnalyticsProvider />
