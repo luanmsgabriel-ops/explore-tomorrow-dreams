@@ -64,7 +64,7 @@ INSTRUÇÕES DE AUTOMAÇÃO ORINTER v2.0
 8. ✅ SEMPRE economize créditos do usuário
 
 CREDENCIAIS ORINTER:
-- URL de Login: https://agente.orinter.com.br
+- URL de Login: https://online.orinter.com.br/infotravel/login.xhtml
 - Email: ${ORINTER_LOGIN}
 - Senha: ${ORINTER_PASSWORD}
 
@@ -98,7 +98,7 @@ FLUXO DE AUTOMAÇÃO ORINTER (5 PASSOS)
 ═══════════════════════════════════════════
 
 PASSO 1: Acessar Orinter
-- Navegar para: https://agente.orinter.com.br
+- Navegar para: https://online.orinter.com.br/infotravel/login.xhtml
 - Aguardar 3 segundos para a página carregar
 
 PASSO 2: Fazer Login com Credenciais
