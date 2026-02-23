@@ -234,6 +234,15 @@
 
 /* Soro Blog - force white text */
 .soro-blog-container,
-.soro-blog-container * {
+.soro-blog-container *,
+.soro-blog-container a,
+.soro-blog-container a *,
+.soro-blog-container h1,
+.soro-blog-container h2,
+.soro-blog-container h3,
+.soro-blog-container h4,
+.soro-blog-container p,
+.soro-blog-container span,
+.soro-blog-container div {
   color: hsl(0 0% 100%) !important;
 }
