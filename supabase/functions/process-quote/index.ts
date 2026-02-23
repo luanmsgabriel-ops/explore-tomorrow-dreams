@@ -40,12 +40,30 @@ serve(async (req) => {
     const prompt = `
 Processar cotação de viagem automaticamente SEM PERGUNTAR NADA.
 
-CREDENCIAIS ORINTER:
-- URL: https://online.orinter.com.br/infotravel/admin/main.xhtml
-- Login: ${ORINTER_LOGIN}
-- Senha: ${ORINTER_PASSWORD}
+═══════════════════════════════════════════
+INSTRUÇÕES DE AUTOMAÇÃO ORINTER
+═══════════════════════════════════════════
 
-DADOS DA COTAÇÃO:
+❌ REGRAS ABSOLUTAS - NUNCA FAÇA ISSO:
+1. ❌ NUNCA tente fazer login manual na Orinter
+2. ❌ NUNCA peça email ou senha ao usuário
+3. ❌ NUNCA solicite código 2FA ao usuário
+4. ❌ NUNCA pause a automação esperando o usuário fornecer código
+5. ❌ NUNCA preencha formulários de login manualmente
+6. ❌ NUNCA sugira que o usuário faça login manualmente
+
+✅ REGRAS OBRIGATÓRIAS - SEMPRE FAÇA ISSO:
+1. ✅ SEMPRE confie nos cookies salvos do navegador para login automático
+2. ✅ SEMPRE busque códigos 2FA automaticamente via API Gmail
+3. ✅ SEMPRE aguarde 20 segundos para o email chegar antes de buscar o código
+4. ✅ SEMPRE use o script Python para buscar códigos: python3 /home/ubuntu/get_2fa_from_gmail.py "orinter" 20
+5. ✅ SEMPRE extraia o código da linha que contém __2FA_CODE__:XXXXXX
+6. ✅ SEMPRE insira o código automaticamente no campo apropriado
+7. ✅ SEMPRE continue a automação sem intervenção do usuário
+
+═══════════════════════════════════════════
+DADOS DA COTAÇÃO
+═══════════════════════════════════════════
 - ID da cotação: ${record.id}
 - Destino: ${record.destination}
 - Origem: ${record.origin}
@@ -56,26 +74,66 @@ DADOS DA COTAÇÃO:
 - Telefone do cliente: ${record.phone_number}
 - Nome do cliente: ${record.customer_name || 'Cliente'}
 
-PASSO A PASSO OBRIGATÓRIO:
-1. Acessar https://online.orinter.com.br/infotravel/admin/main.xhtml
-2. Se não estiver logado, fazer login com as credenciais acima (Login e Senha)
-3. Clicar no menu lateral 'Booking'
-4. Clicar na aba 'LAZER' (ou 'Create your package')
-5. Preencher formulário:
+═══════════════════════════════════════════
+FLUXO DE AUTOMAÇÃO ORINTER
+═══════════════════════════════════════════
+
+PASSO 1: Acessar Orinter (SEM LOGIN MANUAL)
+- URL: https://online.orinter.com.br/infotravel/admin/main.xhtml
+- IMPORTANTE: NÃO tente fazer login. Os cookies já salvos farão o login automaticamente.
+- Aguarde 3 segundos após carregar a página.
+
+PASSO 2: Verificar se Login Automático Funcionou
+- SE a página mostrar "Booking" ou menu principal → Login automático funcionou via cookies → Ir para Passo 4
+- SE a página solicitar código 2FA → Ir para Passo 3
+
+PASSO 3: Buscar Código 2FA Automaticamente (SE NECESSÁRIO)
+- Aguardar 20 segundos para o email chegar
+- Executar: python3 /home/ubuntu/get_2fa_from_gmail.py "orinter" 20
+- Extrair código da saída com regex: __2FA_CODE__:(\\d+)
+- Inserir código no campo apropriado automaticamente
+- Aguardar 3 segundos para processamento
+- Se código não encontrado, aguardar mais 10 segundos e tentar novamente
+
+PASSO 4: Continuar Automação
+1. Clicar em "Booking"
+2. Selecionar categoria "LAZER" (ou "Monte seu pacote")
+3. Preencher formulário:
    - Origem: ${record.origin}
    - Destino: ${record.destination}
    - Data ida: ${record.departure_date} (converter para formato DD/MM/YYYY)
    - Data volta: ${record.return_date} (converter para formato DD/MM/YYYY)
    - Adultos: ${record.adults}
    - Crianças: ${record.children || 0}
-6. Clicar em 'Search'
-7. Aguardar resultados carregarem completamente
-8. Selecionar o hotel mais econômico (menor preço total)
-9. Clicar em 'Add' do hotel selecionado
-10. Clicar em 'Details' para ver o resumo completo
-11. Extrair dados: nome do hotel, categoria (estrelas), preço por pessoa, preço total, número de noites, regime alimentar
+4. Clicar em "Buscar" / "Search"
+5. Aguardar resultados carregarem completamente
 
-COMO ENVIAR A COTAÇÃO AO CLIENTE:
+═══════════════════════════════════════════
+CRITÉRIOS DE BUSCA
+═══════════════════════════════════════════
+Voos:
+- Priorizar voos com no máximo 1 conexão
+- Buscar o valor mais barato
+- Verificar horários convenientes
+
+Hotéis:
+- Mínimo 3 estrelas
+- Bem avaliados e recomendados pelo sistema
+- Foco no menor preço mantendo qualidade
+
+Pacotes:
+- Sempre selecionar categoria "LAZER"
+- Calcular valor total corretamente (multiplicar por número de pessoas)
+- Incluir transfer quando disponível
+
+6. Selecionar o hotel mais econômico (menor preço total, mínimo 3 estrelas)
+7. Clicar em 'Add' do hotel selecionado
+8. Clicar em 'Details' para ver o resumo completo
+9. Extrair dados: nome do hotel, categoria (estrelas), preço por pessoa, preço total, número de noites, regime alimentar, detalhes do voo
+
+═══════════════════════════════════════════
+COMO ENVIAR A COTAÇÃO AO CLIENTE
+═══════════════════════════════════════════
 Após extrair os dados, formate uma mensagem bonita com emojis para WhatsApp e envie via POST HTTP:
 URL: ${whatsappWebhookUrl}
 Header: Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}
@@ -91,14 +149,36 @@ IMPORTANTE: Este é o ÚNICO método para enviar mensagens ao cliente. NÃO tent
 
 REGRA CRÍTICA: Envie APENAS UMA ÚNICA mensagem ao cliente contendo a cotação E a pergunta de interesse. NÃO envie duas mensagens separadas. Inclua no FINAL da mensagem da cotação algo como "Gostou? Quer fechar ou ver outras opções? 😊". APENAS 1 chamada POST, NUNCA 2.
 
-Se não encontrar cotações ou o site apresentar erro, envie a seguinte mensagem EXATA (substituindo {customer_name} e {destination} pelos valores reais):
-"Olá {customer_name}! 👋
+Formato da mensagem quando encontrar cotação:
+"Olá [nome]! Encontrei um pacote perfeito para você:
 
-Estamos trabalhando para encontrar as melhores opções para sua viagem a {destination}! ✈️
+🛫 Voo: [origem] → [destino]
+📅 Datas: [ida] a [volta]
+🏨 Hotel: [nome] ([estrelas] estrelas)
+💰 Valor total: R$ [valor] para [X] pessoas
+
+Gostou? Quer fechar ou ver outras opções? 😊"
+
+Se não encontrar cotações ou o site apresentar erro, envie a seguinte mensagem:
+"Olá ${record.customer_name || 'Cliente'}! 👋
+
+Estamos trabalhando para encontrar as melhores opções para sua viagem a ${record.destination}! ✈️
 
 Para garantir que você tenha o pacote perfeito, vamos precisar do apoio de um especialista no destino. Em breve, um de nossos consultores da Tomorrow Travel entrará em contato para personalizar sua experiência e encontrar a melhor opção para você! 🏖️
 
 Aguarde nosso retorno! 😊"
+
+Se cliente pedir alterações:
+"Claro! Vou buscar novas opções com as alterações solicitadas. Um especialista no destino vai entrar em contato para montar o pacote perfeito para você!"
+
+═══════════════════════════════════════════
+ECONOMIA DE CRÉDITOS
+═══════════════════════════════════════════
+- Confiar em cookies salvos (não fazer login manual)
+- Buscar código 2FA automaticamente
+- Continuar fluxo sem pausas
+- Processar tudo de uma vez
+- NÃO perguntar NADA ao usuário
 
 NÃO PERGUNTAR NADA. EXECUTAR TUDO AUTOMATICAMENTE.
 `
