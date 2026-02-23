@@ -530,6 +530,42 @@ export type Database = {
         }
         Relationships: []
       }
+      instagram_conversations: {
+        Row: {
+          collected_data: Json | null
+          conversation_state: string
+          created_at: string
+          id: string
+          instagram_user_id: string
+          is_ai_active: boolean
+          messages_history: Json | null
+          updated_at: string
+          user_name: string | null
+        }
+        Insert: {
+          collected_data?: Json | null
+          conversation_state?: string
+          created_at?: string
+          id?: string
+          instagram_user_id: string
+          is_ai_active?: boolean
+          messages_history?: Json | null
+          updated_at?: string
+          user_name?: string | null
+        }
+        Update: {
+          collected_data?: Json | null
+          conversation_state?: string
+          created_at?: string
+          id?: string
+          instagram_user_id?: string
+          is_ai_active?: boolean
+          messages_history?: Json | null
+          updated_at?: string
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       notification_logs: {
         Row: {
           body: string
