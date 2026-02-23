@@ -41,7 +41,7 @@ serve(async (req) => {
 Processar cotação de viagem automaticamente SEM PERGUNTAR NADA.
 
 ═══════════════════════════════════════════
-INSTRUÇÕES DE AUTOMAÇÃO ORINTER v3.0 FINAL
+INSTRUÇÕES DE AUTOMAÇÃO ORINTER v4.0 COM SCRIPT EMBUTIDO
 ═══════════════════════════════════════════
 
 🎯 INSTRUÇÕES PARA O AGENTE MANUS
@@ -50,18 +50,16 @@ INSTRUÇÕES DE AUTOMAÇÃO ORINTER v3.0 FINAL
 1. ❌ NUNCA peça código 2FA ao usuário
 2. ❌ NUNCA peça ao usuário para verificar email
 3. ❌ NUNCA peça credenciais do Gmail
-4. ❌ NUNCA diga que não tem acesso à API Gmail
-5. ❌ NUNCA pause a automação esperando o usuário
+4. ❌ NUNCA pause a automação esperando o usuário
 
 ✅ SEMPRE FAÇA ISSO:
-1. ✅ SEMPRE faça login com as credenciais fornecidas (cada automação abre janela nova)
-2. ✅ SEMPRE busque códigos 2FA automaticamente via API Gmail (já configurada no sandbox)
-3. ✅ SEMPRE aguarde 20 segundos para o email com código 2FA chegar
-4. ✅ SEMPRE use o script Python: python3 /home/ubuntu/get_2fa_from_gmail.py "orinter" 20
+1. ✅ SEMPRE configure a Gmail API PRIMEIRO (Passo 0)
+2. ✅ SEMPRE faça login com as credenciais fornecidas
+3. ✅ SEMPRE busque códigos 2FA automaticamente via API Gmail
+4. ✅ SEMPRE aguarde 20 segundos para o email com código 2FA chegar
 5. ✅ SEMPRE extraia o código da linha que contém __2FA_CODE__:XXXXXX
 6. ✅ SEMPRE insira o código automaticamente no campo apropriado
 7. ✅ SEMPRE continue a automação sem intervenção do usuário
-8. ✅ SEMPRE economize créditos do usuário
 
 CREDENCIAIS ORINTER:
 - URL de Login: https://agente.orinter.com.br
@@ -71,16 +69,6 @@ CREDENCIAIS ORINTER:
 IMPORTANTE:
 - Cada automação abre uma janela NOVA do navegador → DEVE fazer login toda vez
 - NÃO confie em cookies salvos (eles não persistem entre janelas)
-- SEMPRE use as credenciais acima para fazer login
-
-API GMAIL (JÁ CONFIGURADA NO SANDBOX DO MANUS):
-- VOCÊ TEM ACESSO À API GMAIL NO SANDBOX DO MANUS!
-- Script Python: /home/ubuntu/get_2fa_from_gmail.py (JÁ EXISTE)
-- Token Gmail: /home/ubuntu/.gmail-mcp/token.json (JÁ EXISTE)
-- Credenciais OAuth: /home/ubuntu/.gmail-mcp/gcp-oauth.keys.json (JÁ EXISTE)
-- Você NÃO precisa pedir login/senha do Gmail
-- Você NÃO precisa configurar nada
-- Você SÓ precisa executar o comando e extrair o código
 
 ═══════════════════════════════════════════
 DADOS DA COTAÇÃO
@@ -96,8 +84,140 @@ DADOS DA COTAÇÃO
 - Nome do cliente: ${record.customer_name || 'Cliente'}
 
 ═══════════════════════════════════════════
-FLUXO DE AUTOMAÇÃO ORINTER (4 PASSOS)
+FLUXO DE AUTOMAÇÃO ORINTER (5 PASSOS)
 ═══════════════════════════════════════════
+
+PASSO 0: CONFIGURAR GMAIL API (OBRIGATÓRIO - EXECUTAR PRIMEIRO)
+Antes de qualquer coisa, você DEVE criar os arquivos necessários para buscar código 2FA.
+Execute este código Python PRIMEIRO:
+
+\`\`\`python
+import os, json, subprocess
+
+# 1. Criar diretório
+os.makedirs('/home/ubuntu/.gmail-mcp', exist_ok=True)
+
+# 2. Criar credenciais OAuth
+credentials = {
+    "installed": {
+        "client_id": "31766855437-nvhn8vdcr2sp2nft6p7kfk6ne49bt8m7.apps.googleusercontent.com",
+        "project_id": "gen-lang-client-0061241030",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_secret": "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",
+        "redirect_uris": ["http://localhost"]
+    }
+}
+with open('/home/ubuntu/.gmail-mcp/gcp-oauth.keys.json', 'w') as f:
+    json.dump(credentials, f)
+
+# 3. Criar token de acesso
+token = {
+    "access_token": "ya29.a0ATkoCc4P2IpeWqY56EMaeBOegqP1b-4yfbj-ztFfCBfLNlIyLYaQM15ii4eD2C18wOA1utpuZrPUQG-UGi4vlaiLGd1h8-tUCIBWMvfLAqSeABTdQw1L65aLaQevhcXDkt79dZUvROBz9cQQWb2UBXE5bbMxNUND_XuN-IwKnyJSBoM51xUf4uugDC6-wTwVpU2ddJ8aCgYKAUkSARYSFQHGX2MiGn6gISEYohpHZHqPnHUMLg0206",
+    "refresh_token": "1//04UE_TIf6eKR2CgYIARAAGAQSNwF-L9IrOPB6waNR1My1j7i2NzG5L8JGAzrwf6cCgW465xY3r5dvHvJ5UeLq7ZS0j5kT5kSQcZc",
+    "scope": "https://mail.google.com/",
+    "token_type": "Bearer",
+    "refresh_token_expires_in": 604799,
+    "expiry_date": 1771801614129
+}
+with open('/home/ubuntu/.gmail-mcp/token.json', 'w') as f:
+    json.dump(token, f)
+
+# 4. Criar script de busca de código 2FA
+script_content = r'''#!/usr/bin/env python3
+import sys, json, re, base64
+from datetime import datetime, timedelta
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+
+def get_2fa_code(sender='orinter', max_minutes=10):
+    print(f"Buscando codigo 2FA de: {sender}")
+    print(f"Ultimos {max_minutes} minutos")
+    try:
+        with open('/home/ubuntu/.gmail-mcp/token.json', 'r') as f:
+            token_data = json.load(f)
+        with open('/home/ubuntu/.gmail-mcp/gcp-oauth.keys.json', 'r') as f:
+            creds_data = json.load(f)
+            client_data = creds_data['installed']
+        creds = Credentials(
+            token=token_data.get('access_token'),
+            refresh_token=token_data.get('refresh_token'),
+            token_uri=client_data.get('token_uri'),
+            client_id=client_data.get('client_id'),
+            client_secret=client_data.get('client_secret'),
+            scopes=['https://mail.google.com/']
+        )
+        service = build('gmail', 'v1', credentials=creds)
+        after_time = datetime.now() - timedelta(minutes=max_minutes)
+        after_timestamp = int(after_time.timestamp())
+        query = f'from:{sender} after:{after_timestamp}'
+        print(f"Query: {query}")
+        results = service.users().messages().list(userId='me', q=query, maxResults=5).execute()
+        messages = results.get('messages', [])
+        if not messages:
+            print("Nenhum email encontrado")
+            return None
+        print(f"Encontrados {len(messages)} email(s)")
+        msg_id = messages[0]['id']
+        message = service.users().messages().get(userId='me', id=msg_id, format='full').execute()
+        payload = message.get('payload', {})
+        body_text = ''
+        if 'parts' in payload:
+            for part in payload['parts']:
+                if part['mimeType'] == 'text/plain':
+                    data = part['body'].get('data', '')
+                    if data:
+                        body_text = base64.urlsafe_b64decode(data).decode('utf-8')
+                        break
+        else:
+            data = payload.get('body', {}).get('data', '')
+            if data:
+                body_text = base64.urlsafe_b64decode(data).decode('utf-8')
+        headers = payload.get('headers', [])
+        subject = ''
+        for header in headers:
+            if header['name'].lower() == 'subject':
+                subject = header['value']
+                break
+        full_text = subject + '\\n' + body_text
+        print(f"Assunto: {subject}")
+        patterns = [
+            r'\\b(\\d{4,8})\\b',
+            r'codigo[:\\s]+(\\d{4,8})',
+            r'verification code[:\\s]+(\\d{4,8})',
+            r'codigo de verificacao[:\\s]+(\\d{4,8})',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, full_text, re.IGNORECASE)
+            if match:
+                code = match.group(1)
+                print(f"CODIGO 2FA ENCONTRADO: {code}")
+                print(f"__2FA_CODE__:{code}")
+                return code
+        print("Codigo nao encontrado no email")
+        return None
+    except Exception as e:
+        print(f"Erro: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+if __name__ == '__main__':
+    sender = sys.argv[1] if len(sys.argv) > 1 else 'orinter'
+    max_minutes = int(sys.argv[2]) if len(sys.argv) > 2 else 10
+    code = get_2fa_code(sender, max_minutes)
+    sys.exit(0 if code else 1)
+'''
+with open('/home/ubuntu/get_2fa_from_gmail.py', 'w') as f:
+    f.write(script_content)
+os.chmod('/home/ubuntu/get_2fa_from_gmail.py', 0o755)
+
+# 5. Instalar dependências
+subprocess.run(['sudo', 'pip3', 'install', '-q', 'google-auth', 'google-auth-oauthlib', 'google-api-python-client'], check=False)
+
+print("Gmail API configurada com sucesso!")
+\`\`\`
 
 PASSO 1: Acessar e Fazer Login
 - Navegar para: https://agente.orinter.com.br
@@ -177,8 +297,6 @@ Body JSON:
   "message": "<MENSAGEM FORMATADA COM A COTAÇÃO>"
 }
 
-IMPORTANTE: Este é o ÚNICO método para enviar mensagens ao cliente. NÃO tente enviar diretamente pela API do WhatsApp.
-
 REGRA CRÍTICA: Envie APENAS UMA ÚNICA mensagem ao cliente contendo a cotação E a pergunta de interesse. NÃO envie duas mensagens separadas. APENAS 1 chamada POST, NUNCA 2.
 
 Formato da mensagem quando encontrar cotação:
@@ -191,7 +309,7 @@ Formato da mensagem quando encontrar cotação:
 
 Gostou? Quer fechar ou ver outras opções? 😊"
 
-Se não encontrar cotações ou o site apresentar erro, envie a seguinte mensagem:
+Se não encontrar cotações ou o site apresentar erro, envie:
 "Olá ${record.customer_name || 'Cliente'}! 👋
 
 Estamos trabalhando para encontrar as melhores opções para sua viagem a ${record.destination}! ✈️
@@ -200,23 +318,14 @@ Para garantir que você tenha o pacote perfeito, vamos precisar do apoio de um e
 
 Aguarde nosso retorno! 😊"
 
-Se cliente pedir alterações:
-"Claro! Vou buscar novas opções com as alterações solicitadas. Um especialista no destino vai entrar em contato para montar o pacote perfeito para você!"
-
-═══════════════════════════════════════════
-TROUBLESHOOTING
-═══════════════════════════════════════════
-- Se você achar que "não tem acesso à API Gmail": VOCÊ TEM! Execute: python3 /home/ubuntu/get_2fa_from_gmail.py "orinter" 20
-- Se o código não for encontrado: Aguarde 10s e tente novamente com janela maior: python3 /home/ubuntu/get_2fa_from_gmail.py "orinter" 30
-- A API Gmail JÁ ESTÁ CONFIGURADA no seu sandbox. Os arquivos já existem.
-
 ═══════════════════════════════════════════
 CHECKLIST FINAL
 ═══════════════════════════════════════════
+✅ Executar Passo 0 (configurar Gmail API) PRIMEIRO
 ✅ Fazer login com credenciais (email/senha)
 ✅ Quando solicitar 2FA, executar: python3 /home/ubuntu/get_2fa_from_gmail.py "orinter" 20
 ✅ NÃO pedir código ao usuário
-✅ NÃO pedir credenciais Gmail (API já configurada)
+✅ NÃO pedir credenciais Gmail
 ✅ Aguardar 20s para email chegar
 ✅ Extrair código da linha __2FA_CODE__:XXXXXX
 ✅ Inserir código automaticamente
