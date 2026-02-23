@@ -1,65 +1,44 @@
 
 
-# Reposicionar a Tomorrow Travel: Acessibilidade + Tecnologia de IA Pioneira
+# Integrar Blog do Soro ao Site
 
-## Resumo
-Remover toda linguagem de "premium", "curadoria", "exclusivo" e "selecionado" do site e dos prompts do backend, substituindo por uma narrativa focada em **acessibilidade para todos os perfis de cliente** e no **diferencial tecnologico de ser o primeiro agente de IA B2C do mundo no setor de viagens**.
+## O que sera feito
+Criar uma nova pagina de Blog no site que carrega o conteudo do Soro automaticamente, e adicionar o link "Blog" na navegacao do site.
 
----
+## Alteracoes
 
-## Alteracoes no Frontend
+### 1. Nova pagina `src/pages/Blog.tsx`
+- Criar um componente React que monta o `<div id="soro-blog">` e carrega o script do Soro dinamicamente via `useEffect`
+- O script lera o parametro `?post=` da URL automaticamente para exibir artigos individuais
+- A pagina tera o Header e Footer do site para manter a identidade visual
 
-### 1. `src/pages/Index.tsx`
-- **Linha 39**: "Curadoria de destinos unicos para viajantes que buscam experiencias autenticas e inesqueciveis" -> "Tecnologia de ponta para facilitar sua viagem. O primeiro agente de IA do mundo no setor de viagens, acessivel para todos."
-- **Linha 165**: "Curadoria Premium" -> "IA Pioneira no Turismo"
-- **Linhas 166-168**: "Destinos selecionados por especialistas para experiencias unicas." -> "O primeiro agente de IA B2C do mundo no setor de viagens, tornando sua viagem dos sonhos mais facil e acessivel."
-- **Linha 187**: "...roteiros sob medida para voce... plano de viagem exclusivo em segundos." -> "...roteiros sob medida para voce... plano de viagem personalizado em segundos."
+### 2. Rota no `src/App.tsx`
+- Adicionar a rota `/blog` apontando para a nova pagina Blog
 
-### 2. `src/pages/Explorar.tsx`
-- **Linha 26**: "Destinos fora do comum e experiencias exclusivas para viajantes que buscam o extraordinario." -> "Destinos incriveis para todos os perfis de viajante. Descubra o mundo com a ajuda da nossa IA."
-
-### 3. `src/components/Footer.tsx`
-- **Linha 20**: "Experiencias exclusivas e roteiros personalizados para cada aventureiro." -> "Viagens acessiveis para todos, com tecnologia de IA que facilita cada etapa da sua jornada."
-- **Linha 60**: "Experiencias Exclusivas" -> "Tecnologia com IA"
-
-### 4. `src/components/TeoWelcomePopup.tsx`
-- **Linha 86**: "1o Agente de IA de Viagens do Brasil" -> "1o Agente de IA de Viagens B2C do Mundo"
-
-### 5. `src/pages/Teo.tsx`
-- Sem mudancas necessarias (ja esta neutro e acessivel).
-
----
-
-## Alteracoes no Backend (Edge Functions)
-
-### 6. `supabase/functions/generate-itinerary/index.ts`
-- **Linha 62**: "uma agencia de viagens premium" -> "uma agencia de viagens inovadora, acessivel para todos os perfis de cliente"
-
-### 7. `supabase/functions/generate-destination-image/index.ts`
-- **Linha 69**: "premium-looking" -> "professional" (no prompt de geracao de imagem)
+### 3. Navegacao no `src/components/Header.tsx`
+- Adicionar o item "Blog" no array `navItems` para que apareca no menu desktop e mobile
 
 ---
 
 ## Detalhes tecnicos
 
-### Arquivos afetados (7 arquivos)
+### Carregamento do script Soro
 
-| Arquivo | Tipo de mudanca |
+Como o React nao executa tags `<script>` em JSX diretamente, o script sera injetado via `useEffect`:
+
+```text
+useEffect -> criar elemento <script>
+          -> ler parametro "post" da URL
+          -> definir src com o endpoint do Soro
+          -> inserir no DOM dentro do container
+          -> cleanup: remover script ao desmontar
+```
+
+### Arquivos afetados (3 arquivos)
+
+| Arquivo | Mudanca |
 |---|---|
-| `src/pages/Index.tsx` | Textos de 4 secoes |
-| `src/pages/Explorar.tsx` | Texto do subtitulo |
-| `src/components/Footer.tsx` | Descricao e item de servicos |
-| `src/components/TeoWelcomePopup.tsx` | Badge do popup |
-| `supabase/functions/generate-itinerary/index.ts` | System prompt |
-| `supabase/functions/generate-destination-image/index.ts` | Image prompt |
-
-### Palavras removidas/substituidas
-- "premium" -> "inovadora" / "acessivel"
-- "curadoria" -> "tecnologia de IA"
-- "exclusivo/exclusivas" -> "personalizado" / "acessivel"
-- "selecionados por especialistas" -> referencia a IA pioneira
-- "do Brasil" -> "B2C do Mundo" (no badge do Teo)
-
-### Deploy
-Redeploy das edge functions `generate-itinerary` e `generate-destination-image` apos as alteracoes.
+| `src/pages/Blog.tsx` | Novo arquivo - pagina do blog com embed do Soro |
+| `src/App.tsx` | Adicionar rota `/blog` |
+| `src/components/Header.tsx` | Adicionar "Blog" ao menu de navegacao |
 
