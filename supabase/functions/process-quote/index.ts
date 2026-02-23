@@ -41,25 +41,44 @@ serve(async (req) => {
 Processar cotação de viagem automaticamente SEM PERGUNTAR NADA.
 
 ═══════════════════════════════════════════
-INSTRUÇÕES DE AUTOMAÇÃO ORINTER
+INSTRUÇÕES DE AUTOMAÇÃO ORINTER v2.0
 ═══════════════════════════════════════════
 
 ❌ REGRAS ABSOLUTAS - NUNCA FAÇA ISSO:
-1. ❌ NUNCA tente fazer login manual na Orinter
-2. ❌ NUNCA peça email ou senha ao usuário
-3. ❌ NUNCA solicite código 2FA ao usuário
+1. ❌ NUNCA solicite código 2FA ao usuário
+2. ❌ NUNCA peça ao usuário para verificar email
+3. ❌ NUNCA peça ao usuário para copiar código do email
 4. ❌ NUNCA pause a automação esperando o usuário fornecer código
-5. ❌ NUNCA preencha formulários de login manualmente
-6. ❌ NUNCA sugira que o usuário faça login manualmente
+5. ❌ NUNCA sugira que o usuário assuma controle do navegador
+6. ❌ NUNCA peça login ou senha do Gmail (a API já está configurada)
+7. ❌ NUNCA peça credenciais do Gmail ao usuário
 
 ✅ REGRAS OBRIGATÓRIAS - SEMPRE FAÇA ISSO:
-1. ✅ SEMPRE confie nos cookies salvos do navegador para login automático
-2. ✅ SEMPRE busque códigos 2FA automaticamente via API Gmail
-3. ✅ SEMPRE aguarde 20 segundos para o email chegar antes de buscar o código
-4. ✅ SEMPRE use o script Python para buscar códigos: python3 /home/ubuntu/get_2fa_from_gmail.py "orinter" 20
+1. ✅ SEMPRE faça login com as credenciais fornecidas (cada automação abre janela nova)
+2. ✅ SEMPRE busque códigos 2FA automaticamente via API Gmail (já configurada)
+3. ✅ SEMPRE aguarde 20 segundos para o email com código 2FA chegar
+4. ✅ SEMPRE use o script Python: python3 /home/ubuntu/get_2fa_from_gmail.py "orinter" 20
 5. ✅ SEMPRE extraia o código da linha que contém __2FA_CODE__:XXXXXX
 6. ✅ SEMPRE insira o código automaticamente no campo apropriado
 7. ✅ SEMPRE continue a automação sem intervenção do usuário
+8. ✅ SEMPRE economize créditos do usuário
+
+CREDENCIAIS ORINTER:
+- URL de Login: https://agente.orinter.com.br
+- Email: ${ORINTER_LOGIN}
+- Senha: ${ORINTER_PASSWORD}
+
+IMPORTANTE:
+- Cada automação abre uma janela NOVA do navegador → DEVE fazer login toda vez
+- NÃO confie em cookies salvos (eles não persistem entre janelas)
+- SEMPRE use as credenciais acima para fazer login
+
+API GMAIL (JÁ CONFIGURADA NO MANUS):
+- Email: luanmsgabriel@gmail.com
+- Token OAuth: /home/ubuntu/.gmail-mcp/token.json (já existe e funciona)
+- Script Python: /home/ubuntu/get_2fa_from_gmail.py (já existe e funciona)
+- ❌ NUNCA peça login ou senha do Gmail ao usuário
+- ✅ A API Gmail JÁ ESTÁ CONFIGURADA e pronta para usar
 
 ═══════════════════════════════════════════
 DADOS DA COTAÇÃO
@@ -75,38 +94,49 @@ DADOS DA COTAÇÃO
 - Nome do cliente: ${record.customer_name || 'Cliente'}
 
 ═══════════════════════════════════════════
-FLUXO DE AUTOMAÇÃO ORINTER
+FLUXO DE AUTOMAÇÃO ORINTER (5 PASSOS)
 ═══════════════════════════════════════════
 
-PASSO 1: Acessar Orinter (SEM LOGIN MANUAL)
-- URL: https://online.orinter.com.br/infotravel/admin/main.xhtml
-- IMPORTANTE: NÃO tente fazer login. Os cookies já salvos farão o login automaticamente.
-- Aguarde 3 segundos após carregar a página.
+PASSO 1: Acessar Orinter
+- Navegar para: https://agente.orinter.com.br
+- Aguardar 3 segundos para a página carregar
 
-PASSO 2: Verificar se Login Automático Funcionou
-- SE a página mostrar "Booking" ou menu principal → Login automático funcionou via cookies → Ir para Passo 4
-- SE a página solicitar código 2FA → Ir para Passo 3
+PASSO 2: Fazer Login com Credenciais
+- Preencher campo de email com: ${ORINTER_LOGIN}
+- Preencher campo de senha com: ${ORINTER_PASSWORD}
+- Clicar no botão "Entrar"
+- Aguardar 3 segundos
 
-PASSO 3: Buscar Código 2FA Automaticamente (SE NECESSÁRIO)
+PASSO 3: Buscar Código 2FA Automaticamente (SEMPRE necessário após login)
+- O sistema SEMPRE solicita 2FA após login
 - Aguardar 20 segundos para o email chegar
 - Executar: python3 /home/ubuntu/get_2fa_from_gmail.py "orinter" 20
 - Extrair código da saída com regex: __2FA_CODE__:(\\d+)
 - Inserir código no campo apropriado automaticamente
+- Clicar em "Confirmar"
 - Aguardar 3 segundos para processamento
-- Se código não encontrado, aguardar mais 10 segundos e tentar novamente
+- Se código não encontrado na primeira tentativa:
+  - Aguardar mais 10 segundos
+  - Executar script novamente
+  - Se ainda não encontrar após 2 tentativas, expandir busca para 30 minutos
 
-PASSO 4: Continuar Automação
+PASSO 4: Acessar Sistema de Cotação
+- Após login completo, navegar para: https://online.orinter.com.br/infotravel/admin/main.xhtml
+- Aguardar 3 segundos
+
+PASSO 5: Fazer Cotação
 1. Clicar em "Booking"
-2. Selecionar categoria "LAZER" (ou "Monte seu pacote")
-3. Preencher formulário:
+2. Selecionar categoria "LAZER"
+3. Clicar em "Monte seu pacote"
+4. Preencher formulário:
    - Origem: ${record.origin}
    - Destino: ${record.destination}
    - Data ida: ${record.departure_date} (converter para formato DD/MM/YYYY)
    - Data volta: ${record.return_date} (converter para formato DD/MM/YYYY)
    - Adultos: ${record.adults}
    - Crianças: ${record.children || 0}
-4. Clicar em "Buscar" / "Search"
-5. Aguardar resultados carregarem completamente
+5. Clicar em "Buscar"
+6. Aguardar resultados carregarem completamente
 
 ═══════════════════════════════════════════
 CRITÉRIOS DE BUSCA
@@ -126,10 +156,10 @@ Pacotes:
 - Calcular valor total corretamente (multiplicar por número de pessoas)
 - Incluir transfer quando disponível
 
-6. Selecionar o hotel mais econômico (menor preço total, mínimo 3 estrelas)
-7. Clicar em 'Add' do hotel selecionado
-8. Clicar em 'Details' para ver o resumo completo
-9. Extrair dados: nome do hotel, categoria (estrelas), preço por pessoa, preço total, número de noites, regime alimentar, detalhes do voo
+7. Selecionar o hotel mais econômico (menor preço total, mínimo 3 estrelas)
+8. Clicar em 'Add' do hotel selecionado
+9. Clicar em 'Details' para ver o resumo completo
+10. Extrair dados: nome do hotel, categoria (estrelas), preço por pessoa, preço total, número de noites, regime alimentar, detalhes do voo
 
 ═══════════════════════════════════════════
 COMO ENVIAR A COTAÇÃO AO CLIENTE
@@ -147,7 +177,7 @@ Body JSON:
 
 IMPORTANTE: Este é o ÚNICO método para enviar mensagens ao cliente. NÃO tente enviar diretamente pela API do WhatsApp.
 
-REGRA CRÍTICA: Envie APENAS UMA ÚNICA mensagem ao cliente contendo a cotação E a pergunta de interesse. NÃO envie duas mensagens separadas. Inclua no FINAL da mensagem da cotação algo como "Gostou? Quer fechar ou ver outras opções? 😊". APENAS 1 chamada POST, NUNCA 2.
+REGRA CRÍTICA: Envie APENAS UMA ÚNICA mensagem ao cliente contendo a cotação E a pergunta de interesse. NÃO envie duas mensagens separadas. APENAS 1 chamada POST, NUNCA 2.
 
 Formato da mensagem quando encontrar cotação:
 "Olá [nome]! Encontrei um pacote perfeito para você:
@@ -174,11 +204,12 @@ Se cliente pedir alterações:
 ═══════════════════════════════════════════
 ECONOMIA DE CRÉDITOS
 ═══════════════════════════════════════════
-- Confiar em cookies salvos (não fazer login manual)
-- Buscar código 2FA automaticamente
+- Fazer login automaticamente com credenciais (não depender de cookies)
+- Buscar código 2FA automaticamente via API Gmail
 - Continuar fluxo sem pausas
 - Processar tudo de uma vez
 - NÃO perguntar NADA ao usuário
+- NÃO pedir credenciais do Gmail (já configurado)
 
 NÃO PERGUNTAR NADA. EXECUTAR TUDO AUTOMATICAMENTE.
 `
