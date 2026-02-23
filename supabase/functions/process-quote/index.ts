@@ -41,21 +41,21 @@ serve(async (req) => {
 Processar cotação de viagem automaticamente SEM PERGUNTAR NADA.
 
 ═══════════════════════════════════════════
-INSTRUÇÕES DE AUTOMAÇÃO ORINTER v2.0
+INSTRUÇÕES DE AUTOMAÇÃO ORINTER v3.0 FINAL
 ═══════════════════════════════════════════
 
-❌ REGRAS ABSOLUTAS - NUNCA FAÇA ISSO:
-1. ❌ NUNCA solicite código 2FA ao usuário
-2. ❌ NUNCA peça ao usuário para verificar email
-3. ❌ NUNCA peça ao usuário para copiar código do email
-4. ❌ NUNCA pause a automação esperando o usuário fornecer código
-5. ❌ NUNCA sugira que o usuário assuma controle do navegador
-6. ❌ NUNCA peça login ou senha do Gmail (a API já está configurada)
-7. ❌ NUNCA peça credenciais do Gmail ao usuário
+🎯 INSTRUÇÕES PARA O AGENTE MANUS
 
-✅ REGRAS OBRIGATÓRIAS - SEMPRE FAÇA ISSO:
+❌ NUNCA FAÇA ISSO:
+1. ❌ NUNCA peça código 2FA ao usuário
+2. ❌ NUNCA peça ao usuário para verificar email
+3. ❌ NUNCA peça credenciais do Gmail
+4. ❌ NUNCA diga que não tem acesso à API Gmail
+5. ❌ NUNCA pause a automação esperando o usuário
+
+✅ SEMPRE FAÇA ISSO:
 1. ✅ SEMPRE faça login com as credenciais fornecidas (cada automação abre janela nova)
-2. ✅ SEMPRE busque códigos 2FA automaticamente via API Gmail (já configurada)
+2. ✅ SEMPRE busque códigos 2FA automaticamente via API Gmail (já configurada no sandbox)
 3. ✅ SEMPRE aguarde 20 segundos para o email com código 2FA chegar
 4. ✅ SEMPRE use o script Python: python3 /home/ubuntu/get_2fa_from_gmail.py "orinter" 20
 5. ✅ SEMPRE extraia o código da linha que contém __2FA_CODE__:XXXXXX
@@ -64,7 +64,7 @@ INSTRUÇÕES DE AUTOMAÇÃO ORINTER v2.0
 8. ✅ SEMPRE economize créditos do usuário
 
 CREDENCIAIS ORINTER:
-- URL de Login: https://online.orinter.com.br/infotravel/login.xhtml
+- URL de Login: https://agente.orinter.com.br
 - Email: ${ORINTER_LOGIN}
 - Senha: ${ORINTER_PASSWORD}
 
@@ -73,12 +73,14 @@ IMPORTANTE:
 - NÃO confie em cookies salvos (eles não persistem entre janelas)
 - SEMPRE use as credenciais acima para fazer login
 
-API GMAIL (JÁ CONFIGURADA NO MANUS):
-- Email: luanmsgabriel@gmail.com
-- Token OAuth: /home/ubuntu/.gmail-mcp/token.json (já existe e funciona)
-- Script Python: /home/ubuntu/get_2fa_from_gmail.py (já existe e funciona)
-- ❌ NUNCA peça login ou senha do Gmail ao usuário
-- ✅ A API Gmail JÁ ESTÁ CONFIGURADA e pronta para usar
+API GMAIL (JÁ CONFIGURADA NO SANDBOX DO MANUS):
+- VOCÊ TEM ACESSO À API GMAIL NO SANDBOX DO MANUS!
+- Script Python: /home/ubuntu/get_2fa_from_gmail.py (JÁ EXISTE)
+- Token Gmail: /home/ubuntu/.gmail-mcp/token.json (JÁ EXISTE)
+- Credenciais OAuth: /home/ubuntu/.gmail-mcp/gcp-oauth.keys.json (JÁ EXISTE)
+- Você NÃO precisa pedir login/senha do Gmail
+- Você NÃO precisa configurar nada
+- Você SÓ precisa executar o comando e extrair o código
 
 ═══════════════════════════════════════════
 DADOS DA COTAÇÃO
@@ -94,37 +96,37 @@ DADOS DA COTAÇÃO
 - Nome do cliente: ${record.customer_name || 'Cliente'}
 
 ═══════════════════════════════════════════
-FLUXO DE AUTOMAÇÃO ORINTER (5 PASSOS)
+FLUXO DE AUTOMAÇÃO ORINTER (4 PASSOS)
 ═══════════════════════════════════════════
 
-PASSO 1: Acessar Orinter
-- Navegar para: https://online.orinter.com.br/infotravel/login.xhtml
+PASSO 1: Acessar e Fazer Login
+- Navegar para: https://agente.orinter.com.br
 - Aguardar 3 segundos para a página carregar
-
-PASSO 2: Fazer Login com Credenciais
 - Preencher campo de email com: ${ORINTER_LOGIN}
 - Preencher campo de senha com: ${ORINTER_PASSWORD}
 - Clicar no botão "Entrar"
 - Aguardar 3 segundos
 
-PASSO 3: Buscar Código 2FA Automaticamente (SEMPRE necessário após login)
+PASSO 2: Buscar Código 2FA Automaticamente (SEMPRE necessário após login)
 - O sistema SEMPRE solicita 2FA após login
 - Aguardar 20 segundos para o email chegar
 - Executar: python3 /home/ubuntu/get_2fa_from_gmail.py "orinter" 20
+- A saída conterá uma linha como: __2FA_CODE__:148259
 - Extrair código da saída com regex: __2FA_CODE__:(\\d+)
 - Inserir código no campo apropriado automaticamente
 - Clicar em "Confirmar"
 - Aguardar 3 segundos para processamento
 - Se código não encontrado na primeira tentativa:
   - Aguardar mais 10 segundos
-  - Executar script novamente
-  - Se ainda não encontrar após 2 tentativas, expandir busca para 30 minutos
+  - Executar script novamente: python3 /home/ubuntu/get_2fa_from_gmail.py "orinter" 20
+  - Se ainda não encontrar após 2 tentativas, expandir busca para 30 minutos:
+    python3 /home/ubuntu/get_2fa_from_gmail.py "orinter" 30
 
-PASSO 4: Acessar Sistema de Cotação
+PASSO 3: Acessar Sistema de Cotação
 - Após login completo, navegar para: https://online.orinter.com.br/infotravel/admin/main.xhtml
 - Aguardar 3 segundos
 
-PASSO 5: Fazer Cotação
+PASSO 4: Fazer Cotação
 1. Clicar em "Booking"
 2. Selecionar categoria "LAZER"
 3. Clicar em "Monte seu pacote"
@@ -202,14 +204,23 @@ Se cliente pedir alterações:
 "Claro! Vou buscar novas opções com as alterações solicitadas. Um especialista no destino vai entrar em contato para montar o pacote perfeito para você!"
 
 ═══════════════════════════════════════════
-ECONOMIA DE CRÉDITOS
+TROUBLESHOOTING
 ═══════════════════════════════════════════
-- Fazer login automaticamente com credenciais (não depender de cookies)
-- Buscar código 2FA automaticamente via API Gmail
-- Continuar fluxo sem pausas
-- Processar tudo de uma vez
-- NÃO perguntar NADA ao usuário
-- NÃO pedir credenciais do Gmail (já configurado)
+- Se você achar que "não tem acesso à API Gmail": VOCÊ TEM! Execute: python3 /home/ubuntu/get_2fa_from_gmail.py "orinter" 20
+- Se o código não for encontrado: Aguarde 10s e tente novamente com janela maior: python3 /home/ubuntu/get_2fa_from_gmail.py "orinter" 30
+- A API Gmail JÁ ESTÁ CONFIGURADA no seu sandbox. Os arquivos já existem.
+
+═══════════════════════════════════════════
+CHECKLIST FINAL
+═══════════════════════════════════════════
+✅ Fazer login com credenciais (email/senha)
+✅ Quando solicitar 2FA, executar: python3 /home/ubuntu/get_2fa_from_gmail.py "orinter" 20
+✅ NÃO pedir código ao usuário
+✅ NÃO pedir credenciais Gmail (API já configurada)
+✅ Aguardar 20s para email chegar
+✅ Extrair código da linha __2FA_CODE__:XXXXXX
+✅ Inserir código automaticamente
+✅ Continuar sem intervenção do usuário
 
 NÃO PERGUNTAR NADA. EXECUTAR TUDO AUTOMATICAMENTE.
 `
