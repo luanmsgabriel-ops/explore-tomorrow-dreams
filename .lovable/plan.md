@@ -1,48 +1,65 @@
 
 
-# Integrar Guia de Vendas na Base de Conhecimento do Teo
+# Reposicionar a Tomorrow Travel: Acessibilidade + Tecnologia de IA Pioneira
 
 ## Resumo
-Incorporar as estrategias de venda do "Guia Definitivo de Vendas via WhatsApp para Agencias de Viagem" nos system prompts do Teo, tanto no WhatsApp (`whatsapp-webhook`) quanto no site (`travel-advisor-chat`), para que ele aplique tecnicas de persuasao, contorno de objecoes e fechamento de vendas de forma natural durante as conversas.
+Remover toda linguagem de "premium", "curadoria", "exclusivo" e "selecionado" do site e dos prompts do backend, substituindo por uma narrativa focada em **acessibilidade para todos os perfis de cliente** e no **diferencial tecnologico de ser o primeiro agente de IA B2C do mundo no setor de viagens**.
 
-## O que sera adicionado
+---
 
-O guia contem 6 areas de conhecimento que serao condensadas em instrucoes praticas para o Teo:
+## Alteracoes no Frontend
 
-1. **Gatilhos mentais**: Autoridade, Prova Social, Escassez, Urgencia e Antecipacao
-2. **Argumentos Agencia vs Plataformas Online**: Economia de tempo, expertise, custo-beneficio real, suporte 24h, servico de concierge
-3. **Contorno de objecoes**: Respostas para "achei caro", "vou pensar", "prefiro reservar sozinho", "nao tenho certeza do destino"
-4. **Tecnicas de fechamento**: Fechamento por Alternativa, Presuntivo e por Resumo
-5. **Follow-up estrategico**: Scripts com valor agregado para 24h, 2-3 dias, 5-7 dias e 10-14 dias
-6. **Pos-venda e fidelizacao**: Mensagens pre-viagem, boas-vindas, retorno, avaliacao e reativacao
+### 1. `src/pages/Index.tsx`
+- **Linha 39**: "Curadoria de destinos unicos para viajantes que buscam experiencias autenticas e inesqueciveis" -> "Tecnologia de ponta para facilitar sua viagem. O primeiro agente de IA do mundo no setor de viagens, acessivel para todos."
+- **Linha 165**: "Curadoria Premium" -> "IA Pioneira no Turismo"
+- **Linhas 166-168**: "Destinos selecionados por especialistas para experiencias unicas." -> "O primeiro agente de IA B2C do mundo no setor de viagens, tornando sua viagem dos sonhos mais facil e acessivel."
+- **Linha 187**: "...roteiros sob medida para voce... plano de viagem exclusivo em segundos." -> "...roteiros sob medida para voce... plano de viagem personalizado em segundos."
+
+### 2. `src/pages/Explorar.tsx`
+- **Linha 26**: "Destinos fora do comum e experiencias exclusivas para viajantes que buscam o extraordinario." -> "Destinos incriveis para todos os perfis de viajante. Descubra o mundo com a ajuda da nossa IA."
+
+### 3. `src/components/Footer.tsx`
+- **Linha 20**: "Experiencias exclusivas e roteiros personalizados para cada aventureiro." -> "Viagens acessiveis para todos, com tecnologia de IA que facilita cada etapa da sua jornada."
+- **Linha 60**: "Experiencias Exclusivas" -> "Tecnologia com IA"
+
+### 4. `src/components/TeoWelcomePopup.tsx`
+- **Linha 86**: "1o Agente de IA de Viagens do Brasil" -> "1o Agente de IA de Viagens B2C do Mundo"
+
+### 5. `src/pages/Teo.tsx`
+- Sem mudancas necessarias (ja esta neutro e acessivel).
+
+---
+
+## Alteracoes no Backend (Edge Functions)
+
+### 6. `supabase/functions/generate-itinerary/index.ts`
+- **Linha 62**: "uma agencia de viagens premium" -> "uma agencia de viagens inovadora, acessivel para todos os perfis de cliente"
+
+### 7. `supabase/functions/generate-destination-image/index.ts`
+- **Linha 69**: "premium-looking" -> "professional" (no prompt de geracao de imagem)
+
+---
 
 ## Detalhes tecnicos
 
-### Arquivo 1: `supabase/functions/whatsapp-webhook/index.ts`
+### Arquivos afetados (7 arquivos)
 
-Adicionar um bloco `SALES_KNOWLEDGE` como constante separada e concatena-lo ao `TEO_SYSTEM_PROMPT`. O bloco incluira:
+| Arquivo | Tipo de mudanca |
+|---|---|
+| `src/pages/Index.tsx` | Textos de 4 secoes |
+| `src/pages/Explorar.tsx` | Texto do subtitulo |
+| `src/components/Footer.tsx` | Descricao e item de servicos |
+| `src/components/TeoWelcomePopup.tsx` | Badge do popup |
+| `supabase/functions/generate-itinerary/index.ts` | System prompt |
+| `supabase/functions/generate-destination-image/index.ts` | Image prompt |
 
-- Secao "ESTRATEGIAS DE VENDA" com instrucoes sobre gatilhos mentais (usar escassez quando houver ofertas limitadas, antecipacao ao descrever destinos, prova social mencionando avaliacoes de clientes)
-- Secao "CONTORNO DE OBJECOES" com respostas mapeadas para as objecoes mais comuns (preco, confianca, flexibilidade, indecisao)
-- Secao "TECNICAS DE FECHAMENTO" com os 3 metodos (alternativa, presuntivo, resumo)
-- Secao "VALOR DA AGENCIA" com os 5 argumentos-chave contra plataformas online
-- Secao "FOLLOW-UP" com orientacoes para mensagens de acompanhamento
-
-O prompt final sera: `TEO_SYSTEM_PROMPT` + `SALES_KNOWLEDGE`
-
-### Arquivo 2: `supabase/functions/travel-advisor-chat/index.ts`
-
-Adicionar o mesmo bloco `SALES_KNOWLEDGE` (adaptado para o contexto do site) ao `systemPrompt` da funcao de chat do site, para que o Teo no site tambem aplique as mesmas tecnicas.
-
-### Principios de integracao
-
-- O conteudo sera condensado em instrucoes curtas e objetivas (nao copiar o PDF inteiro)
-- Manter compatibilidade com as regras existentes de "respostas ultra-curtas"
-- Os gatilhos e tecnicas devem ser aplicados de forma natural, sem parecer robotico
-- As tecnicas de fechamento devem ser usadas apenas quando o cliente demonstrar interesse real
-- O contorno de objecoes deve ser contextual (so aplicar quando a objecao surgir)
+### Palavras removidas/substituidas
+- "premium" -> "inovadora" / "acessivel"
+- "curadoria" -> "tecnologia de IA"
+- "exclusivo/exclusivas" -> "personalizado" / "acessivel"
+- "selecionados por especialistas" -> referencia a IA pioneira
+- "do Brasil" -> "B2C do Mundo" (no badge do Teo)
 
 ### Deploy
-
-Redeploy das edge functions `whatsapp-webhook` e `travel-advisor-chat`.
+Redeploy das edge functions `generate-itinerary` e `generate-destination-image` apos as alteracoes.
 
