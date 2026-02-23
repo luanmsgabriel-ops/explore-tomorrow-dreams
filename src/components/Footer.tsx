@@ -90,7 +90,7 @@ export const Footer = () => {
             {/* Social */}
             <div className="flex items-center gap-4 mt-6">
               <a
-                href="https://www.instagram.com/tomorrowtravel"
+                href="https://www.instagram.com/tomorrowtravel.br?igsh=MWw1ZnJhbmJqYTc2eg=="
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 rounded-full bg-muted hover:bg-primary/20 transition-colors"
