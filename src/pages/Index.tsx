@@ -36,7 +36,7 @@ const Index = () => {
               Descubra o <span className="gradient-text-teal">Extraordinário</span>
             </h2>
             <p className="text-muted-foreground text-lg">
-              Curadoria de destinos únicos para viajantes que buscam experiências autênticas e inesquecíveis.
+              Tecnologia de ponta para facilitar sua viagem. O primeiro agente de IA do mundo no setor de viagens, acessível para todos.
             </p>
           </div>
         </div>
@@ -162,9 +162,9 @@ const Index = () => {
               <div className="w-16 h-16 rounded-2xl bg-gold/10 flex items-center justify-center mx-auto mb-4">
                 <Globe className="w-8 h-8 text-gold" />
               </div>
-              <h3 className="font-serif text-lg font-bold text-foreground mb-2">Curadoria Premium</h3>
+              <h3 className="font-serif text-lg font-bold text-foreground mb-2">IA Pioneira no Turismo</h3>
               <p className="text-muted-foreground text-sm">
-                Destinos selecionados por especialistas para experiências únicas.
+                O primeiro agente de IA B2C do mundo no setor de viagens, tornando sua viagem dos sonhos mais fácil e acessível.
               </p>
             </div>
           </div>
@@ -184,7 +184,7 @@ const Index = () => {
               Crie seu roteiro <span className="gradient-text-gold">personalizado</span>
             </h2>
             <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto">
-              Nossa inteligência artificial cria roteiros sob medida para você. Informe suas preferências e receba um plano de viagem exclusivo em segundos.
+              Nossa inteligência artificial cria roteiros sob medida para você. Informe suas preferências e receba um plano de viagem personalizado em segundos.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Link to="/explorar" className="btn-gold flex items-center gap-2">

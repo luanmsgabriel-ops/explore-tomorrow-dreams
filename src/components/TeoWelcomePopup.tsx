@@ -83,7 +83,7 @@ export const TeoWelcomePopup = () => {
                   className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-primary/20 text-primary text-xs md:text-sm font-bold mb-3 border border-primary/30 shadow-sm shadow-primary/10"
                 >
                   <Sparkles className="w-4 h-4" />
-                  🇧🇷 1º Agente de IA de Viagens do Brasil
+                  🌍 1º Agente de IA de Viagens B2C do Mundo
                 </motion.div>
 
                 {/* Title */}

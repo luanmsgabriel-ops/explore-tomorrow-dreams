@@ -17,7 +17,7 @@ export const Footer = () => {
               </div>
             </Link>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Transformando sonhos em viagens inesquecíveis. Experiências exclusivas e roteiros personalizados para cada aventureiro.
+              Viagens acessíveis para todos, com tecnologia de IA que facilita cada etapa da sua jornada.
             </p>
           </div>
 
@@ -57,7 +57,7 @@ export const Footer = () => {
                 <span className="text-muted-foreground text-sm">Chat de Atendimento</span>
               </li>
               <li>
-                <span className="text-muted-foreground text-sm">Experiências Exclusivas</span>
+                <span className="text-muted-foreground text-sm">Tecnologia com IA</span>
               </li>
             </ul>
           </div>
