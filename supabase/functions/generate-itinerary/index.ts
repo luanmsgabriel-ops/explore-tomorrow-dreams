@@ -59,7 +59,7 @@ serve(async (req) => {
       }
     }
 
-    const systemPrompt = `Você é um especialista em viagens da Tomorrow Travel, uma agência de viagens premium. 
+    const systemPrompt = `Você é um especialista em viagens da Tomorrow Travel, uma agência de viagens inovadora, acessível para todos os perfis de cliente. 
 Sua função é criar roteiros de viagem personalizados, detalhados e inspiradores.
 
 IMPORTANTE: Se o usuário mencionar um destino específico nas preferências, crie o roteiro para esse destino mencionado, não para o destino padrão informado.

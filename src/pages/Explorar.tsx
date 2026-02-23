@@ -23,7 +23,7 @@ const Explorar = () => {
               <span className="gradient-text-teal">Explorar</span>
             </h1>
             <p className="text-muted-foreground text-lg md:text-xl max-w-2xl">
-              Destinos fora do comum e experiências exclusivas para viajantes que buscam o extraordinário.
+              Destinos incríveis para todos os perfis de viajante. Descubra o mundo com a ajuda da nossa IA.
             </p>
           </div>
         </div>

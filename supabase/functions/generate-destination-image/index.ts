@@ -66,7 +66,7 @@ The person should be enjoying the destination, looking happy and relaxed.
 MANDATORY BRANDING REQUIREMENT:
 In the bottom right corner, include a stylish logo with the letters "TT" intertwined in teal (#2DD4BF) and gold (#D4A574) colors, with a golden airplane silhouette. Below the logo, write "TOMORROW TRAVEL" in elegant gold lettering.
 
-The logo should be professional, premium-looking, and not obstruct the main travel scene.`;
+The logo should be professional and not obstruct the main travel scene.`;
 
     const messages: any[] = [
       {
