@@ -12,6 +12,7 @@ const navItems = [
   { label: 'Nacional', path: '/nacional' },
   { label: 'Internacional', path: '/internacional' },
   { label: 'Ofertas', path: '/ofertas' },
+  { label: 'Blog', path: '/blog' },
   { label: 'Téo', path: '/teo' },
 ];
 
