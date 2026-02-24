@@ -9,8 +9,6 @@ const MANUS_API_KEY = Deno.env.get('MANUS_API_KEY')
 const MANUS_API_URL = 'https://api.manus.im/v1/tasks'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wimdgvdpefkmjzzsklnt.supabase.co'
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-const ORINTER_LOGIN = Deno.env.get('ORINTER_LOGIN')
-const ORINTER_PASSWORD = Deno.env.get('ORINTER_PASSWORD')
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -36,26 +34,26 @@ serve(async (req) => {
     }
 
     const whatsappWebhookUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`
+    const totalPessoas = (record.adults || 1) + (record.children || 0)
 
     const prompt = `
 Processar cotação de viagem automaticamente SEM PERGUNTAR NADA.
 
 ═══════════════════════════════════════════
-INSTRUÇÕES DE AUTOMAÇÃO CATIVA OPERADORA v4.0 FINAL COM COOKIES
+INSTRUÇÕES DE AUTOMAÇÃO CATIVA OPERADORA v5.0 COMPLETO SEM SKILL
 ═══════════════════════════════════════════
 
-🎯 PASSO 1 - LER A SKILL (OBRIGATÓRIO)
-ANTES de qualquer ação, LEIA a skill completa:
-/home/ubuntu/skills/orinter-automation/SKILL.md
+📋 CREDENCIAIS E ACESSO
+Plataforma: Cativa Operadora
+URL de Login: https://reservas.cativaoperadora.com.br/infotravel/
+Usuário: luanmsgabriel
+Senha: 32687904Lu@n
 
-A skill contém:
-- Credenciais de acesso Cativa Operadora
-- Fluxo completo de navegação
-- Como usar cookies salvos (sem 2FA)
-- Passo a passo completo da automação
-- Critérios de busca
-
-SIGA AS INSTRUÇÕES DA SKILL À RISCA.
+⚡ COOKIES SALVOS
+- Cookies já estão salvos no navegador em nuvem
+- Login automático - não precisa fazer login toda vez
+- Sem 2FA - cookies mantêm sessão ativa
+- Funciona em qualquer sandbox - navegador em nuvem compartilhado
 
 ═══════════════════════════════════════════
 DADOS DA COTAÇÃO
@@ -67,36 +65,101 @@ DADOS DA COTAÇÃO
 - Data volta: ${record.return_date}
 - Adultos: ${record.adults}
 - Crianças: ${record.children || 0}
+- Total de pessoas: ${totalPessoas}
 - Telefone: ${record.phone_number}
 - Nome: ${record.customer_name || 'Cliente'}
 
 ═══════════════════════════════════════════
-REGRAS CRÍTICAS
+🔄 FLUXO DE AUTOMAÇÃO
 ═══════════════════════════════════════════
-❌ NUNCA peça código 2FA ao usuário (cookies já salvos!)
-❌ NUNCA peça credenciais ao usuário
-❌ NUNCA pause esperando usuário
-❌ NUNCA tente acessar Orinter (usar Cativa Operadora)
-✅ SEMPRE leia a skill primeiro
-✅ SEMPRE use cookies salvos (login automático)
-✅ SEMPRE siga o fluxo da skill
-✅ SEMPRE continue sem intervenção
+
+PASSO 1 - ACESSAR PLATAFORMA
+Navegar para: https://reservas.cativaoperadora.com.br/infotravel/
+Verificar se já está logado:
+- Se URL contém main.xhtml → Já está logado! ✅
+- Se aparecer tela de login → Fazer login (primeira vez apenas)
+
+PASSO 2 - FAZER LOGIN (se necessário)
+Campo usuário: luanmsgabriel
+Campo senha: 32687904Lu@n
+Clicar em: Enter
+
+Se solicitar 2FA:
+- ⚠️ CUIDADO: Máximo 3 tentativas (conta bloqueia!)
+- Aguardar 20 segundos para email chegar
+- Pedir código ao usuário UMA VEZ apenas
+- Inserir código
+- Cookies serão salvos automaticamente
+
+PASSO 3 - NAVEGAR PARA COTAÇÃO
+Caminho: Reserva → Cativa Comissionado → Monte seu pacote
+1. Clicar em: "Reserva" (menu lateral)
+2. Aguardar 2 segundos
+3. Clicar em: "Cativa Comissionado"
+4. Aguardar 2 segundos
+5. Clicar em: "Monte seu pacote"
+6. Aguardar 2 segundos
+
+PASSO 4 - PREENCHER FORMULÁRIO DE BUSCA
+Origem: ${record.origin}
+Destino: ${record.destination}
+Data ida: ${record.departure_date} (formato: DD/MM/AAAA)
+Data volta: ${record.return_date} (formato: DD/MM/AAAA)
+Número de pessoas: ${totalPessoas}
+Dica: Digitar datas manualmente (não usar calendário)
+
+PASSO 5 - BUSCAR E SELECIONAR OPÇÕES
+Clicar em: "Buscar"
+Aguardar: 10-15 segundos (carregamento)
+
+Critérios de Seleção:
+VOOS:
+- ✅ Máximo 1 conexão
+- ✅ Menor preço
+- ✅ Melhor horário (evitar madrugada)
+
+HOTÉIS:
+- ✅ Mínimo 3 estrelas
+- ✅ Bem avaliados (acima de 7.0)
+- ✅ Recomendados pelo sistema
+- ✅ Menor preço
+
+GERAL:
+- ✅ Melhor custo-benefício total
 
 ═══════════════════════════════════════════
-PLATAFORMA: CATIVA OPERADORA (Infotravel)
+❌ REGRAS CRÍTICAS - NUNCA FAZER
 ═══════════════════════════════════════════
-- Cookies já estão salvos no navegador em nuvem
-- Não precisa fazer login (já está logado)
-- Não precisa 2FA (cookies funcionando)
-- Fluxo: Reserva → Cativa Comissionado → Monte seu pacote
+1. ❌ Nunca tentar 2FA mais de uma vez por sessão
+2. ❌ Nunca limpar cookies do navegador
+3. ❌ Nunca pausar automação esperando usuário (exceto 2FA primeira vez)
+4. ❌ Nunca acessar Orinter (usar Cativa Operadora)
+5. ❌ Nunca pedir credenciais ao usuário (já estão aqui)
 
 ═══════════════════════════════════════════
-💰 CRITÉRIOS DE BUSCA
+✅ REGRAS CRÍTICAS - SEMPRE FAZER
 ═══════════════════════════════════════════
-- Voos: máximo 1 conexão, menor preço
-- Hotéis: mínimo 3 estrelas, bem avaliados, menor preço
-- Sempre buscar melhor custo-benefício
-- Extrair: nome hotel, estrelas, preço/pessoa, preço total, noites, regime, voo
+1. ✅ Sempre verificar se já está logado (cookies!)
+2. ✅ Sempre usar navegador em nuvem (cookies persistem)
+3. ✅ Sempre seguir caminho: Reserva → Cativa Comissionado → Monte seu pacote
+4. ✅ Sempre aguardar carregamento entre cliques
+5. ✅ Sempre retornar valor total para TODAS as pessoas
+6. ✅ Sempre priorizar custo-benefício
+
+═══════════════════════════════════════════
+🔧 TROUBLESHOOTING
+═══════════════════════════════════════════
+Problema: Página de login deu erro 404
+Solução: Tentar novamente com as credenciais disponíveis
+
+Problema: 2FA solicitado
+Solução: Aguardar 20s, pedir código ao usuário UMA VEZ, inserir, cookies salvam sessão
+
+Problema: Não encontrou voos/hotéis
+Solução: Verificar datas, tentar +/- 1 dia, se persistir informar que especialista entrará em contato
+
+Problema: Cookies não funcionaram
+Solução: Fazer login normalmente, cookies serão salvos novamente
 
 ═══════════════════════════════════════════
 ENVIAR COTAÇÃO AO CLIENTE
@@ -114,12 +177,17 @@ Body:
 }
 
 Formato quando encontrar cotação:
-"Olá [nome]! Encontrei um pacote perfeito para você:
+"Olá ${record.customer_name || 'Cliente'}! Encontrei um pacote perfeito para você:
 
-🛫 Voo: [origem] → [destino]
-📅 Datas: [ida] a [volta]
-🏨 Hotel: [nome] ([estrelas] estrelas)
-💰 Valor total: R$ [valor] para [X] pessoas
+✈️ Voo: [companhia] [número] ([direto/X conexão])
+📅 Ida: [data] [horário ida] - [horário chegada]
+📅 Volta: [data] [horário ida] - [horário chegada]
+
+🏨 Hotel: [nome] [estrelas]★
+⭐ Avaliação: [nota]/10
+🏖️ [X] diárias
+
+💰 Valor Total: R$ [valor] (${totalPessoas} pessoa${totalPessoas > 1 ? 's' : ''})
 
 Gostou? Quer fechar ou ver outras opções? 😊"
 
@@ -133,18 +201,20 @@ Para garantir o pacote perfeito, um de nossos consultores da Tomorrow Travel ent
 Aguarde nosso retorno! 😊"
 
 🚀 FLUXO RESUMIDO:
-1. Ler skill: /home/ubuntu/skills/orinter-automation/SKILL.md
-2. Acessar plataforma (login automático via cookies)
-3. Navegar: Reserva → Cativa Comissionado → Monte seu pacote
-4. Fazer cotação (voos + hotéis)
-5. Retornar resultados
+1. Acessar https://reservas.cativaoperadora.com.br/infotravel/
+2. Verificar login (cookies funcionando? Sim → continuar / Não → login)
+3. Reserva → Cativa Comissionado → Monte seu pacote
+4. Preencher formulário com dados da cotação
+5. Buscar e selecionar melhor opção
+6. Enviar resultado via WhatsApp webhook
 
-A skill tem TODO o conhecimento necessário!
 NÃO PERGUNTAR NADA. EXECUTAR TUDO AUTOMATICAMENTE.
+Versão: 5.0 COMPLETO SEM SKILL
+Plataforma: Cativa Operadora (Infotravel)
+Status Cookies: ✅ SALVOS E FUNCIONANDO
 `
 
     console.log('🚀 Chamando Manus API...')
-
     console.log('🔑 Calling Manus with API_KEY header');
     
     const response = await fetch(MANUS_API_URL, {
