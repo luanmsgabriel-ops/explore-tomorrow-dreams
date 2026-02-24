@@ -1598,12 +1598,25 @@ serve(async (req) => {
         });
       }
 
-      // If AI is disabled or conversation is completed, message is already saved, just skip AI response
+      // If conversation is completed or AI disabled, check if we should reactivate
       if (!conversation.is_ai_active || conversation.conversation_state === "completed") {
-        return new Response(JSON.stringify({ status: "ok", ai_disabled: true, state: conversation.conversation_state }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        // Keep AI disabled ONLY for human_takeover
+        if (conversation.conversation_state === "human_takeover") {
+          console.log(`Conversation ${conversation.id} is in human_takeover, skipping AI`);
+          return new Response(JSON.stringify({ status: "ok", ai_disabled: true, state: "human_takeover" }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        
+        // Reactivate AI — Téo NUNCA para de atender!
+        console.log(`🔄 Reactivating AI for conversation ${conversation.id} (was: ${conversation.conversation_state}, ai_active: ${conversation.is_ai_active})`);
+        await supabase
+          .from("whatsapp_conversations")
+          .update({ is_ai_active: true, conversation_state: "chatting" })
+          .eq("id", conversation.id);
+        conversation.is_ai_active = true;
+        conversation.conversation_state = "chatting";
       }
 
       const collectedData = (conversation.collected_data as Record<string, any>) || {};
