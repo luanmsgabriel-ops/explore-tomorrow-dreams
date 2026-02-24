@@ -20,15 +20,6 @@ serve(async (req) => {
     const { record } = await req.json()
 
     console.log('📥 Nova cotação recebida:', record.id)
-    console.log('📋 Detalhes:', JSON.stringify({
-      destination: record.destination,
-      origin: record.origin,
-      departure_date: record.departure_date,
-      return_date: record.return_date,
-      adults: record.adults,
-      children: record.children,
-      phone_number: record.phone_number,
-    }))
 
     if (!MANUS_API_KEY) {
       throw new Error('MANUS_API_KEY não configurada')
@@ -36,9 +27,11 @@ serve(async (req) => {
 
     const whatsappWebhookUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`
     const totalPessoas = (record.adults || 1) + (record.children || 0)
+    const customerName = record.customer_name || 'Cliente'
 
+    // Prompt SIMPLIFICADO - apenas redireciona para o chat fixo que já está logado
     const prompt = `
-Fazer cotação de viagem automaticamente SEM PERGUNTAR NADA.
+Cotação de viagem - EXECUTAR AUTOMATICAMENTE:
 
 ═══════════════════════════════════════════
 DADOS DA COTAÇÃO
@@ -52,11 +45,15 @@ DADOS DA COTAÇÃO
 - Crianças: ${record.children || 0}
 - Total de pessoas: ${totalPessoas}
 - Telefone: ${record.phone_number}
-- Nome: ${record.customer_name || 'Cliente'}
+- Nome: ${customerName}
 
 ═══════════════════════════════════════════
 INSTRUÇÕES (Cookies já salvos neste chat!)
 ═══════════════════════════════════════════
+
+❌ NUNCA tentar fazer login - já está logado!
+❌ NUNCA tentar buscar código 2FA
+❌ NUNCA inventar códigos
 
 1. Acessar: https://reservas.cativaoperadora.com.br/infotravel/admin/main.xhtml
    (Cookies já salvos, login automático!)
@@ -76,10 +73,9 @@ INSTRUÇÕES (Cookies já salvos neste chat!)
 5. Selecionar melhores opções:
    VOOS: Máximo 1 conexão, menor preço, melhor horário
    HOTÉIS: Mínimo 3 estrelas, avaliação acima de 7.0, menor preço
-   GERAL: Melhor custo-benefício, categoria LAZER
 
 ═══════════════════════════════════════════
-ENVIAR COTAÇÃO AO CLIENTE (1 ÚNICA MENSAGEM)
+ENVIAR RESULTADO VIA WHATSAPP (1 ÚNICA MENSAGEM)
 ═══════════════════════════════════════════
 Enviar via POST HTTP:
 URL: ${whatsappWebhookUrl}
@@ -94,7 +90,7 @@ Body:
 }
 
 Formato quando encontrar cotação:
-"Olá ${record.customer_name || 'Cliente'}! Encontrei um pacote perfeito para você:
+"Olá ${customerName}! Encontrei um pacote perfeito para você:
 
 ✈️ Voo: [companhia] [número] ([direto/X conexão])
 📅 Ida: [data] [horário ida] - [horário chegada]
@@ -109,7 +105,7 @@ Formato quando encontrar cotação:
 Gostou? Quer fechar ou ver outras opções? 😊"
 
 Se NÃO encontrar cotações:
-"Olá ${record.customer_name || 'Cliente'}! 👋
+"Olá ${customerName}! 👋
 
 Não encontramos opções no momento, iremos precisar de apoio de um especialista do seu destino para encontrar o melhor pacote para você. ✈️
 
@@ -120,7 +116,7 @@ Aguarde nosso retorno! 😊"
 NÃO PERGUNTAR NADA. EXECUTAR TUDO AUTOMATICAMENTE.
 `
 
-    console.log('🚀 Chamando Manus Chat Fixo:', MANUS_CHAT_ID)
+    console.log('🚀 Enviando para chat fixo Manus:', MANUS_CHAT_ID)
     
     const response = await fetch(MANUS_API_URL, {
       method: 'POST',
@@ -128,9 +124,7 @@ NÃO PERGUNTAR NADA. EXECUTAR TUDO AUTOMATICAMENTE.
         'Authorization': `Bearer ${MANUS_API_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        message: prompt,
-      })
+      body: JSON.stringify({ message: prompt })
     })
 
     if (!response.ok) {
@@ -149,24 +143,14 @@ NÃO PERGUNTAR NADA. EXECUTAR TUDO AUTOMATICAMENTE.
         message_id: result.id || result.message_id,
         quote_id: record.id
       }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200
-      }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     )
 
   } catch (error) {
     console.error('❌ Erro ao processar cotação:', error.message)
-
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500
-      }
+      JSON.stringify({ success: false, error: error.message }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     )
   }
 })
