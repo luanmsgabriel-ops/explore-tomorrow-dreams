@@ -694,6 +694,15 @@ function cleanAiResponse(response: string): string {
     .replace(/\[COTAR_VIAGEM:\s*\{.*?\}\s*\]/gs, "")
     .replace(/\[DESTINO_ESCOLHIDO:\s*[^\]]+\]/gi, "")
     .replace(/\[ALTERAR_COTACAO:\s*[^\]]+\]/gi, "")
+    .replace(/\[DESTINO:[^\]]*\]/gi, "")
+    .replace(/\[ORIGEM:[^\]]*\]/gi, "")
+    .replace(/\[DATAS:[^\]]*\]/gi, "")
+    .replace(/\[NUM_VIAJANTES:[^\]]*\]/gi, "")
+    .replace(/\[NOME:[^\]]*\]/gi, "")
+    .replace(/\[WHATSAPP:[^\]]*\]/gi, "")
+    .replace(/\[EMAIL:[^\]]*\]/gi, "")
+    .replace(/\[[A-Z_]+:[^\]]*\]/g, "")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
