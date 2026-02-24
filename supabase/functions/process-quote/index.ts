@@ -41,22 +41,21 @@ serve(async (req) => {
 Processar cotação de viagem automaticamente SEM PERGUNTAR NADA.
 
 ═══════════════════════════════════════════
-INSTRUÇÕES DE AUTOMAÇÃO ORINTER v2.0 OTIMIZADA
+INSTRUÇÕES DE AUTOMAÇÃO ORINTER v3.0 COM SKILL
 ═══════════════════════════════════════════
 
-🎯 CREDENCIAIS ORINTER
-- Email: ${ORINTER_LOGIN}
-- Senha: ${ORINTER_PASSWORD}
-- URL Cotação: https://online.orinter.com.br/infotravel/admin/main.xhtml
+🎯 PASSO 1 - LER A SKILL (OBRIGATÓRIO)
+ANTES de qualquer ação, LEIA a skill completa:
+/home/ubuntu/skills/orinter-automation/SKILL.md
 
-⚠️ REGRAS CRÍTICAS - 2FA AUTOMÁTICO
-❌ NUNCA peça código 2FA ao usuário
-❌ NUNCA peça para verificar email
-❌ NUNCA pause esperando usuário
-❌ NUNCA diga que não tem acesso ao Gmail
-✅ SEMPRE busque código 2FA automaticamente
-✅ SEMPRE use Gmail API que JÁ está configurado no Manus
-✅ SEMPRE continue sem intervenção
+A skill contém:
+- Credenciais de acesso Orinter
+- Credenciais Gmail API
+- Script de busca de código 2FA
+- Passo a passo completo da automação
+- Tratamento de erros
+
+SIGA AS INSTRUÇÕES DA SKILL À RISCA.
 
 ═══════════════════════════════════════════
 DADOS DA COTAÇÃO
@@ -72,64 +71,39 @@ DADOS DA COTAÇÃO
 - Nome: ${record.customer_name || 'Cliente'}
 
 ═══════════════════════════════════════════
-FLUXO DE AUTOMAÇÃO (4 PASSOS)
+REGRAS CRÍTICAS
 ═══════════════════════════════════════════
+❌ NUNCA peça código 2FA ao usuário
+❌ NUNCA peça para verificar email
+❌ NUNCA pause esperando usuário
+❌ NUNCA diga que não tem acesso ao Gmail
+✅ SEMPRE leia a skill primeiro
+✅ SEMPRE busque código 2FA automaticamente
+✅ SEMPRE continue sem intervenção
 
-PASSO 1: Login
-- Navegar para: https://agente.orinter.com.br
-- Aguardar 3 segundos
-- Preencher email: ${ORINTER_LOGIN}
-- Preencher senha: ${ORINTER_PASSWORD}
-- Clicar "Entrar"
-- Aguardar 3 segundos
+═══════════════════════════════════════════
+CREDENCIAIS ORINTER (backup caso skill não carregue)
+═══════════════════════════════════════════
+- Email: ${ORINTER_LOGIN}
+- Senha: ${ORINTER_PASSWORD}
+- URL Login: https://agente.orinter.com.br
+- URL Cotação: https://online.orinter.com.br/infotravel/admin/main.xhtml
 
-PASSO 2: Buscar 2FA Automaticamente
-O sistema SEMPRE solicita 2FA após login. Fazer:
-
+═══════════════════════════════════════════
+2FA AUTOMÁTICO (backup caso skill não carregue)
+═══════════════════════════════════════════
+Quando o sistema solicitar 2FA:
 \`\`\`python
 import subprocess, re, time
-
-time.sleep(20)  # Aguardar email chegar
-
-result = subprocess.run([
-    "python3",
-    "/home/ubuntu/get_2fa_from_gmail.py",
-    "orinter",
-    "20"
-], capture_output=True, text=True)
-
+time.sleep(20)
+result = subprocess.run(["python3", "/home/ubuntu/get_2fa_from_gmail.py", "orinter", "20"], capture_output=True, text=True)
 match = re.search(r'__2FA_CODE__:(\\d+)', result.stdout)
 if match:
     codigo = match.group(1)
     browser.input("#campo_codigo", codigo)
     browser.click("button=Confirmar")
 \`\`\`
-
-- Se código não encontrado: aguardar 10s e tentar novamente com janela de 30 minutos:
-  python3 /home/ubuntu/get_2fa_from_gmail.py "orinter" 30
-
-IMPORTANTE: Gmail API JÁ ESTÁ CONFIGURADO no sandbox Manus!
-- Script /home/ubuntu/get_2fa_from_gmail.py JÁ EXISTE
-- Token OAuth JÁ ESTÁ VÁLIDO
-- NÃO precisa configurar nada, SÓ executar o comando
-
-PASSO 3: Acessar Cotação
-- Navegar para: https://online.orinter.com.br/infotravel/admin/main.xhtml
-- Aguardar 3 segundos
-
-PASSO 4: Fazer Cotação
-1. Clicar em "Booking"
-2. Selecionar "LAZER"
-3. Clicar em "Monte seu pacote"
-4. Preencher:
-   - Origem: ${record.origin}
-   - Destino: ${record.destination}
-   - Data ida: ${record.departure_date} (formato DD/MM/YYYY)
-   - Data volta: ${record.return_date} (formato DD/MM/YYYY)
-   - Adultos: ${record.adults}
-   - Crianças: ${record.children || 0}
-5. Clicar "Buscar"
-6. Aguardar resultados
+Se não encontrar: aguardar 10s e tentar com janela de 30 min.
 
 ═══════════════════════════════════════════
 💰 CRITÉRIOS DE BUSCA
@@ -137,7 +111,6 @@ PASSO 4: Fazer Cotação
 - Voos: máximo 1 conexão, menor preço
 - Hotéis: mínimo 3 estrelas, bem avaliados, menor preço
 - Sempre buscar melhor custo-benefício
-- Selecionar hotel mais econômico → Add → Details
 - Extrair: nome hotel, estrelas, preço/pessoa, preço total, noites, regime, voo
 
 ═══════════════════════════════════════════
@@ -174,6 +147,12 @@ Para garantir o pacote perfeito, um de nossos consultores da Tomorrow Travel ent
 
 Aguarde nosso retorno! 😊"
 
+🚀 FLUXO RESUMIDO:
+1. Ler skill: /home/ubuntu/skills/orinter-automation/SKILL.md
+2. Seguir instruções da skill
+3. Retornar resultados
+
+A skill tem TODO o conhecimento necessário!
 NÃO PERGUNTAR NADA. EXECUTAR TUDO AUTOMATICAMENTE.
 `
 
