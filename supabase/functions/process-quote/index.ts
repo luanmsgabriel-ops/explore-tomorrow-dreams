@@ -6,8 +6,8 @@ const corsHeaders = {
 }
 
 const MANUS_API_KEY = Deno.env.get('MANUS_API_KEY')
-const MANUS_CHAT_ID = 'QUkGhc7s7YhaqqfkVSekZR'
-const MANUS_API_URL = `https://api.manus.im/v1/chats/${MANUS_CHAT_ID}/messages`
+const MANUS_TASK_ID = 'QUkGhc7s7YhaqqfkVSekZR'
+const MANUS_API_URL = 'https://api.manus.ai/v1/tasks'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wimdgvdpefkmjzzsklnt.supabase.co'
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
@@ -116,15 +116,18 @@ Aguarde nosso retorno! 😊"
 NÃO PERGUNTAR NADA. EXECUTAR TUDO AUTOMATICAMENTE.
 `
 
-    console.log('🚀 Enviando para chat fixo Manus:', MANUS_CHAT_ID)
+    console.log('🚀 Enviando para task fixo Manus:', MANUS_TASK_ID)
     
     const response = await fetch(MANUS_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${MANUS_API_KEY}`,
+        'API_KEY': MANUS_API_KEY,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ message: prompt })
+      body: JSON.stringify({
+        prompt: prompt,
+        taskId: MANUS_TASK_ID
+      })
     })
 
     if (!response.ok) {
@@ -134,13 +137,13 @@ NÃO PERGUNTAR NADA. EXECUTAR TUDO AUTOMATICAMENTE.
     }
 
     const result = await response.json()
-    console.log('✅ Manus respondeu no chat fixo:', result.id || result.message_id)
+    console.log('✅ Manus respondeu:', result.task_id || result.id)
 
     return new Response(
       JSON.stringify({
         success: true,
-        chat_id: MANUS_CHAT_ID,
-        message_id: result.id || result.message_id,
+        task_id: result.task_id,
+        task_url: result.task_url,
         quote_id: record.id
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
