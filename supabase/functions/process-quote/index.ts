@@ -41,7 +41,7 @@ serve(async (req) => {
 Processar cotação de viagem automaticamente SEM PERGUNTAR NADA.
 
 ═══════════════════════════════════════════
-INSTRUÇÕES DE AUTOMAÇÃO ORINTER v3.0 COM SKILL
+INSTRUÇÕES DE AUTOMAÇÃO CATIVA OPERADORA v4.0 FINAL COM COOKIES
 ═══════════════════════════════════════════
 
 🎯 PASSO 1 - LER A SKILL (OBRIGATÓRIO)
@@ -49,11 +49,11 @@ ANTES de qualquer ação, LEIA a skill completa:
 /home/ubuntu/skills/orinter-automation/SKILL.md
 
 A skill contém:
-- Credenciais de acesso Orinter
-- Credenciais Gmail API
-- Script de busca de código 2FA
+- Credenciais de acesso Cativa Operadora
+- Fluxo completo de navegação
+- Como usar cookies salvos (sem 2FA)
 - Passo a passo completo da automação
-- Tratamento de erros
+- Critérios de busca
 
 SIGA AS INSTRUÇÕES DA SKILL À RISCA.
 
@@ -73,37 +73,22 @@ DADOS DA COTAÇÃO
 ═══════════════════════════════════════════
 REGRAS CRÍTICAS
 ═══════════════════════════════════════════
-❌ NUNCA peça código 2FA ao usuário
-❌ NUNCA peça para verificar email
+❌ NUNCA peça código 2FA ao usuário (cookies já salvos!)
+❌ NUNCA peça credenciais ao usuário
 ❌ NUNCA pause esperando usuário
-❌ NUNCA diga que não tem acesso ao Gmail
+❌ NUNCA tente acessar Orinter (usar Cativa Operadora)
 ✅ SEMPRE leia a skill primeiro
-✅ SEMPRE busque código 2FA automaticamente
+✅ SEMPRE use cookies salvos (login automático)
+✅ SEMPRE siga o fluxo da skill
 ✅ SEMPRE continue sem intervenção
 
 ═══════════════════════════════════════════
-CREDENCIAIS ORINTER (backup caso skill não carregue)
+PLATAFORMA: CATIVA OPERADORA (Infotravel)
 ═══════════════════════════════════════════
-- Email: ${ORINTER_LOGIN}
-- Senha: ${ORINTER_PASSWORD}
-- URL Login: https://agente.orinter.com.br
-- URL Cotação: https://online.orinter.com.br/infotravel/admin/main.xhtml
-
-═══════════════════════════════════════════
-2FA AUTOMÁTICO (backup caso skill não carregue)
-═══════════════════════════════════════════
-Quando o sistema solicitar 2FA:
-\`\`\`python
-import subprocess, re, time
-time.sleep(20)
-result = subprocess.run(["python3", "/home/ubuntu/get_2fa_from_gmail.py", "orinter", "20"], capture_output=True, text=True)
-match = re.search(r'__2FA_CODE__:(\\d+)', result.stdout)
-if match:
-    codigo = match.group(1)
-    browser.input("#campo_codigo", codigo)
-    browser.click("button=Confirmar")
-\`\`\`
-Se não encontrar: aguardar 10s e tentar com janela de 30 min.
+- Cookies já estão salvos no navegador em nuvem
+- Não precisa fazer login (já está logado)
+- Não precisa 2FA (cookies funcionando)
+- Fluxo: Reserva → Cativa Comissionado → Monte seu pacote
 
 ═══════════════════════════════════════════
 💰 CRITÉRIOS DE BUSCA
@@ -116,7 +101,7 @@ Se não encontrar: aguardar 10s e tentar com janela de 30 min.
 ═══════════════════════════════════════════
 ENVIAR COTAÇÃO AO CLIENTE
 ═══════════════════════════════════════════
-Enviar via POST HTTP (APENAS 1 ÚNICA mensagem):
+Enviar via POST HTTP (APENAS 1 ÚNICA mensagem consolidada):
 URL: ${whatsappWebhookUrl}
 Headers:
   Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}
@@ -149,8 +134,10 @@ Aguarde nosso retorno! 😊"
 
 🚀 FLUXO RESUMIDO:
 1. Ler skill: /home/ubuntu/skills/orinter-automation/SKILL.md
-2. Seguir instruções da skill
-3. Retornar resultados
+2. Acessar plataforma (login automático via cookies)
+3. Navegar: Reserva → Cativa Comissionado → Monte seu pacote
+4. Fazer cotação (voos + hotéis)
+5. Retornar resultados
 
 A skill tem TODO o conhecimento necessário!
 NÃO PERGUNTAR NADA. EXECUTAR TUDO AUTOMATICAMENTE.
