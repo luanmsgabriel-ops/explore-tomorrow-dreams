@@ -65,6 +65,11 @@ export const ReviewManager = () => {
   const [sendName, setSendName] = useState('');
   const [sendDestination, setSendDestination] = useState('');
 
+  // Create link form state
+  const [showCreateLinkForm, setShowCreateLinkForm] = useState(false);
+  const [linkClientName, setLinkClientName] = useState('');
+  const [linkDestination, setLinkDestination] = useState('');
+
   useEffect(() => {
     fetchReviews();
   }, []);
@@ -164,11 +169,18 @@ export const ReviewManager = () => {
   };
 
   const createReviewLink = async () => {
+    if (!linkClientName.trim() || !linkDestination.trim()) {
+      toast.error('Preencha o nome do cliente e o destino');
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('travel_reviews')
         .insert({
           phone_number: 'link',
+          client_name: linkClientName.trim(),
+          destination_name: linkDestination.trim(),
           conversation_status: 'pending',
           current_step: 'greeting',
         })
@@ -180,6 +192,9 @@ export const ReviewManager = () => {
       const link = getReviewLink(data.id);
       await navigator.clipboard.writeText(link);
       toast.success('Link criado e copiado!');
+      setShowCreateLinkForm(false);
+      setLinkClientName('');
+      setLinkDestination('');
       fetchReviews();
     } catch (error) {
       console.error('Error creating review link:', error);
@@ -271,7 +286,7 @@ export const ReviewManager = () => {
           <Button onClick={() => setShowSendForm(true)}>
             <Send className="w-4 h-4 mr-2" /> Enviar Avaliação
           </Button>
-          <Button variant="outline" onClick={createReviewLink}>
+          <Button variant="outline" onClick={() => setShowCreateLinkForm(true)}>
             <Link2 className="w-4 h-4 mr-2" /> Criar Link
           </Button>
         </div>
@@ -403,6 +418,44 @@ export const ReviewManager = () => {
               ) : (
                 <><Send className="w-4 h-4 mr-2" /> Enviar via WhatsApp</>
               )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Link Dialog */}
+      <Dialog open={showCreateLinkForm} onOpenChange={setShowCreateLinkForm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="w-5 h-5" /> Criar Link de Avaliação
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="link-name">Nome do Cliente *</Label>
+              <Input
+                id="link-name"
+                placeholder="Ex: João Silva"
+                value={linkClientName}
+                onChange={(e) => setLinkClientName(e.target.value)}
+                maxLength={100}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="link-destination">Destino da Viagem *</Label>
+              <Input
+                id="link-destination"
+                placeholder="Ex: Fernando de Noronha"
+                value={linkDestination}
+                onChange={(e) => setLinkDestination(e.target.value)}
+                maxLength={200}
+                className="mt-1"
+              />
+            </div>
+            <Button onClick={createReviewLink} className="w-full">
+              <Link2 className="w-4 h-4 mr-2" /> Criar e Copiar Link
             </Button>
           </div>
         </DialogContent>
