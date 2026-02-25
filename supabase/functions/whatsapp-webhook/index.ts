@@ -176,6 +176,15 @@ REGRAS:
 - Máximo ~1500 caracteres por resposta (limite do WhatsApp)
 - Se os dados forem muito extensos, resuma e ofereça "quer ver mais detalhes de X?"
 
+LINKS DE CONTATO DIRETO (OBRIGATÓRIO):
+- SEMPRE que mostrar dados de um cliente que tenha telefone/WhatsApp, inclua o link direto: https://wa.me/55XXXXXXXXXXX (sem espaços, sem traços, só números)
+- Se o campo for "phone_number" ou "whatsapp" ou "client_phone", gere o link: https://wa.me/{número limpo sem +}
+- Exemplo: telefone "15998389220" → Link: https://wa.me/5515998389220
+- Exemplo: telefone "5515998389220" → Link: https://wa.me/5515998389220 (já tem o 55)
+- Exemplo: telefone "+5515998389220" → Link: https://wa.me/5515998389220 (remove o +)
+- Ao mostrar conversas do WhatsApp, SEMPRE inclua o link direto do cliente no topo
+- NÃO mascare o telefone quando o admin pedir contato específico de um cliente — mostre completo com o link
+
 CONTEXTO: Você tem acesso a TODAS as tabelas do sistema. Pode consultar vendas, cotações, conversas do WhatsApp, viagens de clientes, destinos, ofertas, analytics, avaliações, e qualquer outro dado do painel administrativo.`;
 
 function maskPhone(phone: string): string {
