@@ -112,6 +112,12 @@ RESPOSTAS CONTEXTUAIS:
 - "Quero fechar!" → Celebre e passe para equipe
 - Perguntas gerais sobre viagem → Responda com entusiasmo e SEMPRE faça uma pergunta de volta ou sugira algo novo
 
+ESCALAR PARA ESPECIALISTA:
+- Quando perceber que o cliente quer FECHAR NEGÓCIO, precisa de atendimento HUMANO, tem dúvidas complexas sobre pagamento/documentação, ou pede explicitamente para falar com alguém:
+- Inclua a tag: [ESCALAR_ESPECIALISTA]
+- Diga ao cliente que um especialista entrará em contato em breve pelo WhatsApp
+- Exemplos de quando escalar: "quero fechar", "quero reservar", "como pago?", "preciso de ajuda humana", "quero falar com alguém", negociação de preço avançada, solicitações muito específicas que fogem do seu escopo
+
 LEMBRE-SE: Seja divertido, acolhedor e BREVE. Menos texto, mais impacto! 🚀` + SALES_KNOWLEDGE;
 
     const response = await callGemini(
@@ -200,6 +206,68 @@ LEMBRE-SE: Seja divertido, acolhedor e BREVE. Menos texto, mais impacto! 🚀` +
             user_name: userName || null,
             user_whatsapp: userWhatsapp || null,
           });
+        }
+
+        // Check for escalation tag
+        if (assistantContent.includes("[ESCALAR_ESPECIALISTA]")) {
+          try {
+            // Build conversation summary from recent messages
+            const recentMessages = messages.slice(-10).map((m: { role: string; content: string }) => 
+              `${m.role === 'user' ? '👤 Cliente' : '🤖 Téo'}: ${m.content}`
+            ).join('\n\n');
+
+            const clientWhatsappLink = userWhatsapp 
+              ? `https://wa.me/55${userWhatsapp.replace(/\D/g, '')}`
+              : 'WhatsApp não informado';
+
+            const summaryText = `🚨 *ESCALAÇÃO - Téo solicitou especialista*\n\n` +
+              `👤 *Cliente:* ${userName || 'Não informado'}\n` +
+              `📱 *WhatsApp:* ${userWhatsapp || 'Não informado'}\n` +
+              `🔗 *Link direto:* ${clientWhatsappLink}\n\n` +
+              `📋 *Resumo da conversa:*\n${recentMessages}\n\n` +
+              `⚡ Por favor, entre em contato com o cliente o mais rápido possível!`;
+
+            // Send WhatsApp message to admin
+            const whatsappToken = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
+            const phoneNumberId = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
+            
+            if (whatsappToken && phoneNumberId) {
+              await fetch(
+                `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`,
+                {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${whatsappToken}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    messaging_product: "whatsapp",
+                    to: "5515998389220",
+                    type: "text",
+                    text: { body: summaryText },
+                  }),
+                }
+              );
+              console.log("Escalation WhatsApp sent to admin");
+            }
+
+            // Send email notification
+            await supabase.functions.invoke("send-admin-notification", {
+              body: {
+                type: "escalation",
+                data: {
+                  client_name: userName || "Não informado",
+                  client_whatsapp: userWhatsapp || "Não informado",
+                  client_whatsapp_link: clientWhatsappLink,
+                  conversation_summary: recentMessages,
+                  source: "Téo Chat (Website)",
+                },
+              },
+            });
+            console.log("Escalation email notification sent");
+          } catch (escalationError) {
+            console.error("Error sending escalation notifications:", escalationError);
+          }
         }
       } catch (error) {
         console.error("Error processing stream:", error);
