@@ -314,6 +314,19 @@ Me conta aí! 👇`
         }
       }
 
+      // Check for escalation tag
+      if (assistantContent.includes('[ESCALAR_ESPECIALISTA]')) {
+        assistantContent = assistantContent.replace(/\[ESCALAR_ESPECIALISTA\]/g, '').trim();
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          newMessages[newMessages.length - 1] = {
+            role: 'assistant',
+            content: assistantContent,
+          };
+          return newMessages;
+        });
+      }
+
       const destinationMatch = assistantContent.match(/\[DESTINO_ESCOLHIDO:\s*([^\]]+)\]/i);
       if (destinationMatch) {
         const destination = destinationMatch[1].trim();

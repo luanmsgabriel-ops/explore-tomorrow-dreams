@@ -10,7 +10,7 @@ const corsHeaders = {
 };
 
 interface NotificationRequest {
-  type: 'quote_request' | 'chat_session' | 'ai_itinerary' | 'ai_image' | 'change_request';
+  type: 'quote_request' | 'chat_session' | 'ai_itinerary' | 'ai_image' | 'change_request' | 'escalation';
   data: Record<string, any>;
 }
 
@@ -143,6 +143,32 @@ const getEmailContent = (type: string, data: Record<string, any>) => {
             </div>
             <div class="footer">
               <p>Tomorrow Travel - Entre em contato com o cliente para personalizar a cotação</p>
+            </div>
+          </div>
+        `
+      };
+
+    case 'escalation':
+      return {
+        subject: `🚨 URGENTE: Téo solicita especialista - ${data.client_name || 'Cliente'}`,
+        html: `
+          ${baseStyle}
+          <div class="container">
+            <div class="header" style="background: linear-gradient(135deg, #dc2626, #b91c1c);">
+              <h1>🚨 Escalação para Especialista!</h1>
+            </div>
+            <div class="content">
+              <p><strong>O Téo identificou que este cliente precisa de atendimento humano.</strong></p>
+              <div class="info-row"><span class="label">👤 Cliente:</span> <span class="highlight">${data.client_name || 'N/A'}</span></div>
+              <div class="info-row"><span class="label">📱 WhatsApp:</span> ${data.client_whatsapp || 'N/A'}</div>
+              <div class="info-row"><span class="label">🔗 Link direto:</span> <a href="${data.client_whatsapp_link || '#'}" style="color: #f97316;">${data.client_whatsapp_link || 'N/A'}</a></div>
+              <div class="info-row"><span class="label">📍 Origem:</span> ${data.source || 'N/A'}</div>
+              <hr style="margin: 15px 0; border-color: #e5e7eb;">
+              <p><strong>📋 Resumo da Conversa:</strong></p>
+              <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; white-space: pre-wrap; font-size: 13px;">${data.conversation_summary || 'N/A'}</div>
+            </div>
+            <div class="footer">
+              <p>⚡ Entre em contato com o cliente o mais rápido possível!</p>
             </div>
           </div>
         `
