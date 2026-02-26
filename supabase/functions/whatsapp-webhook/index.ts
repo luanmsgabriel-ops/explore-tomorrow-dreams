@@ -153,7 +153,18 @@ REGRAS:
 - Para contagens, use select mínimo (ex: "id")
 - Para dados sensíveis (telefone), inclua a coluna normalmente - o sistema mascarará se necessário
 - Para processar/reprocessar cotação, use action type "process_quote" com o ID
-- Para enviar mensagem WhatsApp para cliente, use action type "send_whatsapp"`;
+- Para enviar mensagem WhatsApp para cliente, use action type "send_whatsapp" com phone_number e message
+- Para enviar mensagens em LOTE para vários clientes, use action type "send_bulk_whatsapp":
+  * Primeiro faça uma query para buscar os clientes alvo (ex: cotações pendentes)
+  * Depois crie a action com "source_query": "q1" (referenciando a query), "phone_field": "phone_number" (campo do telefone nos resultados), "name_field": "customer_name" (campo do nome), e "message_template": "a mensagem com {name} para personalizar"
+  * Exemplo: admin diz "envie mensagem para clientes com cotação pendente" → query busca travel_quote_requests status=pending, action send_bulk_whatsapp usa os resultados
+  * O {name} no template será substituído pelo nome do cliente
+  * Para clientes ESPECÍFICOS, basta filtrar na query (ex: por nome, telefone, destino)
+  * SEMPRE inclua a query que busca os destinatários ANTES da action de envio
+  * A mensagem deve ser no estilo do Téo: amigável, com emojis, breve e profissional
+- IMPORTANTE: Quando o admin pedir para enviar mensagens, SEMPRE gere o message_template no estilo do Téo (amigável, com emojis, curta)
+- Se o admin especificar o conteúdo da mensagem, use exatamente o que ele pediu
+- Se o admin não especificar, gere uma mensagem contextual (ex: para pendentes, pergunte se ainda tem interesse)`;
 
 const ADMIN_FORMATTER_PROMPT = `Você é o assistente administrativo da Tomorrow Travel respondendo ao dono da agência via WhatsApp.
 
@@ -273,6 +284,18 @@ async function executeAdminAction(action: any): Promise<any> {
       await sendWhatsAppMessage(action.phone_number, action.message);
       return { success: true, message: `Mensagem enviada para ${action.phone_number}` };
     }
+
+    if (action.type === "send_bulk_whatsapp") {
+      // This action requires query results from a previous query
+      // The actual sending happens in handleAdminMessage after queries are resolved
+      return { 
+        pending_bulk: true, 
+        source_query: action.source_query,
+        phone_field: action.phone_field || "phone_number",
+        name_field: action.name_field || "customer_name",
+        message_template: action.message_template || "Olá {name}! 👋 Aqui é o Téo da Tomorrow Travel. Tudo bem? Estou passando para saber se ainda tem interesse na sua viagem! ✈️"
+      };
+    }
     
     return { error: "Tipo de ação não suportado: " + action.type };
   } catch (e) {
@@ -355,7 +378,54 @@ async function handleAdminMessage(phoneNumber: string, messageText: string): Pro
     const actionResults: Record<string, any> = {};
     if (plan.actions?.length > 0) {
       for (const action of plan.actions) {
-        actionResults[action.id] = await executeAdminAction(action);
+        const result = await executeAdminAction(action);
+        
+        // Handle bulk WhatsApp sending
+        if (result?.pending_bulk) {
+          const sourceData = queryResults[result.source_query]?.data;
+          if (sourceData && sourceData.length > 0) {
+            let sentCount = 0;
+            let failedCount = 0;
+            const sentTo: string[] = [];
+            
+            for (const record of sourceData) {
+              const phone = record[result.phone_field];
+              const name = record[result.name_field] || "cliente";
+              if (!phone) { failedCount++; continue; }
+              
+              const personalizedMsg = result.message_template.replace(/\{name\}/g, name);
+              try {
+                // Clean phone number
+                const cleanPhone = phone.replace(/\D/g, "");
+                const finalPhone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
+                await sendWhatsAppMessage(finalPhone, personalizedMsg);
+                sentCount++;
+                sentTo.push(`${name} (${maskPhone(phone)})`);
+                // Small delay to avoid rate limiting
+                await new Promise(r => setTimeout(r, 1000));
+              } catch (e) {
+                console.error(`[ADMIN] Failed to send to ${phone}:`, e);
+                failedCount++;
+              }
+            }
+            
+            actionResults[action.id] = { 
+              success: true, 
+              total_found: sourceData.length,
+              sent: sentCount, 
+              failed: failedCount,
+              sent_to: sentTo,
+              message_used: result.message_template
+            };
+          } else {
+            actionResults[action.id] = { 
+              success: false, 
+              message: "Nenhum cliente encontrado com os filtros aplicados" 
+            };
+          }
+        } else {
+          actionResults[action.id] = result;
+        }
       }
     }
 
