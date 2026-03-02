@@ -142,13 +142,23 @@ NÃO PERGUNTAR NADA. EXECUTAR TUDO AUTOMATICAMENTE.
       })
     });
 
+    const responseText = await response.text();
+    console.log(`📡 [cotar-viagem] Manus HTTP ${response.status} | Headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
+    console.log(`📡 [cotar-viagem] Manus response body: ${responseText.substring(0, 1000)}`);
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Manus API response:', response.status, errorText);
-      throw new Error(`Manus API error: ${response.status} - ${errorText}`);
+      console.error(`❌ [cotar-viagem] Manus API FALHOU! Status: ${response.status} | Body: ${responseText}`);
+      console.error(`❌ [cotar-viagem] Verifique se MANUS_API_KEY está válida. Key prefix: ${MANUS_API_KEY?.substring(0, 8)}...`);
+      throw new Error(`Manus API error: ${response.status} - ${responseText}`);
     }
 
-    const result = await response.json();
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (e) {
+      console.error(`❌ [cotar-viagem] Resposta não é JSON válido: ${responseText.substring(0, 500)}`);
+      throw new Error(`Manus retornou resposta inválida: ${responseText.substring(0, 200)}`);
+    }
     console.log('✅ [cotar-viagem] Manus respondeu:', result.task_id);
 
     return new Response(

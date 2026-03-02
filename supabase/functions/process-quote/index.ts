@@ -130,14 +130,24 @@ NÃO PERGUNTAR NADA. EXECUTAR TUDO AUTOMATICAMENTE.
       })
     })
 
+    const responseText = await response.text()
+    console.log(`📡 [process-quote] Manus HTTP ${response.status} | Headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`)
+    console.log(`📡 [process-quote] Manus response body: ${responseText.substring(0, 1000)}`)
+
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error('❌ Manus API response:', response.status, errorText)
-      throw new Error(`Manus API error: ${response.status} - ${errorText}`)
+      console.error(`❌ [process-quote] Manus API FALHOU! Status: ${response.status} | Body: ${responseText}`)
+      console.error(`❌ [process-quote] Verifique se MANUS_API_KEY está válida. Key prefix: ${MANUS_API_KEY?.substring(0, 8)}...`)
+      throw new Error(`Manus API error: ${response.status} - ${responseText}`)
     }
 
-    const result = await response.json()
-    console.log('✅ Manus respondeu:', result.task_id || result.id)
+    let result
+    try {
+      result = JSON.parse(responseText)
+    } catch (e) {
+      console.error(`❌ [process-quote] Resposta não é JSON válido: ${responseText.substring(0, 500)}`)
+      throw new Error(`Manus retornou resposta inválida: ${responseText.substring(0, 200)}`)
+    }
+    console.log('✅ [process-quote] Manus respondeu:', result.task_id || result.id)
 
     return new Response(
       JSON.stringify({
