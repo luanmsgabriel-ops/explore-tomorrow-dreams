@@ -1,24 +1,39 @@
 
 
-## Plan: Add client name and destination fields to the "Create Link" flow
+## Plan: Add Knowledge Base Document to Teo
 
-Currently, the "Criar Link" button creates a review record with no client info (`phone_number: 'link'`, no name or destination). The fix is to show a dialog that collects **client name** and **destination** before creating the link.
+### Current State
+- Teo's knowledge comes from two sources: the system prompt in `travel-advisor-chat/index.ts` and the `SALES_KNOWLEDGE` constant in `_shared/sales-knowledge.ts`
+- The current `SALES_KNOWLEDGE` is ~60 lines covering basic sales techniques
+- The new document is ~1590 lines covering 20 sections: identity, competitors, sales psychology, destinations (national + international), visas, payments, scripts, glossary, and more
 
-### Changes to `src/components/admin/ReviewManager.tsx`:
+### Approach
+Replace the current `SALES_KNOWLEDGE` in `supabase/functions/_shared/sales-knowledge.ts` with the full content of the uploaded knowledge base document. This content gets appended to Teo's system prompt and will be available in every conversation.
 
-1. **Add state** for a "create link" dialog:
-   - `showCreateLinkForm: boolean`
-   - `linkClientName: string`
-   - `linkDestination: string`
+### What changes
 
-2. **Modify the "Criar Link" button** to open the dialog instead of calling `createReviewLink()` directly.
+1. **Replace `sales-knowledge.ts`** - Overwrite the existing `SALES_KNOWLEDGE` constant with the full 1590-line document converted to a template literal string. This includes:
+   - Identity and philosophy
+   - Competitive analysis
+   - Sales psychology and techniques
+   - Mental triggers and persuasion
+   - Objection handling
+   - Upselling/cross-selling strategies
+   - Tourism trends 2026
+   - Client profiles
+   - Seasonality calendar (national + international)
+   - Complete destination guides (15+ national, 20+ international)
+   - Documentation, visas, and travel insurance
+   - Payment and installment options
+   - WhatsApp best practices
+   - Ready-made conversation scripts
+   - Competitive differentiators
+   - Travel industry glossary
 
-3. **Update `createReviewLink()`** to include `client_name` and `destination_name` in the insert, and validate that both fields are filled.
+2. **Remove redundant rules from system prompt** - Some rules already in the system prompt (like objection handling in `RESPOSTAS CONTEXTUAIS`) are now covered more thoroughly in the knowledge base. The system prompt rules will remain as they serve as hard behavioral constraints, while the knowledge base provides reference material.
 
-4. **Add a Dialog** (similar to the existing send form dialog) with two inputs: client name and destination name, plus a "Criar e Copiar Link" button.
-
-5. **Reset the form fields** after successful creation.
-
-### No database changes needed
-The `travel_reviews` table already has `client_name` and `destination_name` columns that are nullable. The page `/avaliacao/:id` already reads and displays these fields.
+### Technical Notes
+- The knowledge base will be sent as part of the system prompt on every API call. Modern models handle large contexts well.
+- Sensitive information (Cativa portal credentials in the appendix) will be included since this runs server-side only in the edge function.
+- No database changes needed.
 
