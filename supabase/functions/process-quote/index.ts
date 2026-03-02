@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const MANUS_API_KEY = Deno.env.get('MANUS_API_KEY')
+const MANUS_API_KEY = Deno.env.get('MANUS_API_KEY') || Deno.env.get('MANUS_API_TOKEN')
 const MANUS_TASK_ID = 'QUkGhc7s7YhaqqfkVSekZR'
 const MANUS_API_URL = 'https://api.manus.ai/v1/tasks'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wimdgvdpefkmjzzsklnt.supabase.co'
@@ -116,27 +116,46 @@ Aguarde nosso retorno! 😊"
 NÃO PERGUNTAR NADA. EXECUTAR TUDO AUTOMATICAMENTE.
 `
 
-    console.log('🚀 Enviando para task fixo Manus:', MANUS_TASK_ID)
-    
-    const response = await fetch(MANUS_API_URL, {
+    console.log('🚀 [process-quote] Enviando para task fixo Manus:', MANUS_TASK_ID)
+    console.log(`🔑 [process-quote] Key prefix: ${MANUS_API_KEY?.substring(0, 10)}...`)
+
+    const requestBody = JSON.stringify({
+      prompt: prompt,
+      taskId: MANUS_TASK_ID
+    })
+
+    // Tentativa 1: header API_KEY
+    console.log('🔄 [process-quote] Tentando com header API_KEY...')
+    let response = await fetch(MANUS_API_URL, {
       method: 'POST',
       headers: {
         'API_KEY': MANUS_API_KEY,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        prompt: prompt,
-        taskId: MANUS_TASK_ID
-      })
+      body: requestBody
     })
 
-    const responseText = await response.text()
-    console.log(`📡 [process-quote] Manus HTTP ${response.status} | Headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`)
-    console.log(`📡 [process-quote] Manus response body: ${responseText.substring(0, 1000)}`)
+    let responseText = await response.text()
+    console.log(`📡 [process-quote] API_KEY attempt: HTTP ${response.status} | Body: ${responseText.substring(0, 500)}`)
+
+    // Se falhou com API_KEY, tenta com Authorization: Bearer
+    if (!response.ok) {
+      console.log('🔄 [process-quote] API_KEY falhou, tentando com Authorization: Bearer...')
+      response = await fetch(MANUS_API_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${MANUS_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: requestBody
+      })
+      responseText = await response.text()
+      console.log(`📡 [process-quote] Bearer attempt: HTTP ${response.status} | Body: ${responseText.substring(0, 500)}`)
+    }
 
     if (!response.ok) {
-      console.error(`❌ [process-quote] Manus API FALHOU! Status: ${response.status} | Body: ${responseText}`)
-      console.error(`❌ [process-quote] Verifique se MANUS_API_KEY está válida. Key prefix: ${MANUS_API_KEY?.substring(0, 8)}...`)
+      console.error(`❌ [process-quote] AMBOS formatos falharam! Status: ${response.status} | Body: ${responseText}`)
+      console.error(`❌ [process-quote] Key prefix: ${MANUS_API_KEY?.substring(0, 10)}...`)
       throw new Error(`Manus API error: ${response.status} - ${responseText}`)
     }
 

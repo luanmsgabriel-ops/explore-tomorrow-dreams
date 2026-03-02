@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MANUS_API_KEY = Deno.env.get('MANUS_API_KEY');
+const MANUS_API_KEY = Deno.env.get('MANUS_API_KEY') || Deno.env.get('MANUS_API_TOKEN');
 const MANUS_TASK_ID = 'QUkGhc7s7YhaqqfkVSekZR';
 const MANUS_API_URL = 'https://api.manus.ai/v1/tasks';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wimdgvdpefkmjzzsklnt.supabase.co';
@@ -129,26 +129,45 @@ NÃO PERGUNTAR NADA. EXECUTAR TUDO AUTOMATICAMENTE.
 `;
 
     console.log('🚀 [cotar-viagem] Enviando para task fixo Manus:', MANUS_TASK_ID);
+    console.log(`🔑 [cotar-viagem] Key prefix: ${MANUS_API_KEY?.substring(0, 10)}...`);
 
-    const response = await fetch(MANUS_API_URL, {
+    const requestBody = JSON.stringify({
+      prompt: prompt,
+      taskId: MANUS_TASK_ID
+    });
+
+    // Tentativa 1: header API_KEY
+    console.log('🔄 [cotar-viagem] Tentando com header API_KEY...');
+    let response = await fetch(MANUS_API_URL, {
       method: 'POST',
       headers: {
         'API_KEY': MANUS_API_KEY,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        prompt: prompt,
-        taskId: MANUS_TASK_ID
-      })
+      body: requestBody
     });
 
-    const responseText = await response.text();
-    console.log(`📡 [cotar-viagem] Manus HTTP ${response.status} | Headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
-    console.log(`📡 [cotar-viagem] Manus response body: ${responseText.substring(0, 1000)}`);
+    let responseText = await response.text();
+    console.log(`📡 [cotar-viagem] API_KEY attempt: HTTP ${response.status} | Body: ${responseText.substring(0, 500)}`);
+
+    // Se falhou com API_KEY, tenta com Authorization: Bearer
+    if (!response.ok) {
+      console.log('🔄 [cotar-viagem] API_KEY falhou, tentando com Authorization: Bearer...');
+      response = await fetch(MANUS_API_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${MANUS_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: requestBody
+      });
+      responseText = await response.text();
+      console.log(`📡 [cotar-viagem] Bearer attempt: HTTP ${response.status} | Body: ${responseText.substring(0, 500)}`);
+    }
 
     if (!response.ok) {
-      console.error(`❌ [cotar-viagem] Manus API FALHOU! Status: ${response.status} | Body: ${responseText}`);
-      console.error(`❌ [cotar-viagem] Verifique se MANUS_API_KEY está válida. Key prefix: ${MANUS_API_KEY?.substring(0, 8)}...`);
+      console.error(`❌ [cotar-viagem] AMBOS formatos falharam! Status: ${response.status} | Body: ${responseText}`);
+      console.error(`❌ [cotar-viagem] Key prefix: ${MANUS_API_KEY?.substring(0, 10)}...`);
       throw new Error(`Manus API error: ${response.status} - ${responseText}`);
     }
 
