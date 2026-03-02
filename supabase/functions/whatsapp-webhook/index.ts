@@ -730,6 +730,75 @@ async function sendWhatsAppImage(to: string, imageUrl: string, caption?: string)
   }
 }
 
+// Parse quotation details from a text message (e.g. from Manus)
+function parseQuotationFromMessage(message: string): { quotationData: any; resultData: any } | null {
+  try {
+    // Extract destination - look for patterns like "para você:" or after hotel/flight info
+    const destinoMatch = message.match(/(?:para|pra)\s+(?:você|vc)[^:]*:\s*\n/i) 
+      || message.match(/(?:pacote|viagem)\s+(?:para|pra)\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*)/i);
+    
+    // Extract flight info
+    const vooIdaMatch = message.match(/(?:Voo\s*(?:Ida)?|✈️\s*(?:Voo\s*)?(?:Ida)?)\s*:?\s*(.+)/i);
+    const vooVoltaMatch = message.match(/(?:Voo\s*Volta|📅\s*Volta)\s*:?\s*(.+)/i);
+    
+    // Extract hotel
+    const hotelMatch = message.match(/(?:Hotel|🏨)\s*:?\s*(.+?)(?:\n|$)/i);
+    
+    // Extract price - R$ X.XXX,XX or R$ X.XXX
+    const priceMatch = message.match(/(?:Valor\s*Total|Preço|💰)\s*:?\s*R\$\s*([\d.,]+)/i);
+    const pricePerPersonMatch = message.match(/(?:Por\s*pessoa|p\/pessoa)\s*:?\s*R\$\s*([\d.,]+)/i);
+    
+    // Extract nights/diarias
+    const nightsMatch = message.match(/(\d+)\s*(?:diárias|noites)/i);
+    
+    // Extract rating
+    const ratingMatch = message.match(/(?:Avaliação|⭐)\s*:?\s*([\d.,]+)/i);
+    
+    // Extract star category
+    const starsMatch = message.match(/(\d+)\s*★/);
+    
+    // Extract destination from various patterns
+    let destination = "";
+    if (destinoMatch && destinoMatch[1]) {
+      destination = destinoMatch[1].trim();
+    } else {
+      // Try to find destination from flight route (e.g., "CGH → JPA")
+      const routeMatch = message.match(/→\s*([A-Z]{3})/);
+      if (routeMatch) {
+        destination = routeMatch[1]; // Airport code as fallback
+      }
+    }
+    
+    // Parse price string to number
+    const parsePrice = (str: string | undefined) => {
+      if (!str) return undefined;
+      return parseFloat(str.replace(/\./g, "").replace(",", "."));
+    };
+
+    const totalPrice = parsePrice(priceMatch?.[1]);
+    
+    if (!totalPrice && !hotelMatch) return null; // Not enough data for a visual
+
+    return {
+      quotationData: {
+        destino: destination || "Destino",
+      },
+      resultData: {
+        hotel: hotelMatch?.[1]?.trim(),
+        voo_ida: vooIdaMatch?.[1]?.trim(),
+        voo_volta: vooVoltaMatch?.[1]?.trim(),
+        noites: nightsMatch ? parseInt(nightsMatch[1]) : undefined,
+        preco: totalPrice,
+        preco_por_pessoa: parsePrice(pricePerPersonMatch?.[1]),
+        categoria: starsMatch ? `${starsMatch[1]} estrelas` : undefined,
+      },
+    };
+  } catch (err) {
+    console.error("[QUOTE-VISUAL] Parse error:", err);
+    return null;
+  }
+}
+
 // Generate and send a visual quote card (fire-and-forget)
 async function generateAndSendQuoteVisual(phoneNumber: string, quotationData: any, resultData: any) {
   try {
@@ -1251,6 +1320,44 @@ serve(async (req) => {
 
         console.log(`Manual send to ${phone}: ${message.substring(0, 100)}...`);
         await sendWhatsAppMessage(phone, message);
+
+        // Check if message looks like a quotation result and generate visual card
+        const isQuotationMessage = message.includes("✈️") && message.includes("🏨") && (message.includes("R$") || message.includes("Valor"));
+        if (isQuotationMessage) {
+          try {
+            // Parse quotation data from the message text
+            const parsedQuoteData = parseQuotationFromMessage(message);
+            if (parsedQuoteData) {
+              // Try to enrich with conversation data (destination name, dates, passengers)
+              try {
+                const { data: conv } = await supabase
+                  .from("whatsapp_conversations")
+                  .select("collected_data")
+                  .eq("phone_number", phone)
+                  .order("updated_at", { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+                
+                const cd = (conv?.collected_data as Record<string, any>) || {};
+                if (cd.destino && (!parsedQuoteData.quotationData.destino || parsedQuoteData.quotationData.destino === "Destino")) {
+                  parsedQuoteData.quotationData.destino = cd.destino;
+                }
+                if (cd.data_ida) parsedQuoteData.quotationData.data_ida = cd.data_ida;
+                if (cd.data_volta) parsedQuoteData.quotationData.data_volta = cd.data_volta;
+                if (cd.adultos) parsedQuoteData.quotationData.adultos = cd.adultos;
+                if (cd.criancas) parsedQuoteData.quotationData.criancas = cd.criancas;
+              } catch (enrichErr) {
+                console.error("[QUOTE-VISUAL] Error enriching data:", enrichErr);
+              }
+
+              console.log("[QUOTE-VISUAL] Detected quotation in manual_send, generating visual for:", parsedQuoteData.quotationData.destino);
+              generateAndSendQuoteVisual(phone, parsedQuoteData.quotationData, parsedQuoteData.resultData)
+                .catch(err => console.error("[QUOTE-VISUAL] Fire-and-forget error from manual_send:", err));
+            }
+          } catch (parseErr) {
+            console.error("[QUOTE-VISUAL] Error parsing quotation from message:", parseErr);
+          }
+        }
 
         // Save manual message to conversation history so it appears in admin panel
         try {
