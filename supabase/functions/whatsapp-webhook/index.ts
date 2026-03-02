@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SALES_KNOWLEDGE } from "../_shared/sales-knowledge.ts";
+import { fetchClientMemory, formatMemoryForPrompt, MEMORY_RULE, updateClientMemory } from "../_shared/client-memory.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -95,6 +96,9 @@ TABELAS DISPONÍVEIS NO BANCO DE DADOS:
 
 24. account_shared_access - Acesso compartilhado
     Colunas: id, primary_user_id, shared_user_id, shared_email, created_by, created_at
+
+25. client_memory - Memória de longo prazo dos clientes (perfil persistente)
+    Colunas: id, whatsapp (unique), client_name, preferences (JSON: estilo_viagem, orcamento, tipo, clima, companhia), travel_history (JSON array: destinos visitados/cotados), personal_notes (JSON: aniversario, filhos, acompanhantes, observacoes), last_interaction_at, created_at, updated_at
 `;
 
 const ADMIN_PLANNER_PROMPT = `Você é o módulo de planejamento do assistente administrativo da Tomorrow Travel.
@@ -852,8 +856,10 @@ async function sendWhatsAppMessage(to: string, message: string) {
   }
 }
 
-async function getAiResponse(messagesHistory: any[]): Promise<string> {
+async function getAiResponse(messagesHistory: any[], memoryContext: string = ""): Promise<string> {
   const models = ["google/gemini-2.5-flash", "openai/gpt-5-mini", "google/gemini-2.5-flash-lite"];
+  
+  const systemContent = TEO_SYSTEM_PROMPT + (memoryContext ? memoryContext + MEMORY_RULE : "") + SALES_KNOWLEDGE;
   
   for (const model of models) {
     try {
@@ -867,7 +873,7 @@ async function getAiResponse(messagesHistory: any[]): Promise<string> {
         body: JSON.stringify({
           model,
           messages: [
-            { role: "system", content: TEO_SYSTEM_PROMPT + SALES_KNOWLEDGE },
+            { role: "system", content: systemContent },
             ...messagesHistory,
           ],
         }),
@@ -1764,8 +1770,15 @@ serve(async (req) => {
         content: msg.content,
       }));
 
-      // Get AI response
-      const aiResponse = await getAiResponse(historyForAi);
+      // Fetch client memory for personalization
+      const clientMemory = await fetchClientMemory(supabase, phoneNumber);
+      const memoryContext = clientMemory ? formatMemoryForPrompt(clientMemory) : "";
+      if (clientMemory) {
+        console.log("[MEMORY] Found memory for", phoneNumber, "- name:", clientMemory.client_name);
+      }
+
+      // Get AI response with memory context
+      const aiResponse = await getAiResponse(historyForAi, memoryContext);
 
       // Extract collected data and status
       const { data: newCollectedData, status: conversationStatus } = extractCollectedData(
@@ -2021,6 +2034,19 @@ serve(async (req) => {
       }
 
       await sendWhatsAppMessage(phoneNumber, cleanResponse);
+
+      // Update client memory after response (fire-and-forget)
+      const allMsgsForMemory = [
+        ...historyForAi,
+        { role: "assistant", content: cleanResponse },
+      ];
+      updateClientMemory(
+        supabase,
+        phoneNumber,
+        newCollectedData.nome || conversation.client_name || contactName || null,
+        allMsgsForMemory,
+        clientMemory
+      ).catch((err) => console.error("[MEMORY] Background update error:", err));
 
       // Schedule follow-up quote if no quotation was triggered yet
       if (newState !== "completed" && newState !== "human_takeover" && !newCollectedData._quotation_triggered && !conversation.quote_request_id) {
