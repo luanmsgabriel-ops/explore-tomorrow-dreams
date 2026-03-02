@@ -1,88 +1,73 @@
 
 
-## Plan: Téo com Memória de Longo Prazo
+## Plan: Cotação Visual com PDF Automático
 
 ### Objetivo
-Criar um sistema onde o Téo reconhece clientes que retornam (pelo WhatsApp) e usa informações de conversas anteriores para personalizar o atendimento.
+Quando o Téo finaliza uma cotação (via WhatsApp ou site), além do texto, gerar automaticamente um PDF visual profissional com a identidade da Tomorrow Travel e enviá-lo como documento no WhatsApp.
+
+### Arquitetura
+
+O PDF será gerado server-side via Edge Function usando HTML → PDF (via Puppeteer/Chromium não está disponível em Deno, então usaremos a abordagem de gerar HTML estilizado e converter para PDF usando a biblioteca `jspdf` + layout manual, OU gerar uma imagem via Gemini com os dados da cotação formatados).
+
+**Abordagem escolhida**: Gerar o PDF como HTML renderizado em string e convertê-lo usando a API `@vercel/og`-style approach não é viável em Deno. A melhor abordagem para Edge Functions Deno é **gerar um PDF programaticamente** usando manipulação de bytes ou usar a Lovable AI para gerar uma **imagem visual** da cotação (como já fazemos para banners com `generate-promo-image`) e enviar como documento/imagem no WhatsApp.
+
+**Abordagem final**: Usar Gemini para gerar uma **imagem visual da cotação** (similar ao banner generator existente) e enviá-la via WhatsApp como imagem. Isso é mais impactante visualmente que um PDF e funciona perfeitamente no WhatsApp.
 
 ### Mudanças
 
-#### 1. Nova tabela `client_memory` (migração)
-```sql
-CREATE TABLE public.client_memory (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  whatsapp text NOT NULL,
-  client_name text,
-  preferences jsonb DEFAULT '{}'::jsonb,
-  travel_history jsonb DEFAULT '[]'::jsonb,
-  personal_notes jsonb DEFAULT '{}'::jsonb,
-  last_interaction_at timestamptz DEFAULT now(),
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  UNIQUE(whatsapp)
-);
-ALTER TABLE public.client_memory ENABLE ROW LEVEL SECURITY;
--- RLS: apenas admins leem, inserção pública via edge function (service role)
-CREATE POLICY "No public access" ON public.client_memory FOR ALL USING (false) WITH CHECK (false);
-```
+#### 1. Nova Edge Function `generate-quote-visual/index.ts`
+- Recebe dados da cotação (destino, hotel, voos, preço, datas, passageiros)
+- Usa Gemini (image generation model) para criar uma imagem profissional estilizada com:
+  - Logo Tomorrow Travel
+  - Nome do destino com foto de fundo
+  - Detalhes do hotel (nome, estrelas, regime)
+  - Datas e voos
+  - Preço total destacado
+  - Parcelas se disponível
+  - Inclusões
+- Retorna a URL da imagem gerada
+- Armazena no bucket `destination-images` para persistência
 
-Campos do JSONB `preferences`: estilo de viagem, clima preferido, tipo (praia/cidade/aventura), faixa de orçamento (luxo/custo-benefício), companhia habitual (casal/família/amigos).
+#### 2. Nova função `sendWhatsAppDocument` no `whatsapp-webhook`
+- Adicionar função para enviar imagens/documentos via WhatsApp Graph API
+- Usa o endpoint de `image` do WhatsApp para enviar a cotação visual
+- Caption com resumo curto dos valores
 
-Campos do JSONB `travel_history`: array de objetos com destino, datas, número de pessoas, se cotou, se fechou.
+#### 3. Integrar no fluxo de cotação (`whatsapp-webhook/index.ts`)
+- Após a cotação retornar resultados (`formatQuotationResults`), chamar `generate-quote-visual` em paralelo
+- Enviar primeiro o texto da cotação (como já faz)
+- Em seguida enviar a imagem visual da cotação
+- Fire-and-forget para não atrasar a resposta de texto
 
-Campos do JSONB `personal_notes`: aniversário, nomes dos filhos/acompanhantes, observações especiais.
+#### 4. Integrar no fluxo do site (`travel-advisor-chat/index.ts`)
+- Quando detectar `[COTAR_VIAGEM]` e tiver resultado, gerar o visual
+- Disponibilizar link para download no chat do site
 
-#### 2. Edge Function `travel-advisor-chat/index.ts`
-- **Antes de montar o prompt**: buscar memória do cliente pelo WhatsApp (`userWhatsapp`) na tabela `client_memory`
-- **Injetar contexto no system prompt**: se encontrar memória, adicionar seção `MEMÓRIA DO CLIENTE` com dados formatados (destinos visitados, preferências, notas pessoais)
-- **Após o stream**: usar o conteúdo da conversa para atualizar a memória via uma chamada ao Gemini que extrai dados estruturados da conversa (preferências mencionadas, destinos discutidos, informações pessoais reveladas) e faz upsert na tabela `client_memory`
+#### 5. Config
+- Adicionar `generate-quote-visual` ao `supabase/config.toml` com `verify_jwt = false`
 
-#### 3. Atualização do System Prompt
-Adicionar regra ao prompt do Téo:
-
-```
-REGRA DE MEMÓRIA (OBRIGATÓRIO):
-- Se houver MEMÓRIA DO CLIENTE, use-a naturalmente na conversa
-- Mencione destinos já visitados: "Da última vez falamos sobre Maldivas, lembra?"
-- Use preferências conhecidas para sugerir destinos sem precisar perguntar tudo de novo
-- Se souber nomes de filhos/aniversários, mencione com naturalidade
-- NÃO liste todos os dados de uma vez — use aos poucos, de forma orgânica
-- Se o cliente nunca interagiu antes, siga o fluxo normal
-```
-
-#### 4. Extração de memória (pós-stream)
-Após salvar a resposta do assistente, chamar Gemini com um prompt de extração:
-
-```
-Analise esta conversa e extraia dados para o perfil do cliente:
-- Preferências: tipo de viagem, orçamento, estilo
-- Destinos mencionados/interessados
-- Informações pessoais: filhos (nomes/idades), aniversário, etc.
-Retorne APENAS um JSON válido.
-```
-
-Fazer `upsert` na tabela `client_memory` mesclando dados novos com existentes.
-
-#### 5. WhatsApp webhook (`whatsapp-webhook/index.ts`)
-Aplicar a mesma lógica: buscar memória pelo phone_number antes de montar o prompt, e atualizar após a conversa.
-
-### Fluxo resumido
+### Fluxo
 
 ```text
-Cliente envia mensagem (WhatsApp informado)
+Cotação retorna resultado
        ↓
-Edge Function busca client_memory por whatsapp
+[Paralelo] Envia texto formatado no WhatsApp (já existe)
+[Paralelo] Chama generate-quote-visual com dados da cotação
        ↓
-Se encontrar → injeta MEMÓRIA no system prompt
-Se não → fluxo normal (primeira vez)
+Gemini gera imagem profissional da cotação
        ↓
-Conversa acontece normalmente
+Upload para storage (destination-images)
        ↓
-Após stream completo → Gemini extrai dados → upsert client_memory
+Envia imagem no WhatsApp via Graph API (type: image)
 ```
 
 ### O que NÃO muda
-- Fluxo de coleta de nome/WhatsApp no frontend
-- Estrutura do TeoChat.tsx (apenas passa o WhatsApp que já coleta)
+- Fluxo de coleta de dados do Téo
+- Formato da cotação em texto (continua sendo enviado)
 - Tabelas existentes
+
+### Nota técnica
+- Usamos geração de imagem via Gemini (model `google/gemini-3-pro-image-preview`) pois é a mesma abordagem já validada no `generate-promo-image` e `generate-destination-image`
+- Imagem é mais impactante no WhatsApp que PDF (preview inline, não precisa abrir)
+- O cliente pode salvar e compartilhar facilmente
 
