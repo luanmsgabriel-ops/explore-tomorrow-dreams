@@ -704,6 +704,87 @@ async function uploadAudioToStorage(audioBuffer: ArrayBuffer, phone: string): Pr
   return publicUrlData.publicUrl;
 }
 
+async function sendWhatsAppImage(to: string, imageUrl: string, caption?: string) {
+  const response = await fetch(
+    `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to,
+        type: "image",
+        image: { link: imageUrl, ...(caption ? { caption } : {}) },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("WhatsApp Image API error:", errorText);
+    throw new Error(`WhatsApp Image API error: ${response.status}`);
+  }
+}
+
+// Generate and send a visual quote card (fire-and-forget)
+async function generateAndSendQuoteVisual(phoneNumber: string, quotationData: any, resultData: any) {
+  try {
+    const results = resultData?.resultados || resultData?.results || (Array.isArray(resultData) ? resultData : null);
+    const firstResult = results ? results[0] : resultData;
+    if (!firstResult) return;
+
+    const payload: Record<string, any> = {
+      destination: quotationData?.destino || firstResult?.destino || "Destino",
+      hotel: firstResult?.hotel || firstResult?.hotel_name || firstResult?.hospedagem,
+      regime: firstResult?.regime || firstResult?.meal_plan || firstResult?.pensao,
+      category: firstResult?.categoria || firstResult?.category || firstResult?.estrelas,
+      flightOut: firstResult?.voo_ida || firstResult?.flight_out,
+      flightBack: firstResult?.voo_volta || firstResult?.flight_back,
+      stops: firstResult?.paradas,
+      nights: firstResult?.noites || firstResult?.nights,
+      totalPrice: firstResult?.preco || firstResult?.valor || firstResult?.price || firstResult?.total,
+      pricePerPerson: firstResult?.preco_por_pessoa || firstResult?.valor_por_pessoa || firstResult?.price_per_person,
+      installments: firstResult?.parcelas || firstResult?.installments,
+      operadora: firstResult?.operadora || firstResult?.companhia,
+      departureDate: quotationData?.data_ida,
+      returnDate: quotationData?.data_volta,
+      passengers: quotationData?.adultos ? `${quotationData.adultos} adulto(s)${quotationData.criancas ? ` + ${quotationData.criancas} criança(s)` : ""}` : undefined,
+    };
+
+    console.log("[QUOTE-VISUAL] Generating visual for", phoneNumber, payload.destination);
+
+    const visualResponse = await fetch(`${SUPABASE_URL}/functions/v1/generate-quote-visual`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!visualResponse.ok) {
+      console.error("[QUOTE-VISUAL] Generation failed:", visualResponse.status);
+      return;
+    }
+
+    const { imageUrl } = await visualResponse.json();
+    if (!imageUrl) return;
+
+    const priceCaption = payload.totalPrice
+      ? `💰 R$ ${Number(payload.totalPrice).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} | ${payload.destination} ✈️ Tomorrow Travel`
+      : `✈️ ${payload.destination} | Tomorrow Travel`;
+
+    await sendWhatsAppImage(phoneNumber, imageUrl, priceCaption);
+    console.log("[QUOTE-VISUAL] Sent visual to", phoneNumber);
+  } catch (err) {
+    console.error("[QUOTE-VISUAL] Error (non-blocking):", err);
+  }
+}
+
 async function sendWhatsAppAudio(to: string, audioUrl: string) {
   const response = await fetch(
     `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
@@ -1720,6 +1801,9 @@ serve(async (req) => {
         if (quotResult.status === "success" && quotResult.data) {
           responseMsg = formatQuotationResults(quotResult.data);
           responseMsg += "\n\nQuer que eu te ajude com mais alguma coisa? 😊";
+          // Fire-and-forget: generate and send visual quote card
+          generateAndSendQuoteVisual(phoneNumber, collectedData._quotation_request || collectedData, quotResult.data)
+            .catch(err => console.error("[QUOTE-VISUAL] Fire-and-forget error:", err));
         } else if (quotResult.status === "pending_code") {
           // Still pending, ask again
           updatedData._quotation_pending_code = true;

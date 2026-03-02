@@ -306,6 +306,20 @@ Me conta aí! 👇`
         if (quotResult.status === 'success' && quotResult.data) {
           const formatted = formatQuotationResults(quotResult.data);
           setMessages((prev) => [...prev, { role: 'assistant', content: formatted }]);
+          // Fire-and-forget: generate visual quote card
+          supabase.functions.invoke('generate-quote-visual', {
+            body: {
+              destination: quotationData.destino,
+              departureDate: quotationData.data_ida,
+              returnDate: quotationData.data_volta,
+              passengers: `${quotationData.passageiros.adultos} adulto(s)${quotationData.passageiros.criancas ? ` + ${quotationData.passageiros.criancas} criança(s)` : ''}`,
+              ...(quotResult.data?.resultados?.[0] || quotResult.data?.results?.[0]),
+            },
+          }).then(({ data: visualData }) => {
+            if (visualData?.imageUrl) {
+              setMessages((prev) => [...prev, { role: 'assistant', content: `📋 **Sua cotação visual:**\n\n![Cotação ${quotationData.destino}](${visualData.imageUrl})\n\n[📥 Baixar cotação](${visualData.imageUrl})` }]);
+            }
+          }).catch(() => {/* non-blocking */});
         } else if (quotResult.status === 'pending_code') {
           setMessages((prev) => [...prev, { 
             role: 'assistant', 
