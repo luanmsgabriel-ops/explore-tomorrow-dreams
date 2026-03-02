@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callGemini, transformGeminiStreamToSSE } from "../_shared/gemini-client.ts";
 import { SALES_KNOWLEDGE } from "../_shared/sales-knowledge.ts";
+import { fetchClientMemory, formatMemoryForPrompt, MEMORY_RULE, updateClientMemory } from "../_shared/client-memory.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,6 +37,13 @@ serve(async (req) => {
       }
     }
 
+    // Fetch client memory
+    const clientMemory = await fetchClientMemory(supabase, userWhatsapp);
+    const memoryContext = clientMemory ? formatMemoryForPrompt(clientMemory) : "";
+    if (clientMemory) {
+      console.log("[MEMORY] Found memory for", userWhatsapp, "- name:", clientMemory.client_name);
+    }
+
     // Build quiz context for the AI
     let quizContext = "";
     if (quizAnswers) {
@@ -61,7 +69,9 @@ IDENTIDADE E PERSONALIDADE:
 
 ${userName ? `CLIENTE: ${userName}` : 'Ainda coletando nome do cliente'}
 ${userWhatsapp ? `WHATSAPP: ${userWhatsapp}` : ''}
+${memoryContext}
 ${quizContext}
+${MEMORY_RULE}
 
 REGRAS CRÍTICAS:
 ⚠️ VOCÊ NUNCA FICA CANSADO, NUNCA TEM LIMITE, NUNCA PARA DE ATENDER!
@@ -237,6 +247,17 @@ LEMBRE-SE: Seja divertido, acolhedor e BREVE. Menos texto, mais impacto! 🚀` +
             user_name: userName || null,
             user_whatsapp: userWhatsapp || null,
           });
+        }
+
+        // Update client memory (fire-and-forget)
+        if (userWhatsapp && assistantContent) {
+          const allMessages = [
+            ...messages.map((m: any) => ({ role: m.role, content: m.content })),
+            { role: "assistant", content: assistantContent },
+          ];
+          updateClientMemory(supabase, userWhatsapp, userName || null, allMessages, clientMemory).catch(
+            (err) => console.error("[MEMORY] Background update error:", err)
+          );
         }
 
         // Check for escalation tag

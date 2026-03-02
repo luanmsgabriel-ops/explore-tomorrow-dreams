@@ -378,6 +378,42 @@ export type Database = {
         }
         Relationships: []
       }
+      client_memory: {
+        Row: {
+          client_name: string | null
+          created_at: string | null
+          id: string
+          last_interaction_at: string | null
+          personal_notes: Json | null
+          preferences: Json | null
+          travel_history: Json | null
+          updated_at: string | null
+          whatsapp: string
+        }
+        Insert: {
+          client_name?: string | null
+          created_at?: string | null
+          id?: string
+          last_interaction_at?: string | null
+          personal_notes?: Json | null
+          preferences?: Json | null
+          travel_history?: Json | null
+          updated_at?: string | null
+          whatsapp: string
+        }
+        Update: {
+          client_name?: string | null
+          created_at?: string | null
+          id?: string
+          last_interaction_at?: string | null
+          personal_notes?: Json | null
+          preferences?: Json | null
+          travel_history?: Json | null
+          updated_at?: string | null
+          whatsapp?: string
+        }
+        Relationships: []
+      }
       client_trips: {
         Row: {
           created_at: string
