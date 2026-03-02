@@ -1903,15 +1903,16 @@ serve(async (req) => {
         if (saveResult.success) {
           quotationMsg = `Recebi sua solicitação! 🌴✨\n\nEstou processando as melhores opções para ${quotationData.destino}. Aguarde aproximadamente 1 minuto! ✈️🏨`;
           
-          // Generate tips now, schedule sending after 30s via self-invocation
+          // Generate tips now, schedule sending after 60s via self-invocation
           const destino = quotationData.destino;
+          const clienteName = newCollectedData.nome || conversation.client_name || contactName || "";
           try {
             const tipsResponse = await getAiResponse([
-              { role: "user", content: `Me dê exatamente 4 dicas rápidas de passeios imperdíveis em ${destino}. Breve, divertido, com emojis. Uma dica por linha numerada. Comece EXATAMENTE com "Enquanto você aguarda, olha só o que te espera em ${destino}! 🗺️✨" e depois as 4 dicas. APENAS 4 dicas, nada mais.` }
+              { role: "user", content: `Você é o Téo, assistente de viagens divertido e humano da Tomorrow Travel. Gere uma mensagem para o cliente ${clienteName} com exatamente 5 dicas incríveis sobre ${destino} (passeios, comidas, curiosidades, experiências). Seja divertido, use emojis, tom leve e descontraído. Uma dica por linha numerada. Comece com algo como "${clienteName ? clienteName + ', e' : 'E'}nquanto eu busco as melhores opções pra você, bora conhecer um pouco mais sobre ${destino}? 🗺️✨" e depois as 5 dicas. No FINAL da mensagem, adicione uma quebra de linha e pergunte de forma divertida e natural se o cliente sabia que você (o Téo) também pode montar um roteiro personalizado dia a dia pra viagem dele. Algo como: "Ah, e sabia que eu também posso montar um roteiro completinho dia a dia pra sua viagem? 🗓️✨ Quer que eu prepare um pra você?" Seja criativo e mantenha o tom do Téo!` }
             ]);
             const cleanTips = cleanAiResponse(tipsResponse);
             if (cleanTips && cleanTips.length > 20) {
-              // Schedule delayed tips via self-invocation (non-blocking)
+              // Schedule delayed tips via self-invocation (non-blocking) - 60 seconds
               const selfUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
               fetch(selfUrl, {
                 method: "POST",
@@ -1923,7 +1924,7 @@ serve(async (req) => {
                   action: "delayed_tips",
                   phone_number: phoneNumber,
                   message: cleanTips,
-                  delay_seconds: 30,
+                  delay_seconds: 60,
                 }),
               }).catch(err => console.error("Error scheduling delayed tips:", err));
             }
