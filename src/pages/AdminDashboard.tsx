@@ -16,8 +16,9 @@ import { SalesManager } from '@/components/admin/SalesManager';
 import { WhatsAppManager } from '@/components/admin/WhatsAppManager';
 import { ReviewManager } from '@/components/admin/ReviewManager';
 import { AudioManager } from '@/components/admin/AudioManager';
+import { ConciergeManager } from '@/components/admin/ConciergeManager';
 import { QuotesFilter, QuotesFilterValues } from '@/components/admin/QuotesFilter';
-import { Volume2 } from 'lucide-react';
+import { Volume2, Navigation } from 'lucide-react';
 import { Edit } from 'lucide-react';
 import { 
   LayoutDashboard, 
@@ -52,7 +53,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabType = 'overview' | 'analytics' | 'sales' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'clients' | 'trips' | 'checklist' | 'banner-generator' | 'whatsapp' | 'reviews' | 'audio';
+type TabType = 'overview' | 'analytics' | 'sales' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'clients' | 'trips' | 'checklist' | 'banner-generator' | 'whatsapp' | 'reviews' | 'audio' | 'concierge';
 
 interface QuoteRequest {
   id: string;
@@ -585,6 +586,7 @@ const AdminDashboard = () => {
     { id: 'images' as TabType, label: 'Imagens IA', icon: Image },
     { id: 'conversations' as TabType, label: 'Conversas IA', icon: MessageSquare },
     { id: 'whatsapp' as TabType, label: 'WhatsApp', icon: MessageCircle },
+    { id: 'concierge' as TabType, label: 'Concierge', icon: Navigation },
     { id: 'audio' as TabType, label: 'Áudio Teo', icon: Volume2 },
     { id: 'reviews' as TabType, label: 'Avaliações', icon: Heart },
     { id: 'users' as TabType, label: 'Admins', icon: UserPlus },
@@ -1647,6 +1649,10 @@ const AdminDashboard = () => {
 
                   {activeTab === 'audio' && (
                     <AudioManager />
+                  )}
+
+                  {activeTab === 'concierge' && (
+                    <ConciergeManager />
                   )}
 
                   {activeTab === 'clients' && (

@@ -147,6 +147,42 @@ async function generateTeoMessage(prompt: string): Promise<string> {
   } catch { return prompt; }
 }
 
+// ========== AUTO-SCHEDULE: Check and update concierge based on dates ==========
+
+async function autoScheduleConcierge() {
+  const today = new Date().toISOString().split("T")[0];
+  
+  // Auto-activate: concierge_start_date reached but not yet active
+  const { data: toActivate } = await supabase
+    .from("active_trips")
+    .select("id")
+    .eq("concierge_active", false)
+    .lte("concierge_start_date", today)
+    .or(`concierge_end_date.is.null,concierge_end_date.gte.${today}`);
+  
+  if (toActivate?.length) {
+    for (const t of toActivate) {
+      await supabase.from("active_trips").update({ concierge_active: true }).eq("id", t.id);
+    }
+    console.log(`[CONCIERGE] Auto-activated ${toActivate.length} trips`);
+  }
+
+  // Auto-deactivate: concierge_end_date passed
+  const { data: toDeactivate } = await supabase
+    .from("active_trips")
+    .select("id")
+    .eq("concierge_active", true)
+    .not("concierge_end_date", "is", null)
+    .lt("concierge_end_date", today);
+  
+  if (toDeactivate?.length) {
+    for (const t of toDeactivate) {
+      await supabase.from("active_trips").update({ concierge_active: false }).eq("id", t.id);
+    }
+    console.log(`[CONCIERGE] Auto-deactivated ${toDeactivate.length} trips`);
+  }
+}
+
 // ========== ACTION: CHECK FLIGHTS ==========
 
 async function checkFlights() {
@@ -753,6 +789,9 @@ serve(async (req) => {
     const action = body.action;
 
     console.log(`[CONCIERGE] Action: ${action}`);
+
+    // Auto-schedule concierge based on dates before any action
+    await autoScheduleConcierge();
 
     switch (action) {
       case "check_flights":
