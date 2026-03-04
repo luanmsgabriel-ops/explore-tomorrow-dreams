@@ -1,79 +1,47 @@
 
 
-# Plano: Busca Específica por Texto + Categorias Conveniência e Emergência
+# Plano: Aba Concierge no Painel Admin
 
-## Problema Atual
+## O que será feito
 
-1. Após receber a localização e as sugestões, se o cliente escrever "hamburguerias próximas" ou "farmácias", o Téo não reconhece isso como pedido de busca — a mensagem cai no chat genérico.
-2. Só existem 2 categorias (Restaurantes e Atrações). Faltam Conveniência e Emergência.
+Nova aba "Concierge" no painel administrativo para gerenciar a ativação/desativação do serviço concierge (acompanhamento de voo + localização) por cliente, com opção de agendamento automático definindo data de início e fim.
 
-## Solução
+## Alterações no Banco de Dados
 
-### 1. Nova action no `concierge-engine`: `search_nearby`
+Adicionar colunas à tabela `active_trips`:
+- `concierge_start_date` (date, nullable) — data agendada para ativar concierge
+- `concierge_end_date` (date, nullable) — data agendada para desativar concierge
 
-Criar uma nova função `searchByQuery` que:
-- Recebe `phoneNumber`, `lat`, `lng`, `query` (texto livre como "hamburguerias")
-- Mapeia palavras-chave para tipos do Google Places:
-  - Conveniência: `supermarket`, `convenience_store`, `liquor_store`
-  - Emergência: `pharmacy`, `hospital`, `police`
-  - Texto livre: usa `textSearch` do Google Places com o query + coordenadas
-- Busca via Google Places (New) `searchText` endpoint para buscas livres ou `searchNearby` para categorias fixas
-- Envia resultados formatados + mapa
-- Salva em `location_recommendations` com `client_phone`
+Essas colunas permitem agendamento. A lógica de ativação/desativação automática será verificada no próprio webhook/engine com base na data atual.
 
-Adicionar `case "search_nearby"` no switch principal.
+## Novo Componente: `ConciergeManager`
 
-### 2. `handleLocation` — Adicionar Conveniência e Emergência
+Arquivo: `src/components/admin/ConciergeManager.tsx`
 
-Atualizar a função `handleLocation` para:
-- Buscar também `supermarket`/`convenience_store` (Conveniência) e `pharmacy`/`hospital` (Emergência)
-- Incluir as novas categorias na mensagem formatada:
-  - 🏪 *CONVENIÊNCIA:* (mercados, conveniências, distribuidoras)
-  - 🚨 *EMERGÊNCIA:* (farmácias, hospitais, polícia)
-- Salvar tudo no array de `recommendations` com `type: "convenience"` e `type: "emergency"`
+- Lista todas as `active_trips` com nome do cliente, telefone, destino, status do concierge (`concierge_active`)
+- Toggle para habilitar/desabilitar `concierge_active` manualmente
+- Campos de data (início/fim) para agendamento
+- Badge visual indicando se está ativo, agendado ou desativado
+- Botão para criar nova entrada de concierge (selecionar cliente por telefone, destino, datas)
 
-### 3. Webhook — Detectar busca específica por texto
+## Integração no AdminDashboard
 
-No `whatsapp-webhook`, antes do roteamento para o chat normal do Téo, adicionar detecção de:
-- Verificar se existe `location_recommendations` recente (últimos 30 min) para o telefone
-- Se sim, e a mensagem parecer um pedido de busca (contém palavras como "perto", "próximo", "mais perto", "aqui perto", ou categorias como "hamburgueria", "farmácia", "mercado", "hospital", etc.)
-- Rotear para `concierge-engine` com `action: "search_nearby"` passando as coordenadas da última localização e o texto da busca
+- Adicionar `'concierge'` ao `TabType`
+- Adicionar entrada na lista `tabs` com ícone `Navigation` (ou `MapPin`) e label "Concierge"
+- Renderizar `<ConciergeManager />` quando `activeTab === 'concierge'`
 
-Regex/keyword matching para detectar intenção de busca:
-```
-/(?:perto|próximo|aqui|por aqui|perto de mim)/i
-```
-Ou categorias diretas:
-```
-/(?:hamburgueria|pizzaria|padaria|mercado|farmácia|hospital|polícia|conveniência|adega|distribuidora|bar|cafe|cafeteria|lanchonete|sorveteria|churrascaria|japonês|sushi|açaí)/i
-```
+## Lógica de Agendamento Automático
 
-### 4. Atualizar detecção numérica no webhook
-
-Adicionar prefixos para novas categorias no regex existente:
-- `conveniência`, `conveniencia`, `mercado`, `farmácia`, `farmacia`, `hospital`, `emergência`
-
-### 5. `placeDetails` — Suporte a novos tipos
-
-Atualizar a busca por tipo para incluir `convenience` e `emergency`.
-
-## Fluxo Resultante
-
-```text
-Cliente envia localização
-  → Téo responde com 4 categorias: Restaurantes, Atrações, Conveniência, Emergência
-  
-Cliente escreve "hamburguerias próximas"
-  → Webhook detecta busca + localização recente
-  → Chama concierge-engine search_nearby com query + coordenadas salvas
-  → Téo busca no Google Places e retorna lista específica
-
-Cliente escreve "2" ou "Restaurante 3"
-  → Webhook roteia para place_details (já funciona)
-```
+No `concierge-engine` e `whatsapp-webhook`, ao verificar `concierge_active`, também checar:
+- Se `concierge_start_date` existe e `hoje >= concierge_start_date` → ativar automaticamente
+- Se `concierge_end_date` existe e `hoje > concierge_end_date` → desativar automaticamente
+- Atualizar o campo `concierge_active` no banco quando a data disparar
 
 ## Arquivos Modificados
 
-- `supabase/functions/concierge-engine/index.ts` — nova action `search_nearby`, atualizar `handleLocation` com 4 categorias, atualizar `placeDetails`
-- `supabase/functions/whatsapp-webhook/index.ts` — detectar busca textual e rotear para `search_nearby`
+1. **Migration SQL** — adicionar `concierge_start_date` e `concierge_end_date` em `active_trips`
+2. **`src/components/admin/ConciergeManager.tsx`** — novo componente
+3. **`src/pages/AdminDashboard.tsx`** — adicionar tab + import
+4. **`supabase/functions/concierge-engine/index.ts`** — checar datas de agendamento
+5. **`supabase/functions/whatsapp-webhook/index.ts`** — checar datas ao rotear para concierge
 
