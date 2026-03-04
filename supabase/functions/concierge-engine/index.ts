@@ -405,17 +405,21 @@ async function handleLocation(phoneNumber: string, lat: number, lng: number) {
   const restaurants = await searchNearby(lat, lng, ["restaurant"], 5);
   // 2. Google Places Nearby Search - Attractions
   const attractions = await searchNearby(lat, lng, ["tourist_attraction", "museum", "park"], 5);
+  // 3. Google Places Nearby Search - Convenience
+  const convenience = await searchNearby(lat, lng, ["supermarket", "convenience_store", "liquor_store"], 5);
+  // 4. Google Places Nearby Search - Emergency
+  const emergency = await searchNearby(lat, lng, ["pharmacy", "hospital", "police"], 5);
 
-  if (!restaurants.length && !attractions.length) {
+  if (!restaurants.length && !attractions.length && !convenience.length && !emergency.length) {
     await sendWhatsAppMessage(phoneNumber, `${name}, não encontrei lugares interessantes tão perto de você 😅 Tenta me mandar a localização de uma área mais movimentada!`);
     return;
   }
 
-  // 3. Generate static map
-  const mapUrl = generateStaticMapUrl(lat, lng, restaurants, attractions);
+  // 5. Generate static map
+  const mapUrl = generateStaticMapUrl(lat, lng, restaurants, attractions, convenience, emergency);
   
-  // 4. Upload map to storage
-  let storedMapUrl = mapUrl; // Use direct URL as fallback
+  // 6. Upload map to storage
+  let storedMapUrl = mapUrl;
   try {
     const mapRes = await fetch(mapUrl);
     if (mapRes.ok) {
@@ -429,7 +433,7 @@ async function handleLocation(phoneNumber: string, lat: number, lng: number) {
     }
   } catch (e) { console.error("Map upload error:", e); }
 
-  // 5. Get weather
+  // 7. Get weather
   let weatherLine = "";
   const weather = await getWeather(lat, lng);
   if (weather?.current) {
@@ -439,39 +443,62 @@ async function handleLocation(phoneNumber: string, lat: number, lng: number) {
     weatherLine = `\n🌡️ Agora: ${temp}°C, ${desc} ${emoji}\n`;
   }
 
-  // 6. Send map image
+  // 8. Send map image
   await sendWhatsAppImage(phoneNumber, storedMapUrl, `📍 Mapa dos melhores lugares perto de você, ${name}!`);
 
-  // 7. Build formatted list
+  // 9. Build formatted list
   let msg = `📍 Encontrei esses lugares incríveis perto de você, ${name}!\n${weatherLine}`;
+
+  let globalIndex = 1;
+  const allPlaces: any[] = [];
 
   if (restaurants.length) {
     msg += "\n🍽️ *RESTAURANTES:*\n";
-    restaurants.forEach((r: any, i: number) => {
+    restaurants.forEach((r: any) => {
       const stars = "⭐".repeat(Math.min(Math.round(r.rating || 0), 5));
       const dist = r.distance ? `${r.distance}m` : "";
-      msg += `${i + 1}. *${r.name}* ${stars} ${dist}\n`;
+      msg += `${globalIndex}. *${r.name}* ${stars} ${dist}\n`;
+      allPlaces.push({ ...r, type: "restaurant", index: globalIndex });
+      globalIndex++;
     });
   }
 
   if (attractions.length) {
     msg += "\n🏛️ *ATRAÇÕES:*\n";
-    attractions.forEach((a: any, i: number) => {
+    attractions.forEach((a: any) => {
       const stars = "⭐".repeat(Math.min(Math.round(a.rating || 0), 5));
       const dist = a.distance ? `${a.distance}m` : "";
-      msg += `${i + 1}. *${a.name}* ${stars} ${dist}\n`;
+      msg += `${globalIndex}. *${a.name}* ${stars} ${dist}\n`;
+      allPlaces.push({ ...a, type: "attraction", index: globalIndex });
+      globalIndex++;
     });
   }
 
-  msg += "\nQuer mais detalhes de algum lugar? Me fala o número! 😎";
+  if (convenience.length) {
+    msg += "\n🏪 *CONVENIÊNCIA:*\n";
+    convenience.forEach((c: any) => {
+      const stars = "⭐".repeat(Math.min(Math.round(c.rating || 0), 5));
+      const dist = c.distance ? `${c.distance}m` : "";
+      msg += `${globalIndex}. *${c.name}* ${stars} ${dist}\n`;
+      allPlaces.push({ ...c, type: "convenience", index: globalIndex });
+      globalIndex++;
+    });
+  }
+
+  if (emergency.length) {
+    msg += "\n🚨 *EMERGÊNCIA:*\n";
+    emergency.forEach((e: any) => {
+      const dist = e.distance ? `${e.distance}m` : "";
+      msg += `${globalIndex}. *${e.name}* 📍 ${dist}\n`;
+      allPlaces.push({ ...e, type: "emergency", index: globalIndex });
+      globalIndex++;
+    });
+  }
+
+  msg += "\nQuer mais detalhes de algum lugar? Me fala o número! 😎\nOu me diz o que procura: _\"hamburguerias próximas\"_, _\"farmácia\"_ 🔍";
   await sendWhatsAppMessage(phoneNumber, msg);
 
-  // 8. Save recommendations
-  const allPlaces = [
-    ...restaurants.map((r: any, i: number) => ({ ...r, type: "restaurant", index: i + 1 })),
-    ...attractions.map((a: any, i: number) => ({ ...a, type: "attraction", index: i + 1 })),
-  ];
-
+  // 10. Save recommendations
   await supabase.from("location_recommendations").insert({
     trip_id: trip?.id || null,
     client_phone: phoneNumber,
@@ -495,7 +522,7 @@ async function searchNearby(lat: number, lng: number, types: string[], maxResult
       },
       body: JSON.stringify({
         includedTypes: types,
-        maxResultCount: maxResults * 2, // fetch more to filter
+        maxResultCount: maxResults * 2,
         locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: 1500.0 } },
         languageCode: "pt-BR",
       }),
@@ -504,7 +531,7 @@ async function searchNearby(lat: number, lng: number, types: string[], maxResult
     const data = await res.json();
 
     return (data.places || [])
-      .filter((p: any) => (p.rating || 0) >= 4.0)
+      .filter((p: any) => (p.rating || 0) >= 3.5)
       .slice(0, maxResults)
       .map((p: any) => ({
         name: p.displayName?.text || "Sem nome",
@@ -530,7 +557,7 @@ function getDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function generateStaticMapUrl(clientLat: number, clientLng: number, restaurants: any[], attractions: any[]): string {
+function generateStaticMapUrl(clientLat: number, clientLng: number, restaurants: any[], attractions: any[], convenience: any[] = [], emergency: any[] = []): string {
   let markers = `markers=color:green|label:V|${clientLat},${clientLng}`;
   restaurants.forEach((r: any, i: number) => {
     if (r.lat && r.lng) markers += `&markers=color:red|label:${i + 1}|${r.lat},${r.lng}`;
@@ -538,6 +565,12 @@ function generateStaticMapUrl(clientLat: number, clientLng: number, restaurants:
   attractions.forEach((a: any, i: number) => {
     const labels = "ABCDE";
     if (a.lat && a.lng) markers += `&markers=color:blue|label:${labels[i] || i}|${a.lat},${a.lng}`;
+  });
+  convenience.forEach((c: any, i: number) => {
+    if (c.lat && c.lng) markers += `&markers=color:orange|label:${i + 1}|${c.lat},${c.lng}`;
+  });
+  emergency.forEach((e: any, i: number) => {
+    if (e.lat && e.lng) markers += `&markers=color:purple|label:${i + 1}|${e.lat},${e.lng}`;
   });
   return `https://maps.googleapis.com/maps/api/staticmap?center=${clientLat},${clientLng}&zoom=15&size=600x400&${markers}&key=${GOOGLE_MAPS_API_KEY}`;
 }
@@ -547,7 +580,6 @@ function generateStaticMapUrl(clientLat: number, clientLng: number, restaurants:
 async function placeDetails(phoneNumber: string, placeIndex: number, placeType: string) {
   console.log(`[CONCIERGE] Place details for ${phoneNumber}: ${placeType} #${placeIndex}`);
 
-  // Get latest recommendations for this phone number directly
   const { data: rec } = await supabase
     .from("location_recommendations")
     .select("*")
@@ -562,18 +594,14 @@ async function placeDetails(phoneNumber: string, placeIndex: number, placeType: 
   }
 
   const places = rec.recommendations as any[];
-  const place = places.find((p: any) => {
-    if (placeType === "restaurant") return p.type === "restaurant" && p.index === placeIndex;
-    if (placeType === "attraction") return p.type === "attraction" && p.index === placeIndex;
-    return p.index === placeIndex;
-  }) || places[placeIndex - 1];
+  // With global indexing, just find by index directly
+  const place = places.find((p: any) => p.index === placeIndex) || places[placeIndex - 1];
 
   if (!place) {
     await sendWhatsAppMessage(phoneNumber, `Não achei o lugar #${placeIndex} 🤔 Tenta outro número!`);
     return;
   }
 
-  // Build details message
   let msg = `📍 *${place.name}*\n`;
   if (place.rating) msg += `⭐ ${place.rating} (${place.userRatings || 0} avaliações)\n`;
   if (place.address) msg += `📫 ${place.address}\n`;
@@ -582,10 +610,134 @@ async function placeDetails(phoneNumber: string, placeIndex: number, placeType: 
 
   await sendWhatsAppMessage(phoneNumber, msg);
 
-  // Send location pin
   if (place.lat && place.lng) {
     await sendWhatsAppLocation(phoneNumber, place.lat, place.lng, place.name, place.address || "");
   }
+}
+
+// ========== ACTION: SEARCH BY QUERY ==========
+
+async function searchByQuery(phoneNumber: string, lat: number, lng: number, query: string) {
+  console.log(`[CONCIERGE] Search query from ${phoneNumber}: "${query}" at ${lat},${lng}`);
+
+  // Map common keywords to Google Places types
+  const categoryMap: Record<string, string[]> = {
+    // Convenience
+    "mercado": ["supermarket"], "supermercado": ["supermarket"],
+    "conveniencia": ["convenience_store"], "conveniência": ["convenience_store"],
+    "adega": ["liquor_store"], "distribuidora": ["liquor_store"],
+    "bebida": ["liquor_store"],
+    // Emergency
+    "farmacia": ["pharmacy"], "farmácia": ["pharmacy"],
+    "hospital": ["hospital"], "emergencia": ["hospital"],
+    "emergência": ["hospital"], "policia": ["police"], "polícia": ["police"],
+    // Food specific
+    "pizzaria": ["restaurant"], "hamburgueria": ["restaurant"],
+    "padaria": ["bakery"], "lanchonete": ["restaurant"],
+    "cafeteria": ["cafe"], "cafe": ["cafe"], "café": ["cafe"],
+    "sorveteria": ["restaurant"], "churrascaria": ["restaurant"],
+    "bar": ["bar"], "sushi": ["restaurant"], "japonês": ["restaurant"],
+    "japones": ["restaurant"], "açaí": ["restaurant"], "acai": ["restaurant"],
+    "restaurante": ["restaurant"],
+  };
+
+  // Check if we match a known keyword to use searchNearby (structured)
+  const queryLower = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  let matchedTypes: string[] | null = null;
+  for (const [keyword, types] of Object.entries(categoryMap)) {
+    const normalizedKey = keyword.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (queryLower.includes(normalizedKey)) {
+      matchedTypes = types;
+      break;
+    }
+  }
+
+  let results: any[] = [];
+
+  if (matchedTypes) {
+    // Use structured searchNearby for known types
+    results = await searchNearby(lat, lng, matchedTypes, 5);
+  }
+  
+  // If no structured results or unknown query, use textSearch
+  if (!results.length) {
+    results = await searchByText(lat, lng, query, 5);
+  }
+
+  if (!results.length) {
+    await sendWhatsAppMessage(phoneNumber, `Não encontrei resultados para "${query}" perto de você 😅 Tenta outra busca ou me manda a localização de novo!`);
+    return;
+  }
+
+  // Find active trip for name
+  const today = new Date().toISOString().split("T")[0];
+  const { data: trip } = await supabase
+    .from("active_trips")
+    .select("client_name, id")
+    .eq("client_phone", phoneNumber)
+    .eq("concierge_active", true)
+    .lte("check_in_date", today)
+    .gte("check_out_date", today)
+    .limit(1)
+    .maybeSingle();
+
+  const name = trip?.client_name || "Viajante";
+
+  // Build message
+  let msg = `🔍 *Resultados para "${query}" perto de você, ${name}:*\n\n`;
+  const allPlaces: any[] = [];
+  results.forEach((r: any, i: number) => {
+    const stars = r.rating ? "⭐".repeat(Math.min(Math.round(r.rating), 5)) : "";
+    const dist = r.distance ? `${r.distance}m` : "";
+    msg += `${i + 1}. *${r.name}* ${stars} ${dist}\n`;
+    allPlaces.push({ ...r, type: "search", index: i + 1 });
+  });
+
+  msg += "\nQuer detalhes? Me fala o número! 😎";
+  await sendWhatsAppMessage(phoneNumber, msg);
+
+  // Save as new recommendations (replaces previous for detail lookup)
+  await supabase.from("location_recommendations").insert({
+    trip_id: trip?.id || null,
+    client_phone: phoneNumber,
+    client_lat: lat,
+    client_lng: lng,
+    recommendations: allPlaces,
+  });
+}
+
+async function searchByText(lat: number, lng: number, query: string, maxResults: number): Promise<any[]> {
+  try {
+    const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": GOOGLE_MAPS_API_KEY,
+        "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.id,places.types,places.googleMapsUri",
+      },
+      body: JSON.stringify({
+        textQuery: query,
+        locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: 2000.0 } },
+        languageCode: "pt-BR",
+        maxResultCount: maxResults,
+      }),
+    });
+    if (!res.ok) { console.error("Places textSearch error:", res.status, await res.text()); return []; }
+    const data = await res.json();
+
+    return (data.places || []).slice(0, maxResults).map((p: any) => ({
+      name: p.displayName?.text || "Sem nome",
+      rating: p.rating,
+      userRatings: p.userRatingCount,
+      address: p.formattedAddress,
+      lat: p.location?.latitude,
+      lng: p.location?.longitude,
+      placeId: p.id,
+      types: p.types,
+      mapsUri: p.googleMapsUri,
+      distance: Math.round(getDistanceMeters(lat, lng, p.location?.latitude, p.location?.longitude)),
+    }));
+  } catch (e) { console.error("Text search error:", e); return []; }
 }
 
 // ========== MAIN SERVER ==========
@@ -614,6 +766,9 @@ serve(async (req) => {
         break;
       case "place_details":
         await placeDetails(body.phone_number, body.place_index, body.place_type || "any");
+        break;
+      case "search_nearby":
+        await searchByQuery(body.phone_number, body.latitude, body.longitude, body.query);
         break;
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
