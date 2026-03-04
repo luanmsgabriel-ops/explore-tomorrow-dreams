@@ -1,73 +1,182 @@
 
 
-## Plan: Cotação Visual com PDF Automático
+# Plano: Téo Concierge de Viagem — Acompanhamento em Tempo Real
 
-### Objetivo
-Quando o Téo finaliza uma cotação (via WhatsApp ou site), além do texto, gerar automaticamente um PDF visual profissional com a identidade da Tomorrow Travel e enviá-lo como documento no WhatsApp.
+## Visão Geral
 
-### Arquitetura
+Implementar 4 funcionalidades de concierge que acompanham o cliente durante a viagem via WhatsApp: monitoramento de voo, previsão do tempo, recomendações por localização e alertas proativos cronogramados.
 
-O PDF será gerado server-side via Edge Function usando HTML → PDF (via Puppeteer/Chromium não está disponível em Deno, então usaremos a abordagem de gerar HTML estilizado e converter para PDF usando a biblioteca `jspdf` + layout manual, OU gerar uma imagem via Gemini com os dados da cotação formatados).
+## Pré-requisitos: API Keys
 
-**Abordagem escolhida**: Gerar o PDF como HTML renderizado em string e convertê-lo usando a API `@vercel/og`-style approach não é viável em Deno. A melhor abordagem para Edge Functions Deno é **gerar um PDF programaticamente** usando manipulação de bytes ou usar a Lovable AI para gerar uma **imagem visual** da cotação (como já fazemos para banners com `generate-promo-image`) e enviar como documento/imagem no WhatsApp.
+Três novas chaves precisam ser configuradas como secrets:
+- `AVIATIONSTACK_API_KEY` — monitoramento de voos
+- `OPENWEATHERMAP_API_KEY` — previsão do tempo
+- `GOOGLE_MAPS_API_KEY` — Places + Static Maps
 
-**Abordagem final**: Usar Gemini para gerar uma **imagem visual da cotação** (similar ao banner generator existente) e enviá-la via WhatsApp como imagem. Isso é mais impactante visualmente que um PDF e funciona perfeitamente no WhatsApp.
+## Etapa 1: Banco de Dados (Migration)
 
-### Mudanças
+Criar 3 tabelas com RLS:
 
-#### 1. Nova Edge Function `generate-quote-visual/index.ts`
-- Recebe dados da cotação (destino, hotel, voos, preço, datas, passageiros)
-- Usa Gemini (image generation model) para criar uma imagem profissional estilizada com:
-  - Logo Tomorrow Travel
-  - Nome do destino com foto de fundo
-  - Detalhes do hotel (nome, estrelas, regime)
-  - Datas e voos
-  - Preço total destacado
-  - Parcelas se disponível
-  - Inclusões
-- Retorna a URL da imagem gerada
-- Armazena no bucket `destination-images` para persistência
+```sql
+CREATE TABLE active_trips (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_phone TEXT NOT NULL,
+  client_name TEXT,
+  destination_city TEXT,
+  destination_country TEXT,
+  destination_lat DECIMAL(10,7),
+  destination_lng DECIMAL(10,7),
+  destination_timezone TEXT DEFAULT 'America/Sao_Paulo',
+  check_in_date DATE NOT NULL,
+  check_out_date DATE NOT NULL,
+  outbound_flight_iata TEXT,
+  outbound_flight_date DATE,
+  return_flight_iata TEXT,
+  return_flight_date DATE,
+  hotel_name TEXT,
+  concierge_active BOOLEAN DEFAULT true,
+  daily_messages_sent INTEGER DEFAULT 0,
+  last_message_date DATE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
 
-#### 2. Nova função `sendWhatsAppDocument` no `whatsapp-webhook`
-- Adicionar função para enviar imagens/documentos via WhatsApp Graph API
-- Usa o endpoint de `image` do WhatsApp para enviar a cotação visual
-- Caption com resumo curto dos valores
+CREATE TABLE concierge_alerts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  trip_id UUID REFERENCES active_trips(id) ON DELETE CASCADE,
+  alert_type TEXT NOT NULL,
+  alert_content TEXT,
+  sent_at TIMESTAMPTZ DEFAULT now()
+);
 
-#### 3. Integrar no fluxo de cotação (`whatsapp-webhook/index.ts`)
-- Após a cotação retornar resultados (`formatQuotationResults`), chamar `generate-quote-visual` em paralelo
-- Enviar primeiro o texto da cotação (como já faz)
-- Em seguida enviar a imagem visual da cotação
-- Fire-and-forget para não atrasar a resposta de texto
-
-#### 4. Integrar no fluxo do site (`travel-advisor-chat/index.ts`)
-- Quando detectar `[COTAR_VIAGEM]` e tiver resultado, gerar o visual
-- Disponibilizar link para download no chat do site
-
-#### 5. Config
-- Adicionar `generate-quote-visual` ao `supabase/config.toml` com `verify_jwt = false`
-
-### Fluxo
-
-```text
-Cotação retorna resultado
-       ↓
-[Paralelo] Envia texto formatado no WhatsApp (já existe)
-[Paralelo] Chama generate-quote-visual com dados da cotação
-       ↓
-Gemini gera imagem profissional da cotação
-       ↓
-Upload para storage (destination-images)
-       ↓
-Envia imagem no WhatsApp via Graph API (type: image)
+CREATE TABLE location_recommendations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  trip_id UUID REFERENCES active_trips(id) ON DELETE CASCADE,
+  client_lat DECIMAL(10,7),
+  client_lng DECIMAL(10,7),
+  recommendations JSONB,
+  map_image_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 ```
 
-### O que NÃO muda
-- Fluxo de coleta de dados do Téo
-- Formato da cotação em texto (continua sendo enviado)
-- Tabelas existentes
+RLS: acesso total apenas para admins (`has_role(auth.uid(), 'admin')`). Inserts abertos para service role (edge functions).
 
-### Nota técnica
-- Usamos geração de imagem via Gemini (model `google/gemini-3-pro-image-preview`) pois é a mesma abordagem já validada no `generate-promo-image` e `generate-destination-image`
-- Imagem é mais impactante no WhatsApp que PDF (preview inline, não precisa abrir)
-- O cliente pode salvar e compartilhar facilmente
+## Etapa 2: Edge Function `concierge-engine` (Nova)
+
+Uma única Edge Function centralizada que recebe diferentes `action` types:
+
+### Actions suportadas:
+
+**`check_flights`** — Chamada pelo cron a cada 30 min
+- Busca `active_trips` com voos no dia atual (±6h)
+- Consulta AviationStack API
+- Compara com último status salvo em `concierge_alerts`
+- Se houver mudança (atraso >10min, gate, cancelamento), envia alerta WhatsApp
+- Se voo pousou, envia boas-vindas + clima via OpenWeatherMap
+
+**`daily_weather`** — Chamada pelo cron diariamente às 10:00 UTC (~7h BRT)
+- Busca `active_trips` onde `check_in_date <= hoje <= check_out_date` e `concierge_active = true`
+- Consulta OpenWeatherMap para cada destino
+- Gera mensagem com previsão + dica contextual via IA (tom do Téo)
+- Respeita limite de 3 mensagens/dia e horário 7h-22h local
+
+**`proactive_alerts`** — Chamada pelo cron diariamente às 10:00 UTC
+- Verifica cronograma de alertas para cada trip ativa:
+  - check_in - 3 dias: previsão + dica de mala
+  - check_in - 1 dia: lembrete check-in + documentos
+  - check_out - 1 dia: lembrete check-out + voo volta
+  - return_flight + 1 dia: pós-venda / feedback
+- Salva cada alerta em `concierge_alerts` para evitar duplicatas
+
+**`handle_location`** — Chamada pelo webhook quando receber mensagem tipo `location`
+- Extrai lat/lng do payload do WhatsApp
+- Consulta Google Places Nearby (restaurantes + atrações, rating >= 4.0)
+- Gera mapa estático com markers coloridos (Google Static Maps)
+- Upload do mapa para Supabase Storage
+- Consulta OpenWeatherMap para clima atual
+- Gera descrições curtas via IA
+- Envia imagem do mapa + lista formatada no WhatsApp
+- Salva em `location_recommendations`
+
+**`place_details`** — Quando cliente responde com número
+- Busca última `location_recommendations` do cliente
+- Retorna detalhes do lugar (endereço, telefone, horário, review, foto, link Maps)
+- Envia localização via WhatsApp (tipo: location)
+
+## Etapa 3: Integração no `whatsapp-webhook`
+
+Modificações no webhook existente:
+
+1. **Detecção de mensagem `location`**: No bloco de tipos de mensagem (~linha 1650), adicionar handler para `messageType === "location"` que chama `concierge-engine` com action `handle_location`
+
+2. **Detecção de resposta numérica** para place details: Quando há `location_recommendations` recente para o telefone e o cliente responde "1", "2", etc., chamar `concierge-engine` com action `place_details`
+
+3. **Detecção de "para de mandar mensagem"**: Se o cliente pedir para desativar, atualizar `concierge_active = false` na `active_trips`
+
+## Etapa 4: Cron Jobs (pg_cron + pg_net)
+
+3 cron jobs:
+
+```sql
+-- Monitoramento de voo: a cada 30 min
+SELECT cron.schedule('concierge-check-flights', '*/30 * * * *', $$
+  SELECT net.http_post(
+    url:='https://wimdgvdpefkmjzzsklnt.supabase.co/functions/v1/concierge-engine',
+    headers:='{"Content-Type":"application/json","Authorization":"Bearer <ANON_KEY>"}'::jsonb,
+    body:='{"action":"check_flights"}'::jsonb
+  );
+$$);
+
+-- Previsão do tempo diária: 10:00 UTC (7h BRT)
+SELECT cron.schedule('concierge-daily-weather', '0 10 * * *', $$
+  SELECT net.http_post(
+    url:='https://wimdgvdpefkmjzzsklnt.supabase.co/functions/v1/concierge-engine',
+    headers:='{"Content-Type":"application/json","Authorization":"Bearer <ANON_KEY>"}'::jsonb,
+    body:='{"action":"daily_weather"}'::jsonb
+  );
+$$);
+
+-- Alertas proativos: 10:00 UTC
+SELECT cron.schedule('concierge-proactive-alerts', '0 10 * * *', $$
+  SELECT net.http_post(
+    url:='https://wimdgvdpefkmjzzsklnt.supabase.co/functions/v1/concierge-engine',
+    headers:='{"Content-Type":"application/json","Authorization":"Bearer <ANON_KEY>"}'::jsonb,
+    body:='{"action":"proactive_alerts"}'::jsonb
+  );
+$$);
+```
+
+## Etapa 5: Ativação Automática do Concierge
+
+Quando o admin cria uma `client_trip` com status "confirmed", o sistema pode criar automaticamente um registro em `active_trips`. Isso será feito via:
+- Um trigger no banco que detecta inserts/updates em `client_trips` com `trip_status = 'confirmed'`
+- Ou integração no `TripManager` para criar o `active_trip` ao salvar uma viagem
+
+## Etapa 6: Config (`supabase/config.toml`)
+
+```toml
+[functions.concierge-engine]
+verify_jwt = false
+```
+
+## Controles de Segurança
+
+- Limite de 3 mensagens proativas/dia (campo `daily_messages_sent` resetado diariamente)
+- Horário silencioso: 22h-7h no timezone do destino
+- Cliente pode desativar (`concierge_active = false`) enviando "para" ou "desativar"
+- Todas as interações salvas em `concierge_alerts` para auditoria
+
+## Ordem de Implementação
+
+1. Solicitar as 3 API keys ao usuário
+2. Criar tabelas via migration
+3. Criar edge function `concierge-engine` com todas as actions
+4. Modificar `whatsapp-webhook` para rotear location e respostas numéricas
+5. Criar cron jobs
+6. Atualizar `config.toml`
+
+## Estimativa de Complexidade
+
+Esta é uma implementação grande com ~800-1000 linhas de código novo. O webhook existente já tem 2288 linhas, então a maior parte da lógica ficará na nova edge function `concierge-engine` para manter separação de responsabilidades.
 
