@@ -1708,29 +1708,11 @@ serve(async (req) => {
           }
         }
       } else if (messageType === "location") {
-        // Extract location data for concierge
+        // Extract location data for concierge - will be routed after ensureConversationAndSaveMessage is defined
         const locLat = message.location?.latitude;
         const locLng = message.location?.longitude;
         messageText = `[Localização: ${locLat}, ${locLng}]`;
         console.log(`Location received: ${locLat}, ${locLng}`);
-
-        // Save message and route to concierge engine
-        await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
-        
-        try {
-          await fetch(`${SUPABASE_URL}/functions/v1/concierge-engine`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-            body: JSON.stringify({ action: "handle_location", phone_number: phoneNumber, latitude: locLat, longitude: locLng }),
-          });
-        } catch (locErr) {
-          console.error("Concierge location error:", locErr);
-        }
-
-        return new Response(JSON.stringify({ status: "ok", routed_to: "concierge_location" }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
       } else {
         messageText = `[${messageType}]`;
       }
@@ -1810,6 +1792,26 @@ serve(async (req) => {
           return { ...conv, messages_history: updatedHistory };
         }
       };
+
+      // ========== ROUTE LOCATION MESSAGES TO CONCIERGE ==========
+      if (messageType === "location") {
+        await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+        const locLat = message.location?.latitude;
+        const locLng = message.location?.longitude;
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/concierge-engine`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+            body: JSON.stringify({ action: "handle_location", phone_number: phoneNumber, latitude: locLat, longitude: locLng }),
+          });
+        } catch (locErr) {
+          console.error("Concierge location error:", locErr);
+        }
+        return new Response(JSON.stringify({ status: "ok", routed_to: "concierge_location" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       // Check if there's an active review for this phone number
       const { data: activeReview } = await supabase
