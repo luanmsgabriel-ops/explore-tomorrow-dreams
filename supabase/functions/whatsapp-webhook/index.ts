@@ -1896,22 +1896,57 @@ serve(async (req) => {
         }
       }
 
-      // ========== CONCIERGE: Place details reply ("2", "Restaurante 2", "Atração 1") ==========
+      // ========== CONCIERGE: Text search detection (e.g. "hamburguerias próximas", "farmácia") ==========
+      const searchIntentRegex = /(?:perto|pr[oó]xim[oa]|aqui perto|por aqui|perto de mim|mais perto)/i;
+      const categoryDirectRegex = /(?:hamburgueria|pizzaria|padaria|mercado|supermercado|farm[aá]cia|hospital|pol[ií]cia|conveni[eê]ncia|adega|distribuidora|bar|caf[eé]|cafeteria|lanchonete|sorveteria|churrascaria|japon[eê]s|japones|sushi|a[cç]a[ií]|restaurante|posto|gas station|atm|banco|caixa|lavanderia|pet ?shop|academia|gym)/i;
+      
       const trimmedMsg = messageText.trim();
+      const hasSearchIntent = searchIntentRegex.test(trimmedMsg) || categoryDirectRegex.test(trimmedMsg);
+      
+      if (hasSearchIntent && trimmedMsg.length > 2 && trimmedMsg.length < 100) {
+        // Check for recent location to get coordinates
+        const thirtyMinAgoSearch = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+        const { data: recentLocSearch } = await supabase
+          .from("location_recommendations")
+          .select("client_lat, client_lng")
+          .eq("client_phone", phoneNumber)
+          .gte("created_at", thirtyMinAgoSearch)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (recentLocSearch?.client_lat && recentLocSearch?.client_lng) {
+          await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+          try {
+            await fetch(`${SUPABASE_URL}/functions/v1/concierge-engine`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+              body: JSON.stringify({
+                action: "search_nearby",
+                phone_number: phoneNumber,
+                latitude: recentLocSearch.client_lat,
+                longitude: recentLocSearch.client_lng,
+                query: trimmedMsg,
+              }),
+            });
+          } catch (searchErr) {
+            console.error("Search nearby error:", searchErr);
+          }
+          return new Response(JSON.stringify({ status: "ok", routed_to: "concierge_search_nearby" }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      // ========== CONCIERGE: Place details reply ("2", "Restaurante 2", "Atração 1", "Mercado 1") ==========
       const pureNumericMatch = trimmedMsg.match(/^#?(\d{1,2})$/);
-      const prefixedPlaceMatch = trimmedMsg.match(/^(?:restaurante(?:s)?|atra(?:cao|ção|coes|ções)|passeio|lugar|local|op(?:cao|ção))\s*#?\s*(\d{1,2})$/i);
+      const prefixedPlaceMatch = trimmedMsg.match(/^(?:restaurante(?:s)?|atra(?:cao|ção|coes|ções)|passeio|lugar|local|op(?:cao|ção)|mercado|farm[aá]cia|conveni[eê]ncia|emerg[eê]ncia|hospital)\s*#?\s*(\d{1,2})$/i);
 
       const placeIndexRaw = pureNumericMatch?.[1] || prefixedPlaceMatch?.[1];
       if (placeIndexRaw) {
         const placeIndex = parseInt(placeIndexRaw, 10);
-        if (placeIndex >= 1 && placeIndex <= 10) {
-          const normalized = trimmedMsg.toLowerCase();
-          const placeType = normalized.startsWith("restaurante")
-            ? "restaurant"
-            : (normalized.startsWith("atra") || normalized.startsWith("passeio"))
-              ? "attraction"
-              : "any";
-
+        if (placeIndex >= 1 && placeIndex <= 20) {
           // Check for recent location recommendations for this phone (last 30 min)
           const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
           const { data: recentRec } = await supabase
@@ -1928,7 +1963,7 @@ serve(async (req) => {
               await fetch(`${SUPABASE_URL}/functions/v1/concierge-engine`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-                body: JSON.stringify({ action: "place_details", phone_number: phoneNumber, place_index: placeIndex, place_type: placeType }),
+                body: JSON.stringify({ action: "place_details", phone_number: phoneNumber, place_index: placeIndex, place_type: "any" }),
               });
             } catch (pdErr) {
               console.error("Place details error:", pdErr);
