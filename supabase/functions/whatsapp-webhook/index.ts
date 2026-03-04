@@ -1901,30 +1901,17 @@ serve(async (req) => {
       if (numericMatch) {
         const placeIndex = parseInt(numericMatch[1]);
         if (placeIndex >= 1 && placeIndex <= 10) {
-          // Check for recent location recommendations
-          const { data: recentRecs } = await supabase
+          // Check for recent location recommendations for this phone (last 30 min)
+          const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+          const { data: recentRec } = await supabase
             .from("location_recommendations")
-            .select("id, recommendations")
-            .order("created_at", { ascending: false })
-            .limit(5);
-          
-          // Check if any rec belongs to this phone
-          let hasRec = false;
-          for (const r of recentRecs || []) {
-            if (r.recommendations) {
-              // Check via trip
-              const { data: tripForRec } = await supabase
-                .from("active_trips")
-                .select("client_phone")
-                .eq("client_phone", phoneNumber)
-                .eq("concierge_active", true)
-                .limit(1)
-                .maybeSingle();
-              if (tripForRec) { hasRec = true; break; }
-            }
-          }
+            .select("id")
+            .eq("client_phone", phoneNumber)
+            .gte("created_at", thirtyMinAgo)
+            .limit(1)
+            .maybeSingle();
 
-          if (hasRec) {
+          if (recentRec) {
             await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
             try {
               await fetch(`${SUPABASE_URL}/functions/v1/concierge-engine`, {
