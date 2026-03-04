@@ -41,6 +41,75 @@ export type Database = {
         }
         Relationships: []
       }
+      active_trips: {
+        Row: {
+          check_in_date: string
+          check_out_date: string
+          client_name: string | null
+          client_phone: string
+          concierge_active: boolean | null
+          created_at: string | null
+          daily_messages_sent: number | null
+          destination_city: string | null
+          destination_country: string | null
+          destination_lat: number | null
+          destination_lng: number | null
+          destination_timezone: string | null
+          hotel_name: string | null
+          id: string
+          last_message_date: string | null
+          outbound_flight_date: string | null
+          outbound_flight_iata: string | null
+          return_flight_date: string | null
+          return_flight_iata: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          check_in_date: string
+          check_out_date: string
+          client_name?: string | null
+          client_phone: string
+          concierge_active?: boolean | null
+          created_at?: string | null
+          daily_messages_sent?: number | null
+          destination_city?: string | null
+          destination_country?: string | null
+          destination_lat?: number | null
+          destination_lng?: number | null
+          destination_timezone?: string | null
+          hotel_name?: string | null
+          id?: string
+          last_message_date?: string | null
+          outbound_flight_date?: string | null
+          outbound_flight_iata?: string | null
+          return_flight_date?: string | null
+          return_flight_iata?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          check_in_date?: string
+          check_out_date?: string
+          client_name?: string | null
+          client_phone?: string
+          concierge_active?: boolean | null
+          created_at?: string | null
+          daily_messages_sent?: number | null
+          destination_city?: string | null
+          destination_country?: string | null
+          destination_lat?: number | null
+          destination_lng?: number | null
+          destination_timezone?: string | null
+          hotel_name?: string | null
+          id?: string
+          last_message_date?: string | null
+          outbound_flight_date?: string | null
+          outbound_flight_iata?: string | null
+          return_flight_date?: string | null
+          return_flight_iata?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       admin_access_logs: {
         Row: {
           command_text: string
@@ -506,6 +575,38 @@ export type Database = {
           },
         ]
       }
+      concierge_alerts: {
+        Row: {
+          alert_content: string | null
+          alert_type: string
+          id: string
+          sent_at: string | null
+          trip_id: string | null
+        }
+        Insert: {
+          alert_content?: string | null
+          alert_type: string
+          id?: string
+          sent_at?: string | null
+          trip_id?: string | null
+        }
+        Update: {
+          alert_content?: string | null
+          alert_type?: string
+          id?: string
+          sent_at?: string | null
+          trip_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "concierge_alerts_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "active_trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       destinations: {
         Row: {
           best_price_periods: Json | null
@@ -601,6 +702,44 @@ export type Database = {
           user_name?: string | null
         }
         Relationships: []
+      }
+      location_recommendations: {
+        Row: {
+          client_lat: number | null
+          client_lng: number | null
+          created_at: string | null
+          id: string
+          map_image_url: string | null
+          recommendations: Json | null
+          trip_id: string | null
+        }
+        Insert: {
+          client_lat?: number | null
+          client_lng?: number | null
+          created_at?: string | null
+          id?: string
+          map_image_url?: string | null
+          recommendations?: Json | null
+          trip_id?: string | null
+        }
+        Update: {
+          client_lat?: number | null
+          client_lng?: number | null
+          created_at?: string | null
+          id?: string
+          map_image_url?: string | null
+          recommendations?: Json | null
+          trip_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_recommendations_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "active_trips"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notification_logs: {
         Row: {

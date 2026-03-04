@@ -1707,6 +1707,30 @@ serve(async (req) => {
             console.error("Error processing image:", imgErr);
           }
         }
+      } else if (messageType === "location") {
+        // Extract location data for concierge
+        const locLat = message.location?.latitude;
+        const locLng = message.location?.longitude;
+        messageText = `[Localização: ${locLat}, ${locLng}]`;
+        console.log(`Location received: ${locLat}, ${locLng}`);
+
+        // Save message and route to concierge engine
+        await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+        
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/concierge-engine`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+            body: JSON.stringify({ action: "handle_location", phone_number: phoneNumber, latitude: locLat, longitude: locLng }),
+          });
+        } catch (locErr) {
+          console.error("Concierge location error:", locErr);
+        }
+
+        return new Response(JSON.stringify({ status: "ok", routed_to: "concierge_location" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       } else {
         messageText = `[${messageType}]`;
       }
@@ -1845,6 +1869,76 @@ serve(async (req) => {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
+
+      // ========== CONCIERGE: Deactivation request ==========
+      const deactivateKeywords = ["para", "pare", "parar", "desativar", "para de mandar", "não mande mais", "desativa"];
+      const lowerMsg = messageText.toLowerCase().trim();
+      if (deactivateKeywords.some(kw => lowerMsg.includes(kw))) {
+        const { data: activeTrips } = await supabase
+          .from("active_trips")
+          .select("id")
+          .eq("client_phone", phoneNumber)
+          .eq("concierge_active", true);
+        
+        if (activeTrips?.length) {
+          for (const t of activeTrips) {
+            await supabase.from("active_trips").update({ concierge_active: false }).eq("id", t.id);
+          }
+          await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+          await sendWhatsAppMessage(phoneNumber, "Beleza! 😊 Desativei as mensagens automáticas. Se mudar de ideia, é só me chamar que eu volto! ✈️");
+          return new Response(JSON.stringify({ status: "ok", concierge_deactivated: true }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      // ========== CONCIERGE: Numeric reply for place details ==========
+      const numericMatch = messageText.trim().match(/^(\d+)$/);
+      if (numericMatch) {
+        const placeIndex = parseInt(numericMatch[1]);
+        if (placeIndex >= 1 && placeIndex <= 10) {
+          // Check for recent location recommendations
+          const { data: recentRecs } = await supabase
+            .from("location_recommendations")
+            .select("id, recommendations")
+            .order("created_at", { ascending: false })
+            .limit(5);
+          
+          // Check if any rec belongs to this phone
+          let hasRec = false;
+          for (const r of recentRecs || []) {
+            if (r.recommendations) {
+              // Check via trip
+              const { data: tripForRec } = await supabase
+                .from("active_trips")
+                .select("client_phone")
+                .eq("client_phone", phoneNumber)
+                .eq("concierge_active", true)
+                .limit(1)
+                .maybeSingle();
+              if (tripForRec) { hasRec = true; break; }
+            }
+          }
+
+          if (hasRec) {
+            await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+            try {
+              await fetch(`${SUPABASE_URL}/functions/v1/concierge-engine`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+                body: JSON.stringify({ action: "place_details", phone_number: phoneNumber, place_index: placeIndex, place_type: "any" }),
+              });
+            } catch (pdErr) {
+              console.error("Place details error:", pdErr);
+            }
+            return new Response(JSON.stringify({ status: "ok", routed_to: "concierge_place_details" }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
       }
 
       // Get or create conversation (message is already saved by ensureConversationAndSaveMessage)
