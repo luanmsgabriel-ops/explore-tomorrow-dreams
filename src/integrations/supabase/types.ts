@@ -707,6 +707,7 @@ export type Database = {
         Row: {
           client_lat: number | null
           client_lng: number | null
+          client_phone: string | null
           created_at: string | null
           id: string
           map_image_url: string | null
@@ -716,6 +717,7 @@ export type Database = {
         Insert: {
           client_lat?: number | null
           client_lng?: number | null
+          client_phone?: string | null
           created_at?: string | null
           id?: string
           map_image_url?: string | null
@@ -725,6 +727,7 @@ export type Database = {
         Update: {
           client_lat?: number | null
           client_lng?: number | null
+          client_phone?: string | null
           created_at?: string | null
           id?: string
           map_image_url?: string | null

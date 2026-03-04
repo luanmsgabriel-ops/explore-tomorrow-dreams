@@ -474,6 +474,7 @@ async function handleLocation(phoneNumber: string, lat: number, lng: number) {
 
   await supabase.from("location_recommendations").insert({
     trip_id: trip?.id || null,
+    client_phone: phoneNumber,
     client_lat: lat,
     client_lng: lng,
     recommendations: allPlaces,
@@ -546,23 +547,14 @@ function generateStaticMapUrl(clientLat: number, clientLng: number, restaurants:
 async function placeDetails(phoneNumber: string, placeIndex: number, placeType: string) {
   console.log(`[CONCIERGE] Place details for ${phoneNumber}: ${placeType} #${placeIndex}`);
 
-  // Get latest recommendations
-  const { data: recs } = await supabase
+  // Get latest recommendations for this phone number directly
+  const { data: rec } = await supabase
     .from("location_recommendations")
     .select("*")
+    .eq("client_phone", phoneNumber)
     .order("created_at", { ascending: false })
-    .limit(10);
-
-  // Find rec matching this phone (via trip or most recent)
-  let rec = null;
-  for (const r of recs || []) {
-    if (r.trip_id) {
-      const { data: trip } = await supabase.from("active_trips").select("client_phone").eq("id", r.trip_id).single();
-      if (trip?.client_phone === phoneNumber) { rec = r; break; }
-    }
-  }
-  // Fallback: most recent without trip_id
-  if (!rec && recs?.length) rec = recs[0];
+    .limit(1)
+    .maybeSingle();
 
   if (!rec?.recommendations) {
     await sendWhatsAppMessage(phoneNumber, "Hmm, não encontrei recomendações recentes. Me manda sua localização 📍 de novo que eu busco pra você!");

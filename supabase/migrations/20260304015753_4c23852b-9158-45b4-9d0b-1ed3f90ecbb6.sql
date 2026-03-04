@@ -1,0 +1,1 @@
+ALTER TABLE public.location_recommendations ADD COLUMN client_phone TEXT;
