@@ -621,32 +621,34 @@ async function searchByQuery(phoneNumber: string, lat: number, lng: number, quer
   console.log(`[CONCIERGE] Search query from ${phoneNumber}: "${query}" at ${lat},${lng}`);
 
   // Map common keywords to Google Places types
-  const categoryMap: Record<string, string[]> = {
-    // Convenience
+  // Only map to structured types for non-food categories where the Google Places type
+  // gives accurate results. Food-specific queries (pizzaria, hamburgueria, etc.) should
+  // always use textSearch to get actual specific results, not generic "restaurant" type.
+  const structuredCategoryMap: Record<string, string[]> = {
+    // Convenience - structured types work well
     "mercado": ["supermarket"], "supermercado": ["supermarket"],
     "conveniencia": ["convenience_store"], "conveniência": ["convenience_store"],
     "adega": ["liquor_store"], "distribuidora": ["liquor_store"],
     "bebida": ["liquor_store"],
-    // Emergency
+    // Emergency - structured types work well
     "farmacia": ["pharmacy"], "farmácia": ["pharmacy"],
     "hospital": ["hospital"], "emergencia": ["hospital"],
     "emergência": ["hospital"], "policia": ["police"], "polícia": ["police"],
-    // Food specific
-    "pizzaria": ["restaurant"], "hamburgueria": ["restaurant"],
-    "padaria": ["bakery"], "lanchonete": ["restaurant"],
-    "cafeteria": ["cafe"], "cafe": ["cafe"], "café": ["cafe"],
-    "sorveteria": ["restaurant"], "churrascaria": ["restaurant"],
-    "bar": ["bar"], "sushi": ["restaurant"], "japonês": ["restaurant"],
-    "japones": ["restaurant"], "açaí": ["restaurant"], "acai": ["restaurant"],
+    // Only generic "restaurante" uses structured type (user wants any restaurant)
     "restaurante": ["restaurant"],
+    // Generic categories that work well with structured search
+    "padaria": ["bakery"],
+    "cafeteria": ["cafe"], "cafe": ["cafe"], "café": ["cafe"],
+    "bar": ["bar"],
   };
 
-  // Check if we match a known keyword to use searchNearby (structured)
+  // Check if we match a known STRUCTURED keyword
   const queryLower = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   let matchedTypes: string[] | null = null;
-  for (const [keyword, types] of Object.entries(categoryMap)) {
+  for (const [keyword, types] of Object.entries(structuredCategoryMap)) {
     const normalizedKey = keyword.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    if (queryLower.includes(normalizedKey)) {
+    // Use exact word match to avoid false positives
+    if (queryLower === normalizedKey || queryLower.startsWith(normalizedKey + " ") || queryLower.endsWith(" " + normalizedKey)) {
       matchedTypes = types;
       break;
     }
@@ -655,11 +657,12 @@ async function searchByQuery(phoneNumber: string, lat: number, lng: number, quer
   let results: any[] = [];
 
   if (matchedTypes) {
-    // Use structured searchNearby for known types
+    // Use structured searchNearby for well-defined types
     results = await searchNearby(lat, lng, matchedTypes, 5);
   }
   
-  // If no structured results or unknown query, use textSearch
+  // For everything else (pizzaria, hamburgueria, sushi, churrascaria, etc.)
+  // OR if structured search returned nothing, use textSearch with the actual query
   if (!results.length) {
     results = await searchByText(lat, lng, query, 5);
   }
