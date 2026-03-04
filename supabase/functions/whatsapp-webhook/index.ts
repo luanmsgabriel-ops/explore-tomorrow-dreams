@@ -1896,11 +1896,22 @@ serve(async (req) => {
         }
       }
 
-      // ========== CONCIERGE: Numeric reply for place details ==========
-      const numericMatch = messageText.trim().match(/^(\d+)$/);
-      if (numericMatch) {
-        const placeIndex = parseInt(numericMatch[1]);
+      // ========== CONCIERGE: Place details reply ("2", "Restaurante 2", "Atração 1") ==========
+      const trimmedMsg = messageText.trim();
+      const pureNumericMatch = trimmedMsg.match(/^#?(\d{1,2})$/);
+      const prefixedPlaceMatch = trimmedMsg.match(/^(?:restaurante(?:s)?|atra(?:cao|ção|coes|ções)|passeio|lugar|local|op(?:cao|ção))\s*#?\s*(\d{1,2})$/i);
+
+      const placeIndexRaw = pureNumericMatch?.[1] || prefixedPlaceMatch?.[1];
+      if (placeIndexRaw) {
+        const placeIndex = parseInt(placeIndexRaw, 10);
         if (placeIndex >= 1 && placeIndex <= 10) {
+          const normalized = trimmedMsg.toLowerCase();
+          const placeType = normalized.startsWith("restaurante")
+            ? "restaurant"
+            : (normalized.startsWith("atra") || normalized.startsWith("passeio"))
+              ? "attraction"
+              : "any";
+
           // Check for recent location recommendations for this phone (last 30 min)
           const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
           const { data: recentRec } = await supabase
@@ -1917,7 +1928,7 @@ serve(async (req) => {
               await fetch(`${SUPABASE_URL}/functions/v1/concierge-engine`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-                body: JSON.stringify({ action: "place_details", phone_number: phoneNumber, place_index: placeIndex, place_type: "any" }),
+                body: JSON.stringify({ action: "place_details", phone_number: phoneNumber, place_index: placeIndex, place_type: placeType }),
               });
             } catch (pdErr) {
               console.error("Place details error:", pdErr);
