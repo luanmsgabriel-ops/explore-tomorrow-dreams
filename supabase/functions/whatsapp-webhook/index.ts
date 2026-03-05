@@ -1915,6 +1915,76 @@ serve(async (req) => {
         }
       }
 
+      // ========== CONCIERGE: Saudação personalizada para clientes com viagem ativa ==========
+      {
+        const { data: activeTripForGreeting } = await supabase
+          .from("active_trips")
+          .select("id, client_name, destination_city, destination_country, check_in_date, check_out_date")
+          .eq("client_phone", phoneNumber)
+          .eq("concierge_active", true)
+          .limit(1)
+          .maybeSingle();
+
+        if (activeTripForGreeting) {
+          // Check if already greeted in this conversation
+          const { data: convForGreeting } = await supabase
+            .from("whatsapp_conversations")
+            .select("id, collected_data")
+            .eq("phone_number", phoneNumber)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const collectedData = (convForGreeting?.collected_data as Record<string, unknown>) || {};
+          const alreadyGreeted = collectedData._concierge_greeted === true;
+
+          if (!alreadyGreeted) {
+            // Inferir gênero pelo primeiro nome
+            const firstName = (activeTripForGreeting.client_name || "").trim().split(" ")[0];
+            const maleExceptions = ["luca", "joshua", "josua", "nikita", "asa", "mustafa", "borba", "costa", "moura", "souza", "silva", "pereira"];
+            const isNameEndingInA = firstName.toLowerCase().endsWith("a");
+            const isMaleException = maleExceptions.includes(firstName.toLowerCase());
+            const genderSuffix = (isNameEndingInA && !isMaleException) ? "ansiosa" : "ansioso";
+
+            const destino = activeTripForGreeting.destination_city || activeTripForGreeting.destination_country || "seu destino";
+
+            const greetingMsg = `Oi ${firstName}! 😊✈️\n\nQue bom te ver por aqui! Tá ${genderSuffix} pra sua viagem pra *${destino}*? 🏝️\n\nSou o Téo, seu assistente de viagem pessoal! Durante sua viagem, posso te ajudar com:\n\n📍 Me envie sua *localização* e eu busco restaurantes, atrações, farmácias e mais pertinho de você\n🌤️ Previsão do tempo no destino\n✈️ Acompanhamento do seu voo em tempo real\n🗺️ Dicas de passeios e roteiros personalizados\n\nÉ só me chamar! Como posso te ajudar? 😊`;
+
+            // Save message and mark as greeted
+            await ensureConversationAndSaveMessage(phoneNumber, contactName || firstName, messageText);
+
+            // Update collected_data with _concierge_greeted flag
+            if (convForGreeting?.id) {
+              const updatedData = { ...collectedData, _concierge_greeted: true };
+              await supabase.from("whatsapp_conversations").update({ collected_data: updatedData }).eq("id", convForGreeting.id);
+            }
+
+            // Save assistant message in history
+            const { data: convAfterGreet } = await supabase
+              .from("whatsapp_conversations")
+              .select("id, messages_history")
+              .eq("phone_number", phoneNumber)
+              .order("updated_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (convAfterGreet) {
+              const history = Array.isArray(convAfterGreet.messages_history) ? convAfterGreet.messages_history : [];
+              history.push({ role: "assistant", content: greetingMsg, timestamp: new Date().toISOString() });
+              await supabase.from("whatsapp_conversations").update({ messages_history: history }).eq("id", convAfterGreet.id);
+            }
+
+            await sendWhatsAppMessage(phoneNumber, greetingMsg);
+
+            return new Response(JSON.stringify({ status: "ok", concierge_greeting: true }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          // If already greeted, continue to normal flow (AI will respond with concierge context)
+        }
+      }
+
       // ========== CONCIERGE: Text search detection (e.g. "hamburguerias próximas", "farmácia") ==========
       const searchIntentRegex = /(?:perto|pr[oó]xim[oa]|aqui perto|por aqui|perto de mim|mais perto)/i;
       const categoryDirectRegex = /(?:hamburgueria|pizzaria|padaria|mercado|supermercado|farm[aá]cia|hospital|pol[ií]cia|conveni[eê]ncia|adega|distribuidora|bar|caf[eé]|cafeteria|lanchonete|sorveteria|churrascaria|japon[eê]s|japones|sushi|a[cç]a[ií]|restaurante|posto|gas station|atm|banco|caixa|lavanderia|pet ?shop|academia|gym)/i;
