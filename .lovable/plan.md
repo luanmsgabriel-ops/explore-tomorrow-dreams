@@ -1,57 +1,42 @@
 
 
-# Plano: Saudação Personalizada para Clientes Concierge
+# Plano: Corrigir saudação repetida e adicionar personalidade de companheiro de viagem ao Téo Concierge
 
-## Problema Atual
+## Problemas Identificados
 
-Quando um cliente cadastrado na aba Concierge do admin envia mensagem no WhatsApp, o Téo trata como uma conversa normal de cotação. Não há detecção de que o cliente tem uma viagem ativa no sistema.
+1. **Saudação repetida**: Quando o cliente manda a primeira mensagem e não existe uma `whatsapp_conversations` ainda, o `convForGreeting` é null. O bloco `if (convForGreeting?.id)` na linha 1957 NÃO executa, então a flag `_concierge_greeted` nunca é salva. Na segunda mensagem, o sistema acha que nunca saudou e envia a mesma mensagem de novo.
+
+2. **Sem personalidade concierge**: Após a saudação, as mensagens seguintes caem no fluxo normal com `TEO_SYSTEM_PROMPT` — um prompt de vendas/cotação. O Téo não sabe que é um companheiro de viagem e tenta coletar dados para cotação.
 
 ## Solução
 
-Adicionar, no `whatsapp-webhook`, uma verificação de `active_trips` pelo número de telefone **antes** de cair no fluxo normal do Téo. Se o cliente tiver uma viagem ativa com concierge habilitado, e for a **primeira mensagem** (conversa nova ou conversa sem histórico recente do concierge), o Téo envia uma saudação personalizada.
+### 1. Corrigir a flag `_concierge_greeted` (whatsapp-webhook)
 
-## Lógica no `whatsapp-webhook/index.ts`
+Reordenar o bloco de saudação: chamar `ensureConversationAndSaveMessage` ANTES de checar a flag, e depois buscar a conversa (que agora com certeza existe) para ler e atualizar a flag.
 
-Após o bloco de deativação do concierge (~linha 1916) e antes do bloco de busca por texto (~linha 1918), adicionar:
+### 2. Injetar contexto concierge no prompt da IA (whatsapp-webhook)
 
-1. **Consultar `active_trips`** pelo `client_phone` do remetente onde `concierge_active = true`
-2. Se encontrar viagem ativa:
-   - Verificar se é a primeira interação do concierge (checando no `collected_data` se existe flag `_concierge_greeted`)
-   - Se **não** foi saudado ainda:
-     - Usar o nome do cliente da `active_trips` para inferir gênero (nomes terminados em "a" → feminino, caso contrário → masculino, com lista de exceções)
-     - Montar mensagem de boas-vindas personalizada com:
-       - Nome do cliente
-       - Pergunta se está ansioso/ansiosa para a viagem
-       - Destino da viagem
-       - Sugestões do que o Téo pode ajudar (previsão do tempo, dicas de restaurantes, acompanhamento de voo, enviar localização para buscar lugares perto)
-     - Salvar a mensagem no histórico e marcar flag `_concierge_greeted = true` no `collected_data`
-     - Retornar (não continuar para o fluxo de cotação)
-   - Se **já** foi saudado, continuar o fluxo normal (o Téo responde via IA normalmente)
+No fluxo normal (linhas ~2176-2190), antes de chamar `getAiResponse`, verificar se o cliente tem `active_trips` com `concierge_active = true`. Se sim, adicionar um **prompt de concierge** ao `getAiResponse` em vez do prompt de vendas.
 
-## Inferência de Gênero
+Modificar `getAiResponse` para aceitar um parâmetro opcional de contexto concierge, ou criar uma variante do prompt.
 
-Heurística simples baseada no primeiro nome:
-- Exceções masculinas: nomes terminados em "a" que são masculinos (ex: "Joshua", "Luca")
-- Regra geral: nome termina em "a" → "ansiosa", caso contrário → "ansioso"
+### 3. Novo prompt de personalidade concierge
 
-## Mensagem de Exemplo
+Tom: companheiro de viagem animado, divertido, ansioso pela viagem junto com o cliente. Ele "viaja junto" com o cliente.
 
-```
-Oi Maria! 😊✈️
-
-Que bom te ver por aqui! Tá ansiosa pra sua viagem pra Maldivas? 🏝️
-
-Sou o Téo, seu assistente de viagem pessoal! Durante sua viagem, posso te ajudar com:
-
-📍 Me envie sua localização e eu busco restaurantes, atrações, farmácias e mais pertinho de você
-🌤️ Previsão do tempo no destino
-✈️ Acompanhamento do seu voo em tempo real
-🗺️ Dicas de passeios e roteiros personalizados
-
-É só me chamar! Como posso te ajudar? 😊
-```
+Regras:
+- Nunca tenta coletar dados para cotação
+- Responde como amigo/parceiro de viagem
+- Tom divertido, usando gírias brasileiras leves
+- Faz sugestões proativas (restaurantes, passeios, clima)
+- Celebra cada momento da viagem do cliente
+- Ignora tags de cotação ([COTAR_VIAGEM], [DADOS:], etc.)
 
 ## Arquivo Modificado
 
-- `supabase/functions/whatsapp-webhook/index.ts` — adicionar bloco de detecção de cliente concierge entre a deativação (~linha 1916) e a busca por texto (~linha 1918)
+**`supabase/functions/whatsapp-webhook/index.ts`**:
+
+1. Adicionar constante `TEO_CONCIERGE_PROMPT` com a personalidade de companheiro de viagem
+2. Corrigir bloco de saudação (linhas 1918-1986): mover `ensureConversationAndSaveMessage` para antes do check de flag, e garantir que a flag é salva na conversa correta
+3. No fluxo principal (linhas ~2068-2190): detectar se é cliente concierge e usar `TEO_CONCIERGE_PROMPT` em vez de `TEO_SYSTEM_PROMPT` + `SALES_KNOWLEDGE`
 
