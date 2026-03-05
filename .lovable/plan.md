@@ -1,47 +1,57 @@
 
 
-# Plano: Aba Concierge no Painel Admin
+# Plano: Saudação Personalizada para Clientes Concierge
 
-## O que será feito
+## Problema Atual
 
-Nova aba "Concierge" no painel administrativo para gerenciar a ativação/desativação do serviço concierge (acompanhamento de voo + localização) por cliente, com opção de agendamento automático definindo data de início e fim.
+Quando um cliente cadastrado na aba Concierge do admin envia mensagem no WhatsApp, o Téo trata como uma conversa normal de cotação. Não há detecção de que o cliente tem uma viagem ativa no sistema.
 
-## Alterações no Banco de Dados
+## Solução
 
-Adicionar colunas à tabela `active_trips`:
-- `concierge_start_date` (date, nullable) — data agendada para ativar concierge
-- `concierge_end_date` (date, nullable) — data agendada para desativar concierge
+Adicionar, no `whatsapp-webhook`, uma verificação de `active_trips` pelo número de telefone **antes** de cair no fluxo normal do Téo. Se o cliente tiver uma viagem ativa com concierge habilitado, e for a **primeira mensagem** (conversa nova ou conversa sem histórico recente do concierge), o Téo envia uma saudação personalizada.
 
-Essas colunas permitem agendamento. A lógica de ativação/desativação automática será verificada no próprio webhook/engine com base na data atual.
+## Lógica no `whatsapp-webhook/index.ts`
 
-## Novo Componente: `ConciergeManager`
+Após o bloco de deativação do concierge (~linha 1916) e antes do bloco de busca por texto (~linha 1918), adicionar:
 
-Arquivo: `src/components/admin/ConciergeManager.tsx`
+1. **Consultar `active_trips`** pelo `client_phone` do remetente onde `concierge_active = true`
+2. Se encontrar viagem ativa:
+   - Verificar se é a primeira interação do concierge (checando no `collected_data` se existe flag `_concierge_greeted`)
+   - Se **não** foi saudado ainda:
+     - Usar o nome do cliente da `active_trips` para inferir gênero (nomes terminados em "a" → feminino, caso contrário → masculino, com lista de exceções)
+     - Montar mensagem de boas-vindas personalizada com:
+       - Nome do cliente
+       - Pergunta se está ansioso/ansiosa para a viagem
+       - Destino da viagem
+       - Sugestões do que o Téo pode ajudar (previsão do tempo, dicas de restaurantes, acompanhamento de voo, enviar localização para buscar lugares perto)
+     - Salvar a mensagem no histórico e marcar flag `_concierge_greeted = true` no `collected_data`
+     - Retornar (não continuar para o fluxo de cotação)
+   - Se **já** foi saudado, continuar o fluxo normal (o Téo responde via IA normalmente)
 
-- Lista todas as `active_trips` com nome do cliente, telefone, destino, status do concierge (`concierge_active`)
-- Toggle para habilitar/desabilitar `concierge_active` manualmente
-- Campos de data (início/fim) para agendamento
-- Badge visual indicando se está ativo, agendado ou desativado
-- Botão para criar nova entrada de concierge (selecionar cliente por telefone, destino, datas)
+## Inferência de Gênero
 
-## Integração no AdminDashboard
+Heurística simples baseada no primeiro nome:
+- Exceções masculinas: nomes terminados em "a" que são masculinos (ex: "Joshua", "Luca")
+- Regra geral: nome termina em "a" → "ansiosa", caso contrário → "ansioso"
 
-- Adicionar `'concierge'` ao `TabType`
-- Adicionar entrada na lista `tabs` com ícone `Navigation` (ou `MapPin`) e label "Concierge"
-- Renderizar `<ConciergeManager />` quando `activeTab === 'concierge'`
+## Mensagem de Exemplo
 
-## Lógica de Agendamento Automático
+```
+Oi Maria! 😊✈️
 
-No `concierge-engine` e `whatsapp-webhook`, ao verificar `concierge_active`, também checar:
-- Se `concierge_start_date` existe e `hoje >= concierge_start_date` → ativar automaticamente
-- Se `concierge_end_date` existe e `hoje > concierge_end_date` → desativar automaticamente
-- Atualizar o campo `concierge_active` no banco quando a data disparar
+Que bom te ver por aqui! Tá ansiosa pra sua viagem pra Maldivas? 🏝️
 
-## Arquivos Modificados
+Sou o Téo, seu assistente de viagem pessoal! Durante sua viagem, posso te ajudar com:
 
-1. **Migration SQL** — adicionar `concierge_start_date` e `concierge_end_date` em `active_trips`
-2. **`src/components/admin/ConciergeManager.tsx`** — novo componente
-3. **`src/pages/AdminDashboard.tsx`** — adicionar tab + import
-4. **`supabase/functions/concierge-engine/index.ts`** — checar datas de agendamento
-5. **`supabase/functions/whatsapp-webhook/index.ts`** — checar datas ao rotear para concierge
+📍 Me envie sua localização e eu busco restaurantes, atrações, farmácias e mais pertinho de você
+🌤️ Previsão do tempo no destino
+✈️ Acompanhamento do seu voo em tempo real
+🗺️ Dicas de passeios e roteiros personalizados
+
+É só me chamar! Como posso te ajudar? 😊
+```
+
+## Arquivo Modificado
+
+- `supabase/functions/whatsapp-webhook/index.ts` — adicionar bloco de detecção de cliente concierge entre a deativação (~linha 1916) e a busca por texto (~linha 1918)
 
