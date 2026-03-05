@@ -482,6 +482,45 @@ Formate uma resposta clara e organizada para WhatsApp. Se houver telefones, masc
   }
 }
 
+// ========== Teo Concierge Prompt (companheiro de viagem) ==========
+
+const TEO_CONCIERGE_PROMPT = `Você é o Téo, companheiro de viagem do cliente! 🌍✈️ Você NÃO é um vendedor, NÃO é um atendente — você é o PARCEIRO DE VIAGEM que está junto com o cliente nessa aventura!
+
+PERSONALIDADE:
+- Você está TÃO animado quanto o cliente pela viagem! Você "viaja junto"!
+- Tom divertido, leve, usando gírias brasileiras naturais (tipo "bora!", "demais!", "partiu!", "show!")
+- Você celebra cada momento: "Que lugar incrível!", "Tô morrendo de vontade de ver as fotos!"
+- Você é curioso e faz perguntas sobre como está sendo a viagem
+- Você dá sugestões proativas como um amigo que conhece o destino
+
+O QUE VOCÊ FAZ:
+- Sugere restaurantes, passeios, experiências locais
+- Dá dicas práticas (clima, o que vestir, horários, gorjetas)
+- Ajuda com qualquer dúvida sobre o destino
+- Comemora cada conquista da viagem ("Conseguiu ir naquele mirante? QUE DEMAIS!")
+- Se o cliente mandar foto ou contar algo, reage com entusiasmo genuíno
+- Se não souber algo específico, sugere que o cliente envie a localização para buscar lugares perto
+
+O QUE VOCÊ NUNCA FAZ:
+- NUNCA tenta coletar dados para cotação de viagem
+- NUNCA usa tags como [COTAR_VIAGEM], [DADOS:], [COTACAO:] etc.
+- NUNCA trata o cliente como um lead de vendas
+- NUNCA encerra a conversa ou se despede — sempre faz uma nova pergunta ou sugestão
+- NUNCA menciona preços, pacotes ou vendas
+
+SERVIÇOS DISPONÍVEIS (mencione quando relevante):
+📍 O cliente pode enviar a localização e você busca lugares perto (restaurantes, farmácias, atrações)
+🌤️ Previsão do tempo no destino
+✈️ Acompanhamento de voo em tempo real
+🗺️ Dicas e roteiros personalizados
+
+REGRAS DE FORMATO:
+- Respostas curtas e naturais (máximo 3-4 parágrafos)
+- Use emojis com moderação, como um amigo faria
+- Responda SEMPRE em português brasileiro
+- Seja específico nas sugestões (nomes reais de lugares quando souber)
+`;
+
 // ========== Teo System Prompt ==========
 
 const TEO_SYSTEM_PROMPT = `Você é o Téo, assistente virtual da Tomorrow Travel, especializado em viagens personalizadas e inesquecíveis! 🌍
@@ -1025,10 +1064,12 @@ async function sendWhatsAppMessage(to: string, message: string) {
   }
 }
 
-async function getAiResponse(messagesHistory: any[], memoryContext: string = ""): Promise<string> {
+async function getAiResponse(messagesHistory: any[], memoryContext: string = "", conciergeOverride: string | null = null): Promise<string> {
   const models = ["google/gemini-2.5-flash", "openai/gpt-5-mini", "google/gemini-2.5-flash-lite"];
   
-  const systemContent = TEO_SYSTEM_PROMPT + (memoryContext ? memoryContext + MEMORY_RULE : "") + SALES_KNOWLEDGE;
+  const systemContent = conciergeOverride
+    ? conciergeOverride + (memoryContext ? "\n\n" + memoryContext : "")
+    : TEO_SYSTEM_PROMPT + (memoryContext ? memoryContext + MEMORY_RULE : "") + SALES_KNOWLEDGE;
   
   for (const model of models) {
     try {
@@ -1926,7 +1967,10 @@ serve(async (req) => {
           .maybeSingle();
 
         if (activeTripForGreeting) {
-          // Check if already greeted in this conversation
+          // FIRST: ensure conversation exists (so the flag can be saved)
+          await ensureConversationAndSaveMessage(phoneNumber, contactName || (activeTripForGreeting.client_name || "").trim().split(" ")[0], messageText);
+
+          // NOW fetch the conversation (guaranteed to exist)
           const { data: convForGreeting } = await supabase
             .from("whatsapp_conversations")
             .select("id, collected_data")
@@ -1938,7 +1982,7 @@ serve(async (req) => {
           const collectedData = (convForGreeting?.collected_data as Record<string, unknown>) || {};
           const alreadyGreeted = collectedData._concierge_greeted === true;
 
-          if (!alreadyGreeted) {
+          if (!alreadyGreeted && convForGreeting) {
             // Inferir gênero pelo primeiro nome
             const firstName = (activeTripForGreeting.client_name || "").trim().split(" ")[0];
             const maleExceptions = ["luca", "joshua", "josua", "nikita", "asa", "mustafa", "borba", "costa", "moura", "souza", "silva", "pereira"];
@@ -1948,25 +1992,18 @@ serve(async (req) => {
 
             const destino = activeTripForGreeting.destination_city || activeTripForGreeting.destination_country || "seu destino";
 
-            const greetingMsg = `Oi ${firstName}! 😊✈️\n\nQue bom te ver por aqui! Tá ${genderSuffix} pra sua viagem pra *${destino}*? 🏝️\n\nSou o Téo, seu assistente de viagem pessoal! Durante sua viagem, posso te ajudar com:\n\n📍 Me envie sua *localização* e eu busco restaurantes, atrações, farmácias e mais pertinho de você\n🌤️ Previsão do tempo no destino\n✈️ Acompanhamento do seu voo em tempo real\n🗺️ Dicas de passeios e roteiros personalizados\n\nÉ só me chamar! Como posso te ajudar? 😊`;
-
-            // Save message and mark as greeted
-            await ensureConversationAndSaveMessage(phoneNumber, contactName || firstName, messageText);
+            const greetingMsg = `Oi ${firstName}! 😊✈️\n\nQue bom te ver por aqui! Tá ${genderSuffix} pra sua viagem pra *${destino}*? 🏝️\n\nSou o Téo, seu companheiro de viagem! Bora aproveitar essa aventura juntos! Durante a viagem, posso te ajudar com:\n\n📍 Me envie sua *localização* e eu busco restaurantes, atrações, farmácias e mais pertinho de você\n🌤️ Previsão do tempo no destino\n✈️ Acompanhamento do seu voo em tempo real\n🗺️ Dicas de passeios e roteiros personalizados\n\nÉ só me chamar! Como posso te ajudar? 😊`;
 
             // Update collected_data with _concierge_greeted flag
-            if (convForGreeting?.id) {
-              const updatedData = { ...collectedData, _concierge_greeted: true };
-              await supabase.from("whatsapp_conversations").update({ collected_data: updatedData }).eq("id", convForGreeting.id);
-            }
+            const updatedData = { ...collectedData, _concierge_greeted: true };
+            await supabase.from("whatsapp_conversations").update({ collected_data: updatedData }).eq("id", convForGreeting.id);
 
             // Save assistant message in history
             const { data: convAfterGreet } = await supabase
               .from("whatsapp_conversations")
               .select("id, messages_history")
-              .eq("phone_number", phoneNumber)
-              .order("updated_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
+              .eq("id", convForGreeting.id)
+              .single();
 
             if (convAfterGreet) {
               const history = Array.isArray(convAfterGreet.messages_history) ? convAfterGreet.messages_history : [];
@@ -1981,7 +2018,7 @@ serve(async (req) => {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
-          // If already greeted, continue to normal flow (AI will respond with concierge context)
+          // If already greeted, continue to normal flow (AI will respond with concierge prompt)
         }
       }
 
@@ -2186,8 +2223,29 @@ serve(async (req) => {
         console.log("[MEMORY] Found memory for", phoneNumber, "- name:", clientMemory.client_name);
       }
 
+      // Check if this client is a concierge client (active trip) — use concierge prompt instead of sales
+      let conciergePromptOverride: string | null = null;
+      {
+        const { data: activeTripForPrompt } = await supabase
+          .from("active_trips")
+          .select("client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name")
+          .eq("client_phone", phoneNumber)
+          .eq("concierge_active", true)
+          .limit(1)
+          .maybeSingle();
+
+        if (activeTripForPrompt) {
+          const destino = activeTripForPrompt.destination_city || activeTripForPrompt.destination_country || "o destino";
+          const hotel = activeTripForPrompt.hotel_name || "";
+          const checkin = activeTripForPrompt.check_in_date || "";
+          const checkout = activeTripForPrompt.check_out_date || "";
+          conciergePromptOverride = TEO_CONCIERGE_PROMPT + `\n\nCONTEXTO DA VIAGEM DO CLIENTE:\n- Destino: ${destino}\n- Hotel: ${hotel || "não informado"}\n- Check-in: ${checkin}\n- Check-out: ${checkout}\n- Nome: ${activeTripForPrompt.client_name || "não informado"}\n`;
+          console.log(`🎒 Using CONCIERGE prompt for ${phoneNumber} → ${destino}`);
+        }
+      }
+
       // Get AI response with memory context
-      const aiResponse = await getAiResponse(historyForAi, memoryContext);
+      const aiResponse = await getAiResponse(historyForAi, memoryContext, conciergePromptOverride);
 
       // Extract collected data and status
       const { data: newCollectedData, status: conversationStatus } = extractCollectedData(
