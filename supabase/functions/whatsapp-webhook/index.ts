@@ -518,6 +518,15 @@ O QUE VOCÊ NUNCA FAZ:
 - NUNCA encerra a conversa ou se despede — sempre faz uma nova pergunta ou sugestão
 - NUNCA menciona preços, pacotes ou vendas
 - NUNCA fala de forma impessoal ou formal — é sempre "nossa viagem", nunca "sua viagem"
+- NUNCA INVENTE datas de aniversário, eventos pessoais ou informações que não estejam explicitamente nas INFORMAÇÕES ESPECIAIS. Se não há data de aniversário nas notas, NÃO mencione aniversário.
+- NUNCA dê parabéns por aniversário a menos que a data esteja EXPLICITAMENTE nas informações especiais E coincida com a data atual.
+
+CONSCIÊNCIA TEMPORAL (CRÍTICO):
+- Você SEMPRE receberá a DATA ATUAL e a FASE DA VIAGEM no contexto.
+- RESPEITE a fase: se é PRÉ-VIAGEM, o cliente AINDA NÃO está no destino. Fale de preparativos, expectativas, contagem regressiva.
+- Se é DURANTE A VIAGEM, aí sim aja como companheiro presente no destino.
+- Se é PÓS-VIAGEM, pergunte como foi, peça feedback, celebre as memórias.
+- NUNCA pergunte "como está o hotel?" ou "já foi naquele restaurante?" se o cliente ainda nem viajou!
 
 SERVIÇOS DISPONÍVEIS (mencione quando relevante):
 📍 O cliente pode enviar a localização e você busca lugares perto (restaurantes, farmácias, atrações)
@@ -2113,13 +2122,33 @@ serve(async (req) => {
             // Gerar saudação dinamicamente via IA
             let greetingMsg = "";
             try {
+              // Calculate trip phase for greeting
+              const todayStr = new Date().toISOString().split('T')[0];
+              const checkInDate = activeTripForGreeting.check_in_date || "";
+              const checkOutDate = activeTripForGreeting.check_out_date || "";
+              let greetingPhase = "durante";
+              let greetingPhaseInstruction = "";
+              if (checkInDate && todayStr < checkInDate) {
+                const daysUntil = Math.ceil((new Date(checkInDate).getTime() - new Date(todayStr).getTime()) / (1000 * 60 * 60 * 24));
+                greetingPhase = "pré-viagem";
+                greetingPhaseInstruction = `FASE: PRÉ-VIAGEM. Faltam ${daysUntil} dias para a viagem! O cliente AINDA NÃO está viajando. Fale de preparativos, expectativas, contagem regressiva. NÃO pergunte como está o hotel ou o destino.`;
+              } else if (checkOutDate && todayStr > checkOutDate) {
+                greetingPhase = "pós-viagem";
+                greetingPhaseInstruction = `FASE: PÓS-VIAGEM. A viagem já acabou. Pergunte como foi, celebre as memórias.`;
+              } else {
+                greetingPhaseInstruction = `FASE: DURANTE A VIAGEM. O cliente está viajando agora! Aja como companheiro presente.`;
+              }
+
               const greetingPrompt = `Gere uma saudação CURTA e animada do Téo para ${firstName} (gênero inferido: ${gender}).
 A viagem é NOSSA (do Téo também). Destino: ${destino}.${hotel ? ` Hotel: ${hotel}.` : ""}
+DATA ATUAL: ${todayStr}. Check-in: ${checkInDate}. Check-out: ${checkOutDate}.
+${greetingPhaseInstruction}
 Regras OBRIGATÓRIAS:
 - ${genderRule}
 - SEMPRE fale "nossa viagem", NUNCA "sua viagem"
 - Tom: companheiro de viagem animado, informal, com emojis
 - Se apresente como Téo, companheiro de viagem
+- RESPEITE A FASE DA VIAGEM: ${greetingPhase === "pré-viagem" ? "Fale de preparativos e expectativas, NÃO como se já estivesse no destino" : greetingPhase === "pós-viagem" ? "Pergunte como foi a viagem" : "Aja como companheiro presente no destino"}
 - Inclua estes serviços disponíveis:
   📍 Enviar localização para buscar restaurantes, atrações e mais por perto
   🌤️ Previsão do tempo no destino
@@ -2128,6 +2157,7 @@ Regras OBRIGATÓRIAS:
   📄 Vouchers e documentos da viagem
 - Pergunte como pode ajudar
 - Máximo 800 caracteres
+- NUNCA invente datas de aniversário ou eventos pessoais
 - Retorne APENAS o texto da mensagem, sem aspas nem explicações`;
 
               const greetingResponse = await callGemini(
@@ -2440,7 +2470,22 @@ Regras OBRIGATÓRIAS:
           const dataVooVolta = activeTripForPrompt.return_flight_date || "";
           const timezone = activeTripForPrompt.destination_timezone || "America/Sao_Paulo";
           
-          let contexto = `\n\nCONTEXTO COMPLETO DA NOSSA VIAGEM:\n- Nome do cliente: ${activeTripForPrompt.client_name || "não informado"}\n- Destino: ${destino}\n- Hotel: ${hotel || "não informado"}\n- Check-in: ${checkin}\n- Check-out: ${checkout}`;
+          // Calculate trip phase
+          const todayForPhase = new Date().toISOString().split('T')[0];
+          let tripPhase = "durante";
+          let tripPhaseInstruction = "";
+          if (checkin && todayForPhase < checkin) {
+            const daysUntilTrip = Math.ceil((new Date(checkin).getTime() - new Date(todayForPhase).getTime()) / (1000 * 60 * 60 * 24));
+            tripPhase = "pré-viagem";
+            tripPhaseInstruction = `\n\n⚠️ FASE DA VIAGEM: PRÉ-VIAGEM (faltam ${daysUntilTrip} dias)\nO cliente AINDA NÃO está viajando. A viagem começa em ${daysUntilTrip} dias.\nFale sobre preparativos, expectativas, o que levar, contagem regressiva.\nNÃO pergunte como está o hotel, NÃO pergunte sobre restaurantes no destino como se já estivesse lá.\nVocê pode falar sobre o que vão fazer juntos quando chegarem, dar dicas de preparação, etc.`;
+          } else if (checkout && todayForPhase > checkout) {
+            tripPhase = "pós-viagem";
+            tripPhaseInstruction = `\n\n⚠️ FASE DA VIAGEM: PÓS-VIAGEM\nA viagem já acabou. Pergunte como foi, peça feedback, celebre as memórias.\nNÃO fale como se ainda estivessem viajando.`;
+          } else {
+            tripPhaseInstruction = `\n\n⚠️ FASE DA VIAGEM: DURANTE A VIAGEM\nO cliente está viajando AGORA. Aja como companheiro presente no destino.`;
+          }
+
+          let contexto = `\n\nDATA ATUAL: ${todayForPhase}${tripPhaseInstruction}\n\nCONTEXTO COMPLETO DA NOSSA VIAGEM:\n- Nome do cliente: ${activeTripForPrompt.client_name || "não informado"}\n- Destino: ${destino}\n- Hotel: ${hotel || "não informado"}\n- Check-in: ${checkin}\n- Check-out: ${checkout}`;
           if (vooIda) contexto += `\n- Voo ida: ${vooIda}${dataVooIda ? ` em ${dataVooIda}` : ""}`;
           if (vooVolta) contexto += `\n- Voo volta: ${vooVolta}${dataVooVolta ? ` em ${dataVooVolta}` : ""}`;
           contexto += `\n- Fuso horário: ${timezone}`;
