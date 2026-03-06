@@ -258,6 +258,47 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
     }
   };
 
+  const extractStoragePath = (fileUrl: string): string => {
+    if (!fileUrl) return '';
+
+    if (!fileUrl.includes('/storage/v1/object/')) {
+      return fileUrl;
+    }
+
+    const publicPrefix = '/storage/v1/object/public/trip-documents/';
+    const signedPrefix = '/storage/v1/object/sign/trip-documents/';
+
+    if (fileUrl.includes(publicPrefix)) {
+      return fileUrl.split(publicPrefix)[1] || '';
+    }
+
+    if (fileUrl.includes(signedPrefix)) {
+      return (fileUrl.split(signedPrefix)[1] || '').split('?')[0];
+    }
+
+    return '';
+  };
+
+  const openTripDocument = async (doc: TripDocument) => {
+    try {
+      const storagePath = extractStoragePath(doc.file_url);
+      if (!storagePath) throw new Error('Caminho do arquivo inválido');
+
+      const { data, error } = await supabase.storage
+        .from('trip-documents')
+        .createSignedUrl(storagePath, 3600);
+
+      if (error || !data?.signedUrl) {
+        throw error || new Error('Erro ao gerar URL assinada');
+      }
+
+      window.open(data.signedUrl, '_blank');
+    } catch (error) {
+      console.error('Error opening document:', error);
+      toast.error('Erro ao abrir documento');
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!selectedTrip || !e.target.files?.length) return;
     
@@ -282,9 +323,7 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('trip-documents')
-        .getPublicUrl(fileName);
+      const storagePath = fileName;
 
       const { error: docError } = await supabase
         .from('trip_documents')
@@ -292,7 +331,7 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
           trip_id: selectedTrip.id,
           document_name: customDocumentName.trim(),
           document_type: documentType,
-          file_url: publicUrl,
+          file_url: storagePath,
           file_type: file.type,
           file_size: file.size,
           uploaded_by: session.user.id
@@ -348,9 +387,7 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('trip-documents')
-        .getPublicUrl(fileName);
+      const storagePath = fileName;
 
       const { error: docError } = await supabase
         .from('trip_documents')
@@ -358,7 +395,7 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
           trip_id: selectedTrip.id,
           document_name: voucherName.trim(),
           document_type: voucherType,
-          file_url: publicUrl,
+          file_url: storagePath,
           file_type: file.type,
           file_size: file.size,
           uploaded_by: session.user.id
@@ -1178,7 +1215,7 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      onClick={() => window.open(doc.file_url, '_blank')}
+                                      onClick={() => openTripDocument(doc)}
                                     >
                                       <Download className="w-4 h-4" />
                                     </Button>
@@ -1321,14 +1358,14 @@ export const ClientDetailDialog = ({ client, open, onOpenChange }: ClientDetailD
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      onClick={() => window.open(doc.file_url, '_blank')}
+                                      onClick={() => openTripDocument(doc)}
                                     >
                                       <Eye className="w-4 h-4" />
                                     </Button>
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      onClick={() => window.open(doc.file_url, '_blank')}
+                                      onClick={() => openTripDocument(doc)}
                                     >
                                       <Download className="w-4 h-4" />
                                     </Button>
