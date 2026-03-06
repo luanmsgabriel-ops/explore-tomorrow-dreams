@@ -1,61 +1,61 @@
 
 
-# Plano: Corrigir Téo Concierge e adicionar ativação na aba Viagens
+# Plano: Personalidade "viajando junto", envio de vouchers e notas especiais do concierge
 
-## Problemas
+## 3 Entregas
 
-1. **Téo concierge tenta cotar**: Mesmo com `conciergePromptOverride`, o fluxo pós-IA ainda executa `extractCollectedData` e `parseQuotationTag`, permitindo que tags de cotação sejam processadas.
+### 1. Personalidade "nossa viagem" no prompt concierge
 
-2. **Dados incompletos no prompt concierge**: O prompt só inclui destino, hotel, check-in e check-out da `active_trips`. Faltam voo, localizador, endereço do hotel, dicas, timezone, etc.
+Atualizar o `TEO_CONCIERGE_PROMPT` no `whatsapp-webhook/index.ts` para que o Téo fale em primeira pessoa do plural:
+- "nossa viagem", "vamos curtir muito", "tô ansioso pra ir também"
+- Sempre se incluir como se estivesse viajando junto
+- Adicionar exemplos concretos no prompt para o modelo seguir
 
-3. **Sem ativação de concierge na aba Viagens**: O admin precisa ir para a aba Concierge separadamente. Precisa de um toggle na aba Viagens.
+**Arquivo**: `supabase/functions/whatsapp-webhook/index.ts` (linhas 487-522)
 
-## Solução
+### 2. Envio de vouchers e informações logísticas pelo concierge
 
-### 1. Bypass de cotação para clientes concierge (`whatsapp-webhook`)
+Quando o concierge está ativo e o cliente pede voucher, documentos, endereço do hotel, horário do voo etc., o Téo deve buscar essas informações e enviar.
 
-No fluxo principal (~linha 2248-2260), quando `conciergePromptOverride` estiver ativo:
-- **Pular** `extractCollectedData` e `parseQuotationTag` — não extrair dados de cotação
-- **Pular** toda a lógica de `quotationData`, `changeRequest`, `createQuoteRequest`
-- Ir direto para enviar a resposta limpa sem processar tags
-- Manter apenas `cleanAiResponse` para limpar qualquer tag residual
+**Implementação**:
+- No bloco de concierge bypass (linha 2265), **antes** de enviar a resposta, detectar se o cliente pediu voucher/documento (palavras-chave: "voucher", "documento", "pdf", "passagem", "reserva")
+- Se pediu: buscar `client_trips` vinculada ao mesmo destino/datas do `active_trips`, e depois buscar `trip_documents` dessa viagem
+- Gerar signed URLs dos documentos e enviar via WhatsApp (usando `sendWhatsAppMessage` com link)
+- Enriquecer o contexto do prompt com dados completos da `client_trips`: `hotel_address`, `hotel_link`, `flight_number`, `flight_locator`, `flight_departure_time`, `flight_return_time`, `hotel_checkin_time`, `hotel_checkout_time`, `trip_tips`
 
-### 2. Enriquecer o contexto do prompt concierge (`whatsapp-webhook`)
+**Fluxo**:
+1. Ao montar o `conciergePromptOverride`, buscar também a `client_trips` correspondente e incluir todos os dados logísticos no contexto
+2. No bypass, após gerar a resposta, verificar se a mensagem do usuário contém pedido de documento
+3. Se sim, buscar documentos em `trip_documents` → gerar signed URLs → enviar via WhatsApp
 
-Na consulta de `active_trips` (linha 2229-2235), incluir **todos** os campos relevantes:
-- `outbound_flight_iata`, `return_flight_iata`, `outbound_flight_date`, `return_flight_date`
-- `destination_lat`, `destination_lng`, `destination_timezone`
-- `hotel_name`
+**Arquivo**: `supabase/functions/whatsapp-webhook/index.ts`
 
-Injetar no prompt concierge:
-```
-CONTEXTO COMPLETO DA VIAGEM:
-- Destino: Cancún, México
-- Hotel: Grand Palladium
-- Check-in: 15/03/2026 | Check-out: 22/03/2026
-- Voo ida: LA3456 em 15/03 | Voo volta: LA3457 em 22/03
-- Fuso: America/Cancun
-```
+### 3. Campo "Notas Especiais para o Téo" na aba Viagens + tabela
 
-### 3. Adicionar toggle concierge na aba Viagens (`TripManager`)
+Criar um campo na tabela `active_trips` para armazenar informações especiais que o Téo deve saber durante a viagem (gostos, datas comemorativas, restrições, etc.).
 
-Na tabela `client_trips` **não** existe campo de concierge (está na `active_trips`). Em vez de alterar o schema, adicionar um botão/link na tela de detalhes da viagem que abre a aba Concierge ou permite ativar diretamente criando/atualizando um registro em `active_trips`.
+**Migração de banco**: Adicionar coluna `concierge_special_notes text` à tabela `active_trips`.
 
-Abordagem: Na tela de detalhes da viagem selecionada, adicionar uma nova tab "Concierge" que:
-- Verifica se existe um registro em `active_trips` com dados compatíveis
-- Se não existir, mostra botão "Ativar Concierge" que cria o registro usando os dados da viagem (destino, datas, hotel)
-- Se existir, mostra toggle de ativar/desativar + campos de agendamento (igual ao ConciergeManager)
-- Requer campo de telefone do cliente para criar o registro
+**UI no TripManager**: Na tab "Concierge" dos detalhes da viagem, adicionar um campo `Textarea` "Informações Especiais para o Téo" com placeholder explicativo (ex: "Aniversário do cliente em 20/03, vegetariano, gosta de mergulho..."). Salvar em `active_trips.concierge_special_notes`.
 
-## Arquivos Modificados
+**No webhook**: Incluir o conteúdo de `concierge_special_notes` no contexto injetado no prompt, para que o Téo saiba e use naturalmente (ex: dar parabéns no aniversário).
+
+**Arquivos**:
+- Migração SQL: `ALTER TABLE active_trips ADD COLUMN concierge_special_notes text;`
+- `src/components/admin/TripManager.tsx`: campo textarea na tab Concierge
+- `supabase/functions/whatsapp-webhook/index.ts`: incluir no select e no contexto
+
+## Resumo dos Arquivos
 
 1. **`supabase/functions/whatsapp-webhook/index.ts`**:
-   - Expandir select de `active_trips` para incluir todos os campos
-   - Enriquecer o contexto injetado no `TEO_CONCIERGE_PROMPT`
-   - Quando `conciergePromptOverride` ativo, pular `extractCollectedData`, `parseQuotationTag` e lógica de cotação — ir direto ao envio
-   - Exceto se o cliente explicitamente pedir cotação (verificar palavras-chave como "cotar", "quanto custa")
+   - Atualizar `TEO_CONCIERGE_PROMPT` com personalidade "nossa viagem"
+   - Buscar `client_trips` + `trip_documents` para enviar vouchers
+   - Incluir `concierge_special_notes` no contexto
+   - Incluir dados logísticos completos da `client_trips` (endereço hotel, link maps, horários voo, localizador, dicas)
 
 2. **`src/components/admin/TripManager.tsx`**:
-   - Adicionar tab "Concierge" nos detalhes da viagem
-   - Componente para vincular/criar registro em `active_trips` com toggle e agendamento
+   - Adicionar campo "Informações Especiais para o Téo" na tab Concierge
+
+3. **Migração SQL**:
+   - `ALTER TABLE active_trips ADD COLUMN concierge_special_notes text;`
 
