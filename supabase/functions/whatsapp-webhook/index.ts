@@ -1972,7 +1972,7 @@ serve(async (req) => {
       {
         const { data: activeTripForGreeting } = await supabase
           .from("active_trips")
-          .select("id, client_name, destination_city, destination_country, check_in_date, check_out_date")
+          .select("id, client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name")
           .eq("client_phone", phoneNumber)
           .eq("concierge_active", true)
           .limit(1)
@@ -1997,14 +1997,63 @@ serve(async (req) => {
           if (!alreadyGreeted && convForGreeting) {
             // Inferir gênero pelo primeiro nome
             const firstName = (activeTripForGreeting.client_name || "").trim().split(" ")[0];
-            const maleExceptions = ["luca", "joshua", "josua", "nikita", "asa", "mustafa", "borba", "costa", "moura", "souza", "silva", "pereira"];
-            const isNameEndingInA = firstName.toLowerCase().endsWith("a");
-            const isMaleException = maleExceptions.includes(firstName.toLowerCase());
-            const genderSuffix = (isNameEndingInA && !isMaleException) ? "ansiosa" : "ansioso";
+            const nameLower = firstName.toLowerCase();
+            
+            // Exceções masculinas: nomes que terminam em "a" mas são masculinos
+            const maleExceptions = ["luca", "joshua", "josua", "nikita", "asa", "mustafa", "borba", "costa", "moura", "souza", "silva", "pereira", "andrea", "baptista", "batista", "bethencourt", "buda", "dalila", "fonseca", "garcia", "kosta", "lima", "massa", "mota", "nasa", "oliveira", "panda", "providência", "raja", "rocha", "senna", "teixeira", "tesla", "vieira"];
+            
+            // Exceções femininas: nomes que NÃO terminam em "a" mas são femininos
+            const femaleExceptions = ["beatriz", "raquel", "mabel", "isabel", "rachel", "maris", "dolores", "ines", "inês", "agnes", "mercedes", "carmen", "miriam", "ruth", "rute", "jeniffer", "jennifer", "karen", "sharon", "gisele", "michele", "vivien", "kathleen", "bridget", "margaret", "elizabeth", "abigail", "megan", "nicole", "ingrid", "astrid", "solange", "sueli", "jussier", "nair", "zenir", "iracir"];
+            
+            const isNameEndingInA = nameLower.endsWith("a");
+            const isMaleException = maleExceptions.includes(nameLower);
+            const isFemaleException = femaleExceptions.includes(nameLower);
+            const gender = (isFemaleException || (isNameEndingInA && !isMaleException)) ? "feminino" : "masculino";
 
-            const destino = activeTripForGreeting.destination_city || activeTripForGreeting.destination_country || "seu destino";
+            const destino = activeTripForGreeting.destination_city || activeTripForGreeting.destination_country || "o destino";
+            const hotel = activeTripForGreeting.hotel_name || "";
 
-            const greetingMsg = `Oi ${firstName}! 😊✈️\n\nQue bom te ver por aqui! Tá ${genderSuffix} pra sua viagem pra *${destino}*? 🏝️\n\nSou o Téo, seu companheiro de viagem! Bora aproveitar essa aventura juntos! Durante a viagem, posso te ajudar com:\n\n📍 Me envie sua *localização* e eu busco restaurantes, atrações, farmácias e mais pertinho de você\n🌤️ Previsão do tempo no destino\n✈️ Acompanhamento do seu voo em tempo real\n🗺️ Dicas de passeios e roteiros personalizados\n\nÉ só me chamar! Como posso te ajudar? 😊`;
+            // Gerar saudação dinamicamente via IA
+            let greetingMsg = "";
+            try {
+              const greetingPrompt = `Gere uma saudação CURTA e animada do Téo para ${firstName} (gênero: ${gender}).
+A viagem é NOSSA (do Téo também). Destino: ${destino}.${hotel ? ` Hotel: ${hotel}.` : ""}
+Regras OBRIGATÓRIAS:
+- Use concordância de gênero correta: "${gender === 'feminino' ? 'ansiosa/preparada/animada' : 'ansioso/preparado/animado'}"
+- SEMPRE fale "nossa viagem", NUNCA "sua viagem"
+- Tom: companheiro de viagem animado, informal, com emojis
+- Se apresente como Téo, companheiro de viagem
+- Inclua estes serviços disponíveis:
+  📍 Enviar localização para buscar restaurantes, atrações e mais por perto
+  🌤️ Previsão do tempo no destino
+  ✈️ Acompanhamento do voo em tempo real
+  🗺️ Dicas de passeios e roteiros personalizados
+  📄 Vouchers e documentos da viagem
+- Pergunte como pode ajudar
+- Máximo 800 caracteres
+- Retorne APENAS o texto da mensagem, sem aspas nem explicações`;
+
+              const greetingResponse = await callGemini(
+                [{ role: "user", content: greetingPrompt }],
+                { model: "google/gemini-2.5-flash-lite", maxTokens: 400 }
+              );
+
+              if (greetingResponse.ok) {
+                const greetingData = await greetingResponse.json();
+                const aiGreeting = greetingData.choices?.[0]?.message?.content?.trim();
+                if (aiGreeting && aiGreeting.length > 50) {
+                  greetingMsg = aiGreeting;
+                }
+              }
+            } catch (e) {
+              console.error("Erro ao gerar saudação via IA:", e);
+            }
+
+            // Fallback: template corrigido com "nossa viagem" e gênero correto
+            if (!greetingMsg) {
+              const genderSuffix = gender === "feminino" ? "ansiosa" : "ansioso";
+              greetingMsg = `Oi ${firstName}! 😊✈️\n\nQue bom te ver por aqui! Tá ${genderSuffix} pra *nossa* viagem pra *${destino}*? 🏝️\n\nSou o Téo, seu companheiro de viagem! Bora aproveitar essa aventura juntos! Durante a viagem, posso te ajudar com:\n\n📍 Me envie sua *localização* e eu busco restaurantes, atrações, farmácias e mais pertinho de você\n🌤️ Previsão do tempo no destino\n✈️ Acompanhamento do seu voo em tempo real\n🗺️ Dicas de passeios e roteiros personalizados\n📄 Vouchers e documentos da viagem\n\nÉ só me chamar! Como posso te ajudar? 😊`;
+            }
 
             // Update collected_data with _concierge_greeted flag
             const updatedData = { ...collectedData, _concierge_greeted: true };
