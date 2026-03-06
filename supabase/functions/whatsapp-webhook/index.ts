@@ -484,14 +484,23 @@ Formate uma resposta clara e organizada para WhatsApp. Se houver telefones, masc
 
 // ========== Teo Concierge Prompt (companheiro de viagem) ==========
 
-const TEO_CONCIERGE_PROMPT = `Você é o Téo, companheiro de viagem do cliente! 🌍✈️ Você NÃO é um vendedor, NÃO é um atendente — você é o PARCEIRO DE VIAGEM que está junto com o cliente nessa aventura!
+const TEO_CONCIERGE_PROMPT = `Você é o Téo, e esta viagem é NOSSA! 🌍✈️ Você NÃO é um vendedor, NÃO é um atendente — você é o COMPANHEIRO DE VIAGEM que está viajando junto com o cliente nessa aventura!
 
-PERSONALIDADE:
-- Você está TÃO animado quanto o cliente pela viagem! Você "viaja junto"!
+PERSONALIDADE — VIAJANDO JUNTO:
+- Você SEMPRE fala como se estivesse viajando junto: "nossa viagem", "nosso hotel", "nosso voo"
+- Você está TÃO animado quanto o cliente! "Tô ansioso pra ir também!", "Vamos curtir muito!", "Bora aproveitar!"
+- Use primeira pessoa do PLURAL: "vamos", "nosso", "a gente"
 - Tom divertido, leve, usando gírias brasileiras naturais (tipo "bora!", "demais!", "partiu!", "show!")
-- Você celebra cada momento: "Que lugar incrível!", "Tô morrendo de vontade de ver as fotos!"
+- Você celebra cada momento: "Que lugar incrível! Tô morrendo de vontade de ver as fotos!"
 - Você é curioso e faz perguntas sobre como está sendo a viagem
 - Você dá sugestões proativas como um amigo que conhece o destino
+
+EXEMPLOS DE COMO FALAR:
+- "E aí, como tá nossa viagem? Já foi naquele restaurante que te indiquei?" ✅
+- "Nosso voo sai amanhã cedo, já separou tudo?" ✅
+- "Vamos curtir muito esse destino! Tô animadão!" ✅
+- "A viagem do senhor está programada para..." ❌ NUNCA fale assim
+- "Seu voo está confirmado..." ❌ NUNCA fale assim, diga "Nosso voo tá confirmado!"
 
 O QUE VOCÊ FAZ:
 - Sugere restaurantes, passeios, experiências locais
@@ -499,6 +508,7 @@ O QUE VOCÊ FAZ:
 - Ajuda com qualquer dúvida sobre o destino
 - Comemora cada conquista da viagem ("Conseguiu ir naquele mirante? QUE DEMAIS!")
 - Se o cliente mandar foto ou contar algo, reage com entusiasmo genuíno
+- Se o cliente pedir voucher, documento, reserva, passagem, endereço do hotel, horário do voo — forneça as informações que você tem no contexto da viagem
 - Se não souber algo específico, sugere que o cliente envie a localização para buscar lugares perto
 
 O QUE VOCÊ NUNCA FAZ:
@@ -507,12 +517,14 @@ O QUE VOCÊ NUNCA FAZ:
 - NUNCA trata o cliente como um lead de vendas
 - NUNCA encerra a conversa ou se despede — sempre faz uma nova pergunta ou sugestão
 - NUNCA menciona preços, pacotes ou vendas
+- NUNCA fala de forma impessoal ou formal — é sempre "nossa viagem", nunca "sua viagem"
 
 SERVIÇOS DISPONÍVEIS (mencione quando relevante):
 📍 O cliente pode enviar a localização e você busca lugares perto (restaurantes, farmácias, atrações)
 🌤️ Previsão do tempo no destino
 ✈️ Acompanhamento de voo em tempo real
 🗺️ Dicas e roteiros personalizados
+📄 Vouchers e documentos da viagem (se o cliente pedir)
 
 REGRAS DE FORMATO:
 - Respostas curtas e naturais (máximo 3-4 parágrafos)
@@ -2228,7 +2240,7 @@ serve(async (req) => {
       {
         const { data: activeTripForPrompt } = await supabase
           .from("active_trips")
-          .select("client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name, outbound_flight_iata, return_flight_iata, outbound_flight_date, return_flight_date, destination_lat, destination_lng, destination_timezone")
+          .select("client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name, outbound_flight_iata, return_flight_iata, outbound_flight_date, return_flight_date, destination_lat, destination_lng, destination_timezone, concierge_special_notes")
           .eq("client_phone", phoneNumber)
           .eq("concierge_active", true)
           .limit(1)
@@ -2245,13 +2257,44 @@ serve(async (req) => {
           const dataVooVolta = activeTripForPrompt.return_flight_date || "";
           const timezone = activeTripForPrompt.destination_timezone || "America/Sao_Paulo";
           
-          let contexto = `\n\nCONTEXTO COMPLETO DA VIAGEM DO CLIENTE:\n- Nome: ${activeTripForPrompt.client_name || "não informado"}\n- Destino: ${destino}\n- Hotel: ${hotel || "não informado"}\n- Check-in: ${checkin}\n- Check-out: ${checkout}`;
+          let contexto = `\n\nCONTEXTO COMPLETO DA NOSSA VIAGEM:\n- Nome do cliente: ${activeTripForPrompt.client_name || "não informado"}\n- Destino: ${destino}\n- Hotel: ${hotel || "não informado"}\n- Check-in: ${checkin}\n- Check-out: ${checkout}`;
           if (vooIda) contexto += `\n- Voo ida: ${vooIda}${dataVooIda ? ` em ${dataVooIda}` : ""}`;
           if (vooVolta) contexto += `\n- Voo volta: ${vooVolta}${dataVooVolta ? ` em ${dataVooVolta}` : ""}`;
           contexto += `\n- Fuso horário: ${timezone}`;
           if (activeTripForPrompt.destination_lat && activeTripForPrompt.destination_lng) {
             contexto += `\n- Coordenadas: ${activeTripForPrompt.destination_lat}, ${activeTripForPrompt.destination_lng}`;
           }
+
+          // Fetch client_trips data for logistics details
+          const { data: clientTripData } = await supabase
+            .from("client_trips")
+            .select("hotel_address, hotel_link, flight_number, flight_locator, flight_departure_time, flight_return_time, hotel_checkin_time, hotel_checkout_time, trip_tips, flight_return_number, hotel_checkin_date, hotel_checkout_date, id")
+            .eq("destination_name", destino)
+            .gte("return_date", activeTripForPrompt.check_in_date)
+            .lte("departure_date", activeTripForPrompt.check_out_date)
+            .limit(1)
+            .maybeSingle();
+
+          if (clientTripData) {
+            if (clientTripData.hotel_address) contexto += `\n- Endereço do hotel: ${clientTripData.hotel_address}`;
+            if (clientTripData.hotel_link) contexto += `\n- Link do hotel (Maps): ${clientTripData.hotel_link}`;
+            if (clientTripData.flight_number) contexto += `\n- Número do voo ida: ${clientTripData.flight_number}`;
+            if (clientTripData.flight_return_number) contexto += `\n- Número do voo volta: ${clientTripData.flight_return_number}`;
+            if (clientTripData.flight_locator) contexto += `\n- Localizador do voo: ${clientTripData.flight_locator}`;
+            if (clientTripData.flight_departure_time) contexto += `\n- Horário do voo ida: ${clientTripData.flight_departure_time}`;
+            if (clientTripData.flight_return_time) contexto += `\n- Horário do voo volta: ${clientTripData.flight_return_time}`;
+            if (clientTripData.hotel_checkin_time) contexto += `\n- Check-in hotel: ${clientTripData.hotel_checkin_date || checkin} às ${clientTripData.hotel_checkin_time}`;
+            if (clientTripData.hotel_checkout_time) contexto += `\n- Check-out hotel: ${clientTripData.hotel_checkout_date || checkout} às ${clientTripData.hotel_checkout_time}`;
+            if (clientTripData.trip_tips) contexto += `\n- Dicas da viagem: ${clientTripData.trip_tips}`;
+          }
+
+          // Add special notes for Téo
+          if (activeTripForPrompt.concierge_special_notes) {
+            contexto += `\n\nINFORMAÇÕES ESPECIAIS (use naturalmente, sem mencionar que são notas do admin):\n${activeTripForPrompt.concierge_special_notes}`;
+          }
+
+          // Store client trip ID for document retrieval later
+          (activeTripForPrompt as any)._clientTripId = clientTripData?.id || null;
           
           conciergePromptOverride = TEO_CONCIERGE_PROMPT + contexto;
           console.log(`🎒 Using CONCIERGE prompt for ${phoneNumber} → ${destino}`);
@@ -2294,6 +2337,69 @@ serve(async (req) => {
         }
 
         await sendWhatsAppMessage(phoneNumber, cleanResponse);
+
+        // Check if client asked for vouchers/documents and send them
+        const docKeywords = ["voucher", "documento", "pdf", "passagem", "reserva", "comprovante", "bilhete", "ticket"];
+        const msgLower = (messageText || "").toLowerCase();
+        const askedForDocs = docKeywords.some(kw => msgLower.includes(kw));
+
+        if (askedForDocs) {
+          try {
+            // Find client_trips matching this active trip
+            const { data: activeTripRef } = await supabase
+              .from("active_trips")
+              .select("destination_city, destination_country, check_in_date, check_out_date")
+              .eq("client_phone", phoneNumber)
+              .eq("concierge_active", true)
+              .limit(1)
+              .maybeSingle();
+
+            if (activeTripRef) {
+              const destName = activeTripRef.destination_city || activeTripRef.destination_country || "";
+              const { data: clientTrips } = await supabase
+                .from("client_trips")
+                .select("id")
+                .eq("destination_name", destName)
+                .gte("return_date", activeTripRef.check_in_date)
+                .lte("departure_date", activeTripRef.check_out_date)
+                .limit(1)
+                .maybeSingle();
+
+              if (clientTrips) {
+                const { data: tripDocs } = await supabase
+                  .from("trip_documents")
+                  .select("document_name, file_url, document_type, file_type")
+                  .eq("trip_id", clientTrips.id);
+
+                if (tripDocs && tripDocs.length > 0) {
+                  for (const doc of tripDocs) {
+                    try {
+                      const storagePath = doc.file_url.includes('/storage/v1/object/')
+                        ? (doc.file_url.split('/trip-documents/')[1] || '').split('?')[0]
+                        : doc.file_url;
+
+                      if (!storagePath) continue;
+
+                      const { data: signedData } = await supabase.storage
+                        .from('trip-documents')
+                        .createSignedUrl(storagePath, 3600);
+
+                      if (signedData?.signedUrl) {
+                        await sendWhatsAppMessage(phoneNumber, `📄 *${doc.document_name}* (${doc.document_type})\n${signedData.signedUrl}`);
+                      }
+                    } catch (docErr) {
+                      console.error("[CONCIERGE] Error sending document:", doc.document_name, docErr);
+                    }
+                  }
+                } else {
+                  await sendWhatsAppMessage(phoneNumber, "Não encontrei documentos salvos pra nossa viagem ainda. Vou verificar com a equipe! 📋");
+                }
+              }
+            }
+          } catch (docError) {
+            console.error("[CONCIERGE] Error fetching documents:", docError);
+          }
+        }
 
         // Update client memory (fire-and-forget)
         const allMsgsForMemory = [...historyForAi, { role: "assistant", content: cleanResponse }];

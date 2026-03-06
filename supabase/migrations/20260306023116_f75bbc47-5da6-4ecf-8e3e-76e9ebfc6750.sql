@@ -1,0 +1,1 @@
+ALTER TABLE public.active_trips ADD COLUMN concierge_special_notes text;

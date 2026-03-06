@@ -49,6 +49,7 @@ export type Database = {
           client_phone: string
           concierge_active: boolean | null
           concierge_end_date: string | null
+          concierge_special_notes: string | null
           concierge_start_date: string | null
           created_at: string | null
           daily_messages_sent: number | null
@@ -73,6 +74,7 @@ export type Database = {
           client_phone: string
           concierge_active?: boolean | null
           concierge_end_date?: string | null
+          concierge_special_notes?: string | null
           concierge_start_date?: string | null
           created_at?: string | null
           daily_messages_sent?: number | null
@@ -97,6 +99,7 @@ export type Database = {
           client_phone?: string
           concierge_active?: boolean | null
           concierge_end_date?: string | null
+          concierge_special_notes?: string | null
           concierge_start_date?: string | null
           created_at?: string | null
           daily_messages_sent?: number | null

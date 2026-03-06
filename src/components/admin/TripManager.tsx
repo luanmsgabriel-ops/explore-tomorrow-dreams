@@ -136,6 +136,8 @@ export const TripManager = () => {
   const [conciergePhone, setConciergePhone] = useState('');
   const [conciergeStartDate, setConciergeStartDate] = useState('');
   const [conciergeEndDate, setConciergeEndDate] = useState('');
+  const [conciergeSpecialNotes, setConciergeSpecialNotes] = useState('');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -466,10 +468,12 @@ export const TripManager = () => {
         setConciergePhone(match.client_phone || '');
         setConciergeStartDate(match.concierge_start_date || '');
         setConciergeEndDate(match.concierge_end_date || '');
+        setConciergeSpecialNotes(match.concierge_special_notes || '');
       } else {
         setConciergePhone('');
         setConciergeStartDate('');
         setConciergeEndDate('');
+        setConciergeSpecialNotes('');
       }
     } catch (err) {
       console.error('Error fetching concierge:', err);
@@ -545,6 +549,25 @@ export const TripManager = () => {
       toast.success('Agendamento salvo');
     } catch (err) {
       toast.error('Erro ao salvar agendamento');
+    }
+  };
+
+  const handleSaveConciergeNotes = async () => {
+    if (!conciergeData) return;
+    setIsSavingNotes(true);
+    try {
+      const { error } = await supabase
+        .from('active_trips')
+        .update({ concierge_special_notes: conciergeSpecialNotes || null })
+        .eq('id', conciergeData.id);
+
+      if (error) throw error;
+      setConciergeData({ ...conciergeData, concierge_special_notes: conciergeSpecialNotes || null });
+      toast.success('Informações especiais salvas');
+    } catch (err) {
+      toast.error('Erro ao salvar informações');
+    } finally {
+      setIsSavingNotes(false);
     }
   };
 
@@ -1283,8 +1306,24 @@ export const TripManager = () => {
                         </Button>
                       </div>
 
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-foreground">Informações Especiais para o Téo</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Adicione informações que o Téo deve saber durante a viagem (gostos, datas comemorativas, restrições, pedidos especiais). Ele usará essas informações naturalmente nas conversas.
+                        </p>
+                        <Textarea
+                          placeholder="Ex: Aniversário do cliente em 20/03, vegetariano, adora mergulho, pediu surpresa de aniversário no hotel..."
+                          value={conciergeSpecialNotes}
+                          onChange={(e) => setConciergeSpecialNotes(e.target.value)}
+                          rows={4}
+                        />
+                        <Button onClick={handleSaveConciergeNotes} variant="outline" size="sm" disabled={isSavingNotes}>
+                          {isSavingNotes ? 'Salvando...' : 'Salvar Informações Especiais'}
+                        </Button>
+                      </div>
+
                       <div className="text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
-                        <p>O Téo Concierge acompanhará o cliente durante a viagem via WhatsApp, respondendo dúvidas sobre o destino, hotel, voos e sugerindo atividades. Ele <strong>não</strong> tentará coletar dados de cotação enquanto o concierge estiver ativo.</p>
+                        <p>O Téo Concierge viaja junto com o cliente via WhatsApp, respondendo dúvidas sobre o destino, hotel, voos, enviando vouchers e sugerindo atividades. Ele <strong>não</strong> tentará coletar dados de cotação enquanto o concierge estiver ativo.</p>
                       </div>
                     </div>
                   ) : (
