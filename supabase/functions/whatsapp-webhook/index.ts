@@ -1946,9 +1946,18 @@ serve(async (req) => {
       }
 
       // ========== CONCIERGE: Deactivation request ==========
-      const deactivateKeywords = ["para", "pare", "parar", "desativar", "para de mandar", "não mande mais", "desativa"];
+      // Use specific phrases to avoid false positives (e.g. "preparou para mim" matching "para")
+      const deactivatePhrases = [
+        "pare", "parar", "desativar", "desativa", "para de mandar", "não mande mais",
+        "para com isso", "para de enviar", "para teo", "para téo", "para bot",
+        "não quero mais mensagem", "não quero mais receber", "cancela as mensagens",
+        "desliga as mensagens", "desliga o concierge", "desativa o concierge",
+        "para de me mandar", "chega de mensagem",
+      ];
       const lowerMsg = messageText.toLowerCase().trim();
-      if (deactivateKeywords.some(kw => lowerMsg.includes(kw))) {
+      // Also check if the ENTIRE message is just "para" or "pare" (standalone command)
+      const isStandaloneStop = lowerMsg === "para" || lowerMsg === "pare" || lowerMsg === "parar" || lowerMsg === "stop";
+      if (isStandaloneStop || deactivatePhrases.some(kw => lowerMsg.includes(kw))) {
         const { data: activeTrips } = await supabase
           .from("active_trips")
           .select("id")
