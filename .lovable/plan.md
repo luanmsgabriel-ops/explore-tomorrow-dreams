@@ -1,56 +1,44 @@
 
 
-# Plano: Múltiplos contatos no Concierge com nome, telefone e notas individuais
+# Plano: Consciência temporal do Téo Concierge
 
-## Problema Atual
+## Problema
 
-A tabela `active_trips` tem um único campo `client_phone` e `client_name`. Não suporta múltiplos números de WhatsApp por viagem, nem edição do número principal, nem notas especiais por contato.
+O Téo Concierge trata toda viagem com `concierge_active = true` como se o cliente já estivesse viajando, sem verificar as datas reais. Resultado: cliente com viagem em abril recebe mensagens como se estivesse viajando em março, e a IA inventa datas de aniversário sem dados reais.
+
+## Causa Raiz
+
+1. As queries em `active_trips` filtram apenas `concierge_active = true`, sem comparar `check_in_date`/`check_out_date` com a data atual
+2. O `TEO_CONCIERGE_PROMPT` não recebe a data atual (`new Date().toISOString()`)
+3. Não existe distinção de fase: **pré-viagem** vs **durante viagem** vs **pós-viagem**
 
 ## Solução
 
-Criar uma tabela `concierge_contacts` para armazenar múltiplos contatos por viagem ativa, cada um com nome, telefone, status ativo e notas especiais individuais. Atualizar a UI do concierge no TripManager e adaptar o webhook para consultar esta nova tabela.
+### 1. Injetar data atual no contexto (webhook)
 
-### 1. Migração de Banco
+Adicionar `DATA ATUAL: ${new Date().toISOString().split('T')[0]}` no contexto da viagem enviado ao prompt, para que a IA saiba exatamente que dia é hoje.
 
-```sql
-CREATE TABLE public.concierge_contacts (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  trip_id uuid NOT NULL REFERENCES public.active_trips(id) ON DELETE CASCADE,
-  contact_name text NOT NULL,
-  contact_phone text NOT NULL,
-  is_active boolean NOT NULL DEFAULT true,
-  special_notes text,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
+### 2. Determinar fase da viagem e usar prompt adequado
 
-ALTER TABLE public.concierge_contacts ENABLE ROW LEVEL SECURITY;
+Calcular a fase com base nas datas:
+- **pré-viagem**: hoje < check_in_date
+- **durante viagem**: check_in_date <= hoje <= check_out_date  
+- **pós-viagem**: hoje > check_out_date
 
-CREATE POLICY "Admins can manage concierge_contacts"
-  ON public.concierge_contacts FOR ALL
-  TO authenticated
-  USING (has_role(auth.uid(), 'admin'::app_role))
-  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
-```
+Injetar instrução explícita no contexto:
+- Pré-viagem: "O cliente AINDA NÃO está viajando. A viagem começa em X dias. Fale sobre preparativos, expectativas, o que levar. NÃO pergunte como está o hotel ou o destino."
+- Durante: comportamento atual (companheiro de viagem)
+- Pós-viagem: "A viagem já acabou. Pergunte como foi, peça feedback."
 
-Ao ativar o concierge, o `client_phone` existente em `active_trips` continua sendo o número principal (para compatibilidade com o webhook), e uma entrada correspondente é criada em `concierge_contacts`.
+### 3. Aplicar mesma lógica na saudação
 
-### 2. UI no TripManager (tab Concierge)
+O greeting prompt também receberá a fase da viagem para gerar saudação adequada (ex: "Faltam X dias pra nossa viagem!" vs "Bora curtir!").
 
-Quando o concierge está ativo:
-- Mostrar o telefone principal com botão de **Editar** (ícone lápis) que permite alterar o `client_phone` em `active_trips` e o registro correspondente em `concierge_contacts`
-- Seção **"Contatos do Concierge"** com lista dos contatos cadastrados, cada um mostrando: nome, telefone, toggle ativo/inativo, textarea de notas especiais
-- Botão **"Adicionar Contato"** que abre campos inline para nome + telefone
-- O campo "Informações Especiais para o Téo" global permanece (para notas gerais da viagem)
-- Cada contato individual tem seu próprio campo de notas especiais
+### 4. Proibir invenção de datas pessoais
 
-### 3. Webhook (whatsapp-webhook)
+Adicionar regra no `TEO_CONCIERGE_PROMPT`: "NUNCA invente datas de aniversário ou eventos pessoais. Só mencione se estiver explicitamente nas INFORMAÇÕES ESPECIAIS."
 
-Na verificação de concierge ativo, além de checar `active_trips.client_phone`, também verificar se o número existe em `concierge_contacts` com `is_active = true`. Se encontrado por esta via, usar o `contact_name` e `special_notes` do contato específico para enriquecer o contexto do prompt.
+### Arquivo modificado
 
-### Arquivos Modificados
-
-1. **Migração SQL**: Criar tabela `concierge_contacts`
-2. **`src/components/admin/TripManager.tsx`**: UI para listar/adicionar/editar/remover contatos do concierge, editar telefone principal
-3. **`supabase/functions/whatsapp-webhook/index.ts`**: Consultar `concierge_contacts` para identificar contatos adicionais e injetar notas individuais no contexto
+- `supabase/functions/whatsapp-webhook/index.ts`: linhas ~2116 (greeting), ~2443 (contexto), ~487 (prompt concierge)
 
