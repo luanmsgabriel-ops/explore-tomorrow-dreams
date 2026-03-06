@@ -2228,7 +2228,7 @@ serve(async (req) => {
       {
         const { data: activeTripForPrompt } = await supabase
           .from("active_trips")
-          .select("client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name")
+          .select("client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name, outbound_flight_iata, return_flight_iata, outbound_flight_date, return_flight_date, destination_lat, destination_lng, destination_timezone")
           .eq("client_phone", phoneNumber)
           .eq("concierge_active", true)
           .limit(1)
@@ -2239,13 +2239,72 @@ serve(async (req) => {
           const hotel = activeTripForPrompt.hotel_name || "";
           const checkin = activeTripForPrompt.check_in_date || "";
           const checkout = activeTripForPrompt.check_out_date || "";
-          conciergePromptOverride = TEO_CONCIERGE_PROMPT + `\n\nCONTEXTO DA VIAGEM DO CLIENTE:\n- Destino: ${destino}\n- Hotel: ${hotel || "não informado"}\n- Check-in: ${checkin}\n- Check-out: ${checkout}\n- Nome: ${activeTripForPrompt.client_name || "não informado"}\n`;
+          const vooIda = activeTripForPrompt.outbound_flight_iata || "";
+          const vooVolta = activeTripForPrompt.return_flight_iata || "";
+          const dataVooIda = activeTripForPrompt.outbound_flight_date || "";
+          const dataVooVolta = activeTripForPrompt.return_flight_date || "";
+          const timezone = activeTripForPrompt.destination_timezone || "America/Sao_Paulo";
+          
+          let contexto = `\n\nCONTEXTO COMPLETO DA VIAGEM DO CLIENTE:\n- Nome: ${activeTripForPrompt.client_name || "não informado"}\n- Destino: ${destino}\n- Hotel: ${hotel || "não informado"}\n- Check-in: ${checkin}\n- Check-out: ${checkout}`;
+          if (vooIda) contexto += `\n- Voo ida: ${vooIda}${dataVooIda ? ` em ${dataVooIda}` : ""}`;
+          if (vooVolta) contexto += `\n- Voo volta: ${vooVolta}${dataVooVolta ? ` em ${dataVooVolta}` : ""}`;
+          contexto += `\n- Fuso horário: ${timezone}`;
+          if (activeTripForPrompt.destination_lat && activeTripForPrompt.destination_lng) {
+            contexto += `\n- Coordenadas: ${activeTripForPrompt.destination_lat}, ${activeTripForPrompt.destination_lng}`;
+          }
+          
+          conciergePromptOverride = TEO_CONCIERGE_PROMPT + contexto;
           console.log(`🎒 Using CONCIERGE prompt for ${phoneNumber} → ${destino}`);
         }
       }
 
       // Get AI response with memory context
       const aiResponse = await getAiResponse(historyForAi, memoryContext, conciergePromptOverride);
+
+      // === CONCIERGE BYPASS: skip all quotation logic ===
+      if (conciergePromptOverride) {
+        const cleanResponse = cleanAiResponse(aiResponse);
+        
+        const updatedHistory = [
+          ...(conversation.messages_history as any[] || []),
+          { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
+        ];
+
+        await supabase
+          .from("whatsapp_conversations")
+          .update({
+            client_name: conversation.client_name || contactName,
+            messages_history: updatedHistory,
+          })
+          .eq("id", conversation.id);
+
+        // If incoming was audio, respond with audio too
+        if (incomingWasAudio && cleanResponse) {
+          try {
+            const audioBuffer = await convertTextToAudio(cleanResponse);
+            if (audioBuffer) {
+              const audioUrl = await uploadAudioToStorage(audioBuffer, phoneNumber);
+              if (audioUrl) {
+                await sendWhatsAppAudio(phoneNumber, audioUrl);
+              }
+            }
+          } catch (audioErr) {
+            console.error("Error sending audio response:", audioErr);
+          }
+        }
+
+        await sendWhatsAppMessage(phoneNumber, cleanResponse);
+
+        // Update client memory (fire-and-forget)
+        const allMsgsForMemory = [...historyForAi, { role: "assistant", content: cleanResponse }];
+        updateClientMemory(supabase, phoneNumber, conversation.client_name || contactName || null, allMsgsForMemory, clientMemory)
+          .catch((err) => console.error("[MEMORY] Background update error:", err));
+
+        return new Response(JSON.stringify({ status: "ok", concierge: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       // Extract collected data and status
       const { data: newCollectedData, status: conversationStatus } = extractCollectedData(

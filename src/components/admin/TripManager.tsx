@@ -25,8 +25,10 @@ import {
   Download,
   CheckCircle,
   Image,
-  Sparkles
+  Sparkles,
+  Headphones
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -128,6 +130,13 @@ export const TripManager = () => {
   // New checklist item
   const [newChecklistItem, setNewChecklistItem] = useState('');
 
+  // Concierge state
+  const [conciergeData, setConciergeData] = useState<any>(null);
+  const [conciergeLoading, setConciergeLoading] = useState(false);
+  const [conciergePhone, setConciergePhone] = useState('');
+  const [conciergeStartDate, setConciergeStartDate] = useState('');
+  const [conciergeEndDate, setConciergeEndDate] = useState('');
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -135,6 +144,9 @@ export const TripManager = () => {
   useEffect(() => {
     if (selectedTrip) {
       fetchTripDetails(selectedTrip.id);
+      fetchConciergeForTrip(selectedTrip);
+    } else {
+      setConciergeData(null);
     }
   }, [selectedTrip]);
 
@@ -428,6 +440,112 @@ export const TripManager = () => {
       if (selectedTrip) fetchTripDetails(selectedTrip.id);
     } catch (error) {
       toast.error('Erro ao remover item');
+    }
+  };
+
+  // Concierge functions
+  const fetchConciergeForTrip = async (trip: Trip) => {
+    setConciergeLoading(true);
+    try {
+      // Try to find an active_trips record matching this trip's data
+      const { data } = await supabase
+        .from('active_trips')
+        .select('*')
+        .or(`destination_city.eq.${trip.destination_name},destination_country.eq.${trip.destination_name}`)
+        .gte('check_out_date', trip.departure_date)
+        .lte('check_in_date', trip.return_date)
+        .limit(5);
+      
+      // Find best match
+      const match = data?.find(d => 
+        d.check_in_date === trip.departure_date || 
+        d.hotel_name === trip.hotel_name
+      ) || data?.[0] || null;
+      
+      setConciergeData(match);
+      if (match) {
+        setConciergePhone(match.client_phone || '');
+        setConciergeStartDate(match.concierge_start_date || '');
+        setConciergeEndDate(match.concierge_end_date || '');
+      } else {
+        setConciergePhone('');
+        setConciergeStartDate('');
+        setConciergeEndDate('');
+      }
+    } catch (err) {
+      console.error('Error fetching concierge:', err);
+    } finally {
+      setConciergeLoading(false);
+    }
+  };
+
+  const handleActivateConcierge = async () => {
+    if (!selectedTrip || !conciergePhone) {
+      toast.error('Informe o WhatsApp do cliente');
+      return;
+    }
+
+    setConciergeLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('active_trips')
+        .insert({
+          client_phone: conciergePhone,
+          client_name: getClientName(selectedTrip.user_id),
+          destination_city: selectedTrip.destination_name,
+          check_in_date: selectedTrip.departure_date,
+          check_out_date: selectedTrip.return_date,
+          hotel_name: selectedTrip.hotel_name || null,
+          concierge_active: true,
+          concierge_start_date: conciergeStartDate || null,
+          concierge_end_date: conciergeEndDate || null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      setConciergeData(data);
+      toast.success('Concierge ativado com sucesso!');
+    } catch (err: any) {
+      console.error('Error activating concierge:', err);
+      toast.error(err.message || 'Erro ao ativar concierge');
+    } finally {
+      setConciergeLoading(false);
+    }
+  };
+
+  const handleToggleConcierge = async (active: boolean) => {
+    if (!conciergeData) return;
+    try {
+      const { error } = await supabase
+        .from('active_trips')
+        .update({ concierge_active: active })
+        .eq('id', conciergeData.id);
+
+      if (error) throw error;
+      setConciergeData({ ...conciergeData, concierge_active: active });
+      toast.success(active ? 'Concierge ativado' : 'Concierge desativado');
+    } catch (err) {
+      toast.error('Erro ao atualizar concierge');
+    }
+  };
+
+  const handleSaveConciergeSchedule = async () => {
+    if (!conciergeData) return;
+    try {
+      const { error } = await supabase
+        .from('active_trips')
+        .update({
+          concierge_start_date: conciergeStartDate || null,
+          concierge_end_date: conciergeEndDate || null,
+        })
+        .eq('id', conciergeData.id);
+
+      if (error) throw error;
+      setConciergeData({ ...conciergeData, concierge_start_date: conciergeStartDate || null, concierge_end_date: conciergeEndDate || null });
+      toast.success('Agendamento salvo');
+    } catch (err) {
+      toast.error('Erro ao salvar agendamento');
     }
   };
 
@@ -861,6 +979,10 @@ export const TripManager = () => {
                     <Sparkles className="w-4 h-4 mr-2" />
                     Boas-vindas
                   </TabsTrigger>
+                  <TabsTrigger value="concierge">
+                    <Headphones className="w-4 h-4 mr-2" />
+                    Concierge
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="documents" className="space-y-4 mt-4">
@@ -1096,6 +1218,100 @@ export const TripManager = () => {
                       </div>
                     )}
                   </div>
+                </TabsContent>
+
+                <TabsContent value="concierge" className="space-y-4 mt-4">
+                  {conciergeLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    </div>
+                  ) : conciergeData ? (
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl">
+                        <div>
+                          <p className="font-medium text-foreground">Concierge Ativo</p>
+                          <p className="text-sm text-muted-foreground">
+                            Telefone: {conciergeData.client_phone}
+                          </p>
+                        </div>
+                        <Switch
+                          checked={conciergeData.concierge_active}
+                          onCheckedChange={handleToggleConcierge}
+                        />
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-foreground">Agendamento do Concierge</h4>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Data de Início</Label>
+                            <Input
+                              type="date"
+                              value={conciergeStartDate}
+                              onChange={(e) => setConciergeStartDate(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Data de Fim</Label>
+                            <Input
+                              type="date"
+                              value={conciergeEndDate}
+                              onChange={(e) => setConciergeEndDate(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <Button onClick={handleSaveConciergeSchedule} variant="outline" size="sm">
+                          Salvar Agendamento
+                        </Button>
+                      </div>
+
+                      <div className="text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
+                        <p>O Téo Concierge acompanhará o cliente durante a viagem via WhatsApp, respondendo dúvidas sobre o destino, hotel, voos e sugerindo atividades. Ele <strong>não</strong> tentará coletar dados de cotação enquanto o concierge estiver ativo.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="border-2 border-dashed border-border rounded-xl p-6 text-center">
+                        <Headphones className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+                        <h4 className="font-medium text-foreground mb-2">Ativar Concierge para esta viagem</h4>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          O Téo acompanhará o cliente via WhatsApp durante toda a viagem com dicas, informações de voo e sugestões personalizadas.
+                        </p>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>WhatsApp do Cliente *</Label>
+                          <Input
+                            value={conciergePhone}
+                            onChange={(e) => setConciergePhone(e.target.value)}
+                            placeholder="5515991833448"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Data de Início (opcional)</Label>
+                            <Input
+                              type="date"
+                              value={conciergeStartDate}
+                              onChange={(e) => setConciergeStartDate(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Data de Fim (opcional)</Label>
+                            <Input
+                              type="date"
+                              value={conciergeEndDate}
+                              onChange={(e) => setConciergeEndDate(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <Button onClick={handleActivateConcierge} disabled={!conciergePhone}>
+                          <Headphones className="w-4 h-4 mr-2" />
+                          Ativar Concierge
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             </div>
