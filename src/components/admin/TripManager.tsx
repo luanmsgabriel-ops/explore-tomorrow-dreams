@@ -317,9 +317,8 @@ export const TripManager = () => {
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('trip-documents')
-        .getPublicUrl(fileName);
+      // Store the storage path (not a public URL) since bucket is private
+      const storagePath = fileName;
 
       // Determine document type
       let docType = 'outro';
@@ -335,7 +334,7 @@ export const TripManager = () => {
           trip_id: selectedTrip.id,
           document_name: file.name,
           document_type: docType,
-          file_url: publicUrl,
+          file_url: storagePath,
           file_type: file.type,
           file_size: file.size,
           uploaded_by: session.user.id
@@ -1019,10 +1018,29 @@ export const TripManager = () => {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <Button variant="ghost" size="icon" asChild>
-                              <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
-                                <Download className="w-4 h-4" />
-                              </a>
+                            <Button variant="ghost" size="icon" onClick={async () => {
+                              try {
+                                // Extract storage path from file_url (handle both full URLs and plain paths)
+                                let storagePath = doc.file_url;
+                                if (storagePath.includes('/storage/v1/object/')) {
+                                  const parts = storagePath.split('/storage/v1/object/public/trip-documents/');
+                                  if (parts[1]) storagePath = parts[1];
+                                  else {
+                                    const signedParts = storagePath.split('/storage/v1/object/sign/trip-documents/');
+                                    if (signedParts[1]) storagePath = signedParts[1].split('?')[0];
+                                  }
+                                }
+                                const { data, error } = await supabase.storage
+                                  .from('trip-documents')
+                                  .createSignedUrl(storagePath, 3600);
+                                if (error || !data?.signedUrl) throw error || new Error('Erro ao gerar URL');
+                                window.open(data.signedUrl, '_blank');
+                              } catch (err: any) {
+                                console.error('Download error:', err);
+                                toast.error('Erro ao abrir documento');
+                              }
+                            }}>
+                              <Download className="w-4 h-4" />
                             </Button>
                             <Button 
                               variant="ghost" 
