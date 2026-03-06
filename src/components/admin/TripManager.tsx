@@ -139,6 +139,14 @@ export const TripManager = () => {
   const [conciergeSpecialNotes, setConciergeSpecialNotes] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
 
+  // Concierge contacts state
+  const [conciergeContacts, setConciergeContacts] = useState<any[]>([]);
+  const [newConciergeContactName, setNewConciergeContactName] = useState('');
+  const [newConciergeContactPhone, setNewConciergeContactPhone] = useState('');
+  const [isEditingMainPhone, setIsEditingMainPhone] = useState(false);
+  const [editedMainPhone, setEditedMainPhone] = useState('');
+  const [savingContactNotes, setSavingContactNotes] = useState<string | null>(null);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -469,11 +477,13 @@ export const TripManager = () => {
         setConciergeStartDate(match.concierge_start_date || '');
         setConciergeEndDate(match.concierge_end_date || '');
         setConciergeSpecialNotes(match.concierge_special_notes || '');
+        await fetchConciergeContacts(match.id);
       } else {
         setConciergePhone('');
         setConciergeStartDate('');
         setConciergeEndDate('');
         setConciergeSpecialNotes('');
+        setConciergeContacts([]);
       }
     } catch (err) {
       console.error('Error fetching concierge:', err);
@@ -508,6 +518,17 @@ export const TripManager = () => {
 
       if (error) throw error;
       setConciergeData(data);
+      
+      // Create initial concierge contact for the primary phone
+      const clientName = getClientName(selectedTrip.user_id);
+      await supabase.from('concierge_contacts').insert({
+        trip_id: data.id,
+        contact_name: clientName || 'Principal',
+        contact_phone: conciergePhone,
+        is_active: true,
+      });
+      await fetchConciergeContacts(data.id);
+      
       toast.success('Concierge ativado com sucesso!');
     } catch (err: any) {
       console.error('Error activating concierge:', err);
@@ -568,6 +589,100 @@ export const TripManager = () => {
       toast.error('Erro ao salvar informações');
     } finally {
       setIsSavingNotes(false);
+    }
+  };
+
+  // Concierge contacts CRUD
+  const fetchConciergeContacts = async (tripId: string) => {
+    try {
+      const { data } = await supabase
+        .from('concierge_contacts')
+        .select('*')
+        .eq('trip_id', tripId)
+        .order('created_at');
+      setConciergeContacts(data || []);
+    } catch (err) {
+      console.error('Error fetching concierge contacts:', err);
+    }
+  };
+
+  const handleAddConciergeContact = async () => {
+    if (!conciergeData || !newConciergeContactName || !newConciergeContactPhone) {
+      toast.error('Preencha nome e telefone do contato');
+      return;
+    }
+    try {
+      const { error } = await supabase.from('concierge_contacts').insert({
+        trip_id: conciergeData.id,
+        contact_name: newConciergeContactName,
+        contact_phone: newConciergeContactPhone,
+        is_active: true,
+      });
+      if (error) throw error;
+      setNewConciergeContactName('');
+      setNewConciergeContactPhone('');
+      await fetchConciergeContacts(conciergeData.id);
+      toast.success('Contato adicionado');
+    } catch (err) {
+      toast.error('Erro ao adicionar contato');
+    }
+  };
+
+  const handleToggleConciergeContact = async (contactId: string, isActive: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('concierge_contacts')
+        .update({ is_active: isActive })
+        .eq('id', contactId);
+      if (error) throw error;
+      setConciergeContacts(prev => prev.map(c => c.id === contactId ? { ...c, is_active: isActive } : c));
+    } catch (err) {
+      toast.error('Erro ao atualizar contato');
+    }
+  };
+
+  const handleDeleteConciergeContact = async (contactId: string) => {
+    if (!confirm('Remover este contato do concierge?')) return;
+    try {
+      await supabase.from('concierge_contacts').delete().eq('id', contactId);
+      if (conciergeData) await fetchConciergeContacts(conciergeData.id);
+      toast.success('Contato removido');
+    } catch (err) {
+      toast.error('Erro ao remover contato');
+    }
+  };
+
+  const handleSaveConciergeContactNotes = async (contactId: string, notes: string) => {
+    setSavingContactNotes(contactId);
+    try {
+      const { error } = await supabase
+        .from('concierge_contacts')
+        .update({ special_notes: notes || null })
+        .eq('id', contactId);
+      if (error) throw error;
+      setConciergeContacts(prev => prev.map(c => c.id === contactId ? { ...c, special_notes: notes || null } : c));
+      toast.success('Notas salvas');
+    } catch (err) {
+      toast.error('Erro ao salvar notas');
+    } finally {
+      setSavingContactNotes(null);
+    }
+  };
+
+  const handleEditMainPhone = async () => {
+    if (!conciergeData || !editedMainPhone) return;
+    try {
+      const { error } = await supabase
+        .from('active_trips')
+        .update({ client_phone: editedMainPhone })
+        .eq('id', conciergeData.id);
+      if (error) throw error;
+      setConciergeData({ ...conciergeData, client_phone: editedMainPhone });
+      setConciergePhone(editedMainPhone);
+      setIsEditingMainPhone(false);
+      toast.success('Telefone atualizado');
+    } catch (err) {
+      toast.error('Erro ao atualizar telefone');
     }
   };
 
@@ -1268,12 +1383,40 @@ export const TripManager = () => {
                     </div>
                   ) : conciergeData ? (
                     <div className="space-y-6">
+                      {/* Header with toggle */}
                       <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl">
-                        <div>
+                        <div className="flex-1">
                           <p className="font-medium text-foreground">Concierge Ativo</p>
-                          <p className="text-sm text-muted-foreground">
-                            Telefone: {conciergeData.client_phone}
-                          </p>
+                          {isEditingMainPhone ? (
+                            <div className="flex items-center gap-2 mt-1">
+                              <Input
+                                value={editedMainPhone}
+                                onChange={(e) => setEditedMainPhone(e.target.value)}
+                                placeholder="5515991833448"
+                                className="h-8 text-sm w-48"
+                              />
+                              <Button size="sm" variant="outline" onClick={handleEditMainPhone}>
+                                Salvar
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => setIsEditingMainPhone(false)}>
+                                Cancelar
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm text-muted-foreground">
+                                Telefone principal: {conciergeData.client_phone}
+                              </p>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6"
+                                onClick={() => { setEditedMainPhone(conciergeData.client_phone); setIsEditingMainPhone(true); }}
+                              >
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
                         <Switch
                           checked={conciergeData.concierge_active}
@@ -1281,6 +1424,98 @@ export const TripManager = () => {
                         />
                       </div>
 
+                      {/* Concierge Contacts */}
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-foreground flex items-center gap-2">
+                          <Phone className="w-4 h-4" />
+                          Contatos do Concierge
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          Adicione múltiplos números que podem interagir com o Téo durante a viagem. Cada contato pode ter notas especiais individuais.
+                        </p>
+
+                        {/* Add contact form */}
+                        <div className="flex gap-2 items-end">
+                          <div className="flex-1 space-y-1">
+                            <Label className="text-xs">Nome</Label>
+                            <Input
+                              value={newConciergeContactName}
+                              onChange={(e) => setNewConciergeContactName(e.target.value)}
+                              placeholder="Nome do contato"
+                              className="h-9"
+                            />
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <Label className="text-xs">Telefone</Label>
+                            <Input
+                              value={newConciergeContactPhone}
+                              onChange={(e) => setNewConciergeContactPhone(e.target.value)}
+                              placeholder="5515991833448"
+                              className="h-9"
+                            />
+                          </div>
+                          <Button onClick={handleAddConciergeContact} variant="outline" size="sm" className="h-9">
+                            <Plus className="w-4 h-4 mr-1" />
+                            Adicionar
+                          </Button>
+                        </div>
+
+                        {/* Contacts list */}
+                        {conciergeContacts.length === 0 ? (
+                          <p className="text-muted-foreground text-sm py-2">Nenhum contato cadastrado</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {conciergeContacts.map((contact) => (
+                              <div key={contact.id} className="p-4 bg-secondary/30 rounded-xl space-y-3 border border-border/50">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="font-medium text-sm text-foreground">{contact.contact_name}</p>
+                                    <p className="text-xs text-muted-foreground">{contact.contact_phone}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-xs text-muted-foreground">{contact.is_active ? 'Ativo' : 'Inativo'}</span>
+                                      <Switch
+                                        checked={contact.is_active}
+                                        onCheckedChange={(val) => handleToggleConciergeContact(contact.id, val)}
+                                      />
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 text-destructive"
+                                      onClick={() => handleDeleteConciergeContact(contact.id)}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Notas especiais deste contato</Label>
+                                  <Textarea
+                                    placeholder="Ex: Esposa do cliente, vegetariana, aniversário em 15/04..."
+                                    value={contact.special_notes || ''}
+                                    onChange={(e) => setConciergeContacts(prev => prev.map(c => c.id === contact.id ? { ...c, special_notes: e.target.value } : c))}
+                                    rows={2}
+                                    className="text-sm"
+                                  />
+                                  <Button
+                                    onClick={() => handleSaveConciergeContactNotes(contact.id, contact.special_notes || '')}
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-1"
+                                    disabled={savingContactNotes === contact.id}
+                                  >
+                                    {savingContactNotes === contact.id ? 'Salvando...' : 'Salvar Notas'}
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Schedule */}
                       <div className="space-y-4">
                         <h4 className="font-medium text-foreground">Agendamento do Concierge</h4>
                         <div className="grid grid-cols-2 gap-4">
@@ -1306,10 +1541,11 @@ export const TripManager = () => {
                         </Button>
                       </div>
 
+                      {/* Global special notes */}
                       <div className="space-y-3">
-                        <h4 className="font-medium text-foreground">Informações Especiais para o Téo</h4>
+                        <h4 className="font-medium text-foreground">Informações Especiais Gerais (para o Téo)</h4>
                         <p className="text-sm text-muted-foreground">
-                          Adicione informações que o Téo deve saber durante a viagem (gostos, datas comemorativas, restrições, pedidos especiais). Ele usará essas informações naturalmente nas conversas.
+                          Informações gerais da viagem que o Téo deve saber (além das notas individuais de cada contato).
                         </p>
                         <Textarea
                           placeholder="Ex: Aniversário do cliente em 20/03, vegetariano, adora mergulho, pediu surpresa de aniversário no hotel..."

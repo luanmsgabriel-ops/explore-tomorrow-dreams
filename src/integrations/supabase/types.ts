@@ -616,6 +616,47 @@ export type Database = {
           },
         ]
       }
+      concierge_contacts: {
+        Row: {
+          contact_name: string
+          contact_phone: string
+          created_at: string
+          id: string
+          is_active: boolean
+          special_notes: string | null
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          contact_name: string
+          contact_phone: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          special_notes?: string | null
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          contact_name?: string
+          contact_phone?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          special_notes?: string | null
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "concierge_contacts_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "active_trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       destinations: {
         Row: {
           best_price_periods: Json | null
