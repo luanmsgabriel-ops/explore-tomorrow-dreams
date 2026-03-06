@@ -1958,15 +1958,33 @@ serve(async (req) => {
       // Also check if the ENTIRE message is just "para" or "pare" (standalone command)
       const isStandaloneStop = lowerMsg === "para" || lowerMsg === "pare" || lowerMsg === "parar" || lowerMsg === "stop";
       if (isStandaloneStop || deactivatePhrases.some(kw => lowerMsg.includes(kw))) {
+        // Check direct phone match
         const { data: activeTrips } = await supabase
           .from("active_trips")
           .select("id")
           .eq("client_phone", phoneNumber)
           .eq("concierge_active", true);
         
-        if (activeTrips?.length) {
-          for (const t of activeTrips) {
-            await supabase.from("active_trips").update({ concierge_active: false }).eq("id", t.id);
+        // Also check concierge_contacts
+        const { data: contactTrips } = await supabase
+          .from("concierge_contacts")
+          .select("trip_id")
+          .eq("contact_phone", phoneNumber)
+          .eq("is_active", true);
+
+        const tripIdsToDeactivate = new Set<string>();
+        activeTrips?.forEach(t => tripIdsToDeactivate.add(t.id));
+        if (contactTrips?.length) {
+          for (const ct of contactTrips) {
+            tripIdsToDeactivate.add(ct.trip_id);
+            // Deactivate this specific contact
+            await supabase.from("concierge_contacts").update({ is_active: false }).eq("contact_phone", phoneNumber).eq("trip_id", ct.trip_id);
+          }
+        }
+
+        if (tripIdsToDeactivate.size > 0) {
+          for (const tid of tripIdsToDeactivate) {
+            await supabase.from("active_trips").update({ concierge_active: false }).eq("id", tid);
           }
           await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
           await sendWhatsAppMessage(phoneNumber, "Beleza! 😊 Desativei as mensagens automáticas. Se mudar de ideia, é só me chamar que eu volto! ✈️");
@@ -1979,13 +1997,46 @@ serve(async (req) => {
 
       // ========== CONCIERGE: Saudação personalizada para clientes com viagem ativa ==========
       {
-        const { data: activeTripForGreeting } = await supabase
+        // Check both active_trips.client_phone AND concierge_contacts
+        let activeTripForGreeting: any = null;
+        let conciergeContactMatch: any = null;
+
+        const { data: directMatch } = await supabase
           .from("active_trips")
           .select("id, client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name")
           .eq("client_phone", phoneNumber)
           .eq("concierge_active", true)
           .limit(1)
           .maybeSingle();
+
+        if (directMatch) {
+          activeTripForGreeting = directMatch;
+        } else {
+          // Check concierge_contacts table
+          const { data: contactMatch } = await supabase
+            .from("concierge_contacts")
+            .select("trip_id, contact_name, contact_phone, special_notes")
+            .eq("contact_phone", phoneNumber)
+            .eq("is_active", true)
+            .limit(1)
+            .maybeSingle();
+
+          if (contactMatch) {
+            conciergeContactMatch = contactMatch;
+            const { data: tripData } = await supabase
+              .from("active_trips")
+              .select("id, client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name")
+              .eq("id", contactMatch.trip_id)
+              .eq("concierge_active", true)
+              .limit(1)
+              .maybeSingle();
+            if (tripData) {
+              activeTripForGreeting = tripData;
+              // Override client_name with contact name
+              activeTripForGreeting.client_name = contactMatch.contact_name;
+            }
+          }
+        }
 
         if (activeTripForGreeting) {
           // FIRST: ensure conversation exists (so the flag can be saved)
@@ -2336,14 +2387,47 @@ Regras OBRIGATÓRIAS:
 
       // Check if this client is a concierge client (active trip) — use concierge prompt instead of sales
       let conciergePromptOverride: string | null = null;
+      let conciergeContactContext: any = null;
       {
-        const { data: activeTripForPrompt } = await supabase
+        // First try direct phone match on active_trips
+        let activeTripForPrompt: any = null;
+
+        const { data: directTripMatch } = await supabase
           .from("active_trips")
-          .select("client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name, outbound_flight_iata, return_flight_iata, outbound_flight_date, return_flight_date, destination_lat, destination_lng, destination_timezone, concierge_special_notes")
+          .select("client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name, outbound_flight_iata, return_flight_iata, outbound_flight_date, return_flight_date, destination_lat, destination_lng, destination_timezone, concierge_special_notes, id")
           .eq("client_phone", phoneNumber)
           .eq("concierge_active", true)
           .limit(1)
           .maybeSingle();
+
+        if (directTripMatch) {
+          activeTripForPrompt = directTripMatch;
+        } else {
+          // Check concierge_contacts table for additional numbers
+          const { data: contactMatch } = await supabase
+            .from("concierge_contacts")
+            .select("trip_id, contact_name, contact_phone, special_notes")
+            .eq("contact_phone", phoneNumber)
+            .eq("is_active", true)
+            .limit(1)
+            .maybeSingle();
+
+          if (contactMatch) {
+            conciergeContactContext = contactMatch;
+            const { data: tripData } = await supabase
+              .from("active_trips")
+              .select("client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name, outbound_flight_iata, return_flight_iata, outbound_flight_date, return_flight_date, destination_lat, destination_lng, destination_timezone, concierge_special_notes, id")
+              .eq("id", contactMatch.trip_id)
+              .eq("concierge_active", true)
+              .limit(1)
+              .maybeSingle();
+            if (tripData) {
+              activeTripForPrompt = tripData;
+              // Use the contact's name instead of the trip's main client name
+              activeTripForPrompt.client_name = contactMatch.contact_name;
+            }
+          }
+        }
 
         if (activeTripForPrompt) {
           const destino = activeTripForPrompt.destination_city || activeTripForPrompt.destination_country || "o destino";
@@ -2387,9 +2471,14 @@ Regras OBRIGATÓRIAS:
             if (clientTripData.trip_tips) contexto += `\n- Dicas da viagem: ${clientTripData.trip_tips}`;
           }
 
-          // Add special notes for Téo
+          // Add global special notes for Téo
           if (activeTripForPrompt.concierge_special_notes) {
-            contexto += `\n\nINFORMAÇÕES ESPECIAIS (use naturalmente, sem mencionar que são notas do admin):\n${activeTripForPrompt.concierge_special_notes}`;
+            contexto += `\n\nINFORMAÇÕES ESPECIAIS GERAIS (use naturalmente, sem mencionar que são notas do admin):\n${activeTripForPrompt.concierge_special_notes}`;
+          }
+
+          // Add individual contact notes if this is from concierge_contacts
+          if (conciergeContactContext?.special_notes) {
+            contexto += `\n\nINFORMAÇÕES ESPECIAIS DESTE CONTATO (${conciergeContactContext.contact_name}):\n${conciergeContactContext.special_notes}`;
           }
 
           // Store client trip ID for document retrieval later
@@ -2444,14 +2533,37 @@ Regras OBRIGATÓRIAS:
 
         if (askedForDocs) {
           try {
-            // Find client_trips matching this active trip
-            const { data: activeTripRef } = await supabase
+            // Find client_trips matching this active trip (check both direct phone and concierge_contacts)
+            let activeTripRef: any = null;
+            const { data: directRef } = await supabase
               .from("active_trips")
               .select("destination_city, destination_country, check_in_date, check_out_date")
               .eq("client_phone", phoneNumber)
               .eq("concierge_active", true)
               .limit(1)
               .maybeSingle();
+
+            if (directRef) {
+              activeTripRef = directRef;
+            } else {
+              const { data: contactRef } = await supabase
+                .from("concierge_contacts")
+                .select("trip_id")
+                .eq("contact_phone", phoneNumber)
+                .eq("is_active", true)
+                .limit(1)
+                .maybeSingle();
+              if (contactRef) {
+                const { data: tripRef } = await supabase
+                  .from("active_trips")
+                  .select("destination_city, destination_country, check_in_date, check_out_date")
+                  .eq("id", contactRef.trip_id)
+                  .eq("concierge_active", true)
+                  .limit(1)
+                  .maybeSingle();
+                activeTripRef = tripRef;
+              }
+            }
 
             if (activeTripRef) {
               const destName = activeTripRef.destination_city || activeTripRef.destination_country || "";
