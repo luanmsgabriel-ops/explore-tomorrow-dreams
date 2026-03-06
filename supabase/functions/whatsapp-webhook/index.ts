@@ -2004,31 +2004,68 @@ serve(async (req) => {
           const alreadyGreeted = collectedData._concierge_greeted === true;
 
           if (!alreadyGreeted && convForGreeting) {
-            // Inferir gênero pelo primeiro nome
+            // Inferir gênero pelo primeiro nome (heurística + fallback IA para casos ambíguos)
             const firstName = (activeTripForGreeting.client_name || "").trim().split(" ")[0];
-            const nameLower = firstName.toLowerCase();
-            
+            const normalizedFirstName = firstName
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .toLowerCase()
+              .trim();
+
             // Exceções masculinas: nomes que terminam em "a" mas são masculinos
-            const maleExceptions = ["luca", "joshua", "josua", "nikita", "asa", "mustafa", "borba", "costa", "moura", "souza", "silva", "pereira", "andrea", "baptista", "batista", "bethencourt", "buda", "dalila", "fonseca", "garcia", "kosta", "lima", "massa", "mota", "nasa", "oliveira", "panda", "providência", "raja", "rocha", "senna", "teixeira", "tesla", "vieira"];
-            
+            const maleExceptions = ["luca", "joshua", "josua", "nikita", "asa", "mustafa", "borba", "costa", "moura", "souza", "silva", "pereira", "andrea", "baptista", "batista", "bethencourt", "buda", "dalila", "fonseca", "garcia", "kosta", "lima", "massa", "mota", "nasa", "oliveira", "panda", "providencia", "raja", "rocha", "senna", "teixeira", "tesla", "vieira"];
+
             // Exceções femininas: nomes que NÃO terminam em "a" mas são femininos
-            const femaleExceptions = ["beatriz", "raquel", "mabel", "isabel", "rachel", "maris", "dolores", "ines", "inês", "agnes", "mercedes", "carmen", "miriam", "ruth", "rute", "jeniffer", "jennifer", "karen", "sharon", "gisele", "michele", "vivien", "kathleen", "bridget", "margaret", "elizabeth", "abigail", "megan", "nicole", "ingrid", "astrid", "solange", "sueli", "jussier", "nair", "zenir", "iracir"];
-            
-            const isNameEndingInA = nameLower.endsWith("a");
-            const isMaleException = maleExceptions.includes(nameLower);
-            const isFemaleException = femaleExceptions.includes(nameLower);
-            const gender = (isFemaleException || (isNameEndingInA && !isMaleException)) ? "feminino" : "masculino";
+            const femaleExceptions = ["beatriz", "raquel", "mabel", "isabel", "rachel", "maris", "dolores", "ines", "agnes", "mercedes", "carmen", "miriam", "ruth", "rute", "jeniffer", "jennifer", "karen", "sharon", "gisele", "michele", "vivien", "kathleen", "bridget", "margaret", "elizabeth", "abigail", "megan", "nicole", "ingrid", "astrid", "solange", "sueli", "jussier", "nair", "zenir", "iracir", "francielle", "gabrielle", "danielle", "isabelle", "noelle", "michelle", "emanuelle"];
+
+            const femaleSuffixes = ["elle", "elly", "iane", "iene", "line", "lene", "rielle"];
+
+            const isNameEndingInA = normalizedFirstName.endsWith("a");
+            const isMaleException = maleExceptions.includes(normalizedFirstName);
+            const isFemaleException = femaleExceptions.includes(normalizedFirstName);
+            const matchesFemaleSuffix = femaleSuffixes.some((s) => normalizedFirstName.endsWith(s));
+
+            let gender: "feminino" | "masculino" | "neutro" = "neutro";
+            if (isFemaleException || matchesFemaleSuffix || (isNameEndingInA && !isMaleException)) {
+              gender = "feminino";
+            } else if (isMaleException) {
+              gender = "masculino";
+            }
+
+            // Fallback adaptativo com IA para reduzir erros em nomes ambíguos
+            if (gender === "neutro" && normalizedFirstName.length >= 3) {
+              try {
+                const genderInferencePrompt = `Classifique o provável gênero do primeiro nome brasileiro \"${firstName}\". Responda APENAS com uma palavra: feminino, masculino ou neutro.`;
+                const genderResponse = await callGemini(
+                  [{ role: "user", content: genderInferencePrompt }],
+                  { model: "google/gemini-3-flash-preview", maxTokens: 10 }
+                );
+                if (genderResponse.ok) {
+                  const genderData = await genderResponse.json();
+                  const inferred = (genderData?.choices?.[0]?.message?.content || "").toLowerCase();
+                  if (inferred.includes("feminino")) gender = "feminino";
+                  else if (inferred.includes("masculino")) gender = "masculino";
+                }
+              } catch (e) {
+                console.error("Erro ao inferir gênero do nome via IA:", e);
+              }
+            }
 
             const destino = activeTripForGreeting.destination_city || activeTripForGreeting.destination_country || "o destino";
             const hotel = activeTripForGreeting.hotel_name || "";
+            const genderRule = gender === "feminino"
+              ? "Use concordância feminina (ex: ansiosa, preparada, animada)."
+              : gender === "masculino"
+                ? "Use concordância masculina (ex: ansioso, preparado, animado)."
+                : "Se houver ambiguidade, EVITE termos marcados por gênero (não use ansioso/ansiosa).";
 
             // Gerar saudação dinamicamente via IA
             let greetingMsg = "";
             try {
-              const greetingPrompt = `Gere uma saudação CURTA e animada do Téo para ${firstName} (gênero: ${gender}).
+              const greetingPrompt = `Gere uma saudação CURTA e animada do Téo para ${firstName} (gênero inferido: ${gender}).
 A viagem é NOSSA (do Téo também). Destino: ${destino}.${hotel ? ` Hotel: ${hotel}.` : ""}
 Regras OBRIGATÓRIAS:
-- Use concordância de gênero correta: "${gender === 'feminino' ? 'ansiosa/preparada/animada' : 'ansioso/preparado/animado'}"
+- ${genderRule}
 - SEMPRE fale "nossa viagem", NUNCA "sua viagem"
 - Tom: companheiro de viagem animado, informal, com emojis
 - Se apresente como Téo, companheiro de viagem
@@ -2060,8 +2097,12 @@ Regras OBRIGATÓRIAS:
 
             // Fallback: template corrigido com "nossa viagem" e gênero correto
             if (!greetingMsg) {
-              const genderSuffix = gender === "feminino" ? "ansiosa" : "ansioso";
-              greetingMsg = `Oi ${firstName}! 😊✈️\n\nQue bom te ver por aqui! Tá ${genderSuffix} pra *nossa* viagem pra *${destino}*? 🏝️\n\nSou o Téo, seu companheiro de viagem! Bora aproveitar essa aventura juntos! Durante a viagem, posso te ajudar com:\n\n📍 Me envie sua *localização* e eu busco restaurantes, atrações, farmácias e mais pertinho de você\n🌤️ Previsão do tempo no destino\n✈️ Acompanhamento do seu voo em tempo real\n🗺️ Dicas de passeios e roteiros personalizados\n📄 Vouchers e documentos da viagem\n\nÉ só me chamar! Como posso te ajudar? 😊`;
+              const greetingLine = gender === "feminino"
+                ? `Que bom te ver por aqui! Tá ansiosa pra *nossa* viagem pra *${destino}*? 🏝️`
+                : gender === "masculino"
+                  ? `Que bom te ver por aqui! Tá ansioso pra *nossa* viagem pra *${destino}*? 🏝️`
+                  : `Que bom te ver por aqui! Bora curtir *nossa* viagem pra *${destino}*? 🏝️`;
+              greetingMsg = `Oi ${firstName}! 😊✈️\n\n${greetingLine}\n\nSou o Téo, seu companheiro de viagem! Bora aproveitar essa aventura juntos! Durante a viagem, posso te ajudar com:\n\n📍 Me envie sua *localização* e eu busco restaurantes, atrações, farmácias e mais pertinho de você\n🌤️ Previsão do tempo no destino\n✈️ Acompanhamento do seu voo em tempo real\n🗺️ Dicas de passeios e roteiros personalizados\n📄 Vouchers e documentos da viagem\n\nÉ só me chamar! Como posso te ajudar? 😊`;
             }
 
             // Update collected_data with _concierge_greeted flag
