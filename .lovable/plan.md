@@ -1,42 +1,61 @@
 
 
-# Plano: Corrigir saudação repetida e adicionar personalidade de companheiro de viagem ao Téo Concierge
+# Plano: Corrigir Téo Concierge e adicionar ativação na aba Viagens
 
-## Problemas Identificados
+## Problemas
 
-1. **Saudação repetida**: Quando o cliente manda a primeira mensagem e não existe uma `whatsapp_conversations` ainda, o `convForGreeting` é null. O bloco `if (convForGreeting?.id)` na linha 1957 NÃO executa, então a flag `_concierge_greeted` nunca é salva. Na segunda mensagem, o sistema acha que nunca saudou e envia a mesma mensagem de novo.
+1. **Téo concierge tenta cotar**: Mesmo com `conciergePromptOverride`, o fluxo pós-IA ainda executa `extractCollectedData` e `parseQuotationTag`, permitindo que tags de cotação sejam processadas.
 
-2. **Sem personalidade concierge**: Após a saudação, as mensagens seguintes caem no fluxo normal com `TEO_SYSTEM_PROMPT` — um prompt de vendas/cotação. O Téo não sabe que é um companheiro de viagem e tenta coletar dados para cotação.
+2. **Dados incompletos no prompt concierge**: O prompt só inclui destino, hotel, check-in e check-out da `active_trips`. Faltam voo, localizador, endereço do hotel, dicas, timezone, etc.
+
+3. **Sem ativação de concierge na aba Viagens**: O admin precisa ir para a aba Concierge separadamente. Precisa de um toggle na aba Viagens.
 
 ## Solução
 
-### 1. Corrigir a flag `_concierge_greeted` (whatsapp-webhook)
+### 1. Bypass de cotação para clientes concierge (`whatsapp-webhook`)
 
-Reordenar o bloco de saudação: chamar `ensureConversationAndSaveMessage` ANTES de checar a flag, e depois buscar a conversa (que agora com certeza existe) para ler e atualizar a flag.
+No fluxo principal (~linha 2248-2260), quando `conciergePromptOverride` estiver ativo:
+- **Pular** `extractCollectedData` e `parseQuotationTag` — não extrair dados de cotação
+- **Pular** toda a lógica de `quotationData`, `changeRequest`, `createQuoteRequest`
+- Ir direto para enviar a resposta limpa sem processar tags
+- Manter apenas `cleanAiResponse` para limpar qualquer tag residual
 
-### 2. Injetar contexto concierge no prompt da IA (whatsapp-webhook)
+### 2. Enriquecer o contexto do prompt concierge (`whatsapp-webhook`)
 
-No fluxo normal (linhas ~2176-2190), antes de chamar `getAiResponse`, verificar se o cliente tem `active_trips` com `concierge_active = true`. Se sim, adicionar um **prompt de concierge** ao `getAiResponse` em vez do prompt de vendas.
+Na consulta de `active_trips` (linha 2229-2235), incluir **todos** os campos relevantes:
+- `outbound_flight_iata`, `return_flight_iata`, `outbound_flight_date`, `return_flight_date`
+- `destination_lat`, `destination_lng`, `destination_timezone`
+- `hotel_name`
 
-Modificar `getAiResponse` para aceitar um parâmetro opcional de contexto concierge, ou criar uma variante do prompt.
+Injetar no prompt concierge:
+```
+CONTEXTO COMPLETO DA VIAGEM:
+- Destino: Cancún, México
+- Hotel: Grand Palladium
+- Check-in: 15/03/2026 | Check-out: 22/03/2026
+- Voo ida: LA3456 em 15/03 | Voo volta: LA3457 em 22/03
+- Fuso: America/Cancun
+```
 
-### 3. Novo prompt de personalidade concierge
+### 3. Adicionar toggle concierge na aba Viagens (`TripManager`)
 
-Tom: companheiro de viagem animado, divertido, ansioso pela viagem junto com o cliente. Ele "viaja junto" com o cliente.
+Na tabela `client_trips` **não** existe campo de concierge (está na `active_trips`). Em vez de alterar o schema, adicionar um botão/link na tela de detalhes da viagem que abre a aba Concierge ou permite ativar diretamente criando/atualizando um registro em `active_trips`.
 
-Regras:
-- Nunca tenta coletar dados para cotação
-- Responde como amigo/parceiro de viagem
-- Tom divertido, usando gírias brasileiras leves
-- Faz sugestões proativas (restaurantes, passeios, clima)
-- Celebra cada momento da viagem do cliente
-- Ignora tags de cotação ([COTAR_VIAGEM], [DADOS:], etc.)
+Abordagem: Na tela de detalhes da viagem selecionada, adicionar uma nova tab "Concierge" que:
+- Verifica se existe um registro em `active_trips` com dados compatíveis
+- Se não existir, mostra botão "Ativar Concierge" que cria o registro usando os dados da viagem (destino, datas, hotel)
+- Se existir, mostra toggle de ativar/desativar + campos de agendamento (igual ao ConciergeManager)
+- Requer campo de telefone do cliente para criar o registro
 
-## Arquivo Modificado
+## Arquivos Modificados
 
-**`supabase/functions/whatsapp-webhook/index.ts`**:
+1. **`supabase/functions/whatsapp-webhook/index.ts`**:
+   - Expandir select de `active_trips` para incluir todos os campos
+   - Enriquecer o contexto injetado no `TEO_CONCIERGE_PROMPT`
+   - Quando `conciergePromptOverride` ativo, pular `extractCollectedData`, `parseQuotationTag` e lógica de cotação — ir direto ao envio
+   - Exceto se o cliente explicitamente pedir cotação (verificar palavras-chave como "cotar", "quanto custa")
 
-1. Adicionar constante `TEO_CONCIERGE_PROMPT` com a personalidade de companheiro de viagem
-2. Corrigir bloco de saudação (linhas 1918-1986): mover `ensureConversationAndSaveMessage` para antes do check de flag, e garantir que a flag é salva na conversa correta
-3. No fluxo principal (linhas ~2068-2190): detectar se é cliente concierge e usar `TEO_CONCIERGE_PROMPT` em vez de `TEO_SYSTEM_PROMPT` + `SALES_KNOWLEDGE`
+2. **`src/components/admin/TripManager.tsx`**:
+   - Adicionar tab "Concierge" nos detalhes da viagem
+   - Componente para vincular/criar registro em `active_trips` com toggle e agendamento
 
