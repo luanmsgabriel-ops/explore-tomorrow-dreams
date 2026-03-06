@@ -1,61 +1,47 @@
 
 
-# Plano: Personalidade "viajando junto", envio de vouchers e notas especiais do concierge
+# Plano: Saudação concierge dinâmica e com gênero correto
 
-## 3 Entregas
+## Problema
 
-### 1. Personalidade "nossa viagem" no prompt concierge
+1. A saudação do concierge diz "pra **sua** viagem" em vez de "pra **nossa** viagem"
+2. A mensagem é estática (template fixo), sem adaptação natural
+3. A lógica de gênero existe mas precisa de mais exceções e refinamento
 
-Atualizar o `TEO_CONCIERGE_PROMPT` no `whatsapp-webhook/index.ts` para que o Téo fale em primeira pessoa do plural:
-- "nossa viagem", "vamos curtir muito", "tô ansioso pra ir também"
-- Sempre se incluir como se estivesse viajando junto
-- Adicionar exemplos concretos no prompt para o modelo seguir
+## Solução
 
-**Arquivo**: `supabase/functions/whatsapp-webhook/index.ts` (linhas 487-522)
+Substituir a mensagem de saudação estática por uma chamada à IA (Gemini) que gera a saudação dinamicamente, passando contexto sobre o nome do cliente, gênero inferido, destino e hotel.
 
-### 2. Envio de vouchers e informações logísticas pelo concierge
+### Alteração em `supabase/functions/whatsapp-webhook/index.ts` (linhas 1997-2007)
 
-Quando o concierge está ativo e o cliente pede voucher, documentos, endereço do hotel, horário do voo etc., o Téo deve buscar essas informações e enviar.
+Em vez do template fixo:
+```typescript
+const greetingMsg = `Oi ${firstName}! 😊✈️\n\nQue bom...`;
+```
 
-**Implementação**:
-- No bloco de concierge bypass (linha 2265), **antes** de enviar a resposta, detectar se o cliente pediu voucher/documento (palavras-chave: "voucher", "documento", "pdf", "passagem", "reserva")
-- Se pediu: buscar `client_trips` vinculada ao mesmo destino/datas do `active_trips`, e depois buscar `trip_documents` dessa viagem
-- Gerar signed URLs dos documentos e enviar via WhatsApp (usando `sendWhatsAppMessage` com link)
-- Enriquecer o contexto do prompt com dados completos da `client_trips`: `hotel_address`, `hotel_link`, `flight_number`, `flight_locator`, `flight_departure_time`, `flight_return_time`, `hotel_checkin_time`, `hotel_checkout_time`, `trip_tips`
+Gerar via IA com prompt curto:
+```typescript
+const greetingPrompt = `Gere uma saudação CURTA e animada do Téo para ${firstName} (gênero: ${gender}).
+A viagem é NOSSA (do Téo também). Destino: ${destino}. Hotel: ${hotel}.
+Regras:
+- Use gênero correto: "${gender === 'feminino' ? 'ansiosa/preparada/animada' : 'ansioso/preparado/animado'}"
+- Fale "nossa viagem", nunca "sua viagem"
+- Tom: companheiro de viagem animado, informal, com emojis
+- Inclua o menu de serviços: localização, clima, voo, roteiros
+- Máximo 800 caracteres`;
+```
 
-**Fluxo**:
-1. Ao montar o `conciergePromptOverride`, buscar também a `client_trips` correspondente e incluir todos os dados logísticos no contexto
-2. No bypass, após gerar a resposta, verificar se a mensagem do usuário contém pedido de documento
-3. Se sim, buscar documentos em `trip_documents` → gerar signed URLs → enviar via WhatsApp
+Melhorar a inferência de gênero:
+- Expandir lista de exceções masculinas (luca, joshua, nikita, etc.)
+- Adicionar lista de exceções femininas para nomes que NÃO terminam em "a" mas são femininos (Beatriz, Raquel, Mabel, etc.)
 
-**Arquivo**: `supabase/functions/whatsapp-webhook/index.ts`
+### Detalhes
 
-### 3. Campo "Notas Especiais para o Téo" na aba Viagens + tabela
+- Buscar `hotel_name` na query de `active_trips` para incluir no contexto
+- Usar `callGemini` já disponível no arquivo com modelo flash (rápido e barato)
+- Fallback: se a IA falhar, usar template corrigido com "nossa viagem" e gênero correto
 
-Criar um campo na tabela `active_trips` para armazenar informações especiais que o Téo deve saber durante a viagem (gostos, datas comemorativas, restrições, etc.).
+### Arquivo modificado
 
-**Migração de banco**: Adicionar coluna `concierge_special_notes text` à tabela `active_trips`.
-
-**UI no TripManager**: Na tab "Concierge" dos detalhes da viagem, adicionar um campo `Textarea` "Informações Especiais para o Téo" com placeholder explicativo (ex: "Aniversário do cliente em 20/03, vegetariano, gosta de mergulho..."). Salvar em `active_trips.concierge_special_notes`.
-
-**No webhook**: Incluir o conteúdo de `concierge_special_notes` no contexto injetado no prompt, para que o Téo saiba e use naturalmente (ex: dar parabéns no aniversário).
-
-**Arquivos**:
-- Migração SQL: `ALTER TABLE active_trips ADD COLUMN concierge_special_notes text;`
-- `src/components/admin/TripManager.tsx`: campo textarea na tab Concierge
-- `supabase/functions/whatsapp-webhook/index.ts`: incluir no select e no contexto
-
-## Resumo dos Arquivos
-
-1. **`supabase/functions/whatsapp-webhook/index.ts`**:
-   - Atualizar `TEO_CONCIERGE_PROMPT` com personalidade "nossa viagem"
-   - Buscar `client_trips` + `trip_documents` para enviar vouchers
-   - Incluir `concierge_special_notes` no contexto
-   - Incluir dados logísticos completos da `client_trips` (endereço hotel, link maps, horários voo, localizador, dicas)
-
-2. **`src/components/admin/TripManager.tsx`**:
-   - Adicionar campo "Informações Especiais para o Téo" na tab Concierge
-
-3. **Migração SQL**:
-   - `ALTER TABLE active_trips ADD COLUMN concierge_special_notes text;`
+- `supabase/functions/whatsapp-webhook/index.ts`: linhas ~1975 (select) e ~1997-2007 (geração da saudação)
 
