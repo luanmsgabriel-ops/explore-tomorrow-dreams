@@ -5923,11 +5923,37 @@ Regras OBRIGATÓRIAS:
         console.log("[MEMORY] Found memory for", phoneNumber, "- name:", clientMemory.client_name);
       }
 
+      // ========== AUTO-DETECT MODE FROM MESSAGE CONTENT ==========
+      // If mode is "auto", analyze message to intelligently switch modes
+      let effectiveTeoMode = collectedData._teo_mode || "auto";
+      
+      if (effectiveTeoMode === "auto") {
+        const msgLower = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        // Concierge intent signals: travel companion needs, location queries, trip logistics
+        const conciergeSignals = /(?:minha viagem|durante a viagem|no hotel|checkin|check-in|checkout|check-out|voo atras|meu voo|horario do voo|dica.*(restaurante|passeio|lugar)|o que fazer|perto de mim|proximo|perto daqui|localizacao|emergencia|sos|hospital|farmacia|embaixada|traduz|playlist|gastei|meus gastos|roleta|oraculo|vidente)/i;
+        
+        // Cotação intent signals: pricing, booking, destination planning  
+        const cotacaoSignals = /(?:quanto custa|preco|valor|orcamento|pacote|cotar|cotacao|quero viajar|viagem para|passagem|reservar|disponibilidade|data.*(ida|volta)|quantas pessoas|lua de mel|ferias|feriado|promoc|oferta|destino|pra onde|para onde|conhecer|quero ir|vamos para|bora para|me leva)/i;
+        
+        // Photo/image → could be menu (chef mode handles separately) or document for quotation
+        const isImageMessage = messageType === "image" && imageBase64Data;
+        
+        if (conciergeSignals.test(msgLower)) {
+          effectiveTeoMode = "concierge";
+          console.log(`🔄 Auto-detected CONCIERGE mode from message content`);
+        } else if (cotacaoSignals.test(msgLower) || isImageMessage) {
+          effectiveTeoMode = "cotacao";
+          console.log(`🔄 Auto-detected COTAÇÃO mode from message content`);
+        }
+        // If no signal detected, stays "auto" → falls through to existing logic
+      }
+
       // Check if this client is a concierge client (active trip) — use concierge prompt instead of sales
       // RESPECTS _teo_mode: if client forced a mode, honor it
       let conciergePromptOverride: string | null = null;
       let conciergeContactContext: any = null;
-      const teoMode = collectedData._teo_mode || "auto";
+      const teoMode = effectiveTeoMode;
       
       // If mode is "cotacao", skip concierge entirely (force sales prompt)
       if (teoMode !== "cotacao") {
