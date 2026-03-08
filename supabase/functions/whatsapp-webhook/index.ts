@@ -2487,7 +2487,12 @@ serve(async (req) => {
                   ...((convAfterChef.messages_history as any[]) || []),
                   { role: "assistant", content: `👨‍🍳 ${analysisResult}`, timestamp: new Date().toISOString() },
                 ];
-                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterChef.id);
+                // Save menu analysis in collected_data for future text questions
+                const existingChefData = (convAfterChef as any).collected_data || chefData || {};
+                await supabase.from("whatsapp_conversations").update({ 
+                  messages_history: updH,
+                  collected_data: { ...existingChefData, _chef_menu_analysis: analysisResult },
+                }).eq("id", convAfterChef.id);
               }
             } catch (chefErr) {
               console.error("[CHEF MODE] Error:", chefErr);
