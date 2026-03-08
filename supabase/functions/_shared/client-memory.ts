@@ -147,6 +147,15 @@ export function formatMemoryForPrompt(memory: ClientMemory): string {
     }
   }
 
+  // ===== ÚLTIMO MATCH DE COMPATIBILIDADE =====
+  if (prefs?.ultimo_match) {
+    const match = prefs.ultimo_match;
+    parts.push(`\n💞 ÚLTIMO MATCH DE VIAGEM:`);
+    parts.push(`- Parceiro(a): ${match.parceiro_nome || "desconhecido"}`);
+    if (match.score) parts.push(`- Compatibilidade: ${match.score}%`);
+    if (match.data) parts.push(`- Data: ${match.data}`);
+  }
+
   parts.push(`\nÚltima interação: ${new Date(memory.last_interaction_at).toLocaleDateString("pt-BR")}`);
   parts.push(`=== FIM DA MEMÓRIA ===`);
 
