@@ -2558,6 +2558,21 @@ serve(async (req) => {
             // Has menu context → answer based on it
             let chefResponse = "";
             try {
+              // Fetch current USD→BRL exchange rate
+              let exchangeRateInfo = "";
+              try {
+                const rateRes = await fetch("https://open.er-api.com/v6/latest/USD");
+                if (rateRes.ok) {
+                  const rateData = await rateRes.json();
+                  const brlRate = rateData.rates?.BRL;
+                  if (brlRate) {
+                    exchangeRateInfo = `\n\nCOTAÇÃO DO DIA: 1 USD = R$ ${brlRate.toFixed(2)}`;
+                  }
+                }
+              } catch (e) {
+                console.error("Exchange rate fetch error:", e);
+              }
+
               const CHEF_MENU_CONTEXT_PROMPT = `Você é o Téo, um assistente culinário expert da Tomorrow Travel. Você está no *Modo Chef* 👨‍🍳.
 
 O cliente já enviou uma foto do cardápio e aqui está a análise completa:
@@ -2565,6 +2580,7 @@ O cliente já enviou uma foto do cardápio e aqui está a análise completa:
 --- CARDÁPIO ANALISADO ---
 ${savedMenuAnalysis}
 --- FIM DO CARDÁPIO ---
+${exchangeRateInfo}
 
 SUAS TAREFAS:
 - Responder perguntas do cliente BASEADO nos itens do cardápio acima
@@ -2572,6 +2588,8 @@ SUAS TAREFAS:
 - Cite o nome exato do prato e o preço quando disponível
 - Se perguntarem algo que não está no cardápio, avise educadamente
 - Sugira harmonizações com bebidas quando relevante
+- **CONVERSÃO DE MOEDA**: Se os preços do cardápio estiverem em dólares (USD, $, US$), SEMPRE mostre abaixo de cada preço em dólar o valor equivalente em reais (R$) usando a cotação do dia fornecida acima. Formato: "$15.00 (~R$ XX,XX)"
+- Se não houver cotação disponível, use R$ 5,50 como estimativa e avise que é aproximado
 
 REGRAS:
 - Responda SEMPRE em português brasileiro
