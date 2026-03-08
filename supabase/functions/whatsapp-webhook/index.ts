@@ -3702,6 +3702,314 @@ IMPORTANTE:
           });
         }
       }
+
+      // ========== TÉO VIDENTE: Zodiac-based Travel Recommendations ==========
+      {
+        const videnteRegex = /^(meu signo|horóscopo viajante|destino do signo|signo viagem|vidente|horoscopo viajante|meu horóscopo|meu horoscopo)$/i;
+        const videnteWithSignRegex = /^(?:meu signo|signo|signo de|signo do)\s+(.+)$/i;
+        const birthdayRegex = /^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?$/;
+
+        const lowerMsgVidente = (messageText || "").toLowerCase().trim();
+        const videnteMatch = videnteRegex.test(lowerMsgVidente);
+        const videnteSignMatch = videnteWithSignRegex.exec(messageText || "");
+        const birthdayMatch = birthdayRegex.exec(lowerMsgVidente);
+
+        // Map birthday to zodiac sign
+        const getSignFromDate = (day: number, month: number): { signo: string; emoji: string; elemento: string; planeta: string } => {
+          const signs = [
+            { signo: "Capricórnio", emoji: "♑", elemento: "Terra", planeta: "Saturno", start: [1, 1], end: [1, 19] },
+            { signo: "Aquário", emoji: "♒", elemento: "Ar", planeta: "Urano", start: [1, 20], end: [2, 18] },
+            { signo: "Peixes", emoji: "♓", elemento: "Água", planeta: "Netuno", start: [2, 19], end: [3, 20] },
+            { signo: "Áries", emoji: "♈", elemento: "Fogo", planeta: "Marte", start: [3, 21], end: [4, 19] },
+            { signo: "Touro", emoji: "♉", elemento: "Terra", planeta: "Vênus", start: [4, 20], end: [5, 20] },
+            { signo: "Gêmeos", emoji: "♊", elemento: "Ar", planeta: "Mercúrio", start: [5, 21], end: [6, 20] },
+            { signo: "Câncer", emoji: "♋", elemento: "Água", planeta: "Lua", start: [6, 21], end: [7, 22] },
+            { signo: "Leão", emoji: "♌", elemento: "Fogo", planeta: "Sol", start: [7, 23], end: [8, 22] },
+            { signo: "Virgem", emoji: "♍", elemento: "Terra", planeta: "Mercúrio", start: [8, 23], end: [9, 22] },
+            { signo: "Libra", emoji: "♎", elemento: "Ar", planeta: "Vênus", start: [9, 23], end: [10, 22] },
+            { signo: "Escorpião", emoji: "♏", elemento: "Água", planeta: "Plutão", start: [10, 23], end: [11, 21] },
+            { signo: "Sagitário", emoji: "♐", elemento: "Fogo", planeta: "Júpiter", start: [11, 22], end: [12, 21] },
+            { signo: "Capricórnio", emoji: "♑", elemento: "Terra", planeta: "Saturno", start: [12, 22], end: [12, 31] },
+          ];
+          for (const s of signs) {
+            const afterStart = month > s.start[0] || (month === s.start[0] && day >= s.start[1]);
+            const beforeEnd = month < s.end[0] || (month === s.end[0] && day <= s.end[1]);
+            if (afterStart && beforeEnd) return s;
+          }
+          return signs[0]; // Capricórnio default
+        };
+
+        // Map sign name to data
+        const getSignFromName = (name: string): { signo: string; emoji: string; elemento: string; planeta: string } | null => {
+          const signMap: Record<string, { signo: string; emoji: string; elemento: string; planeta: string }> = {
+            "áries": { signo: "Áries", emoji: "♈", elemento: "Fogo", planeta: "Marte" },
+            "aries": { signo: "Áries", emoji: "♈", elemento: "Fogo", planeta: "Marte" },
+            "touro": { signo: "Touro", emoji: "♉", elemento: "Terra", planeta: "Vênus" },
+            "gêmeos": { signo: "Gêmeos", emoji: "♊", elemento: "Ar", planeta: "Mercúrio" },
+            "gemeos": { signo: "Gêmeos", emoji: "♊", elemento: "Ar", planeta: "Mercúrio" },
+            "câncer": { signo: "Câncer", emoji: "♋", elemento: "Água", planeta: "Lua" },
+            "cancer": { signo: "Câncer", emoji: "♋", elemento: "Água", planeta: "Lua" },
+            "leão": { signo: "Leão", emoji: "♌", elemento: "Fogo", planeta: "Sol" },
+            "leao": { signo: "Leão", emoji: "♌", elemento: "Fogo", planeta: "Sol" },
+            "virgem": { signo: "Virgem", emoji: "♍", elemento: "Terra", planeta: "Mercúrio" },
+            "libra": { signo: "Libra", emoji: "♎", elemento: "Ar", planeta: "Vênus" },
+            "escorpião": { signo: "Escorpião", emoji: "♏", elemento: "Água", planeta: "Plutão" },
+            "escorpiao": { signo: "Escorpião", emoji: "♏", elemento: "Água", planeta: "Plutão" },
+            "sagitário": { signo: "Sagitário", emoji: "♐", elemento: "Fogo", planeta: "Júpiter" },
+            "sagitario": { signo: "Sagitário", emoji: "♐", elemento: "Fogo", planeta: "Júpiter" },
+            "capricórnio": { signo: "Capricórnio", emoji: "♑", elemento: "Terra", planeta: "Saturno" },
+            "capricornio": { signo: "Capricórnio", emoji: "♑", elemento: "Terra", planeta: "Saturno" },
+            "aquário": { signo: "Aquário", emoji: "♒", elemento: "Ar", planeta: "Urano" },
+            "aquario": { signo: "Aquário", emoji: "♒", elemento: "Ar", planeta: "Urano" },
+            "peixes": { signo: "Peixes", emoji: "♓", elemento: "Água", planeta: "Netuno" },
+          };
+          return signMap[name.toLowerCase().trim()] || null;
+        };
+
+        let signData: { signo: string; emoji: string; elemento: string; planeta: string } | null = null;
+        let birthDateStr: string | null = null;
+        let shouldAskSign = false;
+
+        if (videnteSignMatch) {
+          // "meu signo sagitário" or "signo de leão"
+          signData = getSignFromName(videnteSignMatch[1].trim());
+          if (!signData) shouldAskSign = true;
+        } else if (birthdayMatch && !videnteMatch) {
+          // Skip — birthday match alone shouldn't trigger vidente
+          // (will be caught by the regular flow)
+        } else if (videnteMatch) {
+          // Check if we already have signo in memory
+          try {
+            const memory = await fetchClientMemory(supabase, phoneNumber);
+            if (memory?.preferences?.signo) {
+              signData = getSignFromName(memory.preferences.signo);
+            }
+          } catch {}
+          if (!signData) shouldAskSign = true;
+        }
+
+        // Check if user is answering the "what's your sign?" question
+        if (!signData && !shouldAskSign && !videnteMatch) {
+          const { data: convForVidente } = await supabase
+            .from("whatsapp_conversations")
+            .select("id, collected_data")
+            .eq("phone_number", phoneNumber)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (convForVidente) {
+            const vData = (convForVidente.collected_data as Record<string, any>) || {};
+            if (vData._vidente_waiting_sign) {
+              // User is replying with sign or birthday
+              signData = getSignFromName(lowerMsgVidente);
+              if (!signData && birthdayMatch) {
+                const day = parseInt(birthdayMatch[1]);
+                const month = parseInt(birthdayMatch[2]);
+                if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+                  signData = getSignFromDate(day, month);
+                  birthDateStr = `${birthdayMatch[1]}/${birthdayMatch[2]}`;
+                }
+              }
+              if (!signData) {
+                await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+                await sendWhatsAppMessage(phoneNumber, "🤔 Não reconheci esse signo. Tenta de novo!\n\nExemplos: *Áries*, *Touro*, *Gêmeos*...\nOu mande sua data de nascimento: *25/03*");
+                return new Response(JSON.stringify({ status: "ok", vidente_retry: true }), {
+                  status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+                });
+              }
+              // Clear waiting flag
+              const cleanData = { ...vData };
+              delete cleanData._vidente_waiting_sign;
+              await supabase.from("whatsapp_conversations").update({
+                collected_data: cleanData,
+              }).eq("id", convForVidente.id);
+            }
+          }
+        }
+
+        if (shouldAskSign) {
+          const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+          const askMsg = "🔮 *Téo Vidente — Mapa Astral de Viagem*\n\nQual é o seu signo? ♈♉♊♋♌♍♎♏♐♑♒♓\n\nOu me manda sua data de nascimento (DD/MM) que eu descubro! 🌟";
+          await sendWhatsAppMessage(phoneNumber, askMsg);
+
+          if (savedConv) {
+            const existingData = (savedConv.collected_data as Record<string, any>) || {};
+            await supabase.from("whatsapp_conversations").update({
+              collected_data: { ...existingData, _vidente_waiting_sign: true },
+            }).eq("id", savedConv.id);
+
+            const updH = [
+              ...((savedConv.messages_history as any[]) || []),
+              { role: "assistant", content: askMsg, timestamp: new Date().toISOString() },
+            ];
+            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConv.id);
+          }
+
+          return new Response(JSON.stringify({ status: "ok", vidente_asking_sign: true }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        if (signData) {
+          const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+          await sendWhatsAppMessage(phoneNumber, `🔮 *Consultando os astros para ${signData.signo}...*\nIsso pode levar alguns segundos! ✨`);
+
+          // Gather DNA context for cross-referencing
+          let dnaContext = "";
+          let clientNameForVidente = contactName || "Viajante";
+          try {
+            const memory = await fetchClientMemory(supabase, phoneNumber);
+            if (memory) {
+              if (memory.client_name) clientNameForVidente = memory.client_name;
+              const prefs = (memory.preferences as Record<string, any>) || {};
+              if (prefs.dna_viajante) {
+                const dna = prefs.dna_viajante;
+                dnaContext = `\nDNA DE VIAJANTE DO CLIENTE:\n- Explorador: ${dna.explorador || 0}%\n- Culturalista: ${dna.culturalista || 0}%\n- Gourmet: ${dna.gourmet || 0}%\n- Zen: ${dna.zen || 0}%\n- Socialite: ${dna.socialite || 0}%`;
+              }
+            }
+          } catch {}
+
+          const currentMonth = new Date().toLocaleString("pt-BR", { month: "long", timeZone: "America/Sao_Paulo" });
+          const currentYear = new Date().getFullYear();
+
+          const videntePrompt = `Você é o Téo Vidente 🔮, astrólogo de viagens da Tomorrow Travel.
+
+Gere um MAPA ASTRAL DE VIAGEM personalizado para o cliente.
+
+SIGNO: ${signData.signo} (${signData.emoji})
+ELEMENTO: ${signData.elemento}
+PLANETA REGENTE: ${signData.planeta}
+NOME DO CLIENTE: ${clientNameForVidente}
+${dnaContext}
+
+FORMATO (WhatsApp com emojis, *negrito* e _itálico_):
+
+🔮 *Téo Vidente — Seu Mapa Astral de Viagem*
+
+${signData.emoji} *${signData.signo}* | ${signData.elemento} | ${signData.planeta}
+_[Frase poética de 1 linha sobre o signo como viajante]_
+
+🌟 *Seu Perfil Astral de Viajante:*
+[3-4 linhas descrevendo a personalidade viajante baseada no signo. Seja específico e divertido. Se houver DNA, cruze: "Seu lado ${signData.signo} combina com seu DNA Explorador pra criar um viajante imbatível!"]
+
+✈️ *3 Destinos do seu Signo:*
+1. [bandeira] *[Destino específico]* — [Por que combina com o signo + justificativa astrológica criativa em 1 linha]
+2. [bandeira] *[Destino específico]* — [Por que combina]
+3. [bandeira] *[Destino específico]* — [Por que combina]
+
+🔮 *Horóscopo de Viagem — ${currentMonth} ${currentYear}:*
+[3-4 linhas com previsões divertidas sobre viagens para este mês. Mencione planetas, fases da lua, alinhamentos. Seja criativo mas positivo.]
+
+${dnaContext ? `\n🧬 *Signo + DNA:*\n[1-2 linhas cruzando signo com DNA. Ex: "Sagitário + Gourmet = rota gastronômica pelo sudeste asiático!"]` : ""}
+
+💡 Quer que eu monte um roteiro pra algum desses destinos? 😊✈️
+
+REGRAS:
+- Destinos REAIS e ESPECÍFICOS (não "Europa", mas "Santorini, Grécia")
+- Justificativas astrológicas criativas e divertidas (mas sem inventar dados científicos)
+- Se houver DNA de Viajante, CRUZE os perfis para sugestões mais refinadas
+- Tom divertido e místico, mas sem forçar
+- Máximo 3000 caracteres
+- Use emojis de bandeiras dos países dos destinos`;
+
+          try {
+            const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash",
+                messages: [
+                  { role: "system", content: videntePrompt },
+                  { role: "user", content: "Gere o mapa astral de viagem personalizado." },
+                ],
+                max_tokens: 4000,
+              }),
+            });
+
+            if (!response.ok) {
+              console.error("[VIDENTE] AI error:", response.status);
+              await sendWhatsAppMessage(phoneNumber, "😅 Os astros não colaboraram agora. Tenta de novo em alguns segundos! 🌟");
+              return new Response(JSON.stringify({ status: "ok", vidente_error: true }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            const data = await response.json();
+            const videnteResult = data.choices?.[0]?.message?.content || "Erro ao consultar os astros.";
+
+            // Split if too long
+            if (videnteResult.length > 4000) {
+              const mid = videnteResult.lastIndexOf("\n", 3900);
+              await sendWhatsAppMessage(phoneNumber, videnteResult.substring(0, mid > 0 ? mid : 3900));
+              await sendWhatsAppMessage(phoneNumber, videnteResult.substring(mid > 0 ? mid : 3900));
+            } else {
+              await sendWhatsAppMessage(phoneNumber, videnteResult);
+            }
+
+            // Save signo to client_memory
+            try {
+              const memory = await fetchClientMemory(supabase, phoneNumber);
+              const mergedPrefs = { ...(memory?.preferences || {}) };
+              mergedPrefs.signo = signData.signo;
+              if (birthDateStr) mergedPrefs.data_nascimento = birthDateStr;
+              mergedPrefs.ultimo_horoscopo = {
+                data: new Date().toISOString().split("T")[0],
+                signo: signData.signo,
+                preview: videnteResult.substring(0, 200),
+              };
+
+              const normalizedWhatsapp = phoneNumber.replace(/\D/g, "");
+              const whatsappForDb = normalizedWhatsapp.startsWith("55") ? normalizedWhatsapp : `55${normalizedWhatsapp}`;
+
+              if (memory) {
+                await supabase.from("client_memory").update({
+                  preferences: mergedPrefs,
+                  last_interaction_at: new Date().toISOString(),
+                }).eq("id", memory.id);
+              } else {
+                await supabase.from("client_memory").insert({
+                  whatsapp: whatsappForDb,
+                  client_name: clientNameForVidente,
+                  preferences: mergedPrefs,
+                  last_interaction_at: new Date().toISOString(),
+                });
+              }
+              console.log("[VIDENTE] Signo saved to client_memory:", signData.signo);
+            } catch (memErr) {
+              console.error("[VIDENTE] Memory save error:", memErr);
+            }
+
+            // Save to conversation history
+            if (savedConv) {
+              const { data: convAfterVidente } = await supabase
+                .from("whatsapp_conversations")
+                .select("id, messages_history")
+                .eq("id", savedConv.id)
+                .single();
+              if (convAfterVidente) {
+                const updH = [
+                  ...((convAfterVidente.messages_history as any[]) || []),
+                  { role: "assistant", content: `🔮 ${videnteResult}`, timestamp: new Date().toISOString() },
+                ];
+                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterVidente.id);
+              }
+            }
+
+            console.log(`[VIDENTE] Generated for ${phoneNumber}, signo: ${signData.signo}`);
+          } catch (err) {
+            console.error("[VIDENTE] Error:", err);
+            await sendWhatsAppMessage(phoneNumber, "😅 Erro ao consultar os astros. Tenta de novo!");
+          }
+
+          return new Response(JSON.stringify({ status: "ok", vidente: signData.signo }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
       {
         const { data: convForModeCheck } = await supabase
           .from("whatsapp_conversations")

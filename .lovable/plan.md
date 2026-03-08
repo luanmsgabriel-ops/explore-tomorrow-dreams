@@ -8,6 +8,7 @@
 3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
 4. ✅ **Téo DNA** — Perfil genético de viajante
 5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
+6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
 
 ---
 
