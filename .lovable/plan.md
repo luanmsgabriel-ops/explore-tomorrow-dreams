@@ -1,58 +1,56 @@
 
 
-# Plano: Chef Mode — Responder perguntas culinárias por texto
+# Plano: Múltiplos contatos no Concierge com nome, telefone e notas individuais
 
-## Problema
-Atualmente, quando o Modo Chef está ativo e o cliente envia texto, o Téo apenas responde com um lembrete genérico pedindo foto. O cliente deveria poder perguntar sobre pratos, ingredientes ou culinária por texto e receber respostas contextuais sem sair do modo.
+## Problema Atual
+
+A tabela `active_trips` tem um único campo `client_phone` e `client_name`. Não suporta múltiplos números de WhatsApp por viagem, nem edição do número principal, nem notas especiais por contato.
 
 ## Solução
 
-### Arquivo: `supabase/functions/whatsapp-webhook/index.ts`
+Criar uma tabela `concierge_contacts` para armazenar múltiplos contatos por viagem ativa, cada um com nome, telefone, status ativo e notas especiais individuais. Atualizar a UI do concierge no TripManager e adaptar o webhook para consultar esta nova tabela.
 
-#### 1. Nova função `answerCulinaryQuestion(question: string): Promise<string>`
+### 1. Migração de Banco
 
-Envia a pergunta de texto para Gemini Flash com um prompt culinário especializado:
+```sql
+CREATE TABLE public.concierge_contacts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  trip_id uuid NOT NULL REFERENCES public.active_trips(id) ON DELETE CASCADE,
+  contact_name text NOT NULL,
+  contact_phone text NOT NULL,
+  is_active boolean NOT NULL DEFAULT true,
+  special_notes text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 
-```typescript
-async function answerCulinaryQuestion(question: string): Promise<string> {
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: CHEF_TEXT_PROMPT },
-        { role: "user", content: question },
-      ],
-      max_tokens: 2000,
-    }),
-  });
-  // parse and return
-}
+ALTER TABLE public.concierge_contacts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins can manage concierge_contacts"
+  ON public.concierge_contacts FOR ALL
+  TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 ```
 
-O `CHEF_TEXT_PROMPT` instrui o Gemini a ser um especialista culinário que:
-- Explica pratos, ingredientes, técnicas de preparo
-- Alerta sobre alergênicos
-- Sugere harmonizações
-- Dá dicas culturais sobre a culinária
-- Responde em PT-BR, formatado para WhatsApp
-- Se a pergunta não for sobre comida/gastronomia, lembra educadamente que está no Modo Chef
+Ao ativar o concierge, o `client_phone` existente em `active_trips` continua sendo o número principal (para compatibilidade com o webhook), e uma entrada correspondente é criada em `concierge_contacts`.
 
-#### 2. Alterar o bloco de isolamento do chef mode (~linha 2533)
+### 2. UI no TripManager (tab Concierge)
 
-Substituir o lembrete fixo por lógica inteligente:
+Quando o concierge está ativo:
+- Mostrar o telefone principal com botão de **Editar** (ícone lápis) que permite alterar o `client_phone` em `active_trips` e o registro correspondente em `concierge_contacts`
+- Seção **"Contatos do Concierge"** com lista dos contatos cadastrados, cada um mostrando: nome, telefone, toggle ativo/inativo, textarea de notas especiais
+- Botão **"Adicionar Contato"** que abre campos inline para nome + telefone
+- O campo "Informações Especiais para o Téo" global permanece (para notas gerais da viagem)
+- Cada contato individual tem seu próprio campo de notas especiais
 
-```
-Se _chef_mode === true e messageType === "text":
-  → Chamar answerCulinaryQuestion(messageText)
-  → Enviar resposta via sendWhatsAppMessage
-  → Salvar no histórico
-  → return (não cai no fluxo normal)
-```
+### 3. Webhook (whatsapp-webhook)
 
-Isso mantém o isolamento do modo (nunca chega ao concierge/vendas), mas agora responde perguntas culinárias por texto ao invés de só pedir foto.
+Na verificação de concierge ativo, além de checar `active_trips.client_phone`, também verificar se o número existe em `concierge_contacts` com `is_active = true`. Se encontrado por esta via, usar o `contact_name` e `special_notes` do contato específico para enriquecer o contexto do prompt.
+
+### Arquivos Modificados
+
+1. **Migração SQL**: Criar tabela `concierge_contacts`
+2. **`src/components/admin/TripManager.tsx`**: UI para listar/adicionar/editar/remover contatos do concierge, editar telefone principal
+3. **`supabase/functions/whatsapp-webhook/index.ts`**: Consultar `concierge_contacts` para identificar contatos adicionais e injetar notas individuais no contexto
 

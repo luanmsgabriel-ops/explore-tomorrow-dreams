@@ -2531,13 +2531,61 @@ serve(async (req) => {
           }
 
           if (modeData._chef_mode === true && messageType !== "image") {
-            const reminderMsg = "👨‍🍳 *Você está no Modo Chef!*\n\nMande uma *foto do cardápio* que eu analiso pra você! 📸\n\nPara sair, mande: *sair chef*";
-            await sendWhatsAppMessage(phoneNumber, reminderMsg);
+            // Text messages in Chef Mode → answer culinary questions via AI
+            let chefResponse = "";
+            try {
+              const CHEF_TEXT_PROMPT = `Você é o Téo, um assistente culinário expert da Tomorrow Travel. Você está no *Modo Chef* 👨‍🍳.
+
+SUAS ESPECIALIDADES:
+- Explicar pratos, ingredientes e técnicas de preparo de qualquer culinária do mundo
+- Sugerir harmonizações de vinhos e bebidas
+- Alertar sobre alergênicos comuns em pratos
+- Dar dicas culturais sobre gastronomia local (etiqueta, costumes, horários de refeição)
+- Recomendar pratos típicos de destinos de viagem
+- Traduzir nomes de pratos e ingredientes
+
+REGRAS:
+- Responda SEMPRE em português brasileiro
+- Use formatação para WhatsApp: *negrito*, _itálico_, emojis
+- Seja conciso mas informativo (máximo 3 parágrafos)
+- Se a pergunta NÃO for relacionada a comida, gastronomia, restaurantes ou culinária, responda educadamente: "👨‍🍳 No Modo Chef, sou especialista em gastronomia! Pergunte sobre pratos, ingredientes ou culinária. Para voltar ao Téo normal, mande *sair chef*"
+- Nunca sugira cotações de viagem ou serviços de agência
+- Lembre que o usuário pode enviar fotos de cardápio para análise`;
+
+              const chefAiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  model: "google/gemini-2.5-flash",
+                  messages: [
+                    { role: "system", content: CHEF_TEXT_PROMPT },
+                    { role: "user", content: messageText },
+                  ],
+                  max_tokens: 2000,
+                }),
+              });
+
+              if (chefAiResponse.ok) {
+                const chefJson = await chefAiResponse.json();
+                chefResponse = chefJson.choices?.[0]?.message?.content || "";
+              }
+            } catch (e) {
+              console.error("Chef mode AI error:", e);
+            }
+
+            if (!chefResponse) {
+              chefResponse = "👨‍🍳 *Modo Chef ativo!*\n\nMe pergunte sobre qualquer prato ou ingrediente, ou mande uma *foto do cardápio* que eu analiso! 📸\n\nPara sair: *sair chef*";
+            }
+
+            await sendWhatsAppMessage(phoneNumber, chefResponse);
 
             const updH = [
               ...((convForModeCheck.messages_history as any[]) || []),
               { role: "user", content: messageText || "[mídia]", timestamp: new Date().toISOString() },
-              { role: "assistant", content: reminderMsg, timestamp: new Date().toISOString() },
+              { role: "assistant", content: chefResponse, timestamp: new Date().toISOString() },
             ];
             await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convForModeCheck.id);
 
