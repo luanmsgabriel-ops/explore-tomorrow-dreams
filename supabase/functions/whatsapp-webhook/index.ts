@@ -3016,6 +3016,273 @@ REGRAS:
         }
       }
 
+      // ========== TÉO DNA DE VIAJANTE: Deep Traveler Genetic Profile ==========
+      {
+        const lowerMsgDna = (messageText || "").toLowerCase().trim();
+        const dnaActivateRegex = /^(meu dna|dna viajante|teste dna|dna de viajante|perfil viajante|traveler dna)$/i;
+
+        const DNA_QUESTIONS = [
+          "🧬 *Teste DNA de Viajante*\n\nVou te fazer 10 perguntas pra descobrir seu perfil genético de viajante! 🌍\n\n1️⃣ Numa viagem perfeita, você acorda e...\n\n🅰️ Escala uma montanha ao amanhecer\n🅱️ Toma café da manhã tranquilo com vista\n🅲️ Vai direto pro mercado local provar comidas\n🅳️ Dorme até tarde e curte o hotel",
+          "2️⃣ O que te faz escolher um destino?\n\n🅰️ Aventuras e adrenalina\n🅱️ Cultura, história e arquitetura\n🅲️ Gastronomia e vinhos\n🅳️ Praias e natureza\n🅴️ Festas e vida noturna",
+          "3️⃣ Seu orçamento de viagem é pra...\n\n🅰️ Experiências únicas (saltar de paraquedas, mergulhar)\n🅱️ Hotel/resort de qualidade\n🅲️ Restaurantes incríveis\n🅳️ Compras e souvenirs\n🅴️ Equilíbrio entre tudo",
+          "4️⃣ Quando você volta de viagem, o que mais conta pros amigos?\n\n🅰️ As aventuras radicais\n🅱️ As histórias e curiosidades do lugar\n🅲️ Os pratos que comeu\n🅳️ Os momentos de paz e descanso\n🅴️ As festas e as pessoas que conheceu",
+          "5️⃣ Numa trilha, você...\n\n🅰️ Corre na frente, quer chegar ao topo primeiro\n🅱️ Para pra ler cada placa informativa\n🅲️ Leva snacks e para pra fazer piquenique no caminho\n🅳️ Prefere uma trilha leve com paisagem bonita\n🅴️ Só faz trilha se tiver grupo animado",
+          "6️⃣ Seu estilo de hospedagem ideal:\n\n🅰️ Camping, hostel, qualquer lugar com história\n🅱️ Hotel boutique ou pousada charmosa\n🅲️ Onde tiver a melhor comida por perto\n🅳️ Resort all-inclusive com spa\n🅴️ Airbnb no centro da balada",
+          "7️⃣ Fim de tarde na viagem, você...\n\n🅰️ Faz rapel, caiaque ou algum esporte\n🅱️ Visita um museu ou ruína histórica\n🅲️ Faz um tour gastronômico ou aula de culinária\n🅳️ Assiste o pôr do sol com um drink\n🅴️ Se arruma pro happy hour",
+          "8️⃣ Qual frase mais combina com você?\n\n🅰️ \"Adrenalina é meu combustível\"\n🅱️ \"Viajar é aprender\"\n🅲️ \"A comida conta a história de um povo\"\n🅳️ \"Preciso recarregar as energias\"\n🅴️ \"A melhor viagem é com boa companhia\"",
+          "9️⃣ Se pudesse ganhar um presente de viagem:\n\n🅰️ Salto de bungee jump na Nova Zelândia\n🅱️ Tour privativo pelo Vaticano\n🅲️ Jantar num restaurante 3 estrelas Michelin\n🅳️ Uma semana num overwater bungalow em Maldivas\n🅴️ VIP num festival de música em Ibiza",
+          "🔟 *Última!* Sua viagem dos sonhos tem:\n\n🅰️ Montanhas, trilhas e natureza selvagem\n🅱️ Cidades históricas e templos antigos\n🅲️ Mercados, street food e vinícolas\n🅳️ Praias paradisíacas e spa\n🅴️ Baladas, rooftops e energia urbana",
+        ];
+
+        const DNA_CATEGORIES = {
+          A: "Explorador",
+          B: "Culturalista",
+          C: "Gourmet",
+          D: "Zen",
+          E: "Socialite",
+        };
+
+        // Generate DNA profile via AI
+        const generateDnaProfile = async (answers: string[], clientName: string): Promise<string> => {
+          const answersText = answers.map((a, i) => `Pergunta ${i + 1}: ${a}`).join("\n");
+
+          const dnaPrompt = `Você é um cientista de viagens da Tomorrow Travel. Analise as respostas de um questionário de 10 perguntas e gere o "DNA de Viajante" — um perfil genético lúdico e personalizado.
+
+RESPOSTAS DO CLIENTE (${clientName || "Viajante"}):
+${answersText}
+
+CATEGORIAS DO DNA (calcule a porcentagem de cada uma baseado nas respostas, total = 100%):
+🏔️ Explorador (aventura, adrenalina, natureza selvagem)
+🏛️ Culturalista (história, museus, arquitetura, aprendizado)
+🍽️ Gourmet (gastronomia, vinhos, experiências culinárias)
+🧘 Zen (relaxamento, praias, spas, paz interior)
+🎉 Socialite (festas, vida noturna, experiências sociais)
+
+GERE O PERFIL NO FORMATO ABAIXO (formato WhatsApp com emojis):
+
+🧬 *DNA DE VIAJANTE*
+*[NOME]*
+
+━━━━━━━━━━━━━━━━━━
+
+🏔️ Explorador: XX%
+${"▓".repeat(5)}░░░░░
+🏛️ Culturalista: XX%
+${"▓".repeat(3)}░░░░░░░
+🍽️ Gourmet: XX%
+${"▓".repeat(4)}░░░░░░
+🧘 Zen: XX%
+${"▓".repeat(2)}░░░░░░░░
+🎉 Socialite: XX%
+${"▓".repeat(1)}░░░░░░░░░
+
+━━━━━━━━━━━━━━━━━━
+
+🏆 *Tipo Dominante:* [A categoria com maior %]
+🎭 *Subtipo:* [Combinação criativa das 2 maiores, ex: "Explorador Gourmet", "Zen Culturalista"]
+
+📝 *Perfil:*
+[2-3 frases descritivas do perfil, escritas de forma pessoal e divertida]
+
+🌍 *Destinos Perfeitos pro seu DNA:*
+1. [Destino específico] — [por que combina]
+2. [Destino específico] — [por que combina]
+3. [Destino específico] — [por que combina]
+
+💡 *Dica do Téo:* [Uma dica personalizada baseada no perfil]
+
+REGRAS:
+- Use barras de progresso com ▓ e ░ (total 10 blocos por barra)
+- As porcentagens devem somar 100%
+- Destinos devem ser específicos (não "Europa", mas "Toscana, Itália")
+- O perfil deve ser divertido, pessoal e preciso
+- Máximo 3000 caracteres
+- Inclua no final: "Seu DNA evolui a cada viagem! 🧬✈️"`;
+
+          try {
+            const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash",
+                messages: [
+                  { role: "system", content: dnaPrompt },
+                  { role: "user", content: "Gere o DNA de Viajante baseado nas respostas." },
+                ],
+                max_tokens: 4000,
+              }),
+            });
+
+            if (!response.ok) {
+              console.error("[DNA] AI error:", response.status);
+              return "😅 Não consegui gerar seu DNA agora. Tente novamente em alguns minutos!";
+            }
+
+            const data = await response.json();
+            return data.choices?.[0]?.message?.content || "Erro ao gerar DNA.";
+          } catch (err) {
+            console.error("[DNA] Error:", err);
+            return "😅 Erro ao processar seu DNA de viajante.";
+          }
+        };
+
+        // ===== ACTIVATE DNA TEST =====
+        if (dnaActivateRegex.test(lowerMsgDna)) {
+          const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          if (savedConv) {
+            const existingData = (savedConv.collected_data as Record<string, any>) || {};
+            await supabase.from("whatsapp_conversations").update({
+              collected_data: { ...existingData, _dna_mode: "questioning", _dna_step: 1, _dna_answers: [] },
+            }).eq("id", savedConv.id);
+
+            const updH = [
+              ...((savedConv.messages_history as any[]) || []),
+              { role: "assistant", content: DNA_QUESTIONS[0], timestamp: new Date().toISOString() },
+            ];
+            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConv.id);
+          }
+
+          await sendWhatsAppMessage(phoneNumber, DNA_QUESTIONS[0]);
+
+          return new Response(JSON.stringify({ status: "ok", dna_started: true }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // ===== DNA QUESTIONNAIRE (in-progress) =====
+        {
+          const { data: convForDna } = await supabase
+            .from("whatsapp_conversations")
+            .select("id, collected_data, messages_history, client_name")
+            .eq("phone_number", phoneNumber)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (convForDna) {
+            const dnaData = (convForDna.collected_data as Record<string, any>) || {};
+            if (dnaData._dna_mode === "questioning" && dnaData._dna_step) {
+              const step = parseInt(dnaData._dna_step);
+              const answers: string[] = Array.isArray(dnaData._dna_answers) ? dnaData._dna_answers : [];
+
+              if (step >= 1 && step <= 10) {
+                // Save answer
+                answers.push(messageText?.trim() || "");
+                await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+                if (step < 10) {
+                  // Next question
+                  const nextStep = step + 1;
+                  await supabase.from("whatsapp_conversations").update({
+                    collected_data: { ...dnaData, _dna_step: nextStep, _dna_answers: answers },
+                  }).eq("id", convForDna.id);
+
+                  await sendWhatsAppMessage(phoneNumber, DNA_QUESTIONS[nextStep - 1]);
+                } else {
+                  // All 10 answered — generate DNA profile
+                  await sendWhatsAppMessage(phoneNumber, "🧬 *Analisando seu DNA de viajante...*\nIsso pode levar alguns segundos! ⏳");
+
+                  // Clear DNA mode
+                  const cleanData = { ...dnaData };
+                  delete cleanData._dna_mode;
+                  delete cleanData._dna_step;
+                  delete cleanData._dna_answers;
+                  await supabase.from("whatsapp_conversations").update({
+                    collected_data: cleanData,
+                  }).eq("id", convForDna.id);
+
+                  const clientNameForDna = convForDna.client_name || contactName || "Viajante";
+                  const dnaResult = await generateDnaProfile(answers, clientNameForDna);
+
+                  // Save DNA to client_memory
+                  try {
+                    const memory = await fetchClientMemory(supabase, phoneNumber);
+                    const mergedPrefs = { ...(memory?.preferences || {}) };
+
+                    // Parse percentages from the result
+                    const dnaProfile: Record<string, any> = { raw_result: dnaResult, generated_at: new Date().toISOString(), answers };
+                    const explorerMatch = dnaResult.match(/Explorador:\s*(\d+)%/);
+                    const culturalMatch = dnaResult.match(/Culturalista:\s*(\d+)%/);
+                    const gourmetMatch = dnaResult.match(/Gourmet:\s*(\d+)%/);
+                    const zenMatch = dnaResult.match(/Zen:\s*(\d+)%/);
+                    const socialiteMatch = dnaResult.match(/Socialite:\s*(\d+)%/);
+                    if (explorerMatch) dnaProfile.explorador = parseInt(explorerMatch[1]);
+                    if (culturalMatch) dnaProfile.culturalista = parseInt(culturalMatch[1]);
+                    if (gourmetMatch) dnaProfile.gourmet = parseInt(gourmetMatch[1]);
+                    if (zenMatch) dnaProfile.zen = parseInt(zenMatch[1]);
+                    if (socialiteMatch) dnaProfile.socialite = parseInt(socialiteMatch[1]);
+
+                    // Track DNA evolution history
+                    const dnaHistory = Array.isArray(mergedPrefs.dna_historico) ? mergedPrefs.dna_historico : [];
+                    dnaHistory.push({
+                      data: new Date().toISOString().split("T")[0],
+                      explorador: dnaProfile.explorador || 0,
+                      culturalista: dnaProfile.culturalista || 0,
+                      gourmet: dnaProfile.gourmet || 0,
+                      zen: dnaProfile.zen || 0,
+                      socialite: dnaProfile.socialite || 0,
+                    });
+                    mergedPrefs.dna_viajante = dnaProfile;
+                    mergedPrefs.dna_historico = dnaHistory.slice(-10);
+
+                    const normalizedWhatsapp = phoneNumber.replace(/\D/g, "");
+                    const whatsappForDb = normalizedWhatsapp.startsWith("55") ? normalizedWhatsapp : `55${normalizedWhatsapp}`;
+
+                    if (memory) {
+                      await supabase.from("client_memory").update({
+                        preferences: mergedPrefs,
+                        last_interaction_at: new Date().toISOString(),
+                      }).eq("id", memory.id);
+                    } else {
+                      await supabase.from("client_memory").insert({
+                        whatsapp: whatsappForDb,
+                        client_name: clientNameForDna,
+                        preferences: mergedPrefs,
+                        last_interaction_at: new Date().toISOString(),
+                      });
+                    }
+                    console.log("[DNA] Profile saved to client_memory");
+                  } catch (memErr) {
+                    console.error("[DNA] Error saving to memory:", memErr);
+                  }
+
+                  // Send result (split if needed)
+                  if (dnaResult.length > 4000) {
+                    const mid = dnaResult.lastIndexOf("\n", 3900);
+                    await sendWhatsAppMessage(phoneNumber, dnaResult.substring(0, mid > 0 ? mid : 3900));
+                    await sendWhatsAppMessage(phoneNumber, dnaResult.substring(mid > 0 ? mid : 3900));
+                  } else {
+                    await sendWhatsAppMessage(phoneNumber, dnaResult);
+                  }
+
+                  // Save to conversation history
+                  const { data: convAfterDna } = await supabase
+                    .from("whatsapp_conversations")
+                    .select("id, messages_history")
+                    .eq("id", convForDna.id)
+                    .single();
+                  if (convAfterDna) {
+                    const updH = [
+                      ...((convAfterDna.messages_history as any[]) || []),
+                      { role: "assistant", content: `🧬 ${dnaResult}`, timestamp: new Date().toISOString() },
+                    ];
+                    await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterDna.id);
+                  }
+                }
+
+                return new Response(JSON.stringify({ status: "ok", dna_questionnaire: step }), {
+                  status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+                });
+              }
+            }
+          }
+        }
+      }
+
       // ========== MODE ISOLATION: Block normal flow when special mode is active ==========
       {
         const { data: convForModeCheck } = await supabase
