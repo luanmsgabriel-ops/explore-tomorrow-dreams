@@ -2695,7 +2695,7 @@ serve(async (req) => {
           });
         }
 
-        // If in chef mode AND incoming is image → analyze menu
+        // If incoming is image → classify first, only activate chef mode if it's a menu
         if (messageType === "image" && imageBase64Data) {
           const { data: convForChef } = await supabase
             .from("whatsapp_conversations")
@@ -2708,10 +2708,47 @@ serve(async (req) => {
           const chefData = (convForChef?.collected_data as Record<string, any>) || {};
           const wasChefModeActive = chefData._chef_mode === true;
           
-          if (convForChef) {
-            // Auto-activate chef mode if not already active
+          // Determine if we should process as menu
+          let isMenuImage = wasChefModeActive; // If already in chef mode, treat all images as menus
+          
+          if (!wasChefModeActive && convForChef) {
+            // NOT in chef mode — use AI to classify the image first
+            console.log("[CHEF MODE] Classifying image to check if it's a menu...");
+            try {
+              const classifyResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  model: "google/gemini-2.5-flash-lite",
+                  messages: [{
+                    role: "user",
+                    content: [
+                      { type: "text", text: "Is this image a restaurant menu, food menu, or menu card? Reply ONLY with 'yes' or 'no'." },
+                      { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64Data}` } }
+                    ]
+                  }],
+                  max_tokens: 10,
+                }),
+              });
+              
+              if (classifyResponse.ok) {
+                const classifyJson = await classifyResponse.json();
+                const answer = (classifyJson.choices?.[0]?.message?.content || "").toLowerCase().trim();
+                isMenuImage = answer.includes("yes");
+                console.log(`[CHEF MODE] Classification result: ${answer} → isMenu=${isMenuImage}`);
+              }
+            } catch (classifyErr) {
+              console.error("[CHEF MODE] Classification error:", classifyErr);
+              isMenuImage = false; // On error, don't falsely activate
+            }
+          }
+          
+          if (isMenuImage && convForChef) {
             if (!wasChefModeActive) {
-              console.log("[CHEF MODE] Auto-activating chef mode via image detection");
+              console.log("[CHEF MODE] Auto-activating chef mode — confirmed menu image");
               await sendWhatsAppMessage(phoneNumber, "👨‍🍳 *Modo Chef ativado automaticamente!*\nAnalisando seu cardápio... 📋");
             } else {
               console.log("[CHEF MODE] New menu image received, updating analysis...");
@@ -2722,7 +2759,6 @@ serve(async (req) => {
             try {
               const analysisResult = await analyzeMenuImage(imageBase64Data);
               
-              // Split long messages if needed (WhatsApp limit ~4096)
               if (analysisResult.length > 4000) {
                 const mid = analysisResult.lastIndexOf("\n", 3900);
                 const part1 = analysisResult.substring(0, mid > 0 ? mid : 3900);
@@ -2733,7 +2769,6 @@ serve(async (req) => {
                 await sendWhatsAppMessage(phoneNumber, analysisResult);
               }
 
-              // Save to history
               const { data: convAfterChef } = await supabase
                 .from("whatsapp_conversations")
                 .select("id, messages_history, collected_data")
@@ -2745,7 +2780,6 @@ serve(async (req) => {
                   ...((convAfterChef.messages_history as any[]) || []),
                   { role: "assistant", content: `👨‍🍳 ${analysisResult}`, timestamp: new Date().toISOString() },
                 ];
-                // Save menu analysis in collected_data for future text questions
                 const existingChefData = (convAfterChef as any).collected_data || chefData || {};
                 await supabase.from("whatsapp_conversations").update({ 
                   messages_history: updH,
@@ -2761,8 +2795,8 @@ serve(async (req) => {
               status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
+          // If not a menu image, continue to normal AI flow below
         }
-      }
 
       // ========== TÉO GRUPAL: Group Travel with Preference Cross-Referencing ==========
       {
