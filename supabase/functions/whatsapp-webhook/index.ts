@@ -5936,13 +5936,10 @@ Regras OBRIGATÓRIAS:
         // Cotação intent signals: pricing, booking, destination planning  
         const cotacaoSignals = /(?:quanto custa|preco|valor|orcamento|pacote|cotar|cotacao|quero viajar|viagem para|passagem|reservar|disponibilidade|data.*(ida|volta)|quantas pessoas|lua de mel|ferias|feriado|promoc|oferta|destino|pra onde|para onde|conhecer|quero ir|vamos para|bora para|me leva)/i;
         
-        // Photo/image → could be menu (chef mode handles separately) or document for quotation
-        const isImageMessage = messageType === "image" && imageBase64Data;
-        
         if (conciergeSignals.test(msgLower)) {
           effectiveTeoMode = "concierge";
           console.log(`🔄 Auto-detected CONCIERGE mode from message content`);
-        } else if (cotacaoSignals.test(msgLower) || isImageMessage) {
+        } else if (cotacaoSignals.test(msgLower)) {
           effectiveTeoMode = "cotacao";
           console.log(`🔄 Auto-detected COTAÇÃO mode from message content`);
         }
