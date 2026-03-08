@@ -2786,6 +2786,9 @@ Regras OBRIGATÓRIAS:
       const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || !!collectedData._quotation_triggered;
       const quotationData = alreadyQuoted ? null : parseQuotationTag(aiResponse);
 
+      // Check for itinerary visual tag BEFORE cleaning
+      const itineraryVisualData = parseItineraryVisualTag(aiResponse);
+
       // Clean response (remove all tags)
       let cleanResponse = cleanAiResponse(aiResponse);
 
