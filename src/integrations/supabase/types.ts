@@ -1120,6 +1120,86 @@ export type Database = {
         }
         Relationships: []
       }
+      travel_group_members: {
+        Row: {
+          group_id: string
+          id: string
+          is_ready: boolean
+          joined_at: string
+          member_name: string | null
+          phone_number: string
+          preferences: Json | null
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          is_ready?: boolean
+          joined_at?: string
+          member_name?: string | null
+          phone_number: string
+          preferences?: Json | null
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          is_ready?: boolean
+          joined_at?: string
+          member_name?: string | null
+          phone_number?: string
+          preferences?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "travel_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "travel_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      travel_groups: {
+        Row: {
+          budget_range: string | null
+          created_at: string
+          creator_name: string | null
+          creator_phone: string
+          final_recommendation: Json | null
+          group_code: string
+          group_name: string | null
+          id: string
+          status: string
+          travel_dates: string | null
+          updated_at: string
+        }
+        Insert: {
+          budget_range?: string | null
+          created_at?: string
+          creator_name?: string | null
+          creator_phone: string
+          final_recommendation?: Json | null
+          group_code: string
+          group_name?: string | null
+          id?: string
+          status?: string
+          travel_dates?: string | null
+          updated_at?: string
+        }
+        Update: {
+          budget_range?: string | null
+          created_at?: string
+          creator_name?: string | null
+          creator_phone?: string
+          final_recommendation?: Json | null
+          group_code?: string
+          group_name?: string | null
+          id?: string
+          status?: string
+          travel_dates?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       travel_quote_requests: {
         Row: {
           adults: number
