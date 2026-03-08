@@ -98,6 +98,12 @@ TABELAS DISPONÍVEIS NO BANCO DE DADOS:
     Colunas: id, primary_user_id, shared_user_id, shared_email, created_by, created_at
 
 25. client_memory - Memória de longo prazo dos clientes (perfil persistente)
+
+26. travel_groups - Grupos de viagem (Téo Grupal)
+    Colunas: id, group_code (UNIQUE 6 chars), creator_phone, creator_name, group_name, status (collecting/ready/completed), travel_dates, budget_range, final_recommendation (JSONB), created_at, updated_at
+
+27. travel_group_members - Membros dos grupos de viagem
+    Colunas: id, group_id (FK travel_groups), phone_number, member_name, preferences (JSONB: estilo/clima/prioridades/orcamento/restricoes), is_ready, joined_at
     Colunas: id, whatsapp (unique), client_name, preferences (JSON: estilo_viagem, orcamento, tipo, clima, companhia), travel_history (JSON array: destinos visitados/cotados), personal_notes (JSON: aniversario, filhos, acompanhantes, observacoes), last_interaction_at, created_at, updated_at
 `;
 
@@ -2534,6 +2540,478 @@ serve(async (req) => {
             return new Response(JSON.stringify({ status: "ok", chef_menu_analyzed: true }), {
               status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
+          }
+        }
+      }
+
+      // ========== TÉO GRUPAL: Group Travel with Preference Cross-Referencing ==========
+      {
+        const lowerMsgGroup = (messageText || "").toLowerCase().trim();
+        const createGroupRegex = /^(criar grupo|viagem em grupo|grupo viagem|travel group)$/i;
+        const joinGroupRegex = /^entrar grupo\s+([A-Z0-9]{6})$/i;
+        const joinGroupRegexLower = /^entrar grupo\s+([a-zA-Z0-9]{6})$/i;
+        const myGroupRegex = /^(meu grupo|status grupo|group status)$/i;
+        const resultGroupRegex = /^(resultado grupo|group result|ver resultado)$/i;
+        const leaveGroupRegex = /^(sair grupo|sair do grupo|leave group)$/i;
+
+        // Generate 6-char alphanumeric code
+        const generateGroupCode = (): string => {
+          const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+          let code = "";
+          for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+          return code;
+        };
+
+        // Group questionnaire questions
+        const GROUP_QUESTIONS = [
+          "1️⃣ Qual seu *estilo de viagem*?\n\n🏔️ Aventura\n🧘 Relax\n🏛️ Cultural\n🍽️ Gastronômico\n🎉 Festas\n🔀 Misto",
+          "2️⃣ *Clima* preferido?\n\n☀️ Tropical/Quente\n❄️ Frio\n🌤️ Temperado\n🤷 Tanto faz",
+          "3️⃣ Top 3 *prioridades* (separe por vírgula):\n\n🏖️ Praia | 🏔️ Montanha | 🏙️ Cidade\n🍽️ Gastronomia | ⚡ Esportes | 🌙 Vida noturna\n🌿 Natureza | 📜 História",
+          "4️⃣ Faixa de *orçamento*?\n\n💰 Econômico\n💵 Moderado\n💎 Premium\n👑 Luxo",
+          "5️⃣ Alguma *restrição* importante?\n\n📅 Datas fixas\n✈️ Sem escalas longas\n🛂 Visto fácil\n❌ Nenhuma\n\n(Ou escreva sua restrição)",
+        ];
+
+        const PREF_KEYS = ["estilo", "clima", "prioridades", "orcamento", "restricoes"];
+
+        // Cross-reference preferences via AI
+        const crossReferencePreferences = async (group: any, members: any[]): Promise<string> => {
+          const membersList = members.map(m => {
+            const prefs = m.preferences || {};
+            return `- *${m.member_name || m.phone_number}*: Estilo: ${prefs.estilo || "?"}, Clima: ${prefs.clima || "?"}, Prioridades: ${prefs.prioridades || "?"}, Orçamento: ${prefs.orcamento || "?"}, Restrições: ${prefs.restricoes || "nenhuma"}`;
+          }).join("\n");
+
+          const crossPrompt = `Você é um especialista em viagens de grupo da Tomorrow Travel. Analise as preferências de ${members.length} viajantes e sugira os 3 melhores destinos.
+
+MEMBROS DO GRUPO:
+${membersList}
+
+REGRAS:
+- Sugira 3 destinos ranqueados por compatibilidade (0-100%)
+- Para cada destino, explique por que combina com o grupo
+- Identifique possíveis conflitos (ex: "João prefere frio mas Maria quer praia")
+- Sugira compromissos (ex: "Gramado tem frio + gastronomia + natureza")
+- Use destinos reais e específicos (não "Nordeste", mas "Porto de Galinhas")
+- Considere o orçamento médio do grupo
+- Formato WhatsApp com emojis e *negrito*
+- Máximo 3500 caracteres
+- No final, adicione: "Quer que eu cote algum desses destinos para o grupo? 😊✈️"`;
+
+          try {
+            const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash",
+                messages: [
+                  { role: "system", content: crossPrompt },
+                  { role: "user", content: "Analise as preferências e sugira os melhores destinos para o grupo." },
+                ],
+                max_tokens: 4000,
+              }),
+            });
+
+            if (!response.ok) {
+              console.error("[GROUP] AI error:", response.status);
+              return "😅 Não consegui analisar as preferências do grupo agora. Tente novamente em alguns minutos!";
+            }
+
+            const data = await response.json();
+            return data.choices?.[0]?.message?.content || "Não consegui gerar recomendações. Tente novamente!";
+          } catch (err) {
+            console.error("[GROUP] Cross-reference error:", err);
+            return "😅 Erro ao processar as preferências. Tente novamente!";
+          }
+        };
+
+        // ===== CREATE GROUP =====
+        if (createGroupRegex.test(lowerMsgGroup)) {
+          const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+          
+          let groupCode = generateGroupCode();
+          // Ensure uniqueness
+          let attempts = 0;
+          while (attempts < 5) {
+            const { data: existing } = await supabase.from("travel_groups").select("id").eq("group_code", groupCode).maybeSingle();
+            if (!existing) break;
+            groupCode = generateGroupCode();
+            attempts++;
+          }
+
+          const { data: newGroup, error: groupErr } = await supabase
+            .from("travel_groups")
+            .insert({
+              group_code: groupCode,
+              creator_phone: phoneNumber,
+              creator_name: contactName || null,
+            })
+            .select("id")
+            .single();
+
+          if (groupErr || !newGroup) {
+            console.error("[GROUP] Error creating group:", groupErr);
+            await sendWhatsAppMessage(phoneNumber, "😅 Erro ao criar o grupo. Tente novamente!");
+            return new Response(JSON.stringify({ status: "ok", group_error: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          // Add creator as first member
+          await supabase.from("travel_group_members").insert({
+            group_id: newGroup.id,
+            phone_number: phoneNumber,
+            member_name: contactName || null,
+          });
+
+          const createMsg = `🎉 *Grupo de Viagem Criado!*\n\nCódigo: *${groupCode}*\n\nCompartilhe com seus amigos! Eles devem mandar:\n👉 *entrar grupo ${groupCode}*\n\nQuando todos entrarem e responderem o questionário, eu cruzo as preferências e sugiro o destino perfeito pro grupo! 🌍✈️\n\nVou começar com suas preferências...`;
+          await sendWhatsAppMessage(phoneNumber, createMsg);
+
+          // Set group mode in conversation
+          if (savedConv) {
+            const existingData = (savedConv.collected_data as Record<string, any>) || {};
+            await supabase.from("whatsapp_conversations").update({
+              collected_data: { ...existingData, _group_mode: "questioning", _group_id: newGroup.id, _group_step: 1 },
+            }).eq("id", savedConv.id);
+
+            const updH = [
+              ...((savedConv.messages_history as any[]) || []),
+              { role: "assistant", content: createMsg, timestamp: new Date().toISOString() },
+            ];
+            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConv.id);
+          }
+
+          // Send first question
+          await sendWhatsAppMessage(phoneNumber, GROUP_QUESTIONS[0]);
+
+          return new Response(JSON.stringify({ status: "ok", group_created: groupCode }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // ===== JOIN GROUP =====
+        const joinMatch = messageText?.match(joinGroupRegexLower);
+        if (joinMatch) {
+          const code = joinMatch[1].toUpperCase();
+          const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          const { data: group } = await supabase
+            .from("travel_groups")
+            .select("id, group_code, status, creator_name")
+            .eq("group_code", code)
+            .maybeSingle();
+
+          if (!group) {
+            await sendWhatsAppMessage(phoneNumber, `❌ Grupo *${code}* não encontrado. Verifique o código e tente novamente!`);
+            return new Response(JSON.stringify({ status: "ok", group_not_found: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          if (group.status !== "collecting") {
+            await sendWhatsAppMessage(phoneNumber, "⚠️ Este grupo já foi finalizado e não aceita novos membros.");
+            return new Response(JSON.stringify({ status: "ok", group_closed: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          // Check if already a member
+          const { data: existingMember } = await supabase
+            .from("travel_group_members")
+            .select("id")
+            .eq("group_id", group.id)
+            .eq("phone_number", phoneNumber)
+            .maybeSingle();
+
+          if (existingMember) {
+            await sendWhatsAppMessage(phoneNumber, "✅ Você já faz parte deste grupo! Se quiser refazer o questionário, mande *resultado grupo* para ver o status.");
+            return new Response(JSON.stringify({ status: "ok", already_member: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          await supabase.from("travel_group_members").insert({
+            group_id: group.id,
+            phone_number: phoneNumber,
+            member_name: contactName || null,
+          });
+
+          const joinMsg = `✅ *Você entrou no grupo ${code}!*\n${group.creator_name ? `Criado por ${group.creator_name}` : ""}\n\nVou te fazer 5 perguntas rápidas sobre suas preferências de viagem! 🌍`;
+          await sendWhatsAppMessage(phoneNumber, joinMsg);
+
+          // Set group mode
+          if (savedConv) {
+            const existingData = (savedConv.collected_data as Record<string, any>) || {};
+            await supabase.from("whatsapp_conversations").update({
+              collected_data: { ...existingData, _group_mode: "questioning", _group_id: group.id, _group_step: 1 },
+            }).eq("id", savedConv.id);
+
+            const updH = [
+              ...((savedConv.messages_history as any[]) || []),
+              { role: "assistant", content: joinMsg, timestamp: new Date().toISOString() },
+            ];
+            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConv.id);
+          }
+
+          // Send first question
+          await sendWhatsAppMessage(phoneNumber, GROUP_QUESTIONS[0]);
+
+          // Notify creator
+          const { data: creatorGroup } = await supabase.from("travel_groups").select("creator_phone").eq("id", group.id).single();
+          if (creatorGroup && creatorGroup.creator_phone !== phoneNumber) {
+            const { data: allMembers } = await supabase.from("travel_group_members").select("id").eq("group_id", group.id);
+            await sendWhatsAppMessage(creatorGroup.creator_phone, `👥 *${contactName || "Alguém"}* entrou no grupo *${code}*! (${allMembers?.length || 0} membros)`);
+          }
+
+          return new Response(JSON.stringify({ status: "ok", group_joined: code }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // ===== MY GROUP STATUS =====
+        if (myGroupRegex.test(lowerMsgGroup)) {
+          await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          // Find groups where this phone is a member
+          const { data: memberOf } = await supabase
+            .from("travel_group_members")
+            .select("group_id, is_ready")
+            .eq("phone_number", phoneNumber);
+
+          if (!memberOf?.length) {
+            await sendWhatsAppMessage(phoneNumber, "❌ Você não faz parte de nenhum grupo de viagem.\n\nPara criar um, mande: *criar grupo*");
+            return new Response(JSON.stringify({ status: "ok", no_group: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          const groupId = memberOf[0].group_id;
+          const { data: group } = await supabase.from("travel_groups").select("*").eq("id", groupId).single();
+          const { data: allMembers } = await supabase.from("travel_group_members").select("*").eq("group_id", groupId);
+
+          if (group && allMembers) {
+            const readyCount = allMembers.filter(m => m.is_ready).length;
+            const membersList = allMembers.map(m => {
+              const status = m.is_ready ? "✅" : "⏳";
+              return `${status} ${m.member_name || m.phone_number}`;
+            }).join("\n");
+
+            const statusMsg = `👥 *Grupo ${group.group_code}*\nStatus: ${group.status === "completed" ? "✅ Completo" : "📝 Coletando preferências"}\n\n*Membros (${allMembers.length}):*\n${membersList}\n\n${readyCount}/${allMembers.length} prontos\n\n${readyCount === allMembers.length ? "Todos prontos! Mande *resultado grupo* para ver as recomendações! 🎉" : "Aguardando membros responderem o questionário..."}`;
+            await sendWhatsAppMessage(phoneNumber, statusMsg);
+          }
+
+          return new Response(JSON.stringify({ status: "ok", group_status: true }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // ===== LEAVE GROUP =====
+        if (leaveGroupRegex.test(lowerMsgGroup)) {
+          await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          const { data: memberOf } = await supabase
+            .from("travel_group_members")
+            .select("id, group_id")
+            .eq("phone_number", phoneNumber);
+
+          if (memberOf?.length) {
+            await supabase.from("travel_group_members").delete().eq("id", memberOf[0].id);
+            await sendWhatsAppMessage(phoneNumber, "✅ Você saiu do grupo de viagem. Se mudar de ideia, peça o código novamente! 👋");
+          } else {
+            await sendWhatsAppMessage(phoneNumber, "❌ Você não faz parte de nenhum grupo.");
+          }
+
+          // Clean group mode from conversation
+          const { data: convForLeave } = await supabase
+            .from("whatsapp_conversations")
+            .select("id, collected_data")
+            .eq("phone_number", phoneNumber)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (convForLeave) {
+            const existingData = (convForLeave.collected_data as Record<string, any>) || {};
+            delete existingData._group_mode;
+            delete existingData._group_id;
+            delete existingData._group_step;
+            await supabase.from("whatsapp_conversations").update({ collected_data: existingData }).eq("id", convForLeave.id);
+          }
+
+          return new Response(JSON.stringify({ status: "ok", group_left: true }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // ===== RESULT GROUP =====
+        if (resultGroupRegex.test(lowerMsgGroup)) {
+          await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          const { data: memberOf } = await supabase
+            .from("travel_group_members")
+            .select("group_id")
+            .eq("phone_number", phoneNumber);
+
+          if (!memberOf?.length) {
+            await sendWhatsAppMessage(phoneNumber, "❌ Você não faz parte de nenhum grupo de viagem.");
+            return new Response(JSON.stringify({ status: "ok", no_group: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          const groupId = memberOf[0].group_id;
+          const { data: group } = await supabase.from("travel_groups").select("*").eq("id", groupId).single();
+          const { data: allMembers } = await supabase.from("travel_group_members").select("*").eq("group_id", groupId);
+
+          if (!group || !allMembers?.length) {
+            await sendWhatsAppMessage(phoneNumber, "❌ Erro ao buscar dados do grupo.");
+            return new Response(JSON.stringify({ status: "ok", group_error: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          // Check if already has recommendation
+          if (group.final_recommendation) {
+            const cachedResult = typeof group.final_recommendation === "string" ? group.final_recommendation : JSON.stringify(group.final_recommendation);
+            await sendWhatsAppMessage(phoneNumber, `🌍 *Recomendação do Grupo ${group.group_code}:*\n\n${(group.final_recommendation as any).text || cachedResult}`);
+            return new Response(JSON.stringify({ status: "ok", group_cached_result: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          const readyMembers = allMembers.filter(m => m.is_ready);
+          if (readyMembers.length < 2) {
+            await sendWhatsAppMessage(phoneNumber, `⏳ Ainda faltam membros responderem! ${readyMembers.length}/${allMembers.length} prontos.\n\nAguarde todos completarem o questionário.`);
+            return new Response(JSON.stringify({ status: "ok", group_not_ready: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          await sendWhatsAppMessage(phoneNumber, "🧠 *Analisando preferências do grupo...*\nIsso pode levar alguns segundos! ⏳");
+
+          const result = await crossReferencePreferences(group, readyMembers);
+
+          // Save result
+          await supabase.from("travel_groups").update({
+            final_recommendation: { text: result, generated_at: new Date().toISOString() },
+            status: "completed",
+          }).eq("id", groupId);
+
+          // Send to ALL members
+          const header = `🌍 *Resultado do Grupo ${group.group_code}* 🎯\n\n`;
+          for (const member of allMembers) {
+            try {
+              await sendWhatsAppMessage(member.phone_number, header + result);
+            } catch (err) {
+              console.error(`[GROUP] Error sending result to ${member.phone_number}:`, err);
+            }
+          }
+
+          return new Response(JSON.stringify({ status: "ok", group_result_sent: true }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // ===== GROUP QUESTIONNAIRE (in-progress) =====
+        {
+          const { data: convForGroup } = await supabase
+            .from("whatsapp_conversations")
+            .select("id, collected_data, messages_history")
+            .eq("phone_number", phoneNumber)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (convForGroup) {
+            const gData = (convForGroup.collected_data as Record<string, any>) || {};
+            if (gData._group_mode === "questioning" && gData._group_id && gData._group_step) {
+              const step = parseInt(gData._group_step);
+              const groupId = gData._group_id;
+
+              if (step >= 1 && step <= 5) {
+                // Save answer to member preferences
+                const prefKey = PREF_KEYS[step - 1];
+                const { data: member } = await supabase
+                  .from("travel_group_members")
+                  .select("id, preferences")
+                  .eq("group_id", groupId)
+                  .eq("phone_number", phoneNumber)
+                  .maybeSingle();
+
+                if (member) {
+                  const prefs = (member.preferences as Record<string, any>) || {};
+                  prefs[prefKey] = messageText?.trim() || "";
+                  await supabase.from("travel_group_members").update({ preferences: prefs }).eq("id", member.id);
+                }
+
+                // Save message to conversation
+                await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+                if (step < 5) {
+                  // Next question
+                  const nextStep = step + 1;
+                  await supabase.from("whatsapp_conversations").update({
+                    collected_data: { ...gData, _group_step: nextStep },
+                  }).eq("id", convForGroup.id);
+
+                  await sendWhatsAppMessage(phoneNumber, GROUP_QUESTIONS[nextStep - 1]);
+                } else {
+                  // All questions answered — mark as ready
+                  await supabase.from("travel_group_members").update({ is_ready: true })
+                    .eq("group_id", groupId)
+                    .eq("phone_number", phoneNumber);
+
+                  // Clear group mode
+                  const cleanData = { ...gData };
+                  delete cleanData._group_mode;
+                  delete cleanData._group_step;
+                  await supabase.from("whatsapp_conversations").update({
+                    collected_data: cleanData,
+                  }).eq("id", convForGroup.id);
+
+                  await sendWhatsAppMessage(phoneNumber, "✅ *Pronto!* Suas preferências foram registradas! 🎉\n\nQuando todos responderem, mande *resultado grupo* para ver as recomendações!\n\nPara ver o status: *meu grupo*");
+
+                  // Check if all members are ready and auto-trigger
+                  const { data: allMembers } = await supabase.from("travel_group_members").select("*").eq("group_id", groupId);
+                  const { data: group } = await supabase.from("travel_groups").select("creator_phone, group_code").eq("id", groupId).single();
+                  
+                  if (allMembers && group) {
+                    const readyCount = allMembers.filter(m => m.is_ready).length;
+                    
+                    // Notify creator
+                    if (group.creator_phone !== phoneNumber) {
+                      await sendWhatsAppMessage(group.creator_phone, `✅ *${contactName || "Um membro"}* completou o questionário! (${readyCount}/${allMembers.length} prontos)`);
+                    }
+
+                    // Auto-trigger if all ready (min 2 members)
+                    if (readyCount === allMembers.length && readyCount >= 2) {
+                      await sendWhatsAppMessage(group.creator_phone, "🎉 *Todos os membros responderam!*\n🧠 Analisando preferências do grupo...");
+
+                      const readyMembers = allMembers.filter(m => m.is_ready);
+                      const result = await crossReferencePreferences(group, readyMembers);
+
+                      await supabase.from("travel_groups").update({
+                        final_recommendation: { text: result, generated_at: new Date().toISOString() },
+                        status: "completed",
+                      }).eq("id", groupId);
+
+                      const header = `🌍 *Resultado do Grupo ${group.group_code}* 🎯\n\n`;
+                      for (const m of allMembers) {
+                        try {
+                          await sendWhatsAppMessage(m.phone_number, header + result);
+                        } catch (err) {
+                          console.error(`[GROUP] Error sending to ${m.phone_number}:`, err);
+                        }
+                      }
+                    }
+                  }
+                }
+
+                return new Response(JSON.stringify({ status: "ok", group_questionnaire: step }), {
+                  status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+                });
+              }
+            }
           }
         }
       }
