@@ -1019,6 +1019,7 @@ function extractCollectedData(aiResponse: string, existingData: Record<string, a
 
 function cleanAiResponse(response: string): string {
   return response
+    .replace(/\[ROTEIRO_VISUAL\][\s\S]*?\[\/ROTEIRO_VISUAL\]/g, "")
     .replace(/\[DADOS:\w+=.*?\]/g, "")
     .replace(/\[STATUS:\w+\]/g, "")
     .replace(/\[COTAR_VIAGEM:\s*\{.*?\}\s*\]/gs, "")
@@ -1034,6 +1035,85 @@ function cleanAiResponse(response: string): string {
     .replace(/\[[A-Z_]+:[^\]]*\]/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+// Parse [ROTEIRO_VISUAL] tag into structured data for image generation
+function parseItineraryVisualTag(response: string): { destination: string; days: any[]; totalDays: number } | null {
+  const match = response.match(/\[ROTEIRO_VISUAL\]([\s\S]*?)\[\/ROTEIRO_VISUAL\]/);
+  if (!match) return null;
+
+  const content = match[1].trim();
+  const lines = content.split("\n").map(l => l.trim()).filter(Boolean);
+
+  let destination = "";
+  let totalDays = 0;
+  const days: any[] = [];
+  let currentDay: any = null;
+
+  for (const line of lines) {
+    if (line.startsWith("Destino:")) {
+      destination = line.replace("Destino:", "").trim();
+    } else if (line.startsWith("Dias:")) {
+      totalDays = parseInt(line.replace("Dias:", "").trim()) || 0;
+    } else if (/^Dia\s+\d+/i.test(line)) {
+      const dayMatch = line.match(/^(Dia\s+\d+)\s*[-–]\s*(.*)/i);
+      currentDay = {
+        day: dayMatch?.[1] || line,
+        theme: dayMatch?.[2] || "",
+        activities: [],
+      };
+      days.push(currentDay);
+    } else if (currentDay && line.includes("|")) {
+      const parts = line.split("|").map(p => p.trim());
+      const time = parts[0] || "";
+      const rest = parts.slice(1).join("|").trim();
+      // Extract trailing emoji
+      const emojiMatch = rest.match(/([\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}✈️🏨🍽️☀️🌅🌄🎉🏖️🐠🌊🏔️🎭🛍️🍷🌿🏛️⛵🚶‍♂️🧘‍♀️🎶💆‍♀️🏊‍♂️🤿🚡🎿⛷️🏂🛶🚴‍♂️🧗‍♂️🪂🏄‍♂️]+)\s*$/u);
+      currentDay.activities.push({
+        time,
+        name: rest.replace(/([\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}✈️🏨🍽️☀️🌅🌄🎉🏖️🐠🌊🏔️🎭🛍️🍷🌿🏛️⛵🚶‍♂️🧘‍♀️🎶💆‍♀️🏊‍♂️🤿🚡🎿⛷️🏂🛶🚴‍♂️🧗‍♂️🪂🏄‍♂️]+)\s*$/u, "").trim(),
+        emoji: emojiMatch?.[1] || "•",
+      });
+    }
+  }
+
+  if (!destination || days.length === 0) return null;
+  return { destination, days, totalDays: totalDays || days.length };
+}
+
+// Generate and send itinerary visual card
+async function generateAndSendItineraryVisual(phoneNumber: string, itineraryData: { destination: string; days: any[]; totalDays: number }, clientName?: string) {
+  try {
+    console.log("[ITINERARY-VISUAL] Generating visual for:", itineraryData.destination);
+    
+    const visualUrl = `${SUPABASE_URL}/functions/v1/generate-itinerary-visual`;
+    const visualResponse = await fetch(visualUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({
+        destination: itineraryData.destination,
+        days: itineraryData.days,
+        clientName: clientName || undefined,
+      }),
+    });
+
+    if (!visualResponse.ok) {
+      console.error("[ITINERARY-VISUAL] Edge function error:", visualResponse.status);
+      return;
+    }
+
+    const visualData = await visualResponse.json();
+    if (visualData.imageUrl) {
+      const caption = `🗺️ Roteiro ${itineraryData.destination} - ${itineraryData.totalDays} dias ✨\nPreparado por Téo | Tomorrow Travel ✈️`;
+      await sendWhatsAppImage(phoneNumber, visualData.imageUrl, caption);
+      console.log("[ITINERARY-VISUAL] Visual card sent to", phoneNumber);
+    }
+  } catch (err) {
+    console.error("[ITINERARY-VISUAL] Error generating/sending visual:", err);
+  }
 }
 
 function parseChangeRequestTag(content: string): string | null {
