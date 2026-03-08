@@ -7,7 +7,7 @@
 2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
 3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
 4. ✅ **Téo DNA** — Perfil genético de viajante
-5. 🔲 **Playlist da Viagem** — Integração Spotify completa
+5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
 
 ---
 

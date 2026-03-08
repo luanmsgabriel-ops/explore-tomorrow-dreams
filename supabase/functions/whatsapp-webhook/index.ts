@@ -3503,7 +3503,205 @@ REGRAS:
         }
       }
 
-      // ========== MODE ISOLATION: Block normal flow when special mode is active ==========
+      // ========== PLAYLIST DA VIAGEM: AI-Curated Travel Playlist ==========
+      {
+        const playlistRegex = /^(playlist|playlist da viagem|minha playlist|playlist viagem|travel playlist|musica viagem|música viagem)$/i;
+        const playlistWithDestRegex = /^playlist\s+(?:de|para|pra|da|do)\s+(.+)$/i;
+
+        const lowerMsgPlaylist = (messageText || "").toLowerCase().trim();
+        const playlistMatch = playlistRegex.test(lowerMsgPlaylist);
+        const playlistDestMatch = playlistWithDestRegex.exec(messageText || "");
+
+        if (playlistMatch || playlistDestMatch) {
+          const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+          
+          await sendWhatsAppMessage(phoneNumber, "🎵 *Montando sua playlist personalizada...*\nIsso pode levar alguns segundos! 🎧");
+
+          // Gather context: destination, DNA profile, emotional state
+          let destinationHint = playlistDestMatch ? playlistDestMatch[1].trim() : "";
+          let dnaContext = "";
+          let emotionalContext = "";
+          let travelContext = "";
+
+          // Fetch client memory for DNA + emotional state
+          try {
+            const memory = await fetchClientMemory(phoneNumber);
+            if (memory) {
+              const prefs = (memory.preferences as Record<string, any>) || {};
+              
+              // DNA profile
+              if (prefs.dna_viajante) {
+                const dna = prefs.dna_viajante;
+                dnaContext = `DNA do viajante: ${JSON.stringify(dna.percentages || {})}`;
+              }
+              
+              // Emotional state
+              if (prefs.tom_emocional) {
+                emotionalContext = `Estado emocional: ${prefs.tom_emocional}, energia: ${prefs.nivel_energia || "médio"}`;
+              }
+
+              // Active trip or last destination
+              if (!destinationHint) {
+                const { data: activeTrip } = await supabase
+                  .from("active_trips")
+                  .select("destination_city, destination_country")
+                  .eq("client_phone", phoneNumber)
+                  .eq("concierge_active", true)
+                  .limit(1)
+                  .maybeSingle();
+                
+                if (activeTrip?.destination_city) {
+                  destinationHint = `${activeTrip.destination_city}, ${activeTrip.destination_country || ""}`;
+                  travelContext = "O cliente está VIAJANDO agora para este destino!";
+                }
+              }
+
+              // Travel history
+              const history = (memory.travel_history as any[]) || [];
+              if (!destinationHint && history.length > 0) {
+                const lastTrip = history[history.length - 1];
+                if (lastTrip?.destino) {
+                  destinationHint = lastTrip.destino;
+                }
+              }
+            }
+          } catch (memErr) {
+            console.error("[PLAYLIST] Memory fetch error:", memErr);
+          }
+
+          const playlistPrompt = `Você é o Téo DJ 🎧, curador musical da Tomorrow Travel.
+
+Crie uma PLAYLIST DE VIAGEM personalizada com 10-15 músicas para o cliente.
+
+${destinationHint ? `DESTINO: ${destinationHint}` : "DESTINO: Não especificado (crie uma playlist universal de viagem)"}
+${dnaContext ? `PERFIL: ${dnaContext}` : ""}
+${emotionalContext ? `EMOCIONAL: ${emotionalContext}` : ""}
+${travelContext ? `CONTEXTO: ${travelContext}` : ""}
+
+REGRAS DE CURADORIA:
+- Misture músicas internacionais populares + músicas locais do destino
+- Se o perfil é Explorador → rock, indie, world music
+- Se o perfil é Zen → lo-fi, ambient, jazz, bossa nova
+- Se o perfil é Socialite → pop, eletrônica, hits dançantes
+- Se o perfil é Gourmet → jazz, MPB, soul, indie acústico
+- Se o perfil é Culturalista → world music, clássica, folk local
+- Se estressado → músicas relaxantes e feel-good
+- Se animado → músicas energéticas e empolgantes
+- Inclua pelo menos 2-3 músicas do país/região do destino
+- Cada música DEVE ter artista real e existir no Spotify
+
+FORMATO (WhatsApp com emojis):
+
+🎵 *PLAYLIST DA VIAGEM*
+${destinationHint ? `📍 ${destinationHint}` : "🌍 Viagem dos Sonhos"}
+
+🎧 *Pra ouvir antes de embarcar:*
+1. 🎶 *[Artista] - [Música]* 
+   _[gênero/vibe em 2-3 palavras]_
+   🔗 https://open.spotify.com/search/[artista%20musica]
+
+[... 10-15 músicas total, divididas em seções temáticas ...]
+
+💡 *Dica do Téo:* [Uma dica sobre música/cultura local do destino]
+
+SEÇÕES SUGERIDAS (adapte ao destino):
+- 🛫 *Pra ouvir antes de embarcar* (2-3 músicas empolgantes)
+- 🏖️ *Pra curtir no destino* (4-5 músicas temáticas)
+- 🌅 *Golden hour / Pôr do sol* (2-3 músicas chill)
+- 🎉 *Pra noite* (2-3 músicas animadas) OU 🧘 *Pra relaxar* (se perfil Zen)
+
+IMPORTANTE:
+- Use links de busca do Spotify: https://open.spotify.com/search/[artista%20-%20musica] (com %20 para espaços)
+- Máximo 3500 caracteres
+- Artistas e músicas REAIS que existem no Spotify`;
+
+          try {
+            const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash",
+                messages: [
+                  { role: "system", content: playlistPrompt },
+                  { role: "user", content: "Gere a playlist personalizada para este viajante." },
+                ],
+                max_tokens: 4000,
+              }),
+            });
+
+            if (!response.ok) {
+              console.error("[PLAYLIST] AI error:", response.status);
+              await sendWhatsAppMessage(phoneNumber, "😅 Não consegui montar a playlist agora. Tenta de novo em alguns segundos!");
+              return new Response(JSON.stringify({ status: "ok", playlist_error: true }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            const data = await response.json();
+            const playlistResult = data.choices?.[0]?.message?.content || "Erro ao gerar playlist.";
+
+            // Split if too long
+            if (playlistResult.length > 4000) {
+              const mid = playlistResult.lastIndexOf("\n", 3900);
+              await sendWhatsAppMessage(phoneNumber, playlistResult.substring(0, mid > 0 ? mid : 3900));
+              await sendWhatsAppMessage(phoneNumber, playlistResult.substring(mid > 0 ? mid : 3900));
+            } else {
+              await sendWhatsAppMessage(phoneNumber, playlistResult);
+            }
+
+            // Save playlist to client memory
+            try {
+              const memory = await fetchClientMemory(phoneNumber);
+              if (memory) {
+                const prefs = (memory.preferences as Record<string, any>) || {};
+                const playlistHistory = Array.isArray(prefs.playlist_history) ? prefs.playlist_history : [];
+                playlistHistory.push({
+                  date: new Date().toISOString(),
+                  destination: destinationHint || "universal",
+                  preview: playlistResult.substring(0, 200),
+                });
+                // Keep last 5 playlists
+                if (playlistHistory.length > 5) playlistHistory.shift();
+                
+                await supabase.from("client_memory").update({
+                  preferences: { ...prefs, playlist_history: playlistHistory },
+                  updated_at: new Date().toISOString(),
+                }).eq("id", memory.id);
+              }
+            } catch (memErr) {
+              console.error("[PLAYLIST] Memory save error:", memErr);
+            }
+
+            // Save to conversation history
+            if (savedConv) {
+              const { data: convAfterPlaylist } = await supabase
+                .from("whatsapp_conversations")
+                .select("id, messages_history")
+                .eq("id", savedConv.id)
+                .single();
+              if (convAfterPlaylist) {
+                const updH = [
+                  ...((convAfterPlaylist.messages_history as any[]) || []),
+                  { role: "assistant", content: `🎵 ${playlistResult}`, timestamp: new Date().toISOString() },
+                ];
+                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterPlaylist.id);
+              }
+            }
+
+            console.log(`[PLAYLIST] Generated for ${phoneNumber}, destination: ${destinationHint || "universal"}`);
+          } catch (err) {
+            console.error("[PLAYLIST] Error:", err);
+            await sendWhatsAppMessage(phoneNumber, "😅 Erro ao gerar playlist. Tenta de novo!");
+          }
+
+          return new Response(JSON.stringify({ status: "ok", playlist: true }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
       {
         const { data: convForModeCheck } = await supabase
           .from("whatsapp_conversations")
@@ -3516,21 +3714,7 @@ REGRAS:
         if (convForModeCheck) {
           const modeData = (convForModeCheck.collected_data as Record<string, any>) || {};
 
-          if (modeData._translator_mode === true && !incomingWasAudio) {
-            const reminderMsg = "🌐 *Você está no Modo Tradutor!*\n\nMande um *áudio* que eu traduzo automaticamente! 🎙️\n\nPara sair, mande: *sair tradutor*";
-            await sendWhatsAppMessage(phoneNumber, reminderMsg);
-
-            const updH = [
-              ...((convForModeCheck.messages_history as any[]) || []),
-              { role: "user", content: messageText || "[mídia]", timestamp: new Date().toISOString() },
-              { role: "assistant", content: reminderMsg, timestamp: new Date().toISOString() },
-            ];
-            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convForModeCheck.id);
-
-            return new Response(JSON.stringify({ status: "ok", mode_isolation: "translator" }), {
-              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
+          // Translator mode isolation removed — translator now handles text, audio, and images in the main translator block above
 
           if (modeData._chef_mode === true && messageType !== "image") {
             const savedMenuAnalysis = modeData._chef_menu_analysis || "";
