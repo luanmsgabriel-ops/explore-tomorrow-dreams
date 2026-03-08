@@ -4626,6 +4626,379 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
         }
       }
 
+      // ========== TÉO CARTEIRA: Expense Tracker during Trip ==========
+      {
+        const lowerMsgGasto = (messageText || "").toLowerCase().trim();
+        
+        // Regex patterns for expense commands
+        const gastoRegex = /^(?:gastei|gasto|paguei|pago)\s+/i;
+        const resumoGastosRegex = /^(meus gastos|resumo gastos|extrato|resumo dos gastos|total gastos|gastos viagem|téo carteira|teo carteira)$/i;
+        const gastosHojeRegex = /^(gastos hoje|gastos do dia|gastos de hoje)$/i;
+        const apagarUltimoRegex = /^(apagar ultimo gasto|apagar último gasto|remover ultimo gasto|remover último gasto|desfazer gasto)$/i;
+        const zerarGastosRegex = /^(zerar gastos|limpar gastos|apagar todos gastos|resetar gastos)$/i;
+        const confirmarZerarRegex = /^(sim zerar|confirmar zerar|sim, zerar|sim limpar)$/i;
+        const cambioRegex = /^c[aâ]mbio\s+([\d.,]+)$/i;
+
+        // Currency rates fallback
+        const CURRENCY_RATES: Record<string, number> = {
+          "BRL": 1, "R$": 1,
+          "USD": 5.50, "$": 5.50, "US$": 5.50, "dólar": 5.50, "dolar": 5.50, "dolares": 5.50, "dólares": 5.50,
+          "EUR": 6.00, "€": 6.00, "euro": 6.00, "euros": 6.00,
+          "GBP": 7.00, "£": 7.00, "libra": 7.00, "libras": 7.00,
+          "ARS": 0.006, "peso": 0.006, "pesos": 0.006,
+          "JPY": 0.037, "yen": 0.037, "iene": 0.037, "ienes": 0.037,
+          "CLP": 0.006, "MXN": 0.32, "COP": 0.0013, "PEN": 1.45, "UYU": 0.13,
+          "real": 1, "reais": 1,
+        };
+
+        const CATEGORY_EMOJIS: Record<string, string> = {
+          "alimentacao": "🍽️", "transporte": "🚕", "hospedagem": "🏨",
+          "passeios": "🎫", "compras": "🛍️", "saude": "💊", "outros": "📱",
+        };
+
+        const CATEGORY_LABELS: Record<string, string> = {
+          "alimentacao": "Alimentação", "transporte": "Transporte", "hospedagem": "Hospedagem",
+          "passeios": "Passeios", "compras": "Compras", "saude": "Saúde", "outros": "Outros",
+        };
+
+        // ===== REGISTER EXPENSE =====
+        if (gastoRegex.test(lowerMsgGasto)) {
+          const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          const expenseText = (messageText || "").replace(/^(?:gastei|gasto|paguei|pago)\s+/i, "").trim();
+          
+          const valueMatch = expenseText.match(/^(?:R\$|US\$|€|£|\$)?\s*([\d.,]+)\s*(.*)/i);
+          if (!valueMatch) {
+            await sendWhatsAppMessage(phoneNumber, "🤔 Não entendi o valor. Tenta assim:\n• *gastei 50 euros no almoço*\n• *gastei R$ 120 uber*\n• *gastei 25 dolares café*");
+            return new Response(JSON.stringify({ status: "ok", gasto_parse_error: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          const rawValue = parseFloat(valueMatch[1].replace(",", "."));
+          if (isNaN(rawValue) || rawValue <= 0) {
+            await sendWhatsAppMessage(phoneNumber, "❌ Valor inválido. Tenta novamente com um número válido!");
+            return new Response(JSON.stringify({ status: "ok", gasto_invalid_value: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          const restText = valueMatch[2].trim();
+
+          let detectedCurrency = "BRL";
+          let currencyRate = 1;
+          const prefixMatch = (messageText || "").match(/(?:R\$|US\$|€|£|\$)\s*[\d]/i);
+          if (prefixMatch) {
+            const prefix = prefixMatch[0].charAt(0) === "$" ? "$" : prefixMatch[0].replace(/[\d\s]/g, "");
+            if (CURRENCY_RATES[prefix]) {
+              detectedCurrency = prefix === "€" ? "EUR" : prefix === "£" ? "GBP" : prefix === "$" || prefix === "US$" ? "USD" : "BRL";
+              currencyRate = CURRENCY_RATES[prefix];
+            }
+          } else {
+            for (const [key, rate] of Object.entries(CURRENCY_RATES)) {
+              if (restText.toLowerCase().includes(key.toLowerCase()) && key.length > 1) {
+                detectedCurrency = key.toUpperCase();
+                currencyRate = rate;
+                break;
+              }
+            }
+          }
+
+          const memory = await fetchClientMemory(supabase, phoneNumber);
+          const prefs = (memory?.preferences as Record<string, any>) || {};
+          const gastosData = prefs.gastos_viagem || { gastos: [], viagem_atual: "", moeda_principal: "BRL" };
+          if (gastosData.taxa_cambio && detectedCurrency !== "BRL") {
+            currencyRate = gastosData.taxa_cambio;
+          }
+
+          const valorBrl = detectedCurrency === "BRL" ? rawValue : rawValue * currencyRate;
+          const descricao = restText
+            .replace(/(?:reais|real|dol[aá]r(?:es)?|euro[s]?|libra[s]?|yen|iene[s]?|peso[s]?)/gi, "")
+            .replace(/^\s*(?:no|na|em|de|do|da|com|pra|para|pro)\s+/i, "")
+            .trim() || "Gasto não especificado";
+
+          // Categorize via AI
+          let categoria = "outros";
+          try {
+            const catResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash-lite",
+                tools: [{
+                  type: "function",
+                  function: {
+                    name: "categorize_expense",
+                    description: "Categorize a travel expense",
+                    parameters: {
+                      type: "object",
+                      properties: {
+                        category: { type: "string", enum: ["alimentacao", "transporte", "hospedagem", "passeios", "compras", "saude", "outros"] },
+                      },
+                      required: ["category"],
+                      additionalProperties: false
+                    }
+                  }
+                }],
+                tool_choice: { type: "function", function: { name: "categorize_expense" } },
+                messages: [{ role: "user", content: `Categorize this travel expense: "${descricao}". Value: ${rawValue} ${detectedCurrency}` }],
+              }),
+            });
+            if (catResponse.ok) {
+              const catData = await catResponse.json();
+              const toolCall = catData.choices?.[0]?.message?.tool_calls?.[0];
+              if (toolCall?.function?.arguments) {
+                const args = JSON.parse(toolCall.function.arguments);
+                categoria = args.category || "outros";
+              }
+            }
+          } catch (catErr) {
+            console.error("[CARTEIRA] Categorization error:", catErr);
+          }
+
+          const today = new Date().toISOString().split("T")[0];
+          const newExpense = {
+            valor: rawValue,
+            moeda: detectedCurrency,
+            valor_brl: Math.round(valorBrl * 100) / 100,
+            categoria,
+            descricao: descricao.substring(0, 100),
+            data: today,
+          };
+
+          let viagemAtual = gastosData.viagem_atual || "";
+          if (!viagemAtual) {
+            try {
+              const { data: activeTrip } = await supabase
+                .from("active_trips")
+                .select("destination_city, destination_country")
+                .eq("client_phone", phoneNumber)
+                .eq("concierge_active", true)
+                .limit(1)
+                .maybeSingle();
+              if (activeTrip) {
+                viagemAtual = `${activeTrip.destination_city || ""} ${new Date().getFullYear()}`.trim();
+              }
+            } catch {}
+          }
+
+          const gastos = Array.isArray(gastosData.gastos) ? gastosData.gastos : [];
+          gastos.push(newExpense);
+
+          const totalBrl = gastos.reduce((sum: number, g: any) => sum + (g.valor_brl || 0), 0);
+          const todayExpenses = gastos.filter((g: any) => g.data === today);
+          const totalHojeBrl = todayExpenses.reduce((sum: number, g: any) => sum + (g.valor_brl || 0), 0);
+
+          const updatedGastos = { ...gastosData, viagem_atual: viagemAtual, gastos, total_brl: Math.round(totalBrl * 100) / 100 };
+          const mergedPrefs = { ...prefs, gastos_viagem: updatedGastos };
+          const normalizedWa = phoneNumber.replace(/\D/g, "");
+          const waForDb = normalizedWa.startsWith("55") ? normalizedWa : `55${normalizedWa}`;
+
+          if (memory) {
+            await supabase.from("client_memory").update({ preferences: mergedPrefs, last_interaction_at: new Date().toISOString() }).eq("id", memory.id);
+          } else {
+            await supabase.from("client_memory").insert({ whatsapp: waForDb, client_name: contactName || null, preferences: mergedPrefs, last_interaction_at: new Date().toISOString() });
+          }
+
+          const emoji = CATEGORY_EMOJIS[categoria] || "📱";
+          const label = CATEGORY_LABELS[categoria] || "Outros";
+          let confirmMsg = `✅ *R$${valorBrl.toFixed(2)}*`;
+          if (detectedCurrency !== "BRL") confirmMsg += ` (${detectedCurrency} ${rawValue.toFixed(2)})`;
+          confirmMsg += ` registrado em ${emoji} ${label}`;
+          confirmMsg += `\n_${newExpense.descricao}_`;
+          confirmMsg += `\n\n💰 Total do dia: R$${totalHojeBrl.toFixed(2)} | Total viagem: R$${totalBrl.toFixed(2)}`;
+
+          await sendWhatsAppMessage(phoneNumber, confirmMsg);
+
+          if (savedConv) {
+            const { data: convAfter } = await supabase.from("whatsapp_conversations").select("id, messages_history").eq("id", savedConv.id).single();
+            if (convAfter) {
+              const updH = [...((convAfter.messages_history as any[]) || []), { role: "assistant", content: confirmMsg, timestamp: new Date().toISOString() }];
+              await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfter.id);
+            }
+          }
+
+          console.log(`[CARTEIRA] Expense registered: ${rawValue} ${detectedCurrency} → R$${valorBrl.toFixed(2)} [${categoria}]`);
+          return new Response(JSON.stringify({ status: "ok", gasto_registered: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        // ===== EXPENSE SUMMARY =====
+        if (resumoGastosRegex.test(lowerMsgGasto)) {
+          await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          const memory = await fetchClientMemory(supabase, phoneNumber);
+          const prefs = (memory?.preferences as Record<string, any>) || {};
+          const gastosData = prefs.gastos_viagem || {};
+          const gastos = Array.isArray(gastosData.gastos) ? gastosData.gastos : [];
+
+          if (gastos.length === 0) {
+            await sendWhatsAppMessage(phoneNumber, "📊 Você ainda não registrou nenhum gasto!\n\nPra começar, mande:\n• *gastei 50 euros no almoço*\n• *gastei R$ 120 uber*");
+            return new Response(JSON.stringify({ status: "ok", gastos_empty: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+
+          const byCategory: Record<string, { total: number; count: number }> = {};
+          let totalBrl = 0;
+          const dayTotals: Record<string, number> = {};
+
+          for (const g of gastos) {
+            const cat = g.categoria || "outros";
+            if (!byCategory[cat]) byCategory[cat] = { total: 0, count: 0 };
+            byCategory[cat].total += g.valor_brl || 0;
+            byCategory[cat].count++;
+            totalBrl += g.valor_brl || 0;
+            const day = g.data || "?";
+            dayTotals[day] = (dayTotals[day] || 0) + (g.valor_brl || 0);
+          }
+
+          const dates = gastos.map((g: any) => g.data).filter(Boolean).sort();
+          const uniqueDays = new Set(dates).size;
+
+          let report = `💰 *Téo Carteira — Resumo da Viagem*\n`;
+          if (gastosData.viagem_atual) report += `📍 ${gastosData.viagem_atual} | `;
+          report += `${uniqueDays} dia${uniqueDays !== 1 ? "s" : ""}\n\n`;
+
+          const sortedCats = Object.entries(byCategory).sort((a, b) => b[1].total - a[1].total);
+          for (const [cat, data] of sortedCats) {
+            const emoji = CATEGORY_EMOJIS[cat] || "📱";
+            const label = CATEGORY_LABELS[cat] || "Outros";
+            const pct = totalBrl > 0 ? Math.round((data.total / totalBrl) * 100) : 0;
+            const filled = Math.round(pct / 10);
+            const bar = "█".repeat(filled) + "░".repeat(10 - filled);
+            report += `${emoji} ${label}: R$${data.total.toFixed(2)} (${pct}%) ${bar}\n`;
+          }
+
+          report += `\n💵 *Total: R$${totalBrl.toFixed(2)}*`;
+          if (uniqueDays > 0) report += `\n📊 Média diária: R$${(totalBrl / uniqueDays).toFixed(2)}/dia`;
+          if (sortedCats.length > 0) report += `\n💡 Maior gasto: ${CATEGORY_EMOJIS[sortedCats[0][0]] || "📱"} ${CATEGORY_LABELS[sortedCats[0][0]] || "Outros"}`;
+
+          const sortedDays = Object.entries(dayTotals).sort((a, b) => b[1] - a[1]);
+          if (sortedDays.length > 0) {
+            const [expDay, expVal] = sortedDays[0];
+            const formattedDay = expDay.split("-").reverse().slice(0, 2).join("/");
+            report += `\n⚡ Dia mais caro: ${formattedDay} (R$${expVal.toFixed(2)})`;
+          }
+
+          report += `\n\n📝 Total de registros: ${gastos.length}`;
+          await sendWhatsAppMessage(phoneNumber, report);
+          return new Response(JSON.stringify({ status: "ok", gastos_report: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        // ===== TODAY'S EXPENSES =====
+        if (gastosHojeRegex.test(lowerMsgGasto)) {
+          await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+          const memory = await fetchClientMemory(supabase, phoneNumber);
+          const prefs = (memory?.preferences as Record<string, any>) || {};
+          const gastos = Array.isArray(prefs.gastos_viagem?.gastos) ? prefs.gastos_viagem.gastos : [];
+          const today = new Date().toISOString().split("T")[0];
+          const todayGastos = gastos.filter((g: any) => g.data === today);
+
+          if (todayGastos.length === 0) {
+            await sendWhatsAppMessage(phoneNumber, "📊 Nenhum gasto registrado hoje!\n\nPra registrar: *gastei [valor] [descrição]*");
+            return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+
+          let msg = `📊 *Gastos de Hoje*\n\n`;
+          let totalHoje = 0;
+          for (const g of todayGastos) {
+            const emoji = CATEGORY_EMOJIS[g.categoria] || "📱";
+            msg += `${emoji} R$${(g.valor_brl || 0).toFixed(2)} — _${g.descricao}_\n`;
+            totalHoje += g.valor_brl || 0;
+          }
+          msg += `\n💰 *Total hoje: R$${totalHoje.toFixed(2)}*`;
+          await sendWhatsAppMessage(phoneNumber, msg);
+          return new Response(JSON.stringify({ status: "ok", gastos_hoje: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        // ===== DELETE LAST EXPENSE =====
+        if (apagarUltimoRegex.test(lowerMsgGasto)) {
+          await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+          const memory = await fetchClientMemory(supabase, phoneNumber);
+          if (!memory) {
+            await sendWhatsAppMessage(phoneNumber, "📊 Nenhum gasto registrado!");
+            return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+          const prefs = (memory.preferences as Record<string, any>) || {};
+          const gastosData = prefs.gastos_viagem || {};
+          const gastos = Array.isArray(gastosData.gastos) ? [...gastosData.gastos] : [];
+          if (gastos.length === 0) {
+            await sendWhatsAppMessage(phoneNumber, "📊 Nenhum gasto registrado para apagar!");
+            return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+          const removed = gastos.pop();
+          const totalBrl = gastos.reduce((sum: number, g: any) => sum + (g.valor_brl || 0), 0);
+          await supabase.from("client_memory").update({
+            preferences: { ...prefs, gastos_viagem: { ...gastosData, gastos, total_brl: Math.round(totalBrl * 100) / 100 } },
+            last_interaction_at: new Date().toISOString(),
+          }).eq("id", memory.id);
+          const emoji = CATEGORY_EMOJIS[removed.categoria] || "📱";
+          await sendWhatsAppMessage(phoneNumber, `🗑️ Gasto removido: ${emoji} R$${(removed.valor_brl || 0).toFixed(2)} — _${removed.descricao}_\n\n💰 Novo total: R$${totalBrl.toFixed(2)}`);
+          return new Response(JSON.stringify({ status: "ok", gasto_removed: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        // ===== CLEAR ALL EXPENSES =====
+        if (zerarGastosRegex.test(lowerMsgGasto)) {
+          const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+          if (savedConv) {
+            const existingData = (savedConv.collected_data as Record<string, any>) || {};
+            await supabase.from("whatsapp_conversations").update({ collected_data: { ...existingData, _gastos_confirmar_zerar: true } }).eq("id", savedConv.id);
+          }
+          await sendWhatsAppMessage(phoneNumber, "⚠️ Tem certeza que quer *zerar todos os gastos*?\n\nMande *sim zerar* para confirmar.");
+          return new Response(JSON.stringify({ status: "ok", gastos_zerar_confirm: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        // ===== CONFIRM CLEAR =====
+        if (confirmarZerarRegex.test(lowerMsgGasto)) {
+          const { data: convCheck } = await supabase.from("whatsapp_conversations")
+            .select("id, collected_data").eq("phone_number", phoneNumber)
+            .order("updated_at", { ascending: false }).limit(1).maybeSingle();
+          const cData = (convCheck?.collected_data as Record<string, any>) || {};
+          if (cData._gastos_confirmar_zerar) {
+            await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+            const memory = await fetchClientMemory(supabase, phoneNumber);
+            if (memory) {
+              const prefs = (memory.preferences as Record<string, any>) || {};
+              const gastosData = prefs.gastos_viagem || {};
+              const historico = Array.isArray(prefs.gastos_historico) ? prefs.gastos_historico : [];
+              if (gastosData.gastos?.length > 0) {
+                historico.push({ viagem: gastosData.viagem_atual || "Viagem", total_brl: gastosData.total_brl || 0, num_gastos: gastosData.gastos.length, data_arquivo: new Date().toISOString() });
+                if (historico.length > 10) historico.shift();
+              }
+              await supabase.from("client_memory").update({
+                preferences: { ...prefs, gastos_viagem: { gastos: [], viagem_atual: "", total_brl: 0 }, gastos_historico: historico },
+                last_interaction_at: new Date().toISOString(),
+              }).eq("id", memory.id);
+            }
+            if (convCheck) {
+              const cleanData = { ...cData };
+              delete cleanData._gastos_confirmar_zerar;
+              await supabase.from("whatsapp_conversations").update({ collected_data: cleanData }).eq("id", convCheck.id);
+            }
+            await sendWhatsAppMessage(phoneNumber, "✅ Todos os gastos foram zerados! 🧹\n\nPra começar de novo: *gastei [valor] [descrição]*");
+            return new Response(JSON.stringify({ status: "ok", gastos_cleared: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+        }
+
+        // ===== SET EXCHANGE RATE =====
+        const cambioMatch = cambioRegex.exec(lowerMsgGasto);
+        if (cambioMatch) {
+          await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+          const taxa = parseFloat(cambioMatch[1].replace(",", "."));
+          if (isNaN(taxa) || taxa <= 0) {
+            await sendWhatsAppMessage(phoneNumber, "❌ Taxa inválida. Ex: *câmbio 5.50*");
+            return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+          const memory = await fetchClientMemory(supabase, phoneNumber);
+          if (memory) {
+            const prefs = (memory.preferences as Record<string, any>) || {};
+            const gastosData = prefs.gastos_viagem || { gastos: [], viagem_atual: "", total_brl: 0 };
+            gastosData.taxa_cambio = taxa;
+            await supabase.from("client_memory").update({ preferences: { ...prefs, gastos_viagem: gastosData }, last_interaction_at: new Date().toISOString() }).eq("id", memory.id);
+          }
+          await sendWhatsAppMessage(phoneNumber, `✅ Taxa de câmbio definida: *1 moeda = R$${taxa.toFixed(2)}*\n\nTodos os próximos gastos em moeda estrangeira usarão essa taxa! 💱`);
+          return new Response(JSON.stringify({ status: "ok", cambio_set: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+
       // ========== TÉO VIDENTE: Zodiac-based Travel Recommendations ==========
       {
         const videnteRegex = /^(meu signo|horóscopo viajante|destino do signo|signo viagem|vidente|horoscopo viajante|meu horóscopo|meu horoscopo)$/i;
