@@ -2480,8 +2480,16 @@ serve(async (req) => {
             .maybeSingle();
 
           const chefData = (convForChef?.collected_data as Record<string, any>) || {};
-          if (chefData._chef_mode === true && convForChef) {
-            console.log("[CHEF MODE] Image received in chef mode, analyzing menu...");
+          const wasChefModeActive = chefData._chef_mode === true;
+          
+          if (convForChef) {
+            // Auto-activate chef mode if not already active
+            if (!wasChefModeActive) {
+              console.log("[CHEF MODE] Auto-activating chef mode via image detection");
+              await sendWhatsAppMessage(phoneNumber, "👨‍🍳 *Modo Chef ativado automaticamente!*\nAnalisando seu cardápio... 📋");
+            } else {
+              console.log("[CHEF MODE] New menu image received, updating analysis...");
+            }
 
             await ensureConversationAndSaveMessage(phoneNumber, contactName, "📸 [Foto de cardápio]");
 
@@ -2515,7 +2523,7 @@ serve(async (req) => {
                 const existingChefData = (convAfterChef as any).collected_data || chefData || {};
                 await supabase.from("whatsapp_conversations").update({ 
                   messages_history: updH,
-                  collected_data: { ...existingChefData, _chef_menu_analysis: analysisResult },
+                  collected_data: { ...existingChefData, _chef_mode: true, _chef_menu_analysis: analysisResult },
                 }).eq("id", convAfterChef.id);
               }
             } catch (chefErr) {
