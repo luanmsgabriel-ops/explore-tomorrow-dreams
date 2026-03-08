@@ -1,94 +1,67 @@
 
 
-# Plano: 5 Features Téo 2030
+# Plano: Téo Vidente — Roteiro por Signos e Astrologia
 
-## Features Solicitadas (uma por vez, implementação completa)
-1. ✅ **Téo Grupal** — Viagem em grupo com cruzamento de preferências via WhatsApp
-2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
-3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
-4. ✅ **Téo DNA** — Perfil genético de viajante
-5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
+## Conceito
+O cliente envia seu signo (ou data de nascimento) e o Téo gera sugestões de destinos personalizadas baseadas na astrologia, com horóscopo de viagem. Diversão + alto potencial viral.
 
----
-
-## 3. Téo DNA de Viajante (IMPLEMENTADO ✅)
-
-### Conceito
-Questionário profundo de 10 perguntas que gera um perfil "genético" de viajante com 5 categorias (Explorador, Culturalista, Gourmet, Zen, Socialite) que evolui com cada viagem.
-
-### Comandos WhatsApp
+## Comandos WhatsApp
 | Comando | Ação |
 |---------|------|
-| `meu dna` / `dna viajante` / `teste dna` | Inicia o questionário de 10 perguntas |
+| `meu signo` / `horóscopo viajante` / `destino do signo` / `signo viagem` | Inicia o Téo Vidente |
+| `meu signo [signo]` ou `signo [signo]` | Gera direto sem perguntar |
+| Data de nascimento detectada (dd/mm) | Auto-detecta signo |
 
-### Categorias do DNA
-- 🏔️ Explorador: aventura, adrenalina, natureza selvagem
-- 🏛️ Culturalista: história, museus, arquitetura
-- 🍽️ Gourmet: gastronomia, vinhos, experiências culinárias
-- 🧘 Zen: relaxamento, praias, spas
-- 🎉 Socialite: festas, vida noturna, experiências sociais
+## Implementação
 
-### Armazenamento (zero novas tabelas)
+### 1. Bloco de comando no `whatsapp-webhook/index.ts`
+- Regex para capturar comandos: `meu signo`, `horóscopo viajante`, `destino do signo`, `signo viagem`, `vidente`
+- Regex secundário para capturar signo inline: `meu signo áries`, `signo de leão`
+- Se signo não informado, Téo pergunta: "Qual seu signo? (ou me manda sua data de nascimento que eu descubro!)"
+- Se data informada (dd/mm ou dd/mm/aaaa), mapeia para signo automaticamente
+
+### 2. Geração via Gemini 2.5 Flash
+Prompt do Téo Vidente que gera:
+- **Perfil astral de viajante** (personalidade + estilo baseado no signo)
+- **3 destinos ideais** para o signo com justificativa astrológica
+- **Horóscopo de viagem do mês** (dica curta sobre timing)
+- **Combinação com DNA** (se disponível, cruza signo + DNA para refinamento)
+- **Elemento e planeta regente** como contexto temático
+
+### 3. Armazenamento (zero novas tabelas)
 Usa `client_memory.preferences` (JSONB):
-- `dna_viajante`: perfil atual com porcentagens, raw_result, answers
-- `dna_historico`: array com últimas 10 análises (para detectar evolução)
+- `signo`: signo solar do cliente
+- `data_nascimento`: se fornecida
+- `ultimo_horoscopo`: última previsão gerada (data + conteúdo resumido)
 
-### Evolução
-O DNA evolui automaticamente:
-- Cada vez que o teste é refeito, uma nova entrada é adicionada ao histórico
-- O formatMemoryForPrompt mostra a evolução (↑↓ por categoria)
-- Téo usa o DNA para personalizar sugestões sem perguntar demais
+### 4. Integração com DNA de Viajante
+Se o cliente já tem DNA, o prompt cruza os dois perfis:
+- "Sagitário + 70% Explorador = destinos off-road extremos"
+- "Touro + 60% Gourmet = rotas gastronômicas premium"
 
-### Arquivos modificados
-- `supabase/functions/whatsapp-webhook/index.ts`: Comando + questionário 10 perguntas + geração via Gemini
-- `supabase/functions/_shared/client-memory.ts`: DNA no prompt, na formatação e na regra de adaptação
+### 5. Formato da resposta WhatsApp
+```text
+🔮 *Téo Vidente — Seu Mapa Astral de Viagem*
 
----
+♐ *Sagitário* | Fogo | Júpiter
+_O eterno explorador do zodíaco_
 
-## 1. Téo Grupal (IMPLEMENTADO ✅)
+🌟 *Seu Perfil Astral de Viajante:*
+Inquieto, curioso, ama liberdade. Precisa de destinos que expandam horizontes...
 
-### Tabelas criadas
-- `travel_groups`: group_code, creator_phone, creator_name, status, final_recommendation
-- `travel_group_members`: group_id, phone_number, member_name, preferences (JSONB), is_ready
+✈️ *Destinos do seu Signo:*
+1. 🇳🇿 *Nova Zelândia* — Aventura épica que alimenta sua sede de explorar
+2. 🇲🇦 *Marrocos* — Labirinto de culturas que fascina sagitarianos
+3. 🇵🇪 *Peru (Machu Picchu)* — Conexão espiritual + trekking
 
-### Comandos WhatsApp
-| Comando | Ação |
-|---------|------|
-| `criar grupo` | Cria grupo, gera código 6 chars, inicia questionário |
-| `entrar grupo XYZABC` | Adiciona membro, inicia questionário |
-| `meu grupo` | Mostra status e membros |
-| `resultado grupo` | Cruza preferências via Gemini, envia a todos |
-| `sair grupo` | Remove membro |
+🔮 *Horóscopo de Viagem — Março 2026:*
+Júpiter favorece viagens longas. Ótimo momento pra planejar...
 
----
+💡 Quer que eu monte um roteiro pra algum desses?
+```
 
-## 2. Téo Lê Mentes (IMPLEMENTADO ✅)
+### Arquivos a modificar
+1. **`supabase/functions/whatsapp-webhook/index.ts`**: Novo bloco de comando (similar ao DNA/Playlist) com regex, detecção de signo, chamada Gemini, formatação, e save no `client_memory`
+2. **`supabase/functions/_shared/client-memory.ts`**: Adicionar signo no `formatMemoryForPrompt` para que o Téo use nas conversas normais
+3. **`.lovable/plan.md`**: Documentar feature
 
-### Conceito
-Análise emocional SILENCIOSA das mensagens do cliente para adaptar recomendações automaticamente, sem nunca mencionar a análise.
-
-### Implementação (zero novas tabelas)
-Usa a infraestrutura existente de `client_memory.preferences` (JSONB):
-
-**Campos emocionais adicionados:**
-- `tom_emocional`: animado/estressado/cansado/ansioso/empolgado/nostálgico/indeciso/tranquilo/comemorando/preocupado
-- `nivel_energia`: alto/médio/baixo
-- `nivel_estresse`: alto/médio/baixo
-- `momento_vida`: férias/lua-de-mel/aniversário/fuga-da-rotina/trabalho-remoto/família/amigos
-- `historico_emocional`: array com últimas 10 leituras emocionais (para detectar tendências)
-
-**Detecção de sinais:**
-- Estresse: "preciso sair daqui", "to exausto", respostas impacientes
-- Animação: "!!", emojis, "mal posso esperar"
-- Ansiedade: muitas perguntas, "será que...", indecisão
-- Comemoração: "aniversário", "lua de mel", "promoção"
-
-**Adaptação silenciosa (via MEMORY_RULE):**
-- Estressado → Sugere descanso, spas, all-inclusive
-- Animado → Sugere aventura, esportes, destinos vibrantes
-- Indeciso → Limita opções a 2-3, mais assertivo
-- Comemorando → Sugere upgrades, experiências premium
-- NUNCA menciona a análise ao cliente
-
-### Arquivos modificados
-- `supabase/functions/_shared/client-memory.ts`: Extraction prompt, merge logic, format, MEMORY_RULE
