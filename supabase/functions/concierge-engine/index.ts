@@ -417,6 +417,156 @@ async function proactiveAlerts() {
   }
 }
 
+// ========== ACTION: DAILY STORIES ==========
+
+async function dailyStories() {
+  console.log("[CONCIERGE] Generating daily travel stories...");
+  const today = new Date().toISOString().split("T")[0];
+
+  // Get active trips currently in progress (check-in <= today <= check-out)
+  const { data: trips } = await supabase
+    .from("active_trips")
+    .select("*")
+    .eq("concierge_active", true)
+    .lte("check_in_date", today)
+    .gte("check_out_date", today);
+
+  if (!trips?.length) { console.log("No active trips for daily stories"); return; }
+
+  for (const trip of trips) {
+    // Check if story already sent today
+    const storyAlertKey = `daily_story_${today}`;
+    if (await wasAlertSent(trip.id, storyAlertKey)) {
+      console.log(`[DAILY-STORY] Already sent for trip ${trip.id} today`);
+      continue;
+    }
+
+    if (!(await canSendMessage(trip.id, trip.destination_timezone))) continue;
+
+    const name = trip.client_name || "Viajante";
+    const destination = trip.destination_city || "destino";
+
+    // Calculate day number
+    const checkinDate = new Date(trip.check_in_date + "T00:00:00Z");
+    const todayDate = new Date(today + "T00:00:00Z");
+    const checkoutDate = new Date(trip.check_out_date + "T00:00:00Z");
+    const dayNumber = Math.floor((todayDate.getTime() - checkinDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const totalDays = Math.floor((checkoutDate.getTime() - checkinDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Get weather data
+    let weatherData: any = null;
+    if (trip.destination_lat && trip.destination_lng) {
+      const weather = await getWeather(trip.destination_lat, trip.destination_lng);
+      if (weather?.current) {
+        weatherData = {
+          temp: Math.round(weather.current.temp),
+          description: weather.current.weather?.[0]?.description || "",
+          emoji: getWeatherEmoji(weather.current.weather?.[0]?.main || ""),
+        };
+      }
+    }
+
+    // Generate activity suggestion and fun fact via AI
+    const specialNotes = trip.concierge_special_notes || "";
+    const aiPrompt = `Você é o Téo, concierge de viagem. O cliente ${name} está no DIA ${dayNumber} de ${totalDays} em ${destination}, ${trip.destination_country || ""}.
+${weatherData ? `Clima hoje: ${weatherData.temp}°C, ${weatherData.description}` : ""}
+${specialNotes ? `Notas especiais: ${specialNotes}` : ""}
+
+Responda EXATAMENTE neste formato JSON (sem markdown, sem backticks):
+{"activity": "Uma sugestão de atividade específica e interessante para hoje (max 80 chars)", "funFact": "Uma curiosidade fascinante sobre ${destination} que poucos sabem (max 100 chars)"}`;
+
+    let activitySuggestion = `Explorar as ruas de ${destination} com calma`;
+    let funFact = `${destination} é um destino único no mundo`;
+
+    try {
+      const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: [{ role: "user", content: aiPrompt }],
+        }),
+      });
+
+      if (aiRes.ok) {
+        const aiData = await aiRes.json();
+        const content = aiData.choices?.[0]?.message?.content || "";
+        try {
+          const cleanContent = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+          const parsed = JSON.parse(cleanContent);
+          activitySuggestion = parsed.activity || activitySuggestion;
+          funFact = parsed.funFact || funFact;
+        } catch (e) {
+          console.error("[DAILY-STORY] Failed to parse AI response:", content);
+        }
+      }
+    } catch (e) {
+      console.error("[DAILY-STORY] AI error:", e);
+    }
+
+    // Call generate-daily-story Edge Function
+    try {
+      const storyRes = await fetch(`${SUPABASE_URL}/functions/v1/generate-daily-story`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          destination,
+          clientName: name,
+          dayNumber,
+          totalDays,
+          weather: weatherData,
+          activitySuggestion,
+          funFact,
+          specialNotes,
+        }),
+      });
+
+      if (storyRes.ok) {
+        const storyData = await storyRes.json();
+        if (storyData.imageUrl) {
+          // Send the story image via WhatsApp
+          const caption = `🌅 Bom dia, ${name}! Dia ${dayNumber} de ${totalDays} em ${destination}!\n\n✨ ${activitySuggestion}\n💡 ${funFact}\n\nAproveite o dia! — Téo ✈️`;
+          await sendWhatsAppImage(trip.client_phone, storyData.imageUrl, caption);
+
+          // Also send to additional concierge contacts
+          const { data: contacts } = await supabase
+            .from("concierge_contacts")
+            .select("contact_phone, contact_name")
+            .eq("trip_id", trip.id)
+            .eq("is_active", true);
+
+          if (contacts?.length) {
+            for (const contact of contacts) {
+              const contactCaption = `🌅 Bom dia, ${contact.contact_name}! Dia ${dayNumber} de ${totalDays} em ${destination}!\n\n✨ ${activitySuggestion}\n💡 ${funFact}\n\nAproveite o dia! — Téo ✈️`;
+              await sendWhatsAppImage(contact.contact_phone, storyData.imageUrl, contactCaption);
+            }
+          }
+
+          await saveAlert(trip.id, storyAlertKey, `Story sent: ${storyData.imageUrl}`);
+          await incrementMessageCount(trip.id);
+          console.log(`[DAILY-STORY] ✅ Story sent to ${name} for day ${dayNumber}`);
+        }
+      } else {
+        const errText = await storyRes.text();
+        console.error(`[DAILY-STORY] Generation failed for trip ${trip.id}:`, errText);
+        
+        // Fallback: send text-only morning briefing
+        const fallbackMsg = await generateTeoMessage(
+          `Gere uma saudação de bom dia animada para ${name} que está no dia ${dayNumber} de ${totalDays} em ${destination}. ${weatherData ? `Clima: ${weatherData.temp}°C, ${weatherData.description}` : ""}. Sugestão: ${activitySuggestion}. Curiosidade: ${funFact}.`
+        );
+        await sendWhatsAppMessage(trip.client_phone, fallbackMsg);
+        await saveAlert(trip.id, storyAlertKey, `Fallback text sent`);
+        await incrementMessageCount(trip.id);
+      }
+    } catch (e) {
+      console.error(`[DAILY-STORY] Error for trip ${trip.id}:`, e);
+    }
+  }
+}
+
 // ========== ACTION: HANDLE LOCATION ==========
 
 async function handleLocation(phoneNumber: string, lat: number, lng: number) {
@@ -811,6 +961,9 @@ serve(async (req) => {
         break;
       case "search_nearby":
         await searchByQuery(body.phone_number, body.latitude, body.longitude, body.query);
+        break;
+      case "daily_stories":
+        await dailyStories();
         break;
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
