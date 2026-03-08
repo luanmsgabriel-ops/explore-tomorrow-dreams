@@ -819,16 +819,20 @@ async function transcribeAudioAutoDetect(audioBuffer: ArrayBuffer): Promise<{ te
   }
 }
 
-// Translate text using Gemini Flash — auto-detect source and translate
-async function translateText(text: string): Promise<{ source_lang: string; target_lang: string; translation: string } | null> {
+// Translate text using Gemini Flash — auto-detect source and translate (multi-language + cultural context)
+async function translateText(text: string, targetLang?: string): Promise<{ source_lang: string; source_lang_name: string; target_lang: string; target_lang_name: string; translation: string; cultural_context?: string } | null> {
   try {
-    const prompt = `You are a translator. Detect the language of the following text and translate it.
-- If it's Portuguese, translate to English.
-- If it's English, translate to Portuguese (Brazilian).
-- If it's any other language, translate to Portuguese (Brazilian).
+    const targetInstruction = targetLang
+      ? `Translate to ${targetLang}.`
+      : `- If it's Portuguese, translate to English.\n- If it's any other language, translate to Portuguese (Brazilian).`;
+
+    const prompt = `You are a universal translator with deep cultural knowledge. Detect the language of the following text and translate it.
+${targetInstruction}
+
+IMPORTANT: Also provide a brief cultural context note if relevant (local customs, expressions, nuances that a traveler should know).
 
 Return ONLY a valid JSON object with this exact structure (no markdown, no explanation):
-{"source_lang":"detected language code (pt/en/es/etc)","target_lang":"target language code","translation":"translated text"}
+{"source_lang":"ISO code (pt/en/es/fr/it/de/ja/ko/zh/ar/th/etc)","source_lang_name":"language name in Portuguese","target_lang":"ISO code","target_lang_name":"language name in Portuguese","translation":"translated text","cultural_context":"brief cultural note if relevant, or null"}
 
 Text to translate:
 "${text}"`;
@@ -857,13 +861,94 @@ Text to translate:
     const parsed = JSON.parse(content);
     return {
       source_lang: parsed.source_lang || "unknown",
+      source_lang_name: parsed.source_lang_name || "Desconhecido",
       target_lang: parsed.target_lang || "pt",
+      target_lang_name: parsed.target_lang_name || "Português",
       translation: parsed.translation || "",
+      cultural_context: parsed.cultural_context || undefined,
     };
   } catch (err) {
     console.error("[TRANSLATOR] Error:", err);
     return null;
   }
+}
+
+// Translate text from an image (signs, notices, menus, etc.) using Gemini Vision
+async function translateImage(imageBase64: string, mimeType: string = "image/jpeg", targetLang?: string): Promise<{ source_lang_name: string; items: Array<{ original: string; translation: string }>; cultural_context?: string; image_description?: string } | null> {
+  try {
+    const targetInstruction = targetLang
+      ? `Translate all text to ${targetLang}.`
+      : `Translate all text to Portuguese (Brazilian).`;
+
+    const prompt = `You are a universal translator for travelers. Analyze this image and:
+1. Identify ALL visible text (signs, notices, labels, menus, tickets, etc.)
+2. ${targetInstruction}
+3. Provide cultural context relevant to a Brazilian traveler
+
+Return ONLY a valid JSON object (no markdown):
+{
+  "source_lang_name": "language name in Portuguese",
+  "image_description": "brief description of what the image shows (e.g. 'placa de rua', 'aviso no hotel', 'bilhete de metrô')",
+  "items": [
+    {"original": "original text 1", "translation": "translated text 1"},
+    {"original": "original text 2", "translation": "translated text 2"}
+  ],
+  "cultural_context": "relevant cultural context for a traveler, or null"
+}
+
+RULES:
+- Extract ALL readable text from the image
+- Keep the order as they appear in the image
+- If the image has no text, return items as empty array and set image_description explaining what you see
+- Max 4000 chars total`;
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
+              { type: "text", text: prompt },
+            ],
+          },
+        ],
+        max_tokens: 4000,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("[TRANSLATOR-IMG] Gemini error:", response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    let content = data.choices?.[0]?.message?.content || "";
+    content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+
+    return JSON.parse(content);
+  } catch (err) {
+    console.error("[TRANSLATOR-IMG] Error:", err);
+    return null;
+  }
+}
+
+// Get flag emoji for language code
+function getLangFlag(langCode: string): string {
+  const flags: Record<string, string> = {
+    pt: "🇧🇷", en: "🇺🇸", es: "🇪🇸", fr: "🇫🇷", it: "🇮🇹", de: "🇩🇪",
+    ja: "🇯🇵", ko: "🇰🇷", zh: "🇨🇳", ar: "🇸🇦", th: "🇹🇭", ru: "🇷🇺",
+    nl: "🇳🇱", sv: "🇸🇪", no: "🇳🇴", da: "🇩🇰", fi: "🇫🇮", pl: "🇵🇱",
+    tr: "🇹🇷", el: "🇬🇷", he: "🇮🇱", hi: "🇮🇳", vi: "🇻🇳", id: "🇮🇩",
+  };
+  const code = (langCode || "").toLowerCase().substring(0, 2);
+  return flags[code] || "🗣️";
 }
 
 async function uploadAudioToStorage(audioBuffer: ArrayBuffer, phone: string): Promise<string | null> {
