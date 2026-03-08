@@ -3861,6 +3861,158 @@ Máximo 2500 chars.`;
         }
       }
 
+      // ========== TÉO SOS: Emergency Assistant ==========
+      {
+        const lowerMsgSos = (messageText || "").toLowerCase().trim();
+        const sosRegex = /^(sos|emergencia|emergência|socorro|ajuda urgente|help|téo sos|teo sos)$/i;
+        const sosWithCountryRegex = /^(?:sos|emergencia|emergência|socorro)\s+(?:em\s+|no\s+|na\s+|nos\s+|nas\s+)?(.+)$/i;
+
+        if (sosRegex.test(lowerMsgSos) || sosWithCountryRegex.test(lowerMsgSos)) {
+          const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          // Determine country/destination context
+          let destinationContext = "";
+          const countryMatch = sosWithCountryRegex.exec(messageText || "");
+          if (countryMatch) {
+            destinationContext = countryMatch[1].trim();
+          }
+
+          // If no country specified, try to get from active trip
+          if (!destinationContext) {
+            try {
+              const { data: activeTrip } = await supabase
+                .from("active_trips")
+                .select("destination_city, destination_country")
+                .eq("client_phone", phoneNumber)
+                .eq("concierge_active", true)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (activeTrip) {
+                destinationContext = `${activeTrip.destination_city || ""}, ${activeTrip.destination_country || ""}`.replace(/^,\s*|,\s*$/g, "");
+              }
+            } catch {}
+          }
+
+          // If still no context, try client_memory travel history
+          if (!destinationContext) {
+            try {
+              const memory = await fetchClientMemory(supabase, phoneNumber);
+              const history = memory?.travel_history || [];
+              if (history.length > 0) {
+                const lastDest = history[history.length - 1];
+                if (lastDest?.destino) destinationContext = lastDest.destino;
+              }
+            } catch {}
+          }
+
+          const sosPrompt = `Você é o Téo em modo SOS EMERGÊNCIA da Tomorrow Travel. Responda com URGÊNCIA, CLAREZA e SEM BRINCADEIRAS.
+
+${destinationContext ? `DESTINO/PAÍS: ${destinationContext}` : "O cliente NÃO informou o país. Pergunte onde ele está antes de fornecer informações específicas."}
+
+${destinationContext ? `FORNEÇA OBRIGATORIAMENTE estas informações para ${destinationContext}:` : "Se souber o país, forneça:"}
+
+🆘 *EMERGÊNCIA — ${destinationContext || "[País]"}*
+
+📞 *Números de Emergência:*
+- Polícia: [número real]
+- Bombeiros: [número real]
+- Ambulância: [número real]
+- Número universal de emergência: [se houver, ex: 112 na Europa]
+
+🏥 *Hospitais de Referência:*
+- [Nome do hospital principal para turistas, com endereço resumido]
+- [Segundo hospital se relevante]
+- Dica: [como pedir ambulância no idioma local]
+
+🏛️ *Embaixada/Consulado do Brasil:*
+- Endereço: [endereço real]
+- Telefone: [telefone real]
+- Plantão consular: [se disponível]
+
+🗣️ *Frases de Emergência no Idioma Local:*
+- "Preciso de ajuda!" → [tradução + pronúncia aproximada]
+- "Preciso de um médico" → [tradução + pronúncia]
+- "Onde fica o hospital?" → [tradução + pronúncia]
+- "Ligue para a polícia" → [tradução + pronúncia]
+- "Sou brasileiro(a)" → [tradução + pronúncia]
+- "Não falo [idioma]" → [tradução + pronúncia]
+
+⚠️ *Dicas de Segurança:*
+- [1-2 dicas específicas do país/destino sobre segurança]
+- Mantenha cópias digitais dos documentos
+- Ligue pro Téo a qualquer hora! 📱
+
+REGRAS CRÍTICAS:
+- Tom SÉRIO e DIRETO — zero piadas, zero emojis decorativos (apenas os funcionais como 📞🏥🏛️)
+- Use APENAS dados REAIS e VERIFICADOS (números de emergência oficiais, embaixadas reais)
+- Se não souber um dado específico, NÃO INVENTE — diga "confirme no site da embaixada"
+- Frases com pronúncia entre parênteses: ex: "Tasukete!" (ta-su-ke-tê)
+- Máximo 2500 caracteres
+- Se o cliente não informou o país, pergunte PRIMEIRO: "🆘 Onde você está agora? Me diz o país/cidade pra eu te ajudar com os contatos certos!"`;
+
+          try {
+            const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash",
+                messages: [
+                  { role: "system", content: sosPrompt },
+                  { role: "user", content: destinationContext ? `SOS em ${destinationContext}` : "SOS — preciso de ajuda de emergência" },
+                ],
+                max_tokens: 4000,
+              }),
+            });
+
+            if (!response.ok) {
+              console.error("[SOS] AI error:", response.status);
+              // Fallback: send generic emergency info
+              await sendWhatsAppMessage(phoneNumber, "🆘 *EMERGÊNCIA*\n\n📞 Em qualquer país da Europa: *112*\n📞 EUA/Canadá: *911*\n📞 Brasil: *190* (polícia) | *192* (SAMU) | *193* (bombeiros)\n\n🏛️ Embaixadas do Brasil: consulte gov.br/mre\n\nMe diga em qual país você está para informações mais específicas!");
+            } else {
+              const data = await response.json();
+              const sosResult = data.choices?.[0]?.message?.content || "🆘 Erro ao buscar informações. Ligue 112 (Europa) ou 911 (EUA).";
+
+              if (sosResult.length > 4000) {
+                const mid = sosResult.lastIndexOf("\n", 3900);
+                await sendWhatsAppMessage(phoneNumber, sosResult.substring(0, mid > 0 ? mid : 3900));
+                await sendWhatsAppMessage(phoneNumber, sosResult.substring(mid > 0 ? mid : 3900));
+              } else {
+                await sendWhatsAppMessage(phoneNumber, sosResult);
+              }
+            }
+
+            // Save to conversation history
+            if (savedConv) {
+              const { data: convAfterSos } = await supabase
+                .from("whatsapp_conversations")
+                .select("id, messages_history")
+                .eq("id", savedConv.id)
+                .single();
+              if (convAfterSos) {
+                const updH = [
+                  ...((convAfterSos.messages_history as any[]) || []),
+                  { role: "assistant", content: `🆘 SOS ${destinationContext || ""}`, timestamp: new Date().toISOString() },
+                ];
+                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterSos.id);
+              }
+            }
+
+          } catch (err) {
+            console.error("[SOS] Error:", err);
+            await sendWhatsAppMessage(phoneNumber, "🆘 Erro ao processar. Números universais:\n📞 Europa: 112\n📞 EUA: 911\n📞 Brasil: 190/192/193");
+          }
+
+          return new Response(JSON.stringify({ status: "ok", sos: true }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
       // ========== PLAYLIST DA VIAGEM: AI-Curated Travel Playlist ==========
       {
         const playlistRegex = /^(playlist|playlist da viagem|minha playlist|playlist viagem|travel playlist|musica viagem|música viagem)$/i;
