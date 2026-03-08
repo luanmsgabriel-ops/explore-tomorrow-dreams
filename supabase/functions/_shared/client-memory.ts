@@ -63,10 +63,34 @@ export function formatMemoryForPrompt(memory: ClientMemory): string {
     if (prefs.companhia) parts.push(`- Companhia: ${prefs.companhia}`);
     // Any other prefs (excluding emotional fields - handled separately)
     const emotionalKeys = ["tom_emocional", "nivel_energia", "nivel_estresse", "momento_vida", "historico_emocional"];
+    const dnaKeys = ["dna_viajante", "dna_historico"];
     for (const [k, v] of Object.entries(prefs)) {
-      if (!["estilo_viagem", "orcamento", "tipo", "clima", "companhia", ...emotionalKeys].includes(k) && v) {
+      if (!["estilo_viagem", "orcamento", "tipo", "clima", "companhia", ...emotionalKeys, ...dnaKeys].includes(k) && v) {
         parts.push(`- ${k}: ${v}`);
       }
+    }
+  }
+
+  // ===== DNA DE VIAJANTE =====
+  const dna = prefs?.dna_viajante;
+  if (dna && (dna.explorador || dna.culturalista || dna.gourmet || dna.zen || dna.socialite)) {
+    parts.push(`\n🧬 DNA DE VIAJANTE (use para personalizar sugestões):`);
+    if (dna.explorador) parts.push(`- 🏔️ Explorador: ${dna.explorador}%`);
+    if (dna.culturalista) parts.push(`- 🏛️ Culturalista: ${dna.culturalista}%`);
+    if (dna.gourmet) parts.push(`- 🍽️ Gourmet: ${dna.gourmet}%`);
+    if (dna.zen) parts.push(`- 🧘 Zen: ${dna.zen}%`);
+    if (dna.socialite) parts.push(`- 🎉 Socialite: ${dna.socialite}%`);
+    // Check for evolution
+    const dnaHistory = prefs?.dna_historico;
+    if (Array.isArray(dnaHistory) && dnaHistory.length > 1) {
+      const prev = dnaHistory[dnaHistory.length - 2];
+      const curr = dnaHistory[dnaHistory.length - 1];
+      const changes: string[] = [];
+      for (const cat of ["explorador", "culturalista", "gourmet", "zen", "socialite"]) {
+        const diff = (curr[cat] || 0) - (prev[cat] || 0);
+        if (Math.abs(diff) >= 5) changes.push(`${cat} ${diff > 0 ? "↑" : "↓"}${Math.abs(diff)}%`);
+      }
+      if (changes.length > 0) parts.push(`- Evolução recente: ${changes.join(", ")}`);
     }
   }
 
