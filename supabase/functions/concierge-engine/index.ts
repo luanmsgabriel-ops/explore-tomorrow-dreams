@@ -1130,6 +1130,9 @@ serve(async (req) => {
       case "daily_stories":
         await dailyStories();
         break;
+      case "golden_hour":
+        await goldenHourAlerts();
+        break;
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
