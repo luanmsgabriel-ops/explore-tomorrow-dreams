@@ -10,6 +10,7 @@
 5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
 6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
 7. ✅ **Téo Compatibilidade** — Match de viagem entre DNAs de viajante
+8. ✅ **Téo SOS** — Assistente de emergência com embaixadas, hospitais e frases úteis
 
 ---
 
