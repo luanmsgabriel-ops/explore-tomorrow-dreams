@@ -61,10 +61,28 @@ export function formatMemoryForPrompt(memory: ClientMemory): string {
     if (prefs.tipo) parts.push(`- Tipo preferido: ${prefs.tipo}`);
     if (prefs.clima) parts.push(`- Clima: ${prefs.clima}`);
     if (prefs.companhia) parts.push(`- Companhia: ${prefs.companhia}`);
-    // Any other prefs
+    // Any other prefs (excluding emotional fields - handled separately)
+    const emotionalKeys = ["tom_emocional", "nivel_energia", "nivel_estresse", "momento_vida", "historico_emocional"];
     for (const [k, v] of Object.entries(prefs)) {
-      if (!["estilo_viagem", "orcamento", "tipo", "clima", "companhia"].includes(k) && v) {
+      if (!["estilo_viagem", "orcamento", "tipo", "clima", "companhia", ...emotionalKeys].includes(k) && v) {
         parts.push(`- ${k}: ${v}`);
+      }
+    }
+  }
+
+  // ===== EMOTIONAL PROFILE (Téo Lê Mentes) =====
+  const emotional = prefs || {};
+  const hasEmotionalData = emotional.tom_emocional || emotional.nivel_energia || emotional.nivel_estresse || emotional.momento_vida;
+  if (hasEmotionalData) {
+    parts.push(`\n🧠 PERFIL EMOCIONAL (ADAPTE SILENCIOSAMENTE — NUNCA mencione ao cliente):`);
+    if (emotional.tom_emocional) parts.push(`- Tom atual: ${emotional.tom_emocional}`);
+    if (emotional.nivel_energia) parts.push(`- Energia: ${emotional.nivel_energia}`);
+    if (emotional.nivel_estresse) parts.push(`- Estresse: ${emotional.nivel_estresse}`);
+    if (emotional.momento_vida) parts.push(`- Momento de vida: ${emotional.momento_vida}`);
+    if (emotional.historico_emocional && Array.isArray(emotional.historico_emocional)) {
+      const recent = emotional.historico_emocional.slice(-3);
+      if (recent.length > 0) {
+        parts.push(`- Tendência recente: ${recent.map((e: any) => e.tom || e).join(" → ")}`);
       }
     }
   }
@@ -111,6 +129,19 @@ REGRA DE MEMÓRIA (OBRIGATÓRIO):
 - Se souber nomes de filhos/aniversários, mencione com naturalidade
 - NÃO liste todos os dados de uma vez — use aos poucos, de forma orgânica
 - Se o cliente nunca interagiu antes, siga o fluxo normal de coleta
+
+REGRA DE ADAPTAÇÃO EMOCIONAL (TÉO LÊ MENTES — OBRIGATÓRIO):
+- Se houver PERFIL EMOCIONAL acima, adapte SILENCIOSAMENTE suas sugestões:
+  • Cliente estressado/cansado → Priorize destinos de descanso (spas, praias tranquilas, resorts all-inclusive)
+  • Cliente animado/aventureiro → Sugira trilhas, esportes radicais, destinos vibrantes
+  • Cliente nostálgico/saudoso → Sugira destinos com charme histórico, vilas acolhedoras
+  • Cliente indeciso/ansioso → Seja mais assertivo, limite opções a 2-3, dê segurança
+  • Cliente comemorando → Sugira experiências premium, jantares especiais, upgrades
+  • Cliente econômico/preocupado com dinheiro → Foque em custo-benefício, promoções, parcelamento
+- NUNCA diga "percebi que você está estressado" ou "você parece ansioso"
+- NUNCA mencione a análise emocional — apenas adapte naturalmente o tom e as sugestões
+- Ajuste seu tom: mais calmo e acolhedor para estressados, mais empolgado para aventureiros
+- A adaptação deve ser SUTIL e INVISÍVEL para o cliente
 `;
 
 export { MEMORY_RULE };
@@ -158,6 +189,12 @@ Extraia APENAS informações NOVAS ou ATUALIZADAS mencionadas na conversa acima.
     "clima": "tropical/frio/temperado ou null",
     "companhia": "casal/família/amigos/solo ou null"
   },
+  "emotional_profile": {
+    "tom_emocional": "detecte o tom predominante: animado/estressado/cansado/ansioso/empolgado/nostálgico/indeciso/tranquilo/comemorando/preocupado ou null",
+    "nivel_energia": "alto/médio/baixo ou null (baseado na linguagem: muitos !, caps, emojis = alto; respostas curtas/secas = baixo)",
+    "nivel_estresse": "alto/médio/baixo ou null (detecte sinais: pressa, reclamações, frustração, cansaço mencionado)",
+    "momento_vida": "férias/lua-de-mel/aniversário/fuga-da-rotina/trabalho-remoto/família/amigos ou null"
+  },
   "travel_history_new": [
     {"destino": "nome", "cotou": true/false, "fechou": true/false, "pessoas": 2, "datas": "jan/2026"}
   ],
@@ -173,13 +210,19 @@ Extraia APENAS informações NOVAS ou ATUALIZADAS mencionadas na conversa acima.
 REGRAS:
 - Se não houver informação nova na conversa, retorne {"has_new_data": false}
 - Use null para campos sem informação
-- NÃO invente dados — extraia APENAS o que foi explicitamente mencionado
+- NÃO invente dados — extraia APENAS o que foi explicitamente mencionado ou fortemente implícito
 - Para travel_history_new, inclua APENAS destinos discutidos NESTA conversa
+- Para emotional_profile: analise o TOM e ENERGIA das mensagens do CLIENTE (não do Téo)
+  • Sinais de estresse: "preciso sair daqui", "to exausto", "não aguento mais", "correria", respostas impacientes
+  • Sinais de animação: "!!", "🔥", emojis, "mal posso esperar", "que sonho"
+  • Sinais de ansiedade: muitas perguntas, "será que...", indecisão, trocar de ideia
+  • Sinais de comemoração: "aniversário", "lua de mel", "promoção", "aposentadoria"
+  • Sempre tente detectar o tom — mesmo respostas neutras indicam "tranquilo"
 - Retorne APENAS o JSON, sem markdown, sem explicação`;
 
     const response = await callGemini(
       [{ role: "user", content: extractionPrompt }],
-      { model: "google/gemini-2.5-flash-lite", maxTokens: 1000 }
+      { model: "google/gemini-2.5-flash-lite", maxTokens: 1200 }
     );
 
     if (!response.ok) {
@@ -218,6 +261,28 @@ REGRAS:
           mergedPrefs[k] = v;
         }
       }
+    }
+
+    // ===== MERGE EMOTIONAL PROFILE (Téo Lê Mentes) =====
+    if (extracted.emotional_profile) {
+      const ep = extracted.emotional_profile;
+      if (ep.tom_emocional) mergedPrefs.tom_emocional = ep.tom_emocional;
+      if (ep.nivel_energia) mergedPrefs.nivel_energia = ep.nivel_energia;
+      if (ep.nivel_estresse) mergedPrefs.nivel_estresse = ep.nivel_estresse;
+      if (ep.momento_vida) mergedPrefs.momento_vida = ep.momento_vida;
+
+      // Keep emotional history (last 10 entries) for trend detection
+      const history = Array.isArray(mergedPrefs.historico_emocional) ? mergedPrefs.historico_emocional : [];
+      if (ep.tom_emocional) {
+        history.push({
+          tom: ep.tom_emocional,
+          energia: ep.nivel_energia || null,
+          data: new Date().toISOString().split("T")[0],
+        });
+        // Keep only last 10
+        mergedPrefs.historico_emocional = history.slice(-10);
+      }
+      console.log(`[MEMORY] Emotional profile detected: tom=${ep.tom_emocional}, energia=${ep.nivel_energia}, estresse=${ep.nivel_estresse}`);
     }
 
     // Merge travel history (append new entries)
