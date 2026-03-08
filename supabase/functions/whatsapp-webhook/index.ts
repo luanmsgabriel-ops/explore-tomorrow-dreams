@@ -1976,6 +1976,7 @@ serve(async (req) => {
       let messageText = "";
       let incomingWasAudio = false;
       let imageUrl: string | null = null;
+      let imageBase64Data: string | null = null;
 
       // Handle different message types
       if (messageType === "text") {
