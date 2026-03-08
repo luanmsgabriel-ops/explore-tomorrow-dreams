@@ -1097,7 +1097,7 @@ FORMATO (para WhatsApp, use *negrito* e emojis):
 *1. [Nome original]* → [Tradução PT-BR]
 🥗 [Ingredientes principais]
 ⚠️ [Alergênicos, se houver]
-💰 [Preço se visível]
+💰 [Preço se visível] (~R$ XX,XX se em moeda estrangeira)
 
 [... demais pratos ...]
 
@@ -1112,11 +1112,35 @@ REGRAS:
 - Se não conseguir ler algum item, indique com "❓"
 - Se a foto não for um cardápio, diga educadamente e peça para enviar a foto do cardápio
 - Inclua preços quando visíveis na foto
+- **CONVERSÃO DE MOEDA**: Se os preços estiverem em dólares (USD/$), euros (EUR/€) ou outra moeda estrangeira, mostre ao lado o valor aproximado em reais (R$) usando a cotação fornecida. Formato: "$15.00 (~R$ XX,XX)"
 - Priorize pratos principais, depois entradas e sobremesas`;
 
 async function analyzeMenuImage(imageBase64: string, mimeType: string = "image/jpeg"): Promise<string> {
   console.log("[CHEF MODE] Analyzing menu image...");
   
+  // Fetch exchange rates for currency conversion
+  let exchangeInfo = "";
+  try {
+    const rateRes = await fetch("https://open.er-api.com/v6/latest/USD");
+    if (rateRes.ok) {
+      const rateData = await rateRes.json();
+      const brlRate = rateData.rates?.BRL;
+      const eurToUsd = rateData.rates?.EUR ? (1 / rateData.rates.EUR) : null;
+      if (brlRate) {
+        exchangeInfo = `\n\nCOTAÇÕES DO DIA para conversão: 1 USD = R$ ${brlRate.toFixed(2)}`;
+        if (eurToUsd) {
+          const eurToBrl = brlRate / rateData.rates.EUR;
+          exchangeInfo += ` | 1 EUR = R$ ${eurToBrl.toFixed(2)}`;
+        }
+      }
+    }
+  } catch (e) {
+    console.error("[CHEF MODE] Exchange rate error:", e);
+    exchangeInfo = "\n\nCOTAÇÃO APROXIMADA: 1 USD ≈ R$ 5,50 | 1 EUR ≈ R$ 6,00 (use como estimativa)";
+  }
+
+  const promptWithRates = CHEF_MODE_PROMPT + exchangeInfo;
+
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -1126,12 +1150,12 @@ async function analyzeMenuImage(imageBase64: string, mimeType: string = "image/j
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
       messages: [
-        { role: "system", content: CHEF_MODE_PROMPT },
+        { role: "system", content: promptWithRates },
         {
           role: "user",
           content: [
             { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
-            { type: "text", text: "Analise este cardápio e traduza os pratos." },
+            { type: "text", text: "Analise este cardápio e traduza os pratos. Se os preços estiverem em moeda estrangeira, converta para reais." },
           ],
         },
       ],
@@ -2558,6 +2582,21 @@ serve(async (req) => {
             // Has menu context → answer based on it
             let chefResponse = "";
             try {
+              // Fetch current USD→BRL exchange rate
+              let exchangeRateInfo = "";
+              try {
+                const rateRes = await fetch("https://open.er-api.com/v6/latest/USD");
+                if (rateRes.ok) {
+                  const rateData = await rateRes.json();
+                  const brlRate = rateData.rates?.BRL;
+                  if (brlRate) {
+                    exchangeRateInfo = `\n\nCOTAÇÃO DO DIA: 1 USD = R$ ${brlRate.toFixed(2)}`;
+                  }
+                }
+              } catch (e) {
+                console.error("Exchange rate fetch error:", e);
+              }
+
               const CHEF_MENU_CONTEXT_PROMPT = `Você é o Téo, um assistente culinário expert da Tomorrow Travel. Você está no *Modo Chef* 👨‍🍳.
 
 O cliente já enviou uma foto do cardápio e aqui está a análise completa:
@@ -2565,6 +2604,7 @@ O cliente já enviou uma foto do cardápio e aqui está a análise completa:
 --- CARDÁPIO ANALISADO ---
 ${savedMenuAnalysis}
 --- FIM DO CARDÁPIO ---
+${exchangeRateInfo}
 
 SUAS TAREFAS:
 - Responder perguntas do cliente BASEADO nos itens do cardápio acima
@@ -2572,6 +2612,8 @@ SUAS TAREFAS:
 - Cite o nome exato do prato e o preço quando disponível
 - Se perguntarem algo que não está no cardápio, avise educadamente
 - Sugira harmonizações com bebidas quando relevante
+- **CONVERSÃO DE MOEDA**: Se os preços do cardápio estiverem em dólares (USD, $, US$), SEMPRE mostre abaixo de cada preço em dólar o valor equivalente em reais (R$) usando a cotação do dia fornecida acima. Formato: "$15.00 (~R$ XX,XX)"
+- Se não houver cotação disponível, use R$ 5,50 como estimativa e avise que é aproximado
 
 REGRAS:
 - Responda SEMPRE em português brasileiro
