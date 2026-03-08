@@ -3503,6 +3503,364 @@ REGRAS:
         }
       }
 
+      // ========== TÉO COMPATIBILIDADE: Travel DNA Match ==========
+      {
+        const lowerMsgCompat = (messageText || "").toLowerCase().trim();
+        const compatActivateRegex = /^(compatibilidade|match viagem|match de viagem|compatibilidade viagem)/i;
+        const compatWithNumberRegex = /(?:compatibilidade|match viagem|match de viagem)\s+(?:com\s+)?(\+?\d[\d\s\-]+)/i;
+
+        if (compatActivateRegex.test(lowerMsgCompat)) {
+          const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          // Try to extract partner number from message
+          const numberMatch = compatWithNumberRegex.exec(messageText || "");
+          let partnerPhone = numberMatch ? numberMatch[1].replace(/[\s\-]/g, "").replace(/^\+/, "") : null;
+
+          if (!partnerPhone) {
+            // Check if we're waiting for a number from a previous message
+            const existingData = (savedConv?.collected_data as Record<string, any>) || {};
+            if (!existingData._compat_waiting_number) {
+              // Ask for the number
+              if (savedConv) {
+                await supabase.from("whatsapp_conversations").update({
+                  collected_data: { ...existingData, _compat_waiting_number: true },
+                }).eq("id", savedConv.id);
+              }
+              await sendWhatsAppMessage(phoneNumber, "💞 *Téo Compatibilidade de Viagem*\n\nQual o número de WhatsApp da pessoa que quer comparar?\n\nEnvie no formato: *5511999999999*\n\n_(A pessoa precisa ter feito o teste DNA de viajante!)_");
+              return new Response(JSON.stringify({ status: "ok", compat_waiting: true }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+          }
+
+          // Check if this is a number reply to a waiting compat request
+          if (!partnerPhone) {
+            const convData = (savedConv?.collected_data as Record<string, any>) || {};
+            if (convData._compat_waiting_number) {
+              // The current message IS the number
+              partnerPhone = (messageText || "").replace(/[\s\-\+]/g, "").replace(/\D/g, "");
+              // Clear waiting state
+              const cleanData = { ...convData };
+              delete cleanData._compat_waiting_number;
+              if (savedConv) {
+                await supabase.from("whatsapp_conversations").update({
+                  collected_data: cleanData,
+                }).eq("id", savedConv.id);
+              }
+            }
+          }
+
+          if (partnerPhone) {
+            // Normalize partner phone
+            const cleanPartner = partnerPhone.replace(/\D/g, "");
+            const normalizedPartner = cleanPartner.startsWith("55") ? cleanPartner : `55${cleanPartner}`;
+            const cleanSelf = phoneNumber.replace(/\D/g, "");
+
+            if (normalizedPartner === cleanSelf || normalizedPartner === `55${cleanSelf}`) {
+              await sendWhatsAppMessage(phoneNumber, "😄 Você quer fazer match consigo mesmo? Haha! Envie o número de *outra* pessoa pra comparar! 💞");
+              return new Response(JSON.stringify({ status: "ok", compat_self: true }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            await sendWhatsAppMessage(phoneNumber, "💞 *Analisando compatibilidade de viagem...*\nComparando DNAs de viajante! 🧬⏳");
+
+            // Fetch both memories
+            const memoryA = await fetchClientMemory(supabase, phoneNumber);
+            const memoryB = await fetchClientMemory(supabase, normalizedPartner);
+
+            const dnaA = (memoryA?.preferences as Record<string, any>)?.dna_viajante;
+            const dnaB = (memoryB?.preferences as Record<string, any>)?.dna_viajante;
+
+            if (!dnaA) {
+              await sendWhatsAppMessage(phoneNumber, "🧬 Você ainda não fez o teste DNA de viajante!\n\nEnvie *meu dna* pra fazer o teste primeiro, depois tente o match novamente! 😉");
+              return new Response(JSON.stringify({ status: "ok", compat_no_dna_self: true }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            if (!dnaB) {
+              await sendWhatsAppMessage(phoneNumber, `🧬 A pessoa com o número *${normalizedPartner.slice(-4)}* ainda não fez o teste DNA de viajante!\n\nPeça pra ela enviar *meu dna* pro Téo primeiro! 😉`);
+              return new Response(JSON.stringify({ status: "ok", compat_no_dna_partner: true }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            // Build context
+            const nameA = memoryA?.client_name || contactName || "Pessoa 1";
+            const nameB = memoryB?.client_name || "Pessoa 2";
+            const signoA = (memoryA?.preferences as Record<string, any>)?.signo || null;
+            const signoB = (memoryB?.preferences as Record<string, any>)?.signo || null;
+
+            const compatPrompt = `Você é o Téo, cientista de compatibilidade de viagem da Tomorrow Travel. Compare os DNAs de Viajante de duas pessoas e gere uma análise de compatibilidade.
+
+PESSOA A — ${nameA}:
+🏔️ Explorador: ${dnaA.explorador || 0}%
+🏛️ Culturalista: ${dnaA.culturalista || 0}%
+🍽️ Gourmet: ${dnaA.gourmet || 0}%
+🧘 Zen: ${dnaA.zen || 0}%
+🎉 Socialite: ${dnaA.socialite || 0}%
+${signoA ? `♈ Signo: ${signoA}` : ""}
+
+PESSOA B — ${nameB}:
+🏔️ Explorador: ${dnaB.explorador || 0}%
+🏛️ Culturalista: ${dnaB.culturalista || 0}%
+🍽️ Gourmet: ${dnaB.gourmet || 0}%
+🧘 Zen: ${dnaB.zen || 0}%
+🎉 Socialite: ${dnaB.socialite || 0}%
+${signoB ? `♈ Signo: ${signoB}` : ""}
+
+GERE A ANÁLISE NO FORMATO EXATO ABAIXO (WhatsApp com emojis):
+
+💞 *Téo Compatibilidade de Viagem*
+
+👤 *${nameA}* × *${nameB}*
+
+🔬 *Compatibilidade: XX%* [barra visual com █ e ░, 10 blocos total]
+
+📊 *Onde vocês combinam:*
+[Liste 2-3 categorias onde as porcentagens são próximas, com análise divertida]
+
+⚡ *Onde divergem:*
+[Liste 1-2 categorias onde há maior diferença, com tom positivo/construtivo]
+
+${signoA && signoB ? `🔮 *Astrologia: ${signoA} × ${signoB}*\n[Uma frase sobre a compatibilidade dos signos na viagem]` : ""}
+
+✈️ *Destinos ideais pra vocês dois:*
+1. [Destino real específico] — [justificativa curta ligando os DNAs]
+2. [Destino real específico] — [justificativa curta]
+3. [Destino real específico] — [justificativa curta]
+
+💡 *Dica de convivência:*
+[Uma dica prática e divertida sobre como viajar bem juntos]
+
+✨ Quer que eu monte um roteiro pra vocês? É só pedir! 🗺️
+
+REGRAS:
+- O score deve ser calculado de forma realista: quanto mais próximos os perfis, maior a compatibilidade
+- Porcentagens idênticas = alta compatibilidade naquela categoria
+- Diferenças > 20% = ponto de divergência (mas apresente de forma positiva: "se complementam!")
+- Os 3 destinos devem ser REAIS e combinar com os pontos fortes de AMBOS
+- A barra de compatibilidade deve usar █ para preenchido e ░ para vazio
+- Máximo 2500 caracteres total`;
+
+            try {
+              const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  model: "google/gemini-2.5-flash",
+                  messages: [
+                    { role: "system", content: compatPrompt },
+                    { role: "user", content: "Gere a análise de compatibilidade de viagem." },
+                  ],
+                  max_tokens: 4000,
+                }),
+              });
+
+              if (!response.ok) {
+                console.error("[COMPAT] AI error:", response.status);
+                await sendWhatsAppMessage(phoneNumber, "😅 Não consegui analisar a compatibilidade agora. Tente novamente em alguns minutos!");
+                return new Response(JSON.stringify({ status: "ok", compat_error: true }), {
+                  status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+                });
+              }
+
+              const data = await response.json();
+              const compatResult = data.choices?.[0]?.message?.content || "Erro ao gerar compatibilidade.";
+
+              // Save match to client_memory
+              try {
+                const scoreMatch = compatResult.match(/Compatibilidade:\s*(\d+)%/);
+                const score = scoreMatch ? parseInt(scoreMatch[1]) : null;
+                const matchData = {
+                  parceiro_phone: normalizedPartner,
+                  parceiro_nome: nameB,
+                  score,
+                  data: new Date().toISOString().split("T")[0],
+                };
+
+                if (memoryA) {
+                  const mergedPrefs = { ...(memoryA.preferences as Record<string, any> || {}) };
+                  mergedPrefs.ultimo_match = matchData;
+                  await supabase.from("client_memory").update({
+                    preferences: mergedPrefs,
+                    last_interaction_at: new Date().toISOString(),
+                  }).eq("id", memoryA.id);
+                }
+                console.log("[COMPAT] Match saved to client_memory, score:", score);
+              } catch (memErr) {
+                console.error("[COMPAT] Error saving match:", memErr);
+              }
+
+              // Send result
+              if (compatResult.length > 4000) {
+                const mid = compatResult.lastIndexOf("\n", 3900);
+                await sendWhatsAppMessage(phoneNumber, compatResult.substring(0, mid > 0 ? mid : 3900));
+                await sendWhatsAppMessage(phoneNumber, compatResult.substring(mid > 0 ? mid : 3900));
+              } else {
+                await sendWhatsAppMessage(phoneNumber, compatResult);
+              }
+
+              // Save to conversation history
+              if (savedConv) {
+                const { data: convAfterCompat } = await supabase
+                  .from("whatsapp_conversations")
+                  .select("id, messages_history")
+                  .eq("id", savedConv.id)
+                  .single();
+                if (convAfterCompat) {
+                  const updH = [
+                    ...((convAfterCompat.messages_history as any[]) || []),
+                    { role: "assistant", content: `💞 ${compatResult}`, timestamp: new Date().toISOString() },
+                  ];
+                  await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterCompat.id);
+                }
+              }
+
+            } catch (err) {
+              console.error("[COMPAT] Error:", err);
+              await sendWhatsAppMessage(phoneNumber, "😅 Erro ao processar a compatibilidade. Tente novamente!");
+            }
+
+            return new Response(JSON.stringify({ status: "ok", compat_done: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+
+        // ===== COMPAT: Handle waiting for number (user sends just a number) =====
+        {
+          const { data: convForCompat } = await supabase
+            .from("whatsapp_conversations")
+            .select("id, collected_data, messages_history, client_name")
+            .eq("phone_number", phoneNumber)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (convForCompat) {
+            const compatData = (convForCompat.collected_data as Record<string, any>) || {};
+            if (compatData._compat_waiting_number) {
+              // User sent the partner number
+              const partnerNum = (messageText || "").replace(/[\s\-\+]/g, "").replace(/\D/g, "");
+              if (partnerNum.length >= 10) {
+                // Clear waiting state and re-trigger compat logic
+                const cleanData = { ...compatData };
+                delete cleanData._compat_waiting_number;
+                await supabase.from("whatsapp_conversations").update({
+                  collected_data: cleanData,
+                }).eq("id", convForCompat.id);
+
+                const normalizedPartner = partnerNum.startsWith("55") ? partnerNum : `55${partnerNum}`;
+                const cleanSelf = phoneNumber.replace(/\D/g, "");
+
+                if (normalizedPartner === cleanSelf || normalizedPartner === `55${cleanSelf}`) {
+                  await sendWhatsAppMessage(phoneNumber, "😄 Esse é seu próprio número! Envie o número de *outra* pessoa! 💞");
+                  // Re-set waiting
+                  await supabase.from("whatsapp_conversations").update({
+                    collected_data: { ...cleanData, _compat_waiting_number: true },
+                  }).eq("id", convForCompat.id);
+                  return new Response(JSON.stringify({ status: "ok", compat_self: true }), {
+                    status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+                  });
+                }
+
+                await sendWhatsAppMessage(phoneNumber, "💞 *Analisando compatibilidade de viagem...*\nComparando DNAs de viajante! 🧬⏳");
+
+                const memoryA = await fetchClientMemory(supabase, phoneNumber);
+                const memoryB = await fetchClientMemory(supabase, normalizedPartner);
+
+                const dnaA = (memoryA?.preferences as Record<string, any>)?.dna_viajante;
+                const dnaB = (memoryB?.preferences as Record<string, any>)?.dna_viajante;
+
+                if (!dnaA) {
+                  await sendWhatsAppMessage(phoneNumber, "🧬 Você ainda não fez o teste DNA!\n\nEnvie *meu dna* primeiro! 😉");
+                  return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+                }
+                if (!dnaB) {
+                  await sendWhatsAppMessage(phoneNumber, `🧬 A pessoa com número *...${normalizedPartner.slice(-4)}* não fez o teste DNA!\n\nPeça pra enviar *meu dna* pro Téo! 😉`);
+                  return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+                }
+
+                const nameA = memoryA?.client_name || convForCompat.client_name || "Pessoa 1";
+                const nameB = memoryB?.client_name || "Pessoa 2";
+                const signoA = (memoryA?.preferences as Record<string, any>)?.signo || null;
+                const signoB = (memoryB?.preferences as Record<string, any>)?.signo || null;
+
+                const compatPrompt2 = `Você é o Téo, cientista de compatibilidade de viagem. Compare DNAs:
+
+PESSOA A — ${nameA}: Explorador ${dnaA.explorador||0}%, Culturalista ${dnaA.culturalista||0}%, Gourmet ${dnaA.gourmet||0}%, Zen ${dnaA.zen||0}%, Socialite ${dnaA.socialite||0}%${signoA ? `, Signo: ${signoA}` : ""}
+PESSOA B — ${nameB}: Explorador ${dnaB.explorador||0}%, Culturalista ${dnaB.culturalista||0}%, Gourmet ${dnaB.gourmet||0}%, Zen ${dnaB.zen||0}%, Socialite ${dnaB.socialite||0}%${signoB ? `, Signo: ${signoB}` : ""}
+
+Gere no formato:
+💞 *Téo Compatibilidade de Viagem*
+👤 *${nameA}* × *${nameB}*
+🔬 *Compatibilidade: XX%* [barra █░ 10 blocos]
+📊 *Onde combinam:* [2-3 itens]
+⚡ *Onde divergem:* [1-2 itens, tom positivo]
+${signoA && signoB ? `🔮 *${signoA} × ${signoB}:* [1 frase]` : ""}
+✈️ *Destinos ideais:* [3 destinos reais com justificativa]
+💡 *Dica de convivência:* [1 dica]
+✨ Quer roteiro? É só pedir! 🗺️
+Máximo 2500 chars.`;
+
+                try {
+                  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      model: "google/gemini-2.5-flash",
+                      messages: [
+                        { role: "system", content: compatPrompt2 },
+                        { role: "user", content: "Gere a análise de compatibilidade." },
+                      ],
+                      max_tokens: 4000,
+                    }),
+                  });
+
+                  if (!response.ok) {
+                    await sendWhatsAppMessage(phoneNumber, "😅 Erro na análise. Tente novamente!");
+                    return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+                  }
+
+                  const data2 = await response.json();
+                  const result2 = data2.choices?.[0]?.message?.content || "Erro.";
+
+                  // Save match
+                  try {
+                    const scoreMatch2 = result2.match(/Compatibilidade:\s*(\d+)%/);
+                    if (memoryA) {
+                      const mp = { ...(memoryA.preferences as Record<string, any> || {}) };
+                      mp.ultimo_match = { parceiro_phone: normalizedPartner, parceiro_nome: nameB, score: scoreMatch2 ? parseInt(scoreMatch2[1]) : null, data: new Date().toISOString().split("T")[0] };
+                      await supabase.from("client_memory").update({ preferences: mp, last_interaction_at: new Date().toISOString() }).eq("id", memoryA.id);
+                    }
+                  } catch {}
+
+                  if (result2.length > 4000) {
+                    const mid = result2.lastIndexOf("\n", 3900);
+                    await sendWhatsAppMessage(phoneNumber, result2.substring(0, mid > 0 ? mid : 3900));
+                    await sendWhatsAppMessage(phoneNumber, result2.substring(mid > 0 ? mid : 3900));
+                  } else {
+                    await sendWhatsAppMessage(phoneNumber, result2);
+                  }
+                } catch (err) {
+                  console.error("[COMPAT] Error:", err);
+                  await sendWhatsAppMessage(phoneNumber, "😅 Erro ao processar. Tente novamente!");
+                }
+
+                return new Response(JSON.stringify({ status: "ok", compat_done: true }), {
+                  status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+                });
+              }
+            }
+          }
+        }
+      }
+
       // ========== PLAYLIST DA VIAGEM: AI-Curated Travel Playlist ==========
       {
         const playlistRegex = /^(playlist|playlist da viagem|minha playlist|playlist viagem|travel playlist|musica viagem|música viagem)$/i;
