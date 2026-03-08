@@ -2428,7 +2428,7 @@ serve(async (req) => {
           if (savedConvC) {
             const existingData = (savedConvC.collected_data as Record<string, any>) || {};
             await supabase.from("whatsapp_conversations").update({
-              collected_data: { ...existingData, _chef_mode: false },
+              collected_data: { ...existingData, _chef_mode: false, _chef_menu_analysis: null },
             }).eq("id", savedConvC.id);
 
             const deactivationMsg = "✅ Modo Chef desativado! Voltei ao modo normal. 😊\n\nSe precisar traduzir outro cardápio, é só mandar *chef*!";
