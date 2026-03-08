@@ -1,56 +1,83 @@
 
 
-# Plano: Múltiplos contatos no Concierge com nome, telefone e notas individuais
+# Ideias Inovadoras para o Téo
 
-## Problema Atual
+Baseado no que já existe no projeto, aqui estão ideias que elevariam o Téo a outro nível:
 
-A tabela `active_trips` tem um único campo `client_phone` e `client_name`. Não suporta múltiplos números de WhatsApp por viagem, nem edição do número principal, nem notas especiais por contato.
+---
 
-## Solução
+## 1. 🎙️ Áudio Personalizado do Téo (Voice Notes)
+O Téo gera **áudios de voz** no WhatsApp ao invés de só texto, usando Text-to-Speech. Imagine o cliente receber um áudio do Téo dizendo "Bom dia! Faltam 5 dias pra sua viagem pras Maldivas! Já separou o protetor solar?" — humaniza muito a interação.
 
-Criar uma tabela `concierge_contacts` para armazenar múltiplos contatos por viagem ativa, cada um com nome, telefone, status ativo e notas especiais individuais. Atualizar a UI do concierge no TripManager e adaptar o webhook para consultar esta nova tabela.
+**Como**: Edge Function com TTS do Google/ElevenLabs → upload → envio via Evolution API como áudio.
 
-### 1. Migração de Banco
+---
 
-```sql
-CREATE TABLE public.concierge_contacts (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  trip_id uuid NOT NULL REFERENCES public.active_trips(id) ON DELETE CASCADE,
-  contact_name text NOT NULL,
-  contact_phone text NOT NULL,
-  is_active boolean NOT NULL DEFAULT true,
-  special_notes text,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
+## 2. 📍 Stories de Viagem em Tempo Real
+Durante a viagem, o Téo gera automaticamente **cards estilo Instagram Stories** diários com: clima do dia, sugestão de atividade, curiosidade local e foto do destino. O cliente recebe todo dia de manhã como uma "revista diária" personalizada.
 
-ALTER TABLE public.concierge_contacts ENABLE ROW LEVEL SECURITY;
+**Como**: Cron job no concierge-engine → Gemini Image Generation → envio automático matinal.
 
-CREATE POLICY "Admins can manage concierge_contacts"
-  ON public.concierge_contacts FOR ALL
-  TO authenticated
-  USING (has_role(auth.uid(), 'admin'::app_role))
-  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
-```
+---
 
-Ao ativar o concierge, o `client_phone` existente em `active_trips` continua sendo o número principal (para compatibilidade com o webhook), e uma entrada correspondente é criada em `concierge_contacts`.
+## 3. 🧳 Checklist Interativo por WhatsApp
+O Téo envia um checklist de preparação pré-viagem **interativo**: o cliente responde com números para marcar itens como feitos. Ex: "1. Passaporte ✅ 2. Seguro viagem ⬜ 3. Vacinas ⬜ — Responda os números dos itens já resolvidos!". O Téo lembra dos pendentes conforme a viagem se aproxima.
 
-### 2. UI no TripManager (tab Concierge)
+**Como**: Salvar estado do checklist em `concierge_contacts.special_notes` ou nova tabela, parsear respostas numéricas no webhook.
 
-Quando o concierge está ativo:
-- Mostrar o telefone principal com botão de **Editar** (ícone lápis) que permite alterar o `client_phone` em `active_trips` e o registro correspondente em `concierge_contacts`
-- Seção **"Contatos do Concierge"** com lista dos contatos cadastrados, cada um mostrando: nome, telefone, toggle ativo/inativo, textarea de notas especiais
-- Botão **"Adicionar Contato"** que abre campos inline para nome + telefone
-- O campo "Informações Especiais para o Téo" global permanece (para notas gerais da viagem)
-- Cada contato individual tem seu próprio campo de notas especiais
+---
 
-### 3. Webhook (whatsapp-webhook)
+## 4. 🌡️ Mala Inteligente baseada no Clima
+Quando falta 1 semana para a viagem, o Téo consulta a previsão do tempo real dos dias exatos da viagem e gera uma **lista de mala personalizada**: "Vi que vai chover no dia 3 em Kyoto, leva um guarda-chuva compacto! E no dia 5 faz 32°C, roupa leve!"
 
-Na verificação de concierge ativo, além de checar `active_trips.client_phone`, também verificar se o número existe em `concierge_contacts` com `is_active = true`. Se encontrado por esta via, usar o `contact_name` e `special_notes` do contato específico para enriquecer o contexto do prompt.
+**Como**: OpenWeatherMap forecast → Gemini para gerar lista contextual → envio como card visual.
 
-### Arquivos Modificados
+---
 
-1. **Migração SQL**: Criar tabela `concierge_contacts`
-2. **`src/components/admin/TripManager.tsx`**: UI para listar/adicionar/editar/remover contatos do concierge, editar telefone principal
-3. **`supabase/functions/whatsapp-webhook/index.ts`**: Consultar `concierge_contacts` para identificar contatos adicionais e injetar notas individuais no contexto
+## 5. 🎬 Mini Trailer do Destino
+Antes da viagem, o Téo envia um **vídeo curto montado** (15-30s) com fotos do destino, música ambiente e texto animado tipo "Sua aventura em Santorini começa em 7 dias...". Um teaser cinematográfico da viagem.
+
+**Como**: Usar API de vídeo (Creatomate/Shotstack) com templates → envio via WhatsApp como vídeo.
+
+---
+
+## 6. 🗺️ Mapa Interativo Pessoal
+O Téo gera um **link para um mapa personalizado** com todos os pontos do roteiro marcados, coloridos por dia. O cliente abre no celular e tem seu roteiro geolocalizado. Pode incluir notas como "Restaurante do Dia 2 — peça o risoto de frutos do mar 🦐".
+
+**Como**: Gerar página web pública com Leaflet/Google Maps embedado, salvar no banco com UUID único, enviar link pelo WhatsApp.
+
+---
+
+## 7. 💱 Alerta de Câmbio Inteligente
+Para viagens internacionais, o Téo monitora o câmbio e avisa quando o dólar/euro cai: "Opa! O dólar caiu pra R$5,12 hoje — bom momento pra comprar! 💰". Pode configurar um threshold por cliente.
+
+**Como**: API de câmbio (AwesomeAPI gratuita) → cron job diário → comparar com threshold → notificar via WhatsApp.
+
+---
+
+## 8. 📸 Reconhecimento de Foto do Cliente
+Durante a viagem, o cliente manda uma foto de um prato, monumento ou lugar, e o Téo **identifica** o que é e dá informações: "Isso é o Templo Fushimi Inari! Sabia que tem mais de 10.000 torii? 🏯". Usa Gemini Vision.
+
+**Como**: Receber imagem via webhook → Gemini Vision multimodal → responder com contexto cultural/gastronômico.
+
+---
+
+## 9. 🎁 Surpresas de Aniversário/Datas Especiais
+Se o `special_notes` do contato tiver data de aniversário e coincidir com a viagem, o Téo pode coordenar com o hotel uma surpresa (bolo, decoração) e avisar o admin, além de enviar uma mensagem especial personalizada.
+
+**Como**: Verificar datas no cron do concierge-engine → notificar admin → enviar card de parabéns gerado por IA.
+
+---
+
+## Recomendação de Prioridade
+
+| Impacto | Facilidade | Ideia |
+|---------|-----------|-------|
+| ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | Checklist Interativo |
+| ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | Mala Inteligente (Clima) |
+| ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | Reconhecimento de Foto |
+| ⭐⭐⭐⭐ | ⭐⭐⭐ | Stories Diários |
+| ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | Alerta de Câmbio |
+
+Qual dessas ideias quer implementar? Posso detalhar o plano técnico de qualquer uma.
 
