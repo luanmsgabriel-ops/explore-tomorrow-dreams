@@ -1,112 +1,118 @@
 
 
-## Téo Financeiro — Controle de Gastos da Viagem
+# Plano: 5 Features Téo 2030
 
-### Sugestões de Nome
-1. **Téo Carteira** — intuitivo, remete a dinheiro
-2. **Téo Gastômetro** — divertido, sugere medidor de gastos
-3. **Téo Cofre** — remete a proteção do dinheiro
-4. **Téo Cifrão** — direto ao ponto
-5. **Téo Planilha** — humorístico, todo viajante sabe a dor
+## Features Solicitadas (uma por vez, implementação completa)
+1. ✅ **Téo Grupal** — Viagem em grupo com cruzamento de preferências via WhatsApp
+2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
+3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
+9. ✅ **Téo Roleta** — Destino aleatório filtrado por DNA com animação textual
+10. ✅ **Téo Oráculo** — Previsão personalizada da viagem com signos, DNA e fase lunar
+4. ✅ **Téo DNA** — Perfil genético de viajante
+5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
+6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
+7. ✅ **Téo Compatibilidade** — Match de viagem entre DNAs de viajante
+8. ✅ **Téo SOS** — Assistente de emergência com embaixadas, hospitais e frases úteis
+
+---
+
+## 7. Téo Compatibilidade (IMPLEMENTADO ✅)
 
 ### Conceito
-O cliente registra gastos durante a viagem via WhatsApp de forma natural ("gastei 50 euros no almoço", "uber 25 reais"). O Téo categoriza automaticamente, converte moedas e, ao pedir o resumo, gera um relatório completo por categoria com totais.
+O cliente envia `compatibilidade com 5511999999999` e o Téo compara os DNAs de Viajante dos dois, calcula score de compatibilidade e sugere destinos ideais para ambos.
 
 ### Comandos WhatsApp
-
 | Comando | Ação |
 |---------|------|
-| `gastei [valor] [descrição]` / `gasto [valor]` | Registra um gasto |
-| `meus gastos` / `resumo gastos` / `extrato` | Resumo completo por categoria |
-| `gastos hoje` | Gastos do dia |
-| `apagar último gasto` | Remove o último registro |
-| `zerar gastos` | Limpa todos os gastos (com confirmação) |
+| `compatibilidade com [número]` / `match viagem [número]` | Compara DNAs e sugere destino |
+| `compatibilidade` (sem número) | Téo pede o número do parceiro |
 
-### Categorias Automáticas (IA detecta)
-- 🍽️ Alimentação (restaurante, café, lanche, bar)
-- 🚕 Transporte (uber, táxi, metrô, ônibus)
-- 🏨 Hospedagem (hotel, hostel, airbnb)
-- 🎫 Passeios (ingresso, tour, museu, atração)
-- 🛍️ Compras (loja, souvenir, shopping)
-- 💊 Saúde (farmácia, remédio, médico)
-- 📱 Outros
+### Armazenamento (zero novas tabelas)
+Usa `client_memory.preferences`:
+- `ultimo_match`: `{ parceiro_phone, parceiro_nome, score, data }`
+
+### Arquivos modificados
+- `supabase/functions/whatsapp-webhook/index.ts`: Bloco de comando com regex, busca de 2 memórias, chamada Gemini, formatação e save
+- `supabase/functions/_shared/client-memory.ts`: `ultimo_match` no `formatMemoryForPrompt` + skipKeys
+
+## 3. Téo DNA de Viajante (IMPLEMENTADO ✅)
+
+### Conceito
+Questionário profundo de 10 perguntas que gera um perfil "genético" de viajante com 5 categorias (Explorador, Culturalista, Gourmet, Zen, Socialite) que evolui com cada viagem.
+
+### Comandos WhatsApp
+| Comando | Ação |
+|---------|------|
+| `meu dna` / `dna viajante` / `teste dna` | Inicia o questionário de 10 perguntas |
+
+### Categorias do DNA
+- 🏔️ Explorador: aventura, adrenalina, natureza selvagem
+- 🏛️ Culturalista: história, museus, arquitetura
+- 🍽️ Gourmet: gastronomia, vinhos, experiências culinárias
+- 🧘 Zen: relaxamento, praias, spas
+- 🎉 Socialite: festas, vida noturna, experiências sociais
 
 ### Armazenamento (zero novas tabelas)
 Usa `client_memory.preferences` (JSONB):
-```json
-{
-  "gastos_viagem": {
-    "viagem_atual": "Paris 2026",
-    "moeda_principal": "EUR",
-    "gastos": [
-      { "valor": 50, "moeda": "EUR", "valor_brl": 275, "categoria": "alimentacao", "descricao": "Almoço no Café de Flore", "data": "2026-03-08" },
-      ...
-    ],
-    "total_brl": 1500,
-    "total_moeda_local": 272.73
-  },
-  "gastos_historico": [ ... ]
-}
-```
+- `dna_viajante`: perfil atual com porcentagens, raw_result, answers
+- `dna_historico`: array com últimas 10 análises (para detectar evolução)
 
-### Implementação Técnica
+### Evolução
+O DNA evolui automaticamente:
+- Cada vez que o teste é refeito, uma nova entrada é adicionada ao histórico
+- O formatMemoryForPrompt mostra a evolução (↑↓ por categoria)
+- Téo usa o DNA para personalizar sugestões sem perguntar demais
 
-**Arquivo: `supabase/functions/whatsapp-webhook/index.ts`**
-- Novo bloco de comando com regex para detectar `gastei`, `gasto`, `meus gastos`, `resumo gastos`, `extrato`, `gastos hoje`, `apagar último gasto`, `zerar gastos`
-- Ao registrar gasto:
-  1. Extrai valor + moeda + descrição via regex simples
-  2. Chama Gemini Flash Lite para categorizar e normalizar (ex: "uber pro hotel" → transporte)
-  3. Tenta vincular a uma viagem ativa em `active_trips` para contexto de moeda
-  4. Salva no array `preferences.gastos_viagem.gastos`
-  5. Confirma: "✅ *R$275* (€50) registrado em 🍽️ Alimentação\n_Almoço no Café de Flore_\n\n💰 Total do dia: R$450 | Total viagem: R$1.500"
-- Ao pedir resumo:
-  1. Agrupa gastos por categoria
-  2. Calcula totais e percentuais
-  3. Formata relatório WhatsApp com barras visuais
+### Arquivos modificados
+- `supabase/functions/whatsapp-webhook/index.ts`: Comando + questionário 10 perguntas + geração via Gemini
+- `supabase/functions/_shared/client-memory.ts`: DNA no prompt, na formatação e na regra de adaptação
 
-**Arquivo: `supabase/functions/_shared/client-memory.ts`**
-- Adicionar `gastos_viagem` e `gastos_historico` ao `skipKeys` no `formatMemoryForPrompt`
-- Adicionar seção de contexto financeiro no prompt quando há gastos ativos
+---
 
-### Formato do Resumo
+## 1. Téo Grupal (IMPLEMENTADO ✅)
 
-```
-💰 *Téo Carteira — Resumo da Viagem*
-📍 Paris 2026 | 5 dias
+### Tabelas criadas
+- `travel_groups`: group_code, creator_phone, creator_name, status, final_recommendation
+- `travel_group_members`: group_id, phone_number, member_name, preferences (JSONB), is_ready
 
-🍽️ Alimentação: R$850 (42%) ████████░░
-🚕 Transporte: R$320 (16%) ███░░░░░░░
-🎫 Passeios: R$450 (22%) ████░░░░░░
-🛍️ Compras: R$280 (14%) ██░░░░░░░░
-📱 Outros: R$100 (5%) █░░░░░░░░░
+### Comandos WhatsApp
+| Comando | Ação |
+|---------|------|
+| `criar grupo` | Cria grupo, gera código 6 chars, inicia questionário |
+| `entrar grupo XYZABC` | Adiciona membro, inicia questionário |
+| `meu grupo` | Mostra status e membros |
+| `resultado grupo` | Cruza preferências via Gemini, envia a todos |
+| `sair grupo` | Remove membro |
 
-💵 *Total: R$2.000*
-💶 Total em EUR: €363,64
-📊 Média diária: R$400/dia
+---
 
-💡 Maior gasto: 🍽️ Alimentação
-⚡ Dia mais caro: 08/03 (R$650)
-```
+## 2. Téo Lê Mentes (IMPLEMENTADO ✅)
 
-### Fluxo Resumido
+### Conceito
+Análise emocional SILENCIOSA das mensagens do cliente para adaptar recomendações automaticamente, sem nunca mencionar a análise.
 
-```text
-Cliente: "gastei 50 euros no almoço"
-  → regex detecta "gastei"
-  → extrai: valor=50, moeda=EUR, desc="no almoço"
-  → Gemini categoriza: alimentacao
-  → converte EUR→BRL (taxa aproximada ou fixada por viagem)
-  → salva em preferences.gastos_viagem.gastos[]
-  → responde com confirmação + totais parciais
+### Implementação (zero novas tabelas)
+Usa a infraestrutura existente de `client_memory.preferences` (JSONB):
 
-Cliente: "meus gastos"
-  → agrupa por categoria
-  → gera relatório formatado
-  → responde com resumo completo
-```
+**Campos emocionais adicionados:**
+- `tom_emocional`: animado/estressado/cansado/ansioso/empolgado/nostálgico/indeciso/tranquilo/comemorando/preocupado
+- `nivel_energia`: alto/médio/baixo
+- `nivel_estresse`: alto/médio/baixo
+- `momento_vida`: férias/lua-de-mel/aniversário/fuga-da-rotina/trabalho-remoto/família/amigos
+- `historico_emocional`: array com últimas 10 leituras emocionais (para detectar tendências)
 
-### Conversão de Moeda
-- Usa taxa fixa configurável por viagem (campo `taxa_cambio` em `gastos_viagem`)
-- Fallback: taxa aproximada hardcoded para moedas comuns (USD, EUR, GBP, JPY, ARS)
-- Cliente pode definir: "câmbio 5.50" para ajustar a taxa
+**Detecção de sinais:**
+- Estresse: "preciso sair daqui", "to exausto", respostas impacientes
+- Animação: "!!", emojis, "mal posso esperar"
+- Ansiedade: muitas perguntas, "será que...", indecisão
+- Comemoração: "aniversário", "lua de mel", "promoção"
 
+**Adaptação silenciosa (via MEMORY_RULE):**
+- Estressado → Sugere descanso, spas, all-inclusive
+- Animado → Sugere aventura, esportes, destinos vibrantes
+- Indeciso → Limita opções a 2-3, mais assertivo
+- Comemorando → Sugere upgrades, experiências premium
+- NUNCA menciona a análise ao cliente
+
+### Arquivos modificados
+- `supabase/functions/_shared/client-memory.ts`: Extraction prompt, merge logic, format, MEMORY_RULE

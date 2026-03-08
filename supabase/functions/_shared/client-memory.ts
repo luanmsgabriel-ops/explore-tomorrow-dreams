@@ -66,7 +66,8 @@ export function formatMemoryForPrompt(memory: ClientMemory): string {
     const dnaKeys = ["dna_viajante", "dna_historico"];
     const astroKeys = ["signo", "data_nascimento", "ultimo_horoscopo"];
     const matchKeys = ["ultimo_match"];
-    const skipKeys = ["estilo_viagem", "orcamento", "tipo", "clima", "companhia", "playlist_history", ...emotionalKeys, ...dnaKeys, ...astroKeys, ...matchKeys];
+    const gastosKeys = ["gastos_viagem", "gastos_historico"];
+    const skipKeys = ["estilo_viagem", "orcamento", "tipo", "clima", "companhia", "playlist_history", "oraculo_history", ...emotionalKeys, ...dnaKeys, ...astroKeys, ...matchKeys, ...gastosKeys];
     for (const [k, v] of Object.entries(prefs)) {
       if (!skipKeys.includes(k) && v) {
         parts.push(`- ${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`);
