@@ -4396,6 +4396,236 @@ ${spinsUsed > 0 ? `\nEsta é a ${spinsUsed + 1}ª girada. Escolha um destino DIF
         }
       }
 
+      // ========== TÉO ORÁCULO: Personalized Trip Prediction ==========
+      {
+        const oraculoRegex = /^(or[aá]culo|previs[aã]o da viagem|previsao da viagem|prever viagem|t[eé]o or[aá]culo|oraculo viagem|minha previs[aã]o|minha previsao)$/i;
+        const lowerMsgOraculo = (messageText || "").toLowerCase().trim();
+
+        if (oraculoRegex.test(lowerMsgOraculo)) {
+          const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          await sendWhatsAppMessage(phoneNumber, "🔮 *O Oráculo do Téo está consultando as estrelas...*\n✨ Analisando seu perfil, signos e energia... 🌙");
+
+          // Gather all context: DNA, zodiac, emotional, active trip, travel history
+          let dnaContext = "";
+          let zodiacContext = "";
+          let emotionalContext = "";
+          let tripContext = "";
+          let historyContext = "";
+          let nameContext = "";
+
+          try {
+            const memory = await fetchClientMemory(phoneNumber);
+            if (memory) {
+              nameContext = memory.client_name || "";
+              const prefs = (memory.preferences as Record<string, any>) || {};
+
+              // DNA
+              if (prefs.dna_viajante) {
+                dnaContext = `DNA de Viajante: ${JSON.stringify(prefs.dna_viajante.percentages || {})}`;
+              }
+
+              // Zodiac (from vidente feature)
+              if (prefs.signo_viajante) {
+                zodiacContext = `Signo: ${prefs.signo_viajante.signo || ""}, Elemento: ${prefs.signo_viajante.elemento || ""}, Planeta: ${prefs.signo_viajante.planeta || ""}`;
+              }
+
+              // Emotional state
+              if (prefs.tom_emocional) {
+                emotionalContext = `Tom emocional: ${prefs.tom_emocional}, Energia: ${prefs.nivel_energia || "médio"}, Momento de vida: ${prefs.momento_vida || "não informado"}`;
+              }
+
+              // Travel history
+              const history = (memory.travel_history as any[]) || [];
+              if (history.length > 0) {
+                historyContext = `Viagens anteriores: ${history.map((h: any) => h.destino).filter(Boolean).join(", ")}`;
+              }
+            }
+          } catch {}
+
+          // Check for active trip
+          try {
+            const { data: activeTrip } = await supabase
+              .from("active_trips")
+              .select("destination_city, destination_country, check_in_date, check_out_date")
+              .eq("client_phone", phoneNumber)
+              .eq("concierge_active", true)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (activeTrip) {
+              const checkIn = new Date(activeTrip.check_in_date);
+              const checkOut = new Date(activeTrip.check_out_date);
+              const totalDays = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
+              tripContext = `Viagem ativa: ${activeTrip.destination_city || ""}, ${activeTrip.destination_country || ""} — ${totalDays} dias (${activeTrip.check_in_date} a ${activeTrip.check_out_date})`;
+            }
+          } catch {}
+
+          // If no active trip, check upcoming client_trips
+          if (!tripContext) {
+            try {
+              const { data: upcomingTrip } = await supabase
+                .from("client_trips")
+                .select("destination_name, departure_date, return_date")
+                .gte("departure_date", new Date().toISOString().split("T")[0])
+                .order("departure_date", { ascending: true })
+                .limit(1)
+                .maybeSingle();
+
+              if (upcomingTrip) {
+                tripContext = `Próxima viagem: ${upcomingTrip.destination_name} (${upcomingTrip.departure_date} a ${upcomingTrip.return_date})`;
+              }
+            } catch {}
+          }
+
+          const today = new Date();
+          const season = today.getMonth() >= 2 && today.getMonth() <= 4 ? "Outono" :
+                         today.getMonth() >= 5 && today.getMonth() <= 7 ? "Inverno" :
+                         today.getMonth() >= 8 && today.getMonth() <= 10 ? "Primavera" : "Verão";
+          const moonPhases = ["🌑 Lua Nova", "🌒 Crescente", "🌓 Quarto Crescente", "🌔 Gibosa Crescente", "🌕 Lua Cheia", "🌖 Gibosa Minguante", "🌗 Quarto Minguante", "🌘 Minguante"];
+          const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+          const moonPhase = moonPhases[Math.floor((dayOfYear % 29.5) / 3.7)];
+
+          const oraculoPrompt = `Você é o Téo no modo ORÁCULO MÍSTICO da Tomorrow Travel. Crie uma previsão personalizada ÚNICA e ENVOLVENTE sobre o que vai acontecer na viagem do cliente.
+
+DADOS DO CLIENTE:
+${nameContext ? `Nome: ${nameContext}` : ""}
+${dnaContext || "DNA: não disponível — improvise baseado no tom da conversa"}
+${zodiacContext || "Signo: não informado — use linguagem mística genérica"}
+${emotionalContext || ""}
+${tripContext || "Sem viagem marcada — faça previsão para a PRÓXIMA viagem que o cliente fizer"}
+${historyContext || ""}
+
+CONTEXTO CÓSMICO:
+- Data: ${today.toLocaleDateString("pt-BR")}
+- Estação: ${season} (hemisfério sul)
+- Fase lunar: ${moonPhase}
+
+REGRAS:
+1. Tom MÍSTICO porém DIVERTIDO — nunca genérico, sempre personalizado
+2. Use os dados reais do cliente (DNA, signo, destino) para criar previsões específicas
+3. Previsões devem ser POSITIVAS e EMOCIONANTES
+4. Se tem viagem marcada, faça previsões DIA A DIA (pelo menos 3 dias)
+5. Se NÃO tem viagem, preveja QUANDO e PRA ONDE a próxima viagem será
+6. Máximo 2500 caracteres
+
+FORMATO OBRIGATÓRIO:
+
+🔮 *ORÁCULO DO TÉO*
+_${moonPhase} • ${season}_
+
+${nameContext ? `✨ *${nameContext}*, as estrelas têm uma mensagem para você...\n` : "✨ *As estrelas têm uma mensagem para você...*\n"}
+${tripContext ? `
+📍 *Previsões para [destino]:*
+
+🌅 *Dia [X]:* [previsão específica e detalhada com emoji]
+[algo inesperado e mágico que vai acontecer]
+
+🌊 *Dia [Y]:* [outra previsão]
+[experiência marcante]
+
+🌙 *Dia [Z]:* [previsão final]
+[algo que muda a perspectiva]
+
+` : `
+🌟 *O oráculo vê sua próxima viagem:*
+[previsão de quando e pra onde, baseada no perfil]
+
+`}
+💫 *Conselho cósmico:* [uma frase poética e memorável]
+
+${zodiacContext ? `♈ *Influência do seu signo:* [como o signo afeta essa viagem]` : ""}
+
+_O oráculo se despede... até a próxima consulta! 🌙✨_`;
+
+          try {
+            const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash",
+                messages: [
+                  { role: "system", content: oraculoPrompt },
+                  { role: "user", content: "Consulte o oráculo para mim!" },
+                ],
+                max_tokens: 3000,
+              }),
+            });
+
+            if (!response.ok) {
+              console.error("[ORACULO] AI error:", response.status);
+              await sendWhatsAppMessage(phoneNumber, "🔮 As estrelas estão turbulentas... Tente consultar o oráculo novamente em alguns instantes! ✨");
+              return new Response(JSON.stringify({ status: "ok", oraculo_error: true }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            const data = await response.json();
+            const oraculoResult = data.choices?.[0]?.message?.content || "🔮 O oráculo está em silêncio...";
+
+            if (oraculoResult.length > 4000) {
+              const mid = oraculoResult.lastIndexOf("\n", 3900);
+              await sendWhatsAppMessage(phoneNumber, oraculoResult.substring(0, mid > 0 ? mid : 3900));
+              await sendWhatsAppMessage(phoneNumber, oraculoResult.substring(mid > 0 ? mid : 3900));
+            } else {
+              await sendWhatsAppMessage(phoneNumber, oraculoResult);
+            }
+
+            // Save to conversation history
+            if (savedConv) {
+              const { data: convAfterOraculo } = await supabase
+                .from("whatsapp_conversations")
+                .select("id, messages_history")
+                .eq("id", savedConv.id)
+                .single();
+              if (convAfterOraculo) {
+                const updH = [
+                  ...((convAfterOraculo.messages_history as any[]) || []),
+                  { role: "assistant", content: `🔮 ${oraculoResult}`, timestamp: new Date().toISOString() },
+                ];
+                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterOraculo.id);
+              }
+            }
+
+            // Save to client memory
+            try {
+              const memory = await fetchClientMemory(phoneNumber);
+              if (memory) {
+                const prefs = (memory.preferences as Record<string, any>) || {};
+                const oraculoHistory = Array.isArray(prefs.oraculo_history) ? prefs.oraculo_history : [];
+                oraculoHistory.push({
+                  date: new Date().toISOString(),
+                  moon: moonPhase,
+                  season,
+                  preview: oraculoResult.substring(0, 200),
+                });
+                if (oraculoHistory.length > 5) oraculoHistory.shift();
+
+                await supabase.from("client_memory").update({
+                  preferences: { ...prefs, oraculo_history: oraculoHistory },
+                  updated_at: new Date().toISOString(),
+                }).eq("id", memory.id);
+              }
+            } catch (memErr) {
+              console.error("[ORACULO] Memory save error:", memErr);
+            }
+
+            console.log(`[ORACULO] Prediction generated for ${phoneNumber}`);
+          } catch (err) {
+            console.error("[ORACULO] Error:", err);
+            await sendWhatsAppMessage(phoneNumber, "🔮 Erro ao consultar as estrelas. Tente novamente!");
+          }
+
+          return new Response(JSON.stringify({ status: "ok", oraculo: true }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
       // ========== TÉO VIDENTE: Zodiac-based Travel Recommendations ==========
       {
         const videnteRegex = /^(meu signo|horóscopo viajante|destino do signo|signo viagem|vidente|horoscopo viajante|meu horóscopo|meu horoscopo)$/i;
