@@ -1,83 +1,118 @@
 
 
-## Plano: Sistema de Modos do Téo (Cotação e Concierge)
+# Plano: 5 Features Téo 2030
 
-### Situação Atual
-Hoje o Téo decide automaticamente entre **modo cotação** (padrão, com `TEO_SYSTEM_PROMPT + SALES_KNOWLEDGE`) e **modo concierge** (quando há `active_trips` com `concierge_active = true`). O cliente não tem controle sobre qual modo está ativo.
+## Features Solicitadas (uma por vez, implementação completa)
+1. ✅ **Téo Grupal** — Viagem em grupo com cruzamento de preferências via WhatsApp
+2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
+3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
+9. ✅ **Téo Roleta** — Destino aleatório filtrado por DNA com animação textual
+10. ✅ **Téo Oráculo** — Previsão personalizada da viagem com signos, DNA e fase lunar
+4. ✅ **Téo DNA** — Perfil genético de viajante
+5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
+6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
+7. ✅ **Téo Compatibilidade** — Match de viagem entre DNAs de viajante
+8. ✅ **Téo SOS** — Assistente de emergência com embaixadas, hospitais e frases úteis
 
-### O que será implementado
-O cliente poderá **solicitar explicitamente** um modo via comandos WhatsApp, e o Téo informará em qual modo está operando. Também poderá ver os modos disponíveis.
+---
 
-### Comandos
+## 7. Téo Compatibilidade (IMPLEMENTADO ✅)
 
+### Conceito
+O cliente envia `compatibilidade com 5511999999999` e o Téo compara os DNAs de Viajante dos dois, calcula score de compatibilidade e sugere destinos ideais para ambos.
+
+### Comandos WhatsApp
 | Comando | Ação |
 |---------|------|
-| `modo cotação` / `cotar` / `quero cotar` | Ativa modo cotação (fluxo de vendas existente) |
-| `modo concierge` / `concierge` / `minha viagem` | Ativa modo concierge (companheiro de viagem) |
-| `modo` / `modos` / `menu` | Lista os modos disponíveis |
-| `sair modo` / `modo normal` | Volta ao modo automático (auto-detecção) |
+| `compatibilidade com [número]` / `match viagem [número]` | Compara DNAs e sugere destino |
+| `compatibilidade` (sem número) | Téo pede o número do parceiro |
 
-### Lógica de Decisão (ordem de prioridade)
+### Armazenamento (zero novas tabelas)
+Usa `client_memory.preferences`:
+- `ultimo_match`: `{ parceiro_phone, parceiro_nome, score, data }`
 
-```text
-1. Cliente digitou "modo cotação" → força TEO_SYSTEM_PROMPT + SALES_KNOWLEDGE
-   (mesmo que tenha viagem ativa, ignora concierge)
+### Arquivos modificados
+- `supabase/functions/whatsapp-webhook/index.ts`: Bloco de comando com regex, busca de 2 memórias, chamada Gemini, formatação e save
+- `supabase/functions/_shared/client-memory.ts`: `ultimo_match` no `formatMemoryForPrompt` + skipKeys
 
-2. Cliente digitou "modo concierge" → força TEO_CONCIERGE_PROMPT
-   (mesmo sem active_trip, funciona com contexto limitado)
+## 3. Téo DNA de Viajante (IMPLEMENTADO ✅)
 
-3. Nenhum modo forçado → auto-detecção atual:
-   - Tem active_trip + concierge_active? → Concierge
-   - Senão → Cotação (padrão)
-```
+### Conceito
+Questionário profundo de 10 perguntas que gera um perfil "genético" de viajante com 5 categorias (Explorador, Culturalista, Gourmet, Zen, Socialite) que evolui com cada viagem.
 
-### Armazenamento
-Usa `collected_data._teo_mode` na conversa (`whatsapp_conversations`):
-- `null` ou `"auto"` → auto-detecção (comportamento atual)
-- `"cotacao"` → modo cotação forçado
-- `"concierge"` → modo concierge forçado
+### Comandos WhatsApp
+| Comando | Ação |
+|---------|------|
+| `meu dna` / `dna viajante` / `teste dna` | Inicia o questionário de 10 perguntas |
 
-### Alterações Técnicas
+### Categorias do DNA
+- 🏔️ Explorador: aventura, adrenalina, natureza selvagem
+- 🏛️ Culturalista: história, museus, arquitetura
+- 🍽️ Gourmet: gastronomia, vinhos, experiências culinárias
+- 🧘 Zen: relaxamento, praias, spas
+- 🎉 Socialite: festas, vida noturna, experiências sociais
 
-**Arquivo: `supabase/functions/whatsapp-webhook/index.ts`**
+### Armazenamento (zero novas tabelas)
+Usa `client_memory.preferences` (JSONB):
+- `dna_viajante`: perfil atual com porcentagens, raw_result, answers
+- `dna_historico`: array com últimas 10 análises (para detectar evolução)
 
-1. **Novo bloco de comando** (antes do bloco de chat principal, ~linha 5430):
-   - Regex para capturar `modo cotação`, `modo concierge`, `modo`, `sair modo`, etc.
-   - Ao ativar modo: salva `_teo_mode` em `collected_data`, envia mensagem de confirmação com ícone do modo
-   - Ao listar modos: envia menu formatado com os modos disponíveis e o modo atual
+### Evolução
+O DNA evolui automaticamente:
+- Cada vez que o teste é refeito, uma nova entrada é adicionada ao histórico
+- O formatMemoryForPrompt mostra a evolução (↑↓ por categoria)
+- Téo usa o DNA para personalizar sugestões sem perguntar demais
 
-2. **Modificação na lógica de seleção de prompt** (~linha 5842-5958):
-   - Antes de verificar `active_trips`, checar `collectedData._teo_mode`
-   - Se `_teo_mode === "cotacao"`: forçar `conciergePromptOverride = null` (usar prompt padrão)
-   - Se `_teo_mode === "concierge"`: forçar `conciergePromptOverride = TEO_CONCIERGE_PROMPT + contexto`
-     - Se não houver `active_trip`, montar contexto mínimo buscando a última viagem de `client_trips` ou usando dados genéricos
-   - Se `_teo_mode === "auto"` ou `null`: manter comportamento atual
+### Arquivos modificados
+- `supabase/functions/whatsapp-webhook/index.ts`: Comando + questionário 10 perguntas + geração via Gemini
+- `supabase/functions/_shared/client-memory.ts`: DNA no prompt, na formatação e na regra de adaptação
 
-3. **Mensagens de confirmação de modo**:
-   - Cotação: `"✈️ *Modo Cotação Ativado!*\n\nAgora estou focado em te ajudar a encontrar a viagem perfeita! Me conta pra onde quer ir? 🌍"`
-   - Concierge: `"🎒 *Modo Concierge Ativado!*\n\nAgora sou seu companheiro de viagem! Me conta como posso te ajudar durante a viagem 😊"`
-   - Menu: lista com os modos e indicador de qual está ativo
+---
 
-### Fluxo de Exemplo
+## 1. Téo Grupal (IMPLEMENTADO ✅)
 
-```text
-Cliente: "modo"
-Téo: "🎯 *Modos do Téo:*
-      
-      ✈️ *Cotação* — Te ajudo a encontrar e cotar viagens
-      👉 mande: modo cotação
-      
-      🎒 *Concierge* — Sou seu companheiro durante a viagem  
-      👉 mande: modo concierge
-      
-      🔄 *Automático* — Eu decido o melhor modo
-      👉 mande: sair modo
-      
-      📌 Modo atual: [Automático/Cotação/Concierge]"
+### Tabelas criadas
+- `travel_groups`: group_code, creator_phone, creator_name, status, final_recommendation
+- `travel_group_members`: group_id, phone_number, member_name, preferences (JSONB), is_ready
 
-Cliente: "modo cotação"
-Téo: "✈️ *Modo Cotação Ativado!*
-      Agora estou focado em encontrar a viagem perfeita pra você!
-      Me conta: pra onde quer ir? 🌍"
-```
+### Comandos WhatsApp
+| Comando | Ação |
+|---------|------|
+| `criar grupo` | Cria grupo, gera código 6 chars, inicia questionário |
+| `entrar grupo XYZABC` | Adiciona membro, inicia questionário |
+| `meu grupo` | Mostra status e membros |
+| `resultado grupo` | Cruza preferências via Gemini, envia a todos |
+| `sair grupo` | Remove membro |
 
+---
+
+## 2. Téo Lê Mentes (IMPLEMENTADO ✅)
+
+### Conceito
+Análise emocional SILENCIOSA das mensagens do cliente para adaptar recomendações automaticamente, sem nunca mencionar a análise.
+
+### Implementação (zero novas tabelas)
+Usa a infraestrutura existente de `client_memory.preferences` (JSONB):
+
+**Campos emocionais adicionados:**
+- `tom_emocional`: animado/estressado/cansado/ansioso/empolgado/nostálgico/indeciso/tranquilo/comemorando/preocupado
+- `nivel_energia`: alto/médio/baixo
+- `nivel_estresse`: alto/médio/baixo
+- `momento_vida`: férias/lua-de-mel/aniversário/fuga-da-rotina/trabalho-remoto/família/amigos
+- `historico_emocional`: array com últimas 10 leituras emocionais (para detectar tendências)
+
+**Detecção de sinais:**
+- Estresse: "preciso sair daqui", "to exausto", respostas impacientes
+- Animação: "!!", emojis, "mal posso esperar"
+- Ansiedade: muitas perguntas, "será que...", indecisão
+- Comemoração: "aniversário", "lua de mel", "promoção"
+
+**Adaptação silenciosa (via MEMORY_RULE):**
+- Estressado → Sugere descanso, spas, all-inclusive
+- Animado → Sugere aventura, esportes, destinos vibrantes
+- Indeciso → Limita opções a 2-3, mais assertivo
+- Comemorando → Sugere upgrades, experiências premium
+- NUNCA menciona a análise ao cliente
+
+### Arquivos modificados
+- `supabase/functions/_shared/client-memory.ts`: Extraction prompt, merge logic, format, MEMORY_RULE

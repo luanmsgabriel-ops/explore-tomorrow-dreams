@@ -5638,6 +5638,61 @@ Regras OBRIGATÓRIAS:
         }
       }
 
+      // ========== SISTEMA DE MODOS DO TÉO ==========
+      {
+        const modoLower = messageText.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const modoCotacaoRegex = /^(modo cota[cç][aã]o|cotar|quero cotar)$/i;
+        const modoConciergeRegex = /^(modo concierge|concierge|minha viagem)$/i;
+        const modoMenuRegex = /^(modo|modos|menu modos?)$/i;
+        const modoSairRegex = /^(sair modo|modo normal|modo auto|modo automatico)$/i;
+
+        const isModoCommand = modoCotacaoRegex.test(modoLower) || modoConciergeRegex.test(modoLower) || modoMenuRegex.test(modoLower) || modoSairRegex.test(modoLower);
+
+        if (isModoCommand) {
+          await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+          const { data: convForMode } = await supabase
+            .from("whatsapp_conversations")
+            .select("id, collected_data, messages_history")
+            .eq("phone_number", phoneNumber)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (convForMode) {
+            const cd = (convForMode.collected_data as Record<string, any>) || {};
+            const currentMode = cd._teo_mode || "auto";
+            let newMode = currentMode;
+            let responseMsg = "";
+
+            if (modoCotacaoRegex.test(modoLower)) {
+              newMode = "cotacao";
+              responseMsg = "✈️ *Modo Cotação Ativado!*\n\nAgora estou focado em te ajudar a encontrar a viagem perfeita! Me conta pra onde quer ir? 🌍";
+            } else if (modoConciergeRegex.test(modoLower)) {
+              newMode = "concierge";
+              responseMsg = "🎒 *Modo Concierge Ativado!*\n\nAgora sou seu companheiro de viagem! Me conta como posso te ajudar durante a viagem 😊";
+            } else if (modoSairRegex.test(modoLower)) {
+              newMode = "auto";
+              responseMsg = "🔄 *Modo Automático Ativado!*\n\nAgora eu decido o melhor modo pra te atender. É só me mandar sua mensagem! 😊";
+            } else if (modoMenuRegex.test(modoLower)) {
+              const modeLabel = currentMode === "cotacao" ? "✈️ Cotação" : currentMode === "concierge" ? "🎒 Concierge" : "🔄 Automático";
+              responseMsg = `🎯 *Modos do Téo:*\n\n✈️ *Cotação* — Te ajudo a encontrar e cotar viagens\n👉 mande: *modo cotação*\n\n🎒 *Concierge* — Sou seu companheiro durante a viagem\n👉 mande: *modo concierge*\n\n🔄 *Automático* — Eu decido o melhor modo\n👉 mande: *sair modo*\n\n📌 Modo atual: *${modeLabel}*`;
+            }
+
+            const updatedCd = { ...cd, _teo_mode: newMode };
+            const updatedHistory = [
+              ...((convForMode.messages_history as any[]) || []),
+              { role: "assistant", content: responseMsg, timestamp: new Date().toISOString() },
+            ];
+            await supabase.from("whatsapp_conversations").update({ collected_data: updatedCd, messages_history: updatedHistory }).eq("id", convForMode.id);
+            await sendWhatsAppMessage(phoneNumber, responseMsg);
+
+            return new Response(JSON.stringify({ status: "ok", teo_mode: newMode }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+      }
+
       // ========== CONCIERGE: Text search detection (e.g. "hamburguerias próximas", "farmácia") ==========
       const searchIntentRegex = /(?:perto|pr[oó]xim[oa]|aqui perto|por aqui|perto de mim|mais perto)/i;
       const categoryDirectRegex = /(?:hamburgueria|pizzaria|padaria|mercado|supermercado|farm[aá]cia|hospital|pol[ií]cia|conveni[eê]ncia|adega|distribuidora|bar|caf[eé]|cafeteria|lanchonete|sorveteria|churrascaria|japon[eê]s|japones|sushi|a[cç]a[ií]|restaurante|posto|gas station|atm|banco|caixa|lavanderia|pet ?shop|academia|gym)/i;
@@ -5840,9 +5895,13 @@ Regras OBRIGATÓRIAS:
       }
 
       // Check if this client is a concierge client (active trip) — use concierge prompt instead of sales
+      // RESPECTS _teo_mode: if client forced a mode, honor it
       let conciergePromptOverride: string | null = null;
       let conciergeContactContext: any = null;
-      {
+      const teoMode = collectedData._teo_mode || "auto";
+      
+      // If mode is "cotacao", skip concierge entirely (force sales prompt)
+      if (teoMode !== "cotacao") {
         // First try direct phone match on active_trips
         let activeTripForPrompt: any = null;
 
@@ -5877,10 +5936,27 @@ Regras OBRIGATÓRIAS:
               .maybeSingle();
             if (tripData) {
               activeTripForPrompt = tripData;
-              // Use the contact's name instead of the trip's main client name
               activeTripForPrompt.client_name = contactMatch.contact_name;
             }
           }
+        }
+
+        // If mode is "concierge" but no active trip, build minimal context
+        if (!activeTripForPrompt && teoMode === "concierge") {
+          // Try to find any recent client_trips for context
+          const { data: recentTrip } = await supabase
+            .from("client_trips")
+            .select("destination_name, departure_date, return_date, hotel_name")
+            .order("departure_date", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          // Build a minimal concierge prompt even without active_trip
+          const minCtx = recentTrip
+            ? `\n\nCONTEXTO: O cliente ativou o modo concierge manualmente. Última viagem conhecida: ${recentTrip.destination_name}. Ajude como companheiro de viagem.`
+            : `\n\nCONTEXTO: O cliente ativou o modo concierge manualmente. Sem dados de viagem ativa. Pergunte sobre a viagem atual para poder ajudar melhor.`;
+          conciergePromptOverride = TEO_CONCIERGE_PROMPT + minCtx;
+          console.log(`🎒 Using CONCIERGE prompt (forced mode, no active trip) for ${phoneNumber}`);
         }
 
         if (activeTripForPrompt) {
