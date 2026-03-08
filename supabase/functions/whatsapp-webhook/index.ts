@@ -1078,6 +1078,77 @@ async function downloadWhatsAppMedia(mediaId: string): Promise<ArrayBuffer | nul
   }
 }
 
+// ========== Chef Mode: Menu Analyzer ==========
+
+const CHEF_MODE_PROMPT = `Você é o Téo Chef 👨‍🍳, um especialista gastronômico da Tomorrow Travel.
+
+O cliente te enviou a FOTO DE UM CARDÁPIO/MENU de restaurante em outro idioma. Sua missão:
+
+1. **TRADUZIR** cada prato para PT-BR
+2. **EXPLICAR** os ingredientes principais de cada item
+3. **ALERTAR** sobre alergênicos com ícones:
+   🥜 Nozes/Amendoim | 🥛 Lactose | 🌾 Glúten | 🦐 Frutos do mar | 🥚 Ovos | 🫘 Soja | 🐟 Peixe
+4. **RECOMENDAR** o melhor custo-benefício com justificativa
+
+FORMATO (para WhatsApp, use *negrito* e emojis):
+
+📋 *CARDÁPIO TRADUZIDO*
+
+*1. [Nome original]* → [Tradução PT-BR]
+🥗 [Ingredientes principais]
+⚠️ [Alergênicos, se houver]
+💰 [Preço se visível]
+
+[... demais pratos ...]
+
+━━━━━━━━━━━━━━━
+⭐ *Recomendação do Chef Téo:*
+[Melhor custo-benefício com justificativa curta]
+
+💡 *Dica:* [Uma dica cultural sobre o restaurante/culinária local]
+
+REGRAS:
+- Seja CONCISO (máximo 3500 caracteres)
+- Se não conseguir ler algum item, indique com "❓"
+- Se a foto não for um cardápio, diga educadamente e peça para enviar a foto do cardápio
+- Inclua preços quando visíveis na foto
+- Priorize pratos principais, depois entradas e sobremesas`;
+
+async function analyzeMenuImage(imageBase64: string, mimeType: string = "image/jpeg"): Promise<string> {
+  console.log("[CHEF MODE] Analyzing menu image...");
+  
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: CHEF_MODE_PROMPT },
+        {
+          role: "user",
+          content: [
+            { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
+            { type: "text", text: "Analise este cardápio e traduza os pratos." },
+          ],
+        },
+      ],
+      max_tokens: 4000,
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error("[CHEF MODE] AI error:", response.status, errText);
+    throw new Error("Falha na análise do cardápio");
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || "Não consegui analisar o cardápio. Tenta mandar outra foto!";
+}
+
 // ========== Helper Functions ==========
 
 function extractCollectedData(aiResponse: string, existingData: Record<string, any>): { data: Record<string, any>; status: string | null } {
