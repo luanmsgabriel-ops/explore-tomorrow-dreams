@@ -2501,6 +2501,52 @@ serve(async (req) => {
         }
       }
 
+      // ========== MODE ISOLATION: Block normal flow when special mode is active ==========
+      {
+        const { data: convForModeCheck } = await supabase
+          .from("whatsapp_conversations")
+          .select("id, collected_data, messages_history")
+          .eq("phone_number", phoneNumber)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (convForModeCheck) {
+          const modeData = (convForModeCheck.collected_data as Record<string, any>) || {};
+
+          if (modeData._translator_mode === true && !incomingWasAudio) {
+            const reminderMsg = "🌐 *Você está no Modo Tradutor!*\n\nMande um *áudio* que eu traduzo automaticamente! 🎙️\n\nPara sair, mande: *sair tradutor*";
+            await sendWhatsAppMessage(phoneNumber, reminderMsg);
+
+            const updH = [
+              ...((convForModeCheck.messages_history as any[]) || []),
+              { role: "user", content: messageText || "[mídia]", timestamp: new Date().toISOString() },
+              { role: "assistant", content: reminderMsg, timestamp: new Date().toISOString() },
+            ];
+            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convForModeCheck.id);
+
+            return new Response(JSON.stringify({ status: "ok", mode_isolation: "translator" }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          if (modeData._chef_mode === true && messageType !== "image") {
+            const reminderMsg = "👨‍🍳 *Você está no Modo Chef!*\n\nMande uma *foto do cardápio* que eu analiso pra você! 📸\n\nPara sair, mande: *sair chef*";
+            await sendWhatsAppMessage(phoneNumber, reminderMsg);
+
+            const updH = [
+              ...((convForModeCheck.messages_history as any[]) || []),
+              { role: "user", content: messageText || "[mídia]", timestamp: new Date().toISOString() },
+              { role: "assistant", content: reminderMsg, timestamp: new Date().toISOString() },
+            ];
+            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convForModeCheck.id);
+
+            return new Response(JSON.stringify({ status: "ok", mode_isolation: "chef" }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+      }
 
       {
         // Check both active_trips.client_phone AND concierge_contacts
