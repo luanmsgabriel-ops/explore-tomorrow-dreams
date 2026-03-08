@@ -3714,21 +3714,7 @@ IMPORTANTE:
         if (convForModeCheck) {
           const modeData = (convForModeCheck.collected_data as Record<string, any>) || {};
 
-          if (modeData._translator_mode === true && !incomingWasAudio) {
-            const reminderMsg = "🌐 *Você está no Modo Tradutor!*\n\nMande um *áudio* que eu traduzo automaticamente! 🎙️\n\nPara sair, mande: *sair tradutor*";
-            await sendWhatsAppMessage(phoneNumber, reminderMsg);
-
-            const updH = [
-              ...((convForModeCheck.messages_history as any[]) || []),
-              { role: "user", content: messageText || "[mídia]", timestamp: new Date().toISOString() },
-              { role: "assistant", content: reminderMsg, timestamp: new Date().toISOString() },
-            ];
-            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convForModeCheck.id);
-
-            return new Response(JSON.stringify({ status: "ok", mode_isolation: "translator" }), {
-              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
+          // Translator mode isolation removed — translator now handles text, audio, and images in the main translator block above
 
           if (modeData._chef_mode === true && messageType !== "image") {
             const savedMenuAnalysis = modeData._chef_menu_analysis || "";
