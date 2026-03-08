@@ -2536,26 +2536,51 @@ serve(async (req) => {
           }
 
           if (modeData._chef_mode === true && messageType !== "image") {
-            // Text messages in Chef Mode → answer culinary questions via AI
+            const savedMenuAnalysis = modeData._chef_menu_analysis || "";
+            
+            // If no menu has been sent yet, ask for one first
+            if (!savedMenuAnalysis) {
+              const noMenuMsg = "👨‍🍳 *Modo Chef ativo!*\n\nPrimeiro, mande uma *foto do cardápio* 📸 que eu analiso pra você!\n\nDepois da análise, pode me perguntar coisas como:\n• _\"Quero algo leve\"_\n• _\"O que tem sem glúten?\"_\n• _\"Qual o melhor custo-benefício?\"_\n\nPara sair: *sair chef*";
+              await sendWhatsAppMessage(phoneNumber, noMenuMsg);
+
+              const updH = [
+                ...((convForModeCheck.messages_history as any[]) || []),
+                { role: "user", content: messageText || "[mídia]", timestamp: new Date().toISOString() },
+                { role: "assistant", content: noMenuMsg, timestamp: new Date().toISOString() },
+              ];
+              await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convForModeCheck.id);
+
+              return new Response(JSON.stringify({ status: "ok", mode_isolation: "chef_no_menu" }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            // Has menu context → answer based on it
             let chefResponse = "";
             try {
-              const CHEF_TEXT_PROMPT = `Você é o Téo, um assistente culinário expert da Tomorrow Travel. Você está no *Modo Chef* 👨‍🍳.
+              const CHEF_MENU_CONTEXT_PROMPT = `Você é o Téo, um assistente culinário expert da Tomorrow Travel. Você está no *Modo Chef* 👨‍🍳.
 
-SUAS ESPECIALIDADES:
-- Explicar pratos, ingredientes e técnicas de preparo de qualquer culinária do mundo
-- Sugerir harmonizações de vinhos e bebidas
-- Alertar sobre alergênicos comuns em pratos
-- Dar dicas culturais sobre gastronomia local (etiqueta, costumes, horários de refeição)
-- Recomendar pratos típicos de destinos de viagem
-- Traduzir nomes de pratos e ingredientes
+O cliente já enviou uma foto do cardápio e aqui está a análise completa:
+
+--- CARDÁPIO ANALISADO ---
+${savedMenuAnalysis}
+--- FIM DO CARDÁPIO ---
+
+SUAS TAREFAS:
+- Responder perguntas do cliente BASEADO nos itens do cardápio acima
+- Se o cliente pedir algo "leve", "sem glúten", "vegetariano", etc., sugira itens ESPECÍFICOS do cardápio
+- Cite o nome exato do prato e o preço quando disponível
+- Se perguntarem algo que não está no cardápio, avise educadamente
+- Sugira harmonizações com bebidas quando relevante
 
 REGRAS:
 - Responda SEMPRE em português brasileiro
-- Use formatação para WhatsApp: *negrito*, _itálico_, emojis
-- Seja conciso mas informativo (máximo 3 parágrafos)
-- Se a pergunta NÃO for relacionada a comida, gastronomia, restaurantes ou culinária, responda educadamente: "👨‍🍳 No Modo Chef, sou especialista em gastronomia! Pergunte sobre pratos, ingredientes ou culinária. Para voltar ao Téo normal, mande *sair chef*"
-- Nunca sugira cotações de viagem ou serviços de agência
-- Lembre que o usuário pode enviar fotos de cardápio para análise`;
+- Use formatação WhatsApp: *negrito*, _itálico_, emojis
+- Seja conciso (máximo 3 parágrafos)
+- Base suas respostas EXCLUSIVAMENTE no cardápio analisado
+- Se a pergunta não for sobre comida/cardápio, responda: "👨‍🍳 No Modo Chef, foco no cardápio! Pergunte sobre os pratos. Para voltar ao Téo normal, mande *sair chef*"
+- Nunca sugira cotações de viagem
+- Lembre que o cliente pode enviar outra foto de cardápio a qualquer momento`;
 
               const chefAiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
                 method: "POST",
@@ -2566,7 +2591,7 @@ REGRAS:
                 body: JSON.stringify({
                   model: "google/gemini-2.5-flash",
                   messages: [
-                    { role: "system", content: CHEF_TEXT_PROMPT },
+                    { role: "system", content: CHEF_MENU_CONTEXT_PROMPT },
                     { role: "user", content: messageText },
                   ],
                   max_tokens: 2000,
@@ -2582,7 +2607,7 @@ REGRAS:
             }
 
             if (!chefResponse) {
-              chefResponse = "👨‍🍳 *Modo Chef ativo!*\n\nMe pergunte sobre qualquer prato ou ingrediente, ou mande uma *foto do cardápio* que eu analiso! 📸\n\nPara sair: *sair chef*";
+              chefResponse = "👨‍🍳 Não consegui processar sua pergunta. Tente novamente ou mande outra *foto do cardápio*! 📸\n\nPara sair: *sair chef*";
             }
 
             await sendWhatsAppMessage(phoneNumber, chefResponse);
@@ -2594,7 +2619,7 @@ REGRAS:
             ];
             await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convForModeCheck.id);
 
-            return new Response(JSON.stringify({ status: "ok", mode_isolation: "chef" }), {
+            return new Response(JSON.stringify({ status: "ok", mode_isolation: "chef_menu_qa" }), {
               status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
