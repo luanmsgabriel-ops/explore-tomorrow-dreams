@@ -5820,6 +5820,35 @@ Regras OBRIGATÓRIAS:
 
       const collectedData = (conversation.collected_data as Record<string, any>) || {};
 
+      // ========== WELCOME MESSAGE FOR NEW CONTACTS ==========
+      // If conversation_state is "greeting" and no _teo_mode set and only 1 message (first contact)
+      const isFirstContact = conversation.conversation_state === "greeting" && !collectedData._teo_welcome_sent;
+      if (isFirstContact) {
+        const firstName = (contactName || "").trim().split(" ")[0] || "viajante";
+        const welcomeMsg = `Olá, ${firstName}! 👋 Eu sou o *Téo*, seu assistente de viagens da *Tomorrow Travel*! ✈️🌎\n\nComo posso te ajudar hoje? Escolha um dos modos abaixo:\n\n✈️ *Cotação* — Encontro a viagem perfeita pra você!\n👉 mande: *modo cotação*\n\n🎒 *Concierge* — Sou seu companheiro durante a viagem\n👉 mande: *modo concierge*\n\nOu simplesmente me conte o que precisa que eu já vou te ajudar! 😊`;
+
+        // Mark welcome as sent and update state
+        const updatedCd = { ...collectedData, _teo_welcome_sent: true };
+        const updatedHistory = [
+          ...((conversation.messages_history as any[]) || []),
+          { role: "assistant", content: welcomeMsg, timestamp: new Date().toISOString() },
+        ];
+        await supabase.from("whatsapp_conversations").update({
+          collected_data: updatedCd,
+          messages_history: updatedHistory,
+          conversation_state: "chatting",
+        }).eq("id", conversation.id);
+
+        await sendWhatsAppMessage(phoneNumber, welcomeMsg);
+
+        // Don't return — continue processing the user's message so they get a response too
+        // Update local references
+        conversation.collected_data = updatedCd;
+        conversation.messages_history = updatedHistory;
+        conversation.conversation_state = "chatting";
+      }
+
+
       // Check if conversation is waiting for a verification code
       if (collectedData._quotation_pending_code && collectedData._quotation_request) {
         console.log("Processing verification code:", messageText.trim());
