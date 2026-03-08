@@ -6,8 +6,42 @@
 1. ✅ **Téo Grupal** — Viagem em grupo com cruzamento de preferências via WhatsApp
 2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
 3. 🔲 **Téo Tradutor Universal** — Tradução universal ao vivo
-4. 🔲 **Téo DNA** — Perfil genético de viajante
+4. ✅ **Téo DNA** — Perfil genético de viajante
 5. 🔲 **Playlist da Viagem** — Integração Spotify completa
+
+---
+
+## 3. Téo DNA de Viajante (IMPLEMENTADO ✅)
+
+### Conceito
+Questionário profundo de 10 perguntas que gera um perfil "genético" de viajante com 5 categorias (Explorador, Culturalista, Gourmet, Zen, Socialite) que evolui com cada viagem.
+
+### Comandos WhatsApp
+| Comando | Ação |
+|---------|------|
+| `meu dna` / `dna viajante` / `teste dna` | Inicia o questionário de 10 perguntas |
+
+### Categorias do DNA
+- 🏔️ Explorador: aventura, adrenalina, natureza selvagem
+- 🏛️ Culturalista: história, museus, arquitetura
+- 🍽️ Gourmet: gastronomia, vinhos, experiências culinárias
+- 🧘 Zen: relaxamento, praias, spas
+- 🎉 Socialite: festas, vida noturna, experiências sociais
+
+### Armazenamento (zero novas tabelas)
+Usa `client_memory.preferences` (JSONB):
+- `dna_viajante`: perfil atual com porcentagens, raw_result, answers
+- `dna_historico`: array com últimas 10 análises (para detectar evolução)
+
+### Evolução
+O DNA evolui automaticamente:
+- Cada vez que o teste é refeito, uma nova entrada é adicionada ao histórico
+- O formatMemoryForPrompt mostra a evolução (↑↓ por categoria)
+- Téo usa o DNA para personalizar sugestões sem perguntar demais
+
+### Arquivos modificados
+- `supabase/functions/whatsapp-webhook/index.ts`: Comando + questionário 10 perguntas + geração via Gemini
+- `supabase/functions/_shared/client-memory.ts`: DNA no prompt, na formatação e na regra de adaptação
 
 ---
 
