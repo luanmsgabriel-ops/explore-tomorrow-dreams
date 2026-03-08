@@ -5895,9 +5895,13 @@ Regras OBRIGATÓRIAS:
       }
 
       // Check if this client is a concierge client (active trip) — use concierge prompt instead of sales
+      // RESPECTS _teo_mode: if client forced a mode, honor it
       let conciergePromptOverride: string | null = null;
       let conciergeContactContext: any = null;
-      {
+      const teoMode = collectedData._teo_mode || "auto";
+      
+      // If mode is "cotacao", skip concierge entirely (force sales prompt)
+      if (teoMode !== "cotacao") {
         // First try direct phone match on active_trips
         let activeTripForPrompt: any = null;
 
@@ -5932,10 +5936,27 @@ Regras OBRIGATÓRIAS:
               .maybeSingle();
             if (tripData) {
               activeTripForPrompt = tripData;
-              // Use the contact's name instead of the trip's main client name
               activeTripForPrompt.client_name = contactMatch.contact_name;
             }
           }
+        }
+
+        // If mode is "concierge" but no active trip, build minimal context
+        if (!activeTripForPrompt && teoMode === "concierge") {
+          // Try to find any recent client_trips for context
+          const { data: recentTrip } = await supabase
+            .from("client_trips")
+            .select("destination_name, departure_date, return_date, hotel_name")
+            .order("departure_date", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          // Build a minimal concierge prompt even without active_trip
+          const minCtx = recentTrip
+            ? `\n\nCONTEXTO: O cliente ativou o modo concierge manualmente. Última viagem conhecida: ${recentTrip.destination_name}. Ajude como companheiro de viagem.`
+            : `\n\nCONTEXTO: O cliente ativou o modo concierge manualmente. Sem dados de viagem ativa. Pergunte sobre a viagem atual para poder ajudar melhor.`;
+          conciergePromptOverride = TEO_CONCIERGE_PROMPT + minCtx;
+          console.log(`🎒 Using CONCIERGE prompt (forced mode, no active trip) for ${phoneNumber}`);
         }
 
         if (activeTripForPrompt) {
