@@ -2394,7 +2394,113 @@ serve(async (req) => {
         }
       }
 
-      // ========== CONCIERGE: Saudação personalizada para clientes com viagem ativa ==========
+      // ========== CHEF MODE: Menu Translator & Analyzer ==========
+      {
+        const lowerMsgTrimmed = (messageText || "").toLowerCase().trim();
+        const chefActivateRegex = /^(chef|modo chef|cardapio|cardápio|menu|analisar cardápio|analisar cardapio|chef mode)$/i;
+        const chefDeactivateRegex = /^(sair chef|desativar chef|sair do chef|parar chef|exit chef|sair modo chef)$/i;
+
+        if (chefActivateRegex.test(lowerMsgTrimmed)) {
+          const savedConvC = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+          if (savedConvC) {
+            const existingData = (savedConvC.collected_data as Record<string, any>) || {};
+            await supabase.from("whatsapp_conversations").update({
+              collected_data: { ...existingData, _chef_mode: true },
+            }).eq("id", savedConvC.id);
+
+            const activationMsg = "👨‍🍳 *Modo Chef Ativado!*\n\nAgora é só mandar uma *foto do cardápio* que eu traduzo tudo pra você! 📸\n\n📋 Tradução dos pratos\n🥗 Ingredientes principais\n⚠️ Alertas de alergênicos\n⭐ Recomendação de melhor custo-benefício\n\nPra sair do modo chef, mande: *sair chef*";
+            await sendWhatsAppMessage(phoneNumber, activationMsg);
+
+            const updH = [
+              ...((savedConvC.messages_history as any[]) || []),
+              { role: "assistant", content: activationMsg, timestamp: new Date().toISOString() },
+            ];
+            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConvC.id);
+          }
+          return new Response(JSON.stringify({ status: "ok", chef_mode_activated: true }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        if (chefDeactivateRegex.test(lowerMsgTrimmed)) {
+          const savedConvC = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+          if (savedConvC) {
+            const existingData = (savedConvC.collected_data as Record<string, any>) || {};
+            await supabase.from("whatsapp_conversations").update({
+              collected_data: { ...existingData, _chef_mode: false },
+            }).eq("id", savedConvC.id);
+
+            const deactivationMsg = "✅ Modo Chef desativado! Voltei ao modo normal. 😊\n\nSe precisar traduzir outro cardápio, é só mandar *chef*!";
+            await sendWhatsAppMessage(phoneNumber, deactivationMsg);
+
+            const updH = [
+              ...((savedConvC.messages_history as any[]) || []),
+              { role: "assistant", content: deactivationMsg, timestamp: new Date().toISOString() },
+            ];
+            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConvC.id);
+          }
+          return new Response(JSON.stringify({ status: "ok", chef_mode_deactivated: true }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // If in chef mode AND incoming is image → analyze menu
+        if (messageType === "image" && imageBase64Data) {
+          const { data: convForChef } = await supabase
+            .from("whatsapp_conversations")
+            .select("id, collected_data, messages_history")
+            .eq("phone_number", phoneNumber)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const chefData = (convForChef?.collected_data as Record<string, any>) || {};
+          if (chefData._chef_mode === true && convForChef) {
+            console.log("[CHEF MODE] Image received in chef mode, analyzing menu...");
+
+            await ensureConversationAndSaveMessage(phoneNumber, contactName, "📸 [Foto de cardápio]");
+
+            try {
+              const analysisResult = await analyzeMenuImage(imageBase64Data);
+              
+              // Split long messages if needed (WhatsApp limit ~4096)
+              if (analysisResult.length > 4000) {
+                const mid = analysisResult.lastIndexOf("\n", 3900);
+                const part1 = analysisResult.substring(0, mid > 0 ? mid : 3900);
+                const part2 = analysisResult.substring(mid > 0 ? mid : 3900);
+                await sendWhatsAppMessage(phoneNumber, part1);
+                await sendWhatsAppMessage(phoneNumber, part2);
+              } else {
+                await sendWhatsAppMessage(phoneNumber, analysisResult);
+              }
+
+              // Save to history
+              const { data: convAfterChef } = await supabase
+                .from("whatsapp_conversations")
+                .select("id, messages_history")
+                .eq("id", convForChef.id)
+                .single();
+
+              if (convAfterChef) {
+                const updH = [
+                  ...((convAfterChef.messages_history as any[]) || []),
+                  { role: "assistant", content: `👨‍🍳 ${analysisResult}`, timestamp: new Date().toISOString() },
+                ];
+                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterChef.id);
+              }
+            } catch (chefErr) {
+              console.error("[CHEF MODE] Error:", chefErr);
+              await sendWhatsAppMessage(phoneNumber, "😅 Não consegui analisar esse cardápio. Tenta mandar outra foto com melhor iluminação! 📸");
+            }
+
+            return new Response(JSON.stringify({ status: "ok", chef_menu_analyzed: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+      }
+
+
       {
         // Check both active_trips.client_phone AND concierge_contacts
         let activeTripForGreeting: any = null;
