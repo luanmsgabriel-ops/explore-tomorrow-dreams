@@ -3033,6 +3033,13 @@ Regras OBRIGATÓRIAS:
         }
       }
 
+      // Send visual itinerary card if detected (before text)
+      if (itineraryVisualData) {
+        const clientNameForVisual = newCollectedData.nome || conversation.client_name || contactName || undefined;
+        await generateAndSendItineraryVisual(phoneNumber, itineraryVisualData, clientNameForVisual);
+        await sendWhatsAppMessage(phoneNumber, "Preparei um roteiro especial pra você! 🗺️✨ Salva essa imagem, vai ser seu guia por lá! 😄");
+      }
+
       await sendWhatsAppMessage(phoneNumber, cleanResponse);
 
       // Update client memory after response (fire-and-forget)
