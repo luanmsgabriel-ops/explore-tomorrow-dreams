@@ -1118,6 +1118,29 @@ REGRAS:
 async function analyzeMenuImage(imageBase64: string, mimeType: string = "image/jpeg"): Promise<string> {
   console.log("[CHEF MODE] Analyzing menu image...");
   
+  // Fetch exchange rates for currency conversion
+  let exchangeInfo = "";
+  try {
+    const rateRes = await fetch("https://open.er-api.com/v6/latest/USD");
+    if (rateRes.ok) {
+      const rateData = await rateRes.json();
+      const brlRate = rateData.rates?.BRL;
+      const eurToUsd = rateData.rates?.EUR ? (1 / rateData.rates.EUR) : null;
+      if (brlRate) {
+        exchangeInfo = `\n\nCOTAÇÕES DO DIA para conversão: 1 USD = R$ ${brlRate.toFixed(2)}`;
+        if (eurToUsd) {
+          const eurToBrl = brlRate / rateData.rates.EUR;
+          exchangeInfo += ` | 1 EUR = R$ ${eurToBrl.toFixed(2)}`;
+        }
+      }
+    }
+  } catch (e) {
+    console.error("[CHEF MODE] Exchange rate error:", e);
+    exchangeInfo = "\n\nCOTAÇÃO APROXIMADA: 1 USD ≈ R$ 5,50 | 1 EUR ≈ R$ 6,00 (use como estimativa)";
+  }
+
+  const promptWithRates = CHEF_MODE_PROMPT + exchangeInfo;
+
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -1127,12 +1150,12 @@ async function analyzeMenuImage(imageBase64: string, mimeType: string = "image/j
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
       messages: [
-        { role: "system", content: CHEF_MODE_PROMPT },
+        { role: "system", content: promptWithRates },
         {
           role: "user",
           content: [
             { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
-            { type: "text", text: "Analise este cardápio e traduza os pratos." },
+            { type: "text", text: "Analise este cardápio e traduza os pratos. Se os preços estiverem em moeda estrangeira, converta para reais." },
           ],
         },
       ],
