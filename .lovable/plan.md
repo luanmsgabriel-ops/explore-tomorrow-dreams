@@ -9,8 +9,28 @@
 4. ✅ **Téo DNA** — Perfil genético de viajante
 5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
 6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
+7. ✅ **Téo Compatibilidade** — Match de viagem entre DNAs de viajante
 
 ---
+
+## 7. Téo Compatibilidade (IMPLEMENTADO ✅)
+
+### Conceito
+O cliente envia `compatibilidade com 5511999999999` e o Téo compara os DNAs de Viajante dos dois, calcula score de compatibilidade e sugere destinos ideais para ambos.
+
+### Comandos WhatsApp
+| Comando | Ação |
+|---------|------|
+| `compatibilidade com [número]` / `match viagem [número]` | Compara DNAs e sugere destino |
+| `compatibilidade` (sem número) | Téo pede o número do parceiro |
+
+### Armazenamento (zero novas tabelas)
+Usa `client_memory.preferences`:
+- `ultimo_match`: `{ parceiro_phone, parceiro_nome, score, data }`
+
+### Arquivos modificados
+- `supabase/functions/whatsapp-webhook/index.ts`: Bloco de comando com regex, busca de 2 memórias, chamada Gemini, formatação e save
+- `supabase/functions/_shared/client-memory.ts`: `ultimo_match` no `formatMemoryForPrompt` + skipKeys
 
 ## 3. Téo DNA de Viajante (IMPLEMENTADO ✅)
 
