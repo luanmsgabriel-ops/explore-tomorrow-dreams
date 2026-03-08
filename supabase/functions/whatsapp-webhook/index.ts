@@ -4213,6 +4213,189 @@ IMPORTANTE:
         }
       }
 
+      // ========== TÉO ROLETA: Random Destination Filtered by Profile ==========
+      {
+        const roletaRegex = /^(roleta|destino aleat[oó]rio|girar roleta|sorteio destino|surprise me|destino surpresa|roleta viagem)$/i;
+        const lowerMsgRoleta = (messageText || "").toLowerCase().trim();
+
+        if (roletaRegex.test(lowerMsgRoleta)) {
+          const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          // Check if user wants to spin again (max 3x tracked in collected_data)
+          let spinsUsed = 0;
+          if (savedConv) {
+            const cd = (savedConv.collected_data as Record<string, any>) || {};
+            spinsUsed = cd._roleta_spins || 0;
+          }
+
+          if (spinsUsed >= 3) {
+            await sendWhatsAppMessage(phoneNumber, "🎰 Você já girou 3 vezes! 😄\n\nEscolha um dos destinos que saíram ou me conte o que procura pra eu recomendar com mais calma! 🌍");
+            return new Response(JSON.stringify({ status: "ok", roleta_max: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          // Send spinning animation
+          await sendWhatsAppMessage(phoneNumber, "🎰 *ROLETA DO DESTINO*\n\nGirando... 🌍🌏🌎✨");
+
+          // Gather DNA + preferences for filtering
+          let dnaContext = "";
+          let budgetContext = "";
+          let travelHistoryContext = "";
+
+          try {
+            const memory = await fetchClientMemory(phoneNumber);
+            if (memory) {
+              const prefs = (memory.preferences as Record<string, any>) || {};
+              if (prefs.dna_viajante) {
+                dnaContext = `DNA de Viajante: ${JSON.stringify(prefs.dna_viajante.percentages || {})}`;
+              }
+              if (prefs.orcamento) budgetContext = `Orçamento preferido: ${prefs.orcamento}`;
+              if (prefs.tom_emocional) budgetContext += ` | Estado emocional: ${prefs.tom_emocional}`;
+
+              const history = (memory.travel_history as any[]) || [];
+              if (history.length > 0) {
+                const visited = history.map((h: any) => h.destino).filter(Boolean);
+                travelHistoryContext = `Destinos já visitados (EVITAR repetir): ${visited.join(", ")}`;
+              }
+            }
+          } catch {}
+
+          // Fetch active destinations from DB
+          let destinationsPool: string[] = [];
+          try {
+            const { data: dests } = await supabase
+              .from("destinations")
+              .select("name, location, category, type, description, best_time, for_who")
+              .eq("is_active", true);
+
+            if (dests && dests.length > 0) {
+              destinationsPool = dests.map((d: any) => `${d.name} (${d.location}) — ${d.category} — ${d.type} — ${d.for_who}`);
+            }
+          } catch {}
+
+          const roletaPrompt = `Você é o Téo, consultor de viagens divertido da Tomorrow Travel. O cliente pediu pra GIRAR A ROLETA DO DESTINO!
+
+DESTINOS DISPONÍVEIS NO NOSSO CATÁLOGO:
+${destinationsPool.length > 0 ? destinationsPool.join("\n") : "Use destinos populares nacionais e internacionais."}
+
+${dnaContext ? `PERFIL DO CLIENTE:\n${dnaContext}` : ""}
+${budgetContext ? budgetContext : ""}
+${travelHistoryContext ? travelHistoryContext : ""}
+
+REGRAS:
+1. Escolha EXATAMENTE 1 destino que combine com o perfil do cliente (ou aleatório se sem perfil)
+2. Se o cliente já visitou destinos, NÃO repita nenhum
+3. Priorize destinos do catálogo, mas pode sugerir outros se fizer sentido
+
+FORMATO OBRIGATÓRIO (máx 1500 chars):
+
+🎰 *ROLETA DO DESTINO*
+
+🌍🌏🌎 Girando...
+.
+..
+...
+✨ PAROU!
+
+🎯 *[NOME DO DESTINO]* [emoji do país]
+📍 [localização]
+
+💡 *Por que esse destino combina com você:*
+[2-3 frases explicando por que esse destino é perfeito pro perfil do cliente — se tem DNA, use as categorias dominantes]
+
+⭐ *Melhor época:* [época]
+⏰ *Duração ideal:* [dias]
+👥 *Pra quem:* [público]
+
+🔄 Quer girar de novo? Mande *roleta*!
+✈️ Curtiu? Mande *cotar [destino]* pra receber uma proposta!
+
+${spinsUsed > 0 ? `\nEsta é a ${spinsUsed + 1}ª girada. Escolha um destino DIFERENTE dos anteriores.` : ""}`;
+
+          try {
+            const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash",
+                messages: [
+                  { role: "system", content: roletaPrompt },
+                  { role: "user", content: "Gire a roleta!" },
+                ],
+                max_tokens: 2000,
+              }),
+            });
+
+            if (!response.ok) {
+              console.error("[ROLETA] AI error:", response.status);
+              await sendWhatsAppMessage(phoneNumber, "😅 A roleta travou! Tenta de novo em alguns segundos! 🎰");
+              return new Response(JSON.stringify({ status: "ok", roleta_error: true }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            const data = await response.json();
+            const roletaResult = data.choices?.[0]?.message?.content || "🎰 Erro na roleta!";
+
+            await sendWhatsAppMessage(phoneNumber, roletaResult);
+
+            // Update spin count
+            if (savedConv) {
+              const { data: convAfterRoleta } = await supabase
+                .from("whatsapp_conversations")
+                .select("id, messages_history, collected_data")
+                .eq("id", savedConv.id)
+                .single();
+              if (convAfterRoleta) {
+                const cd = (convAfterRoleta.collected_data as Record<string, any>) || {};
+                const updH = [
+                  ...((convAfterRoleta.messages_history as any[]) || []),
+                  { role: "assistant", content: `🎰 ${roletaResult}`, timestamp: new Date().toISOString() },
+                ];
+                await supabase.from("whatsapp_conversations").update({
+                  messages_history: updH,
+                  collected_data: { ...cd, _roleta_spins: (cd._roleta_spins || 0) + 1 },
+                }).eq("id", convAfterRoleta.id);
+              }
+            }
+
+            // Save to client memory
+            try {
+              const memory = await fetchClientMemory(phoneNumber);
+              if (memory) {
+                const prefs = (memory.preferences as Record<string, any>) || {};
+                const roletaHistory = Array.isArray(prefs.roleta_history) ? prefs.roleta_history : [];
+                roletaHistory.push({
+                  date: new Date().toISOString(),
+                  result: roletaResult.substring(0, 200),
+                });
+                if (roletaHistory.length > 10) roletaHistory.shift();
+
+                await supabase.from("client_memory").update({
+                  preferences: { ...prefs, roleta_history: roletaHistory },
+                  updated_at: new Date().toISOString(),
+                }).eq("id", memory.id);
+              }
+            } catch (memErr) {
+              console.error("[ROLETA] Memory save error:", memErr);
+            }
+
+            console.log(`[ROLETA] Spin ${spinsUsed + 1} for ${phoneNumber}`);
+          } catch (err) {
+            console.error("[ROLETA] Error:", err);
+            await sendWhatsAppMessage(phoneNumber, "😅 Erro na roleta. Tenta de novo!");
+          }
+
+          return new Response(JSON.stringify({ status: "ok", roleta: true }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
       // ========== TÉO VIDENTE: Zodiac-based Travel Recommendations ==========
       {
         const videnteRegex = /^(meu signo|horóscopo viajante|destino do signo|signo viagem|vidente|horoscopo viajante|meu horóscopo|meu horoscopo)$/i;
