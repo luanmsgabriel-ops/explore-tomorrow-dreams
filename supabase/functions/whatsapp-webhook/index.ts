@@ -5675,7 +5675,7 @@ Regras OBRIGATÓRIAS:
               responseMsg = "🔄 *Modo Automático Ativado!*\n\nAgora eu decido o melhor modo pra te atender. É só me mandar sua mensagem! 😊";
             } else if (modoMenuRegex.test(modoLower)) {
               const modeLabel = currentMode === "cotacao" ? "✈️ Cotação" : currentMode === "concierge" ? "🎒 Concierge" : "🔄 Automático";
-              responseMsg = `🎯 *Modos do Téo:*\n\n✈️ *Cotação* — Te ajudo a encontrar e cotar viagens\n👉 mande: *modo cotação*\n\n🎒 *Concierge* — Sou seu companheiro durante a viagem\n👉 mande: *modo concierge*\n\n🔄 *Automático* — Eu decido o melhor modo\n👉 mande: *sair modo*\n\n📌 Modo atual: *${modeLabel}*`;
+              responseMsg = `🎯 *Modos do Téo:*\n\n✈️ *Cotação* — Te ajudo a encontrar e cotar viagens\n👉 mande: *modo cotação*\n\n🎒 *Concierge* — Sou seu companheiro durante a viagem\n👉 mande: *modo concierge*\n\n👨‍🍳 *Chef* — Traduzo e explico cardápios (envie foto!)\n👉 envie uma *foto de cardápio*\n\n🧬 *DNA Viajante* — Descubra seu perfil de viajante\n👉 mande: *meu dna*\n\n🎰 *Roleta* — Destino aleatório surpresa\n👉 mande: *roleta*\n\n🔮 *Oráculo* — Previsão personalizada da viagem\n👉 mande: *oráculo*\n\n🆘 *SOS* — Assistência de emergência\n👉 mande: *sos*\n\n🎵 *Playlist* — Playlist personalizada da viagem\n👉 mande: *playlist*\n\n💰 *Carteira* — Controle de gastos da viagem\n👉 mande: *gastei [valor]*\n\n🌐 *Tradutor* — Tradução universal\n👉 mande: *traduzir [texto]*\n\n👥 *Grupal* — Planeje viagem em grupo\n👉 mande: *criar grupo*\n\n💕 *Compatibilidade* — Compare perfis de viajante\n👉 mande: *compatibilidade com [número]*\n\n🔄 *Automático* — Eu decido o melhor modo\n👉 mande: *sair modo*\n\n📌 Modo atual: *${modeLabel}*`;
             }
 
             const updatedCd = { ...cd, _teo_mode: newMode };
