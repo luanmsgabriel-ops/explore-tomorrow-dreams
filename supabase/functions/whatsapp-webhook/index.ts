@@ -98,6 +98,12 @@ TABELAS DISPONÍVEIS NO BANCO DE DADOS:
     Colunas: id, primary_user_id, shared_user_id, shared_email, created_by, created_at
 
 25. client_memory - Memória de longo prazo dos clientes (perfil persistente)
+
+26. travel_groups - Grupos de viagem (Téo Grupal)
+    Colunas: id, group_code (UNIQUE 6 chars), creator_phone, creator_name, group_name, status (collecting/ready/completed), travel_dates, budget_range, final_recommendation (JSONB), created_at, updated_at
+
+27. travel_group_members - Membros dos grupos de viagem
+    Colunas: id, group_id (FK travel_groups), phone_number, member_name, preferences (JSONB: estilo/clima/prioridades/orcamento/restricoes), is_ready, joined_at
     Colunas: id, whatsapp (unique), client_name, preferences (JSON: estilo_viagem, orcamento, tipo, clima, companhia), travel_history (JSON array: destinos visitados/cotados), personal_notes (JSON: aniversario, filhos, acompanhantes, observacoes), last_interaction_at, created_at, updated_at
 `;
 
