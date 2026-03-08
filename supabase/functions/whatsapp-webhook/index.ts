@@ -5355,6 +5355,23 @@ REGRAS:
           // Translator mode isolation removed — translator now handles text, audio, and images in the main translator block above
 
           if (modeData._chef_mode === true && messageType !== "image") {
+            // === AUTO-EXIT CHEF MODE: detect if message is NOT about food ===
+            const chefMsgLower = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const chefSignals = /(?:prato|comer|vegetariano|gluten|beber|sobremesa|menu|ingrediente|leve|pesado|cardapio|comida|vegano|lactose|alergen|drink|vinho|cerveja|suco|agua|cafe|cha|doce|salgado|frito|grelhado|assado|cru|sashimi|sushi|pizza|hamburguer|salada|sopa|entrada|principal|acompanhamento|guarnicao|porção|dose|copo|garrafa|harmoniza|sugest|recomend|indica.*prato|o que tem|opcao|opcoes)/i;
+            const nonChefCotacao = /(?:quanto custa|preco|valor|orcamento|pacote|cotar|cotacao|quero viajar|viagem para|passagem|reservar|disponibilidade|data.*(ida|volta)|quantas pessoas|lua de mel|ferias|feriado|promoc|oferta|destino|pra onde|para onde|conhecer|quero ir|vamos para|bora para|me leva)/i;
+            const nonChefConcierge = /(?:minha viagem|durante a viagem|no hotel|checkin|check-in|checkout|check-out|voo atras|meu voo|horario do voo|dica.*(restaurante|passeio|lugar)|o que fazer|perto de mim|proximo|perto daqui|localizacao|emergencia|sos|hospital|farmacia|embaixada|traduz|playlist|gastei|meus gastos|roleta|oraculo|vidente)/i;
+            
+            const isAboutFood = chefSignals.test(chefMsgLower);
+            const isAboutCotacao = nonChefCotacao.test(chefMsgLower);
+            const isAboutConcierge = nonChefConcierge.test(chefMsgLower);
+            
+            if (!isAboutFood && (isAboutCotacao || isAboutConcierge)) {
+              // Auto-exit chef mode
+              console.log(`🔄 Auto-exiting Chef Mode — detected ${isAboutCotacao ? 'cotação' : 'concierge'} intent`);
+              const updatedCollected = { ...modeData, _chef_mode: false };
+              await supabase.from("whatsapp_conversations").update({ collected_data: updatedCollected }).eq("id", convForModeCheck.id);
+              // DON'T return — let the flow continue to normal processing
+            } else {
             const savedMenuAnalysis = modeData._chef_menu_analysis || "";
             
             // If no menu has been sent yet, ask for one first
