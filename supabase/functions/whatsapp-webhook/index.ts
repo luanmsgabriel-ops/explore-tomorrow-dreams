@@ -2523,7 +2523,7 @@ serve(async (req) => {
                 const existingChefData = (convAfterChef as any).collected_data || chefData || {};
                 await supabase.from("whatsapp_conversations").update({ 
                   messages_history: updH,
-                  collected_data: { ...existingChefData, _chef_menu_analysis: analysisResult },
+                  collected_data: { ...existingChefData, _chef_mode: true, _chef_menu_analysis: analysisResult },
                 }).eq("id", convAfterChef.id);
               }
             } catch (chefErr) {
