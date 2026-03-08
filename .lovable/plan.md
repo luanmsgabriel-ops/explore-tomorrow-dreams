@@ -1,95 +1,67 @@
 
 
-# Plano: 5 Features Téo 2030
+# Plano: Téo Compatibilidade — Match de Viagem entre DNAs
 
-## Features Solicitadas (uma por vez, implementação completa)
-1. ✅ **Téo Grupal** — Viagem em grupo com cruzamento de preferências via WhatsApp
-2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
-3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
-4. ✅ **Téo DNA** — Perfil genético de viajante
-5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
-6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
+## Conceito
+O cliente envia o comando `compatibilidade com 5511999999999` e o Téo compara os DNAs de Viajante dos dois, calcula um score de compatibilidade e sugere destinos ideais para ambos.
 
----
-
-## 3. Téo DNA de Viajante (IMPLEMENTADO ✅)
-
-### Conceito
-Questionário profundo de 10 perguntas que gera um perfil "genético" de viajante com 5 categorias (Explorador, Culturalista, Gourmet, Zen, Socialite) que evolui com cada viagem.
-
-### Comandos WhatsApp
+## Comandos WhatsApp
 | Comando | Ação |
 |---------|------|
-| `meu dna` / `dna viajante` / `teste dna` | Inicia o questionário de 10 perguntas |
+| `compatibilidade com [número]` / `match viagem [número]` | Compara DNAs e sugere destino |
+| `compatibilidade` (sem número) | Téo pede o número do parceiro |
 
-### Categorias do DNA
-- 🏔️ Explorador: aventura, adrenalina, natureza selvagem
-- 🏛️ Culturalista: história, museus, arquitetura
-- 🍽️ Gourmet: gastronomia, vinhos, experiências culinárias
-- 🧘 Zen: relaxamento, praias, spas
-- 🎉 Socialite: festas, vida noturna, experiências sociais
+## Implementação
 
-### Armazenamento (zero novas tabelas)
-Usa `client_memory.preferences` (JSONB):
-- `dna_viajante`: perfil atual com porcentagens, raw_result, answers
-- `dna_historico`: array com últimas 10 análises (para detectar evolução)
+### 1. Bloco de comando no `whatsapp-webhook/index.ts`
+- Regex: `/^(compatibilidade|match viagem|match de viagem|compatibilidade viagem)/i`
+- Regex secundário para extrair número inline: `/compatibilidade com\s*(\+?\d[\d\s\-]+)/i`
+- Se número não informado, Téo pergunta e salva estado `_compat_waiting_number` no `collected_data`
+- Busca `client_memory` de ambos (remetente + parceiro) via `fetchClientMemory`
+- Valida que ambos têm `dna_viajante`; se um não tem, avisa que o parceiro precisa fazer o teste primeiro (envia link do comando `meu dna`)
+- Chama Gemini 2.5 Flash com prompt que recebe os dois DNAs
 
-### Evolução
-O DNA evolui automaticamente:
-- Cada vez que o teste é refeito, uma nova entrada é adicionada ao histórico
-- O formatMemoryForPrompt mostra a evolução (↑↓ por categoria)
-- Téo usa o DNA para personalizar sugestões sem perguntar demais
+### 2. Prompt Gemini
+Recebe:
+- DNA pessoa A (nome + porcentagens das 5 categorias)
+- DNA pessoa B (nome + porcentagens)
+- Signo de ambos (se disponível)
 
-### Arquivos modificados
-- `supabase/functions/whatsapp-webhook/index.ts`: Comando + questionário 10 perguntas + geração via Gemini
-- `supabase/functions/_shared/client-memory.ts`: DNA no prompt, na formatação e na regra de adaptação
+Gera:
+- Score de compatibilidade (0-100%)
+- Análise por categoria (onde combinam e onde divergem)
+- 3 destinos ideais para viajarem juntos com justificativa
+- Dica de convivência de viagem
 
----
+### 3. Formato da resposta WhatsApp
+```text
+💞 *Téo Compatibilidade de Viagem*
 
-## 1. Téo Grupal (IMPLEMENTADO ✅)
+👤 *Ana* × *Carlos*
 
-### Tabelas criadas
-- `travel_groups`: group_code, creator_phone, creator_name, status, final_recommendation
-- `travel_group_members`: group_id, phone_number, member_name, preferences (JSONB), is_ready
+🔬 *Compatibilidade: 78%* ████████░░
 
-### Comandos WhatsApp
-| Comando | Ação |
-|---------|------|
-| `criar grupo` | Cria grupo, gera código 6 chars, inicia questionário |
-| `entrar grupo XYZABC` | Adiciona membro, inicia questionário |
-| `meu grupo` | Mostra status e membros |
-| `resultado grupo` | Cruza preferências via Gemini, envia a todos |
-| `sair grupo` | Remove membro |
+📊 *Onde vocês combinam:*
+✅ Explorador: Ana 45% × Carlos 50% — Perfeitos pra aventura juntos!
+✅ Gourmet: Ana 20% × Carlos 25% — Vão amar comer junto!
 
----
+⚡ *Onde divergem:*
+↔️ Zen: Ana 25% × Carlos 5% — Ana curte descanso, Carlos não para!
 
-## 2. Téo Lê Mentes (IMPLEMENTADO ✅)
+✈️ *Destinos ideais pra vocês dois:*
+1. 🇳🇿 Nova Zelândia — Aventura + paisagens zen
+2. 🇪🇸 Barcelona — Cultura + gastronomia + vida noturna
+3. 🇨🇷 Costa Rica — Natureza selvagem + praias relaxantes
 
-### Conceito
-Análise emocional SILENCIOSA das mensagens do cliente para adaptar recomendações automaticamente, sem nunca mencionar a análise.
+💡 Quer que eu monte um roteiro pra vocês?
+```
 
-### Implementação (zero novas tabelas)
-Usa a infraestrutura existente de `client_memory.preferences` (JSONB):
+### 4. Armazenamento (zero novas tabelas)
+Salva em `client_memory.preferences`:
+- `ultimo_match`: `{ parceiro_phone, parceiro_nome, score, data, destinos_sugeridos }`
 
-**Campos emocionais adicionados:**
-- `tom_emocional`: animado/estressado/cansado/ansioso/empolgado/nostálgico/indeciso/tranquilo/comemorando/preocupado
-- `nivel_energia`: alto/médio/baixo
-- `nivel_estresse`: alto/médio/baixo
-- `momento_vida`: férias/lua-de-mel/aniversário/fuga-da-rotina/trabalho-remoto/família/amigos
-- `historico_emocional`: array com últimas 10 leituras emocionais (para detectar tendências)
+### Arquivos a modificar
+1. **`supabase/functions/whatsapp-webhook/index.ts`**: Novo bloco de comando com regex, busca de 2 memórias, chamada Gemini, formatação e save
+2. **`supabase/functions/_shared/client-memory.ts`**: Adicionar `ultimo_match` no `formatMemoryForPrompt` para contexto
+3. **`.lovable/plan.md`**: Documentar feature
 
-**Detecção de sinais:**
-- Estresse: "preciso sair daqui", "to exausto", respostas impacientes
-- Animação: "!!", emojis, "mal posso esperar"
-- Ansiedade: muitas perguntas, "será que...", indecisão
-- Comemoração: "aniversário", "lua de mel", "promoção"
-
-**Adaptação silenciosa (via MEMORY_RULE):**
-- Estressado → Sugere descanso, spas, all-inclusive
-- Animado → Sugere aventura, esportes, destinos vibrantes
-- Indeciso → Limita opções a 2-3, mais assertivo
-- Comemorando → Sugere upgrades, experiências premium
-- NUNCA menciona a análise ao cliente
-
-### Arquivos modificados
-- `supabase/functions/_shared/client-memory.ts`: Extraction prompt, merge logic, format, MEMORY_RULE
