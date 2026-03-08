@@ -1097,7 +1097,7 @@ FORMATO (para WhatsApp, use *negrito* e emojis):
 *1. [Nome original]* → [Tradução PT-BR]
 🥗 [Ingredientes principais]
 ⚠️ [Alergênicos, se houver]
-💰 [Preço se visível]
+💰 [Preço se visível] (~R$ XX,XX se em moeda estrangeira)
 
 [... demais pratos ...]
 
@@ -1112,6 +1112,7 @@ REGRAS:
 - Se não conseguir ler algum item, indique com "❓"
 - Se a foto não for um cardápio, diga educadamente e peça para enviar a foto do cardápio
 - Inclua preços quando visíveis na foto
+- **CONVERSÃO DE MOEDA**: Se os preços estiverem em dólares (USD/$), euros (EUR/€) ou outra moeda estrangeira, mostre ao lado o valor aproximado em reais (R$) usando a cotação fornecida. Formato: "$15.00 (~R$ XX,XX)"
 - Priorize pratos principais, depois entradas e sobremesas`;
 
 async function analyzeMenuImage(imageBase64: string, mimeType: string = "image/jpeg"): Promise<string> {
