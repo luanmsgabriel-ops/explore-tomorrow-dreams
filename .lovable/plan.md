@@ -1,97 +1,56 @@
 
 
-# Plano: Card Visual de Roteiro de Viagem via WhatsApp
+# Plano: Múltiplos contatos no Concierge com nome, telefone e notas individuais
 
-## Resumo
+## Problema Atual
 
-Quando o Téo gerar um roteiro personalizado no WhatsApp, ao invés de enviar apenas texto puro, ele vai:
-1. Gerar o roteiro via Gemini (como já faz)
-2. Chamar uma nova Edge Function que renderiza o roteiro como imagem PNG usando Gemini Image Generation
-3. Enviar a imagem via `sendWhatsAppImage` + mensagem curta animada
-4. Manter o texto do roteiro também disponível (enviado após a imagem como fallback/complemento)
+A tabela `active_trips` tem um único campo `client_phone` e `client_name`. Não suporta múltiplos números de WhatsApp por viagem, nem edição do número principal, nem notas especiais por contato.
 
-## Abordagem Técnica
+## Solução
 
-**Nota**: Puppeteer/headless browser não está disponível em Edge Functions (Deno). A solução usará **Gemini Image Generation** (`google/gemini-3-pro-image-preview`) para renderizar o card visual, seguindo o mesmo padrão já usado em `generate-quote-visual` e `generate-promo-image`.
+Criar uma tabela `concierge_contacts` para armazenar múltiplos contatos por viagem ativa, cada um com nome, telefone, status ativo e notas especiais individuais. Atualizar a UI do concierge no TripManager e adaptar o webhook para consultar esta nova tabela.
 
-### 1. Nova Edge Function: `generate-itinerary-visual`
+### 1. Migração de Banco
 
-Recebe o roteiro estruturado (destino, dias, atividades) e gera um card PNG elegante via Gemini Image Generation.
+```sql
+CREATE TABLE public.concierge_contacts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  trip_id uuid NOT NULL REFERENCES public.active_trips(id) ON DELETE CASCADE,
+  contact_name text NOT NULL,
+  contact_phone text NOT NULL,
+  is_active boolean NOT NULL DEFAULT true,
+  special_notes text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 
-**Input**: `{ destination, days: [{ day, theme, activities: [{ time, name, emoji }] }], clientName }`
+ALTER TABLE public.concierge_contacts ENABLE ROW LEVEL SECURITY;
 
-**Prompt de geração**: Instruções detalhadas para criar card visual com:
-- Gradiente temático do destino (azul para praias, verde para natureza, dourado para cidades)
-- Foto de fundo do destino com overlay
-- Seções Dia 1, Dia 2, Dia 3... com ícones
-- Atividades com horário, nome e emoji
-- Rodapé "Tomorrow Travel | Preparado por Téo ✈️"
-- Tipografia moderna, estilo revista de viagem
-- Formato 1080x1350 (4:5 — ideal para WhatsApp/Instagram)
-
-**Output**: URL da imagem (upload para bucket `destination-images`)
-
-### 2. Modificação no `whatsapp-webhook/index.ts`
-
-Atualmente, quando o Téo gera um roteiro (seção "ROTEIRO PERSONALIZADO", linhas ~605-622), ele envia o texto direto. A mudança:
-
-1. **Detectar** quando a resposta da IA contém um roteiro (padrão: título "🗓️ Roteiro Personalizado")
-2. **Parsear** o roteiro em dados estruturados (destino, dias, atividades)
-3. **Chamar** `generate-itinerary-visual` para gerar o card PNG
-4. **Enviar** a imagem via `sendWhatsAppImage` com caption curta do Téo
-5. **Enviar** o texto do roteiro logo em seguida (para quem quiser copiar/colar)
-
-A tag de detecção será o padrão já existente: `🗓️ Roteiro Personalizado - [Destino]`
-
-### 3. Prompt do Téo (ajuste menor)
-
-Adicionar instrução no prompt do Téo para que, ao gerar roteiros, use um formato mais estruturado que facilite o parsing:
-```
-[ROTEIRO_VISUAL]
-Destino: Maldivas
-Dias: 5
-Dia 1 - Chegada e Relaxamento
-09:00 | Check-in no resort 🏨
-14:00 | Mergulho na piscina de coral 🐠
-19:00 | Jantar no Ithaa Undersea Restaurant 🍽️
-...
-[/ROTEIRO_VISUAL]
+CREATE POLICY "Admins can manage concierge_contacts"
+  ON public.concierge_contacts FOR ALL
+  TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 ```
 
-O texto visível para o cliente continua sendo o formato bonito com emojis. A tag estruturada é removida antes de enviar o texto.
+Ao ativar o concierge, o `client_phone` existente em `active_trips` continua sendo o número principal (para compatibilidade com o webhook), e uma entrada correspondente é criada em `concierge_contacts`.
 
-### 4. Configuração
+### 2. UI no TripManager (tab Concierge)
 
-- Adicionar `[functions.generate-itinerary-visual]` no `config.toml` com `verify_jwt = false`
-- A função usa `LOVABLE_API_KEY` (já disponível) e `SUPABASE_SERVICE_ROLE_KEY` para upload
+Quando o concierge está ativo:
+- Mostrar o telefone principal com botão de **Editar** (ícone lápis) que permite alterar o `client_phone` em `active_trips` e o registro correspondente em `concierge_contacts`
+- Seção **"Contatos do Concierge"** com lista dos contatos cadastrados, cada um mostrando: nome, telefone, toggle ativo/inativo, textarea de notas especiais
+- Botão **"Adicionar Contato"** que abre campos inline para nome + telefone
+- O campo "Informações Especiais para o Téo" global permanece (para notas gerais da viagem)
+- Cada contato individual tem seu próprio campo de notas especiais
+
+### 3. Webhook (whatsapp-webhook)
+
+Na verificação de concierge ativo, além de checar `active_trips.client_phone`, também verificar se o número existe em `concierge_contacts` com `is_active = true`. Se encontrado por esta via, usar o `contact_name` e `special_notes` do contato específico para enriquecer o contexto do prompt.
 
 ### Arquivos Modificados
 
-1. **`supabase/functions/generate-itinerary-visual/index.ts`** (novo) — Edge Function que gera o card PNG
-2. **`supabase/functions/whatsapp-webhook/index.ts`** — Detectar roteiro, parsear, chamar visual, enviar imagem
-3. **`supabase/config.toml`** — Registrar nova função
-
-### Fluxo
-
-```text
-Cliente pede roteiro
-        │
-        ▼
-  Téo gera roteiro (Gemini) com tag [ROTEIRO_VISUAL]
-        │
-        ▼
-  Webhook detecta roteiro → parseia dados estruturados
-        │
-        ▼
-  Chama generate-itinerary-visual (Gemini Image)
-        │
-        ▼
-  Upload PNG → destination-images bucket
-        │
-        ▼
-  sendWhatsAppImage(phone, imageUrl, "Preparei um roteiro especial! 🗺️✨")
-        │
-        ▼
-  sendWhatsAppMessage(phone, textoDoRoteiro)
-```
+1. **Migração SQL**: Criar tabela `concierge_contacts`
+2. **`src/components/admin/TripManager.tsx`**: UI para listar/adicionar/editar/remover contatos do concierge, editar telefone principal
+3. **`supabase/functions/whatsapp-webhook/index.ts`**: Consultar `concierge_contacts` para identificar contatos adicionais e injetar notas individuais no contexto
 

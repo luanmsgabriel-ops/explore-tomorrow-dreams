@@ -605,7 +605,24 @@ Se o usuário enviar UMA MENSAGEM com TODAS as informações (destino, datas, vi
 8. ROTEIRO PERSONALIZADO:
    Se o cliente pedir um roteiro (responder "sim", "quero", "pode fazer", "monta pra mim", etc. à oferta de roteiro, ou pedir diretamente "me faz um roteiro", "roteiro dia a dia"), você DEVE gerar um roteiro completo e detalhado.
    
-   FORMATO DO ROTEIRO:
+   FORMATO DO ROTEIRO (OBRIGATÓRIO):
+   Você DEVE incluir DUAS versões do roteiro na mesma mensagem:
+   
+   VERSÃO 1 - TAG ESTRUTURADA (para geração de card visual):
+   No INÍCIO da sua resposta, inclua a tag abaixo (será removida antes de enviar ao cliente):
+   [ROTEIRO_VISUAL]
+   Destino: [Nome do Destino]
+   Dias: [N]
+   Dia 1 - [Tema do dia]
+   09:00 | [Atividade] 🏨
+   14:00 | [Atividade] 🐠
+   19:00 | [Atividade] 🍽️
+   Dia 2 - [Tema]
+   09:00 | [Atividade] ☀️
+   ...
+   [/ROTEIRO_VISUAL]
+   
+   VERSÃO 2 - TEXTO BONITO (será enviado como mensagem):
    - Título: "🗓️ Roteiro Personalizado - [Destino] ([N] dias)"
    - Para cada dia, liste:
      ☀️ *Dia X - [Tema do dia]*
@@ -615,11 +632,12 @@ Se o usuário enviar UMA MENSAGEM com TODAS as informações (destino, datas, vi
      • 💡 Dica: uma dica prática sobre o dia
    - No final: "✨ Quer que eu ajuste algo no roteiro? Posso trocar atividades, adicionar mais dias ou focar em algo específico! 😊"
    
+   REGRAS DO ROTEIRO:
    Use os dados coletados (destino, datas, número de viajantes, se tem crianças) para personalizar.
    Calcule a quantidade de dias baseado nas datas de ida e volta.
    Use locais, restaurantes e atrações REAIS e conhecidos do destino.
    NÃO seja genérico - cite nomes de praias, restaurantes, mirantes, etc.
-   O roteiro deve ter entre 800 e 1500 caracteres.
+   O roteiro deve ter entre 800 e 1500 caracteres (versão texto).
 
 6. DETECÇÃO DE ALTERAÇÕES:
    Se o cliente, APÓS já ter recebido uma cotação ou ter uma cotação em processamento, pedir qualquer tipo de alteração (mudar datas, trocar destino, mais/menos pessoas, upgrade, downgrade, customização), NÃO crie nova cotação. Em vez disso, ADICIONE a tag:
@@ -1001,6 +1019,7 @@ function extractCollectedData(aiResponse: string, existingData: Record<string, a
 
 function cleanAiResponse(response: string): string {
   return response
+    .replace(/\[ROTEIRO_VISUAL\][\s\S]*?\[\/ROTEIRO_VISUAL\]/g, "")
     .replace(/\[DADOS:\w+=.*?\]/g, "")
     .replace(/\[STATUS:\w+\]/g, "")
     .replace(/\[COTAR_VIAGEM:\s*\{.*?\}\s*\]/gs, "")
@@ -1016,6 +1035,85 @@ function cleanAiResponse(response: string): string {
     .replace(/\[[A-Z_]+:[^\]]*\]/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+// Parse [ROTEIRO_VISUAL] tag into structured data for image generation
+function parseItineraryVisualTag(response: string): { destination: string; days: any[]; totalDays: number } | null {
+  const match = response.match(/\[ROTEIRO_VISUAL\]([\s\S]*?)\[\/ROTEIRO_VISUAL\]/);
+  if (!match) return null;
+
+  const content = match[1].trim();
+  const lines = content.split("\n").map(l => l.trim()).filter(Boolean);
+
+  let destination = "";
+  let totalDays = 0;
+  const days: any[] = [];
+  let currentDay: any = null;
+
+  for (const line of lines) {
+    if (line.startsWith("Destino:")) {
+      destination = line.replace("Destino:", "").trim();
+    } else if (line.startsWith("Dias:")) {
+      totalDays = parseInt(line.replace("Dias:", "").trim()) || 0;
+    } else if (/^Dia\s+\d+/i.test(line)) {
+      const dayMatch = line.match(/^(Dia\s+\d+)\s*[-–]\s*(.*)/i);
+      currentDay = {
+        day: dayMatch?.[1] || line,
+        theme: dayMatch?.[2] || "",
+        activities: [],
+      };
+      days.push(currentDay);
+    } else if (currentDay && line.includes("|")) {
+      const parts = line.split("|").map(p => p.trim());
+      const time = parts[0] || "";
+      const rest = parts.slice(1).join("|").trim();
+      // Extract trailing emoji
+      const emojiMatch = rest.match(/([\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}✈️🏨🍽️☀️🌅🌄🎉🏖️🐠🌊🏔️🎭🛍️🍷🌿🏛️⛵🚶‍♂️🧘‍♀️🎶💆‍♀️🏊‍♂️🤿🚡🎿⛷️🏂🛶🚴‍♂️🧗‍♂️🪂🏄‍♂️]+)\s*$/u);
+      currentDay.activities.push({
+        time,
+        name: rest.replace(/([\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}✈️🏨🍽️☀️🌅🌄🎉🏖️🐠🌊🏔️🎭🛍️🍷🌿🏛️⛵🚶‍♂️🧘‍♀️🎶💆‍♀️🏊‍♂️🤿🚡🎿⛷️🏂🛶🚴‍♂️🧗‍♂️🪂🏄‍♂️]+)\s*$/u, "").trim(),
+        emoji: emojiMatch?.[1] || "•",
+      });
+    }
+  }
+
+  if (!destination || days.length === 0) return null;
+  return { destination, days, totalDays: totalDays || days.length };
+}
+
+// Generate and send itinerary visual card
+async function generateAndSendItineraryVisual(phoneNumber: string, itineraryData: { destination: string; days: any[]; totalDays: number }, clientName?: string) {
+  try {
+    console.log("[ITINERARY-VISUAL] Generating visual for:", itineraryData.destination);
+    
+    const visualUrl = `${SUPABASE_URL}/functions/v1/generate-itinerary-visual`;
+    const visualResponse = await fetch(visualUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({
+        destination: itineraryData.destination,
+        days: itineraryData.days,
+        clientName: clientName || undefined,
+      }),
+    });
+
+    if (!visualResponse.ok) {
+      console.error("[ITINERARY-VISUAL] Edge function error:", visualResponse.status);
+      return;
+    }
+
+    const visualData = await visualResponse.json();
+    if (visualData.imageUrl) {
+      const caption = `🗺️ Roteiro ${itineraryData.destination} - ${itineraryData.totalDays} dias ✨\nPreparado por Téo | Tomorrow Travel ✈️`;
+      await sendWhatsAppImage(phoneNumber, visualData.imageUrl, caption);
+      console.log("[ITINERARY-VISUAL] Visual card sent to", phoneNumber);
+    }
+  } catch (err) {
+    console.error("[ITINERARY-VISUAL] Error generating/sending visual:", err);
+  }
 }
 
 function parseChangeRequestTag(content: string): string | null {
@@ -2539,6 +2637,9 @@ Regras OBRIGATÓRIAS:
 
       // === CONCIERGE BYPASS: skip all quotation logic ===
       if (conciergePromptOverride) {
+        // Check for itinerary visual tag BEFORE cleaning
+        const itineraryData = parseItineraryVisualTag(aiResponse);
+        
         const cleanResponse = cleanAiResponse(aiResponse);
         
         const updatedHistory = [
@@ -2567,6 +2668,13 @@ Regras OBRIGATÓRIAS:
           } catch (audioErr) {
             console.error("Error sending audio response:", audioErr);
           }
+        }
+
+        // Send visual itinerary card if detected (before text)
+        if (itineraryData) {
+          const clientNameForVisual = conversation.client_name || contactName || undefined;
+          await generateAndSendItineraryVisual(phoneNumber, itineraryData, clientNameForVisual);
+          await sendWhatsAppMessage(phoneNumber, "Preparei um roteiro especial pra nossa viagem! 🗺️✨ Salva essa imagem, vai ser nosso guia por lá! 😄");
         }
 
         await sendWhatsAppMessage(phoneNumber, cleanResponse);
@@ -2677,6 +2785,9 @@ Regras OBRIGATÓRIAS:
       // Check if AI triggered a quotation request - but ONLY if not already triggered before
       const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || !!collectedData._quotation_triggered;
       const quotationData = alreadyQuoted ? null : parseQuotationTag(aiResponse);
+
+      // Check for itinerary visual tag BEFORE cleaning
+      const itineraryVisualData = parseItineraryVisualTag(aiResponse);
 
       // Clean response (remove all tags)
       let cleanResponse = cleanAiResponse(aiResponse);
@@ -2920,6 +3031,13 @@ Regras OBRIGATÓRIAS:
         } catch (audioErr) {
           console.error("Error sending audio response:", audioErr);
         }
+      }
+
+      // Send visual itinerary card if detected (before text)
+      if (itineraryVisualData) {
+        const clientNameForVisual = newCollectedData.nome || conversation.client_name || contactName || undefined;
+        await generateAndSendItineraryVisual(phoneNumber, itineraryVisualData, clientNameForVisual);
+        await sendWhatsAppMessage(phoneNumber, "Preparei um roteiro especial pra você! 🗺️✨ Salva essa imagem, vai ser seu guia por lá! 😄");
       }
 
       await sendWhatsAppMessage(phoneNumber, cleanResponse);
