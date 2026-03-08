@@ -91,7 +91,6 @@ export function formatMemoryForPrompt(memory: ClientMemory): string {
     if (dna.gourmet) parts.push(`- 🍽️ Gourmet: ${dna.gourmet}%`);
     if (dna.zen) parts.push(`- 🧘 Zen: ${dna.zen}%`);
     if (dna.socialite) parts.push(`- 🎉 Socialite: ${dna.socialite}%`);
-    // Check for evolution
     const dnaHistory = prefs?.dna_historico;
     if (Array.isArray(dnaHistory) && dnaHistory.length > 1) {
       const prev = dnaHistory[dnaHistory.length - 2];
@@ -141,9 +140,51 @@ export function formatMemoryForPrompt(memory: ClientMemory): string {
       parts.push(`- Filhos: ${notes.filhos.map((f: any) => `${f.nome}${f.idade ? ` (${f.idade} anos)` : ""}`).join(", ")}`);
     }
     if (notes.acompanhantes) parts.push(`- Acompanhantes habituais: ${notes.acompanhantes}`);
-    if (notes.observacoes) parts.push(`- Observações: ${notes.observacoes}`);
+    if (notes.profissao) parts.push(`- Profissão: ${notes.profissao}`);
+    
+    // ===== GOSTOS E INTERESSES (Memória Perpétua) =====
+    const arrayFields: Array<{ key: string; label: string; emoji: string }> = [
+      { key: "gostos_gerais", label: "Gostos gerais", emoji: "❤️" },
+      { key: "preferencias_alimentares", label: "Preferências alimentares", emoji: "🍽️" },
+      { key: "restricoes_alimentares", label: "Restrições alimentares", emoji: "⚠️" },
+      { key: "alergias", label: "Alergias", emoji: "🚫" },
+      { key: "hobbies", label: "Hobbies", emoji: "🎯" },
+      { key: "esportes", label: "Esportes", emoji: "⚽" },
+      { key: "filmes_musicas", label: "Filmes/Músicas", emoji: "🎬" },
+      { key: "animais_estimacao", label: "Animais de estimação", emoji: "🐾" },
+      { key: "medos_fobias", label: "Medos/Fobias", emoji: "😰" },
+    ];
+    
+    const hasGostos = arrayFields.some(f => Array.isArray(notes[f.key]) && notes[f.key].length > 0);
+    if (hasGostos) {
+      parts.push(`\n🧡 GOSTOS E INTERESSES:`);
+      for (const field of arrayFields) {
+        const arr = notes[field.key];
+        if (Array.isArray(arr) && arr.length > 0) {
+          parts.push(`- ${field.emoji} ${field.label}: ${arr.join(", ")}`);
+        }
+      }
+    }
+    
+    // ===== OBSERVAÇÕES ACUMULADAS =====
+    if (Array.isArray(notes.observacoes) && notes.observacoes.length > 0) {
+      parts.push(`\n📝 OBSERVAÇÕES ACUMULADAS:`);
+      for (const obs of notes.observacoes.slice(-10)) {
+        if (typeof obs === "object" && obs.texto) {
+          parts.push(`- [${obs.data || "?"}] ${obs.texto}`);
+        } else if (typeof obs === "string") {
+          parts.push(`- ${obs}`);
+        }
+      }
+    } else if (typeof notes.observacoes === "string" && notes.observacoes) {
+      parts.push(`- Observações: ${notes.observacoes}`);
+    }
+    
+    // Other notes not already displayed
+    const displayedKeys = ["aniversario", "filhos", "acompanhantes", "profissao", "observacoes",
+      ...arrayFields.map(f => f.key)];
     for (const [k, v] of Object.entries(notes)) {
-      if (!["aniversario", "filhos", "acompanhantes", "observacoes"].includes(k) && v) {
+      if (!displayedKeys.includes(k) && v) {
         parts.push(`- ${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`);
       }
     }
@@ -166,13 +207,19 @@ export function formatMemoryForPrompt(memory: ClientMemory): string {
 
 const MEMORY_RULE = `
 
-REGRA DE MEMÓRIA (OBRIGATÓRIO):
-- Se houver MEMÓRIA DO CLIENTE acima, use-a naturalmente na conversa
+REGRA DE MEMÓRIA PERPÉTUA (OBRIGATÓRIO):
+- Se houver MEMÓRIA DO CLIENTE acima, SEMPRE consulte-a ANTES de fazer perguntas
+- NUNCA pergunte algo que já está na memória (nome, preferências, gostos, restrições, etc.)
 - Mencione destinos já visitados ou discutidos: "Da última vez falamos sobre Maldivas, lembra?"
 - Use preferências conhecidas para sugerir destinos sem precisar perguntar tudo de novo
 - Se souber nomes de filhos/aniversários, mencione com naturalidade
-- NÃO liste todos os dados de uma vez — use aos poucos, de forma orgânica
+- Lembre-se de TUDO: gostos alimentares, alergias, restrições, hobbies, profissão, pets, medos
+- Use informações pessoais para personalizar: "Sei que você adora comida japonesa, então vai amar Kyoto!"
+- Se souber a profissão, use com naturalidade: "Como fotógrafo, você vai pirar com as paisagens da Islândia!"
+- Se souber de pets, mencione: "E o Thor? Já encontrou hotel pet-friendly?"
+- NÃO liste todos os dados de uma vez — use aos poucos, de forma orgânica ao longo da conversa
 - Se o cliente nunca interagiu antes, siga o fluxo normal de coleta
+- Cada conversa é uma oportunidade de aprender MAIS sobre o cliente
 
 REGRA DE ADAPTAÇÃO EMOCIONAL (TÉO LÊ MENTES — OBRIGATÓRIO):
 - Se houver PERFIL EMOCIONAL acima, adapte SILENCIOSAMENTE suas sugestões:
@@ -221,8 +268,8 @@ export async function updateClientMemory(
   if (!whatsapp || conversationMessages.length < 2) return;
 
   try {
-    // Take last 20 messages for extraction
-    const recentMessages = conversationMessages.slice(-20);
+    // Take last 30 messages for extraction (increased from 20 for better coverage)
+    const recentMessages = conversationMessages.slice(-30);
     const conversationText = recentMessages
       .map((m) => `${m.role === "user" ? "Cliente" : "Téo"}: ${m.content}`)
       .join("\n");
@@ -252,8 +299,8 @@ Extraia APENAS informações NOVAS ou ATUALIZADAS mencionadas na conversa acima.
   },
   "emotional_profile": {
     "tom_emocional": "detecte o tom predominante: animado/estressado/cansado/ansioso/empolgado/nostálgico/indeciso/tranquilo/comemorando/preocupado ou null",
-    "nivel_energia": "alto/médio/baixo ou null (baseado na linguagem: muitos !, caps, emojis = alto; respostas curtas/secas = baixo)",
-    "nivel_estresse": "alto/médio/baixo ou null (detecte sinais: pressa, reclamações, frustração, cansaço mencionado)",
+    "nivel_energia": "alto/médio/baixo ou null",
+    "nivel_estresse": "alto/médio/baixo ou null",
     "momento_vida": "férias/lua-de-mel/aniversário/fuga-da-rotina/trabalho-remoto/família/amigos ou null"
   },
   "travel_history_new": [
@@ -263,14 +310,24 @@ Extraia APENAS informações NOVAS ou ATUALIZADAS mencionadas na conversa acima.
     "aniversario": "DD/MM ou null",
     "filhos": [{"nome": "X", "idade": 5}],
     "acompanhantes": "nome do cônjuge etc ou null",
-    "observacoes": "qualquer nota relevante ou null"
+    "profissao": "string ou null",
+    "animais_estimacao": ["nome e tipo do pet, ex: Thor (golden retriever)"],
+    "hobbies": ["hobby1", "hobby2"],
+    "esportes": ["esporte1", "esporte2"],
+    "preferencias_alimentares": ["comida japonesa", "vinho tinto", "café especial"],
+    "restricoes_alimentares": ["vegano", "sem glúten", "intolerante a lactose"],
+    "alergias": ["frutos do mar", "amendoim"],
+    "gostos_gerais": ["jazz", "fotografia", "filmes de terror", "praia", "montanha"],
+    "filmes_musicas": ["Star Wars", "MPB", "rock clássico"],
+    "medos_fobias": ["altura", "avião", "mar aberto"],
+    "observacoes_novas": ["qualquer nota relevante desta conversa que não se encaixe nos campos acima"]
   },
   "has_new_data": true/false
 }
 
 REGRAS:
 - Se não houver informação nova na conversa, retorne {"has_new_data": false}
-- Use null para campos sem informação
+- Use null para campos sem informação, [] para arrays vazios
 - NÃO invente dados — extraia APENAS o que foi explicitamente mencionado ou fortemente implícito
 - Para travel_history_new, inclua APENAS destinos discutidos NESTA conversa
 - Para emotional_profile: analise o TOM e ENERGIA das mensagens do CLIENTE (não do Téo)
@@ -279,11 +336,17 @@ REGRAS:
   • Sinais de ansiedade: muitas perguntas, "será que...", indecisão, trocar de ideia
   • Sinais de comemoração: "aniversário", "lua de mel", "promoção", "aposentadoria"
   • Sempre tente detectar o tom — mesmo respostas neutras indicam "tranquilo"
+- Para personal_notes: capture TUDO que o cliente revelar sobre si:
+  • Comidas favoritas, restrições, alergias → nos campos específicos
+  • Hobbies, esportes, profissão → nos campos específicos
+  • Pets, medos, gostos diversos → nos campos específicos
+  • Qualquer outra informação pessoal relevante → em observacoes_novas
+- NÃO repita dados que já existem nos DADOS EXISTENTES — apenas adicione NOVOS
 - Retorne APENAS o JSON, sem markdown, sem explicação`;
 
     const response = await callGemini(
       [{ role: "user", content: extractionPrompt }],
-      { model: "google/gemini-2.5-flash-lite", maxTokens: 1200 }
+      { model: "google/gemini-2.5-flash-lite", maxTokens: 2000 }
     );
 
     if (!response.ok) {
@@ -332,7 +395,6 @@ REGRAS:
       if (ep.nivel_estresse) mergedPrefs.nivel_estresse = ep.nivel_estresse;
       if (ep.momento_vida) mergedPrefs.momento_vida = ep.momento_vida;
 
-      // Keep emotional history (last 10 entries) for trend detection
       const history = Array.isArray(mergedPrefs.historico_emocional) ? mergedPrefs.historico_emocional : [];
       if (ep.tom_emocional) {
         history.push({
@@ -340,7 +402,6 @@ REGRAS:
           energia: ep.nivel_energia || null,
           data: new Date().toISOString().split("T")[0],
         });
-        // Keep only last 10
         mergedPrefs.historico_emocional = history.slice(-10);
       }
       console.log(`[MEMORY] Emotional profile detected: tom=${ep.tom_emocional}, energia=${ep.nivel_energia}, estresse=${ep.nivel_estresse}`);
@@ -350,12 +411,10 @@ REGRAS:
     const mergedHistory = [...(existingMemory?.travel_history || [])];
     if (extracted.travel_history_new?.length > 0) {
       for (const item of extracted.travel_history_new) {
-        // Avoid duplicates by destination name
         const existing = mergedHistory.find(
           (h: any) => h.destino?.toLowerCase() === item.destino?.toLowerCase()
         );
         if (existing) {
-          // Update existing entry
           Object.assign(existing, item);
         } else {
           mergedHistory.push(item);
@@ -363,26 +422,70 @@ REGRAS:
       }
     }
 
-    // Merge personal notes
+    // Merge personal notes with CUMULATIVE arrays
     const mergedNotes = { ...(existingMemory?.personal_notes || {}) };
     if (extracted.personal_notes) {
+      // Fields that should be merged as cumulative arrays (union, no duplicates)
+      const cumulativeArrayFields = [
+        "gostos_gerais", "preferencias_alimentares", "restricoes_alimentares",
+        "alergias", "hobbies", "esportes", "filmes_musicas",
+        "animais_estimacao", "medos_fobias"
+      ];
+
       for (const [k, v] of Object.entries(extracted.personal_notes)) {
-        if (v !== null && v !== undefined) {
-          if (k === "filhos" && Array.isArray(v)) {
-            // Merge children by name
-            const existingKids = Array.isArray(mergedNotes.filhos) ? mergedNotes.filhos : [];
-            for (const kid of v as any[]) {
-              const existingKid = existingKids.find((ek: any) => ek.nome?.toLowerCase() === kid.nome?.toLowerCase());
-              if (existingKid) {
-                Object.assign(existingKid, kid);
-              } else {
-                existingKids.push(kid);
+        if (v === null || v === undefined) continue;
+
+        if (k === "filhos" && Array.isArray(v)) {
+          // Merge children by name
+          const existingKids = Array.isArray(mergedNotes.filhos) ? mergedNotes.filhos : [];
+          for (const kid of v as any[]) {
+            const existingKid = existingKids.find((ek: any) => ek.nome?.toLowerCase() === kid.nome?.toLowerCase());
+            if (existingKid) {
+              Object.assign(existingKid, kid);
+            } else {
+              existingKids.push(kid);
+            }
+          }
+          mergedNotes.filhos = existingKids;
+        } else if (k === "observacoes_novas" && Array.isArray(v)) {
+          // Accumulate observations as array with timestamps (max 30)
+          const existingObs = Array.isArray(mergedNotes.observacoes) 
+            ? mergedNotes.observacoes 
+            : (typeof mergedNotes.observacoes === "string" && mergedNotes.observacoes 
+                ? [{ texto: mergedNotes.observacoes, data: "anterior" }] 
+                : []);
+          const today = new Date().toISOString().split("T")[0];
+          for (const obs of v as string[]) {
+            if (obs && typeof obs === "string") {
+              // Check if similar observation already exists
+              const isDuplicate = existingObs.some((e: any) => {
+                const existingText = typeof e === "string" ? e : e.texto || "";
+                return existingText.toLowerCase().includes(obs.toLowerCase().substring(0, 20));
+              });
+              if (!isDuplicate) {
+                existingObs.push({ texto: obs, data: today });
               }
             }
-            mergedNotes.filhos = existingKids;
-          } else {
-            mergedNotes[k] = v;
           }
+          mergedNotes.observacoes = existingObs.slice(-30);
+        } else if (cumulativeArrayFields.includes(k) && Array.isArray(v)) {
+          // Cumulative array merge: union with existing, no duplicates
+          const existingArr = Array.isArray(mergedNotes[k]) ? mergedNotes[k] : [];
+          for (const item of v as string[]) {
+            if (item && typeof item === "string") {
+              const isDuplicate = existingArr.some((e: string) => 
+                e.toLowerCase().trim() === item.toLowerCase().trim()
+              );
+              if (!isDuplicate) {
+                existingArr.push(item);
+              }
+            }
+          }
+          // Keep max 30 items per category
+          mergedNotes[k] = existingArr.slice(-30);
+        } else if (k !== "observacoes_novas") {
+          // Simple overwrite for scalar fields (profissao, acompanhantes, aniversario)
+          mergedNotes[k] = v;
         }
       }
     }

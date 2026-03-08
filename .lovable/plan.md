@@ -1,63 +1,118 @@
 
 
-## Plano: Memória Perpétua do Téo
+# Plano: 5 Features Téo 2030
 
-### Problema Atual
-O sistema de memória já existe (`client_memory` + `updateClientMemory`), mas tem limitações que impedem uma memória verdadeiramente perpétua:
+## Features Solicitadas (uma por vez, implementação completa)
+1. ✅ **Téo Grupal** — Viagem em grupo com cruzamento de preferências via WhatsApp
+2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
+3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
+9. ✅ **Téo Roleta** — Destino aleatório filtrado por DNA com animação textual
+10. ✅ **Téo Oráculo** — Previsão personalizada da viagem com signos, DNA e fase lunar
+4. ✅ **Téo DNA** — Perfil genético de viajante
+5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
+6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
+7. ✅ **Téo Compatibilidade** — Match de viagem entre DNAs de viajante
+8. ✅ **Téo SOS** — Assistente de emergência com embaixadas, hospitais e frases úteis
 
-1. **Apenas 20 últimas mensagens** são analisadas para extração (linha 225)
-2. **Categorias limitadas** — o prompt de extração foca em preferências de viagem, mas não captura gostos gerais (comidas favoritas, hobbies, medos, alergias, animais de estimação, profissão, etc.)
-3. **`personal_notes.observacoes`** é um campo texto único que é sobrescrito, não acumulado
-4. **Sem resumo cumulativo** — dados de conversas antigas que não estão nas últimas 20 mensagens se perdem se não foram capturados
+---
 
-### Solução
+## 7. Téo Compatibilidade (IMPLEMENTADO ✅)
 
-**1. Expandir o prompt de extração** (`client-memory.ts`, linha 237-282):
-- Adicionar categorias amplas: `gostos_gerais`, `restricoes_alimentares`, `hobbies`, `profissao`, `animais_estimacao`, `medos`, `alergias`, `preferencias_alimentares`, `filmes_musicas`, `esportes`
-- Mudar `observacoes` de string para array acumulativo de notas com data
-- Aumentar `maxTokens` de 1200 para 2000 para acomodar mais dados
+### Conceito
+O cliente envia `compatibilidade com 5511999999999` e o Téo compara os DNAs de Viajante dos dois, calcula score de compatibilidade e sugere destinos ideais para ambos.
 
-**2. Acumular observações em vez de sobrescrever** (`client-memory.ts`, merge de personal_notes ~linha 367-388):
-- `observacoes` passa a ser um array de strings com timestamp
-- Novas observações são adicionadas ao array (mantém últimas 30)
-- Outros campos novos (gostos, hobbies, etc.) são mergeados como arrays cumulativos
+### Comandos WhatsApp
+| Comando | Ação |
+|---------|------|
+| `compatibilidade com [número]` / `match viagem [número]` | Compara DNAs e sugere destino |
+| `compatibilidade` (sem número) | Téo pede o número do parceiro |
 
-**3. Injetar memória ampliada no prompt** (`formatMemoryForPrompt`, ~linha 46-165):
-- Adicionar seção "GOSTOS E INTERESSES" que exibe gostos gerais, hobbies, profissão, etc.
-- Adicionar seção "OBSERVAÇÕES ACUMULADAS" com notas históricas
+### Armazenamento (zero novas tabelas)
+Usa `client_memory.preferences`:
+- `ultimo_match`: `{ parceiro_phone, parceiro_nome, score, data }`
 
-**4. Reforçar regra de memória no MEMORY_RULE** (~linha 167-206):
-- Instrução explícita: "SEMPRE consulte a memória antes de fazer perguntas que já foram respondidas"
-- "Lembre-se de gostos, alergias, restrições alimentares, nomes de pets, profissão"
-- "Use informações pessoais para personalizar: 'Sei que você adora comida japonesa, então...'"
+### Arquivos modificados
+- `supabase/functions/whatsapp-webhook/index.ts`: Bloco de comando com regex, busca de 2 memórias, chamada Gemini, formatação e save
+- `supabase/functions/_shared/client-memory.ts`: `ultimo_match` no `formatMemoryForPrompt` + skipKeys
 
-### Arquivos Modificados
-- `supabase/functions/_shared/client-memory.ts` — único arquivo a alterar
+## 3. Téo DNA de Viajante (IMPLEMENTADO ✅)
 
-### Detalhes Técnicos
+### Conceito
+Questionário profundo de 10 perguntas que gera um perfil "genético" de viajante com 5 categorias (Explorador, Culturalista, Gourmet, Zen, Socialite) que evolui com cada viagem.
 
-**Novo schema do extraction prompt:**
-```json
-{
-  "preferences": { /* existente */ },
-  "emotional_profile": { /* existente */ },
-  "travel_history_new": [ /* existente */ ],
-  "personal_notes": {
-    "aniversario": "DD/MM",
-    "filhos": [{"nome": "X", "idade": 5}],
-    "acompanhantes": "nome",
-    "profissao": "string ou null",
-    "animais_estimacao": ["nome e tipo"],
-    "hobbies": ["hobby1", "hobby2"],
-    "restricoes_alimentares": ["vegano", "sem glúten"],
-    "alergias": ["string"],
-    "gostos_gerais": ["comida japonesa", "vinho tinto", "jazz"],
-    "medos_fobias": ["altura", "avião"],
-    "observacoes_novas": ["qualquer nota relevante desta conversa"]
-  },
-  "has_new_data": true/false
-}
-```
+### Comandos WhatsApp
+| Comando | Ação |
+|---------|------|
+| `meu dna` / `dna viajante` / `teste dna` | Inicia o questionário de 10 perguntas |
 
-**Merge de arrays cumulativos:** cada campo array (gostos_gerais, hobbies, etc.) faz union com dados existentes, eliminando duplicatas por similaridade. O campo `observacoes` vira array com limite de 30 entradas.
+### Categorias do DNA
+- 🏔️ Explorador: aventura, adrenalina, natureza selvagem
+- 🏛️ Culturalista: história, museus, arquitetura
+- 🍽️ Gourmet: gastronomia, vinhos, experiências culinárias
+- 🧘 Zen: relaxamento, praias, spas
+- 🎉 Socialite: festas, vida noturna, experiências sociais
 
+### Armazenamento (zero novas tabelas)
+Usa `client_memory.preferences` (JSONB):
+- `dna_viajante`: perfil atual com porcentagens, raw_result, answers
+- `dna_historico`: array com últimas 10 análises (para detectar evolução)
+
+### Evolução
+O DNA evolui automaticamente:
+- Cada vez que o teste é refeito, uma nova entrada é adicionada ao histórico
+- O formatMemoryForPrompt mostra a evolução (↑↓ por categoria)
+- Téo usa o DNA para personalizar sugestões sem perguntar demais
+
+### Arquivos modificados
+- `supabase/functions/whatsapp-webhook/index.ts`: Comando + questionário 10 perguntas + geração via Gemini
+- `supabase/functions/_shared/client-memory.ts`: DNA no prompt, na formatação e na regra de adaptação
+
+---
+
+## 1. Téo Grupal (IMPLEMENTADO ✅)
+
+### Tabelas criadas
+- `travel_groups`: group_code, creator_phone, creator_name, status, final_recommendation
+- `travel_group_members`: group_id, phone_number, member_name, preferences (JSONB), is_ready
+
+### Comandos WhatsApp
+| Comando | Ação |
+|---------|------|
+| `criar grupo` | Cria grupo, gera código 6 chars, inicia questionário |
+| `entrar grupo XYZABC` | Adiciona membro, inicia questionário |
+| `meu grupo` | Mostra status e membros |
+| `resultado grupo` | Cruza preferências via Gemini, envia a todos |
+| `sair grupo` | Remove membro |
+
+---
+
+## 2. Téo Lê Mentes (IMPLEMENTADO ✅)
+
+### Conceito
+Análise emocional SILENCIOSA das mensagens do cliente para adaptar recomendações automaticamente, sem nunca mencionar a análise.
+
+### Implementação (zero novas tabelas)
+Usa a infraestrutura existente de `client_memory.preferences` (JSONB):
+
+**Campos emocionais adicionados:**
+- `tom_emocional`: animado/estressado/cansado/ansioso/empolgado/nostálgico/indeciso/tranquilo/comemorando/preocupado
+- `nivel_energia`: alto/médio/baixo
+- `nivel_estresse`: alto/médio/baixo
+- `momento_vida`: férias/lua-de-mel/aniversário/fuga-da-rotina/trabalho-remoto/família/amigos
+- `historico_emocional`: array com últimas 10 leituras emocionais (para detectar tendências)
+
+**Detecção de sinais:**
+- Estresse: "preciso sair daqui", "to exausto", respostas impacientes
+- Animação: "!!", emojis, "mal posso esperar"
+- Ansiedade: muitas perguntas, "será que...", indecisão
+- Comemoração: "aniversário", "lua de mel", "promoção"
+
+**Adaptação silenciosa (via MEMORY_RULE):**
+- Estressado → Sugere descanso, spas, all-inclusive
+- Animado → Sugere aventura, esportes, destinos vibrantes
+- Indeciso → Limita opções a 2-3, mais assertivo
+- Comemorando → Sugere upgrades, experiências premium
+- NUNCA menciona a análise ao cliente
+
+### Arquivos modificados
+- `supabase/functions/_shared/client-memory.ts`: Extraction prompt, merge logic, format, MEMORY_RULE
