@@ -1,71 +1,56 @@
 
 
-# Plano: Alerta de Golden Hour
+# Plano: Múltiplos contatos no Concierge com nome, telefone e notas individuais
 
-## Resumo
+## Problema Atual
 
-Adicionar uma nova ação `golden_hour` no `concierge-engine` que, para cada viagem ativa durante o período da viagem, calcula o horário do pôr do sol usando a API Sunrise-Sunset (gratuita, sem API key), e envia um alerta via WhatsApp 30 minutos antes com sugestão de viewpoint baseada na localização do hotel via Google Places.
+A tabela `active_trips` tem um único campo `client_phone` e `client_name`. Não suporta múltiplos números de WhatsApp por viagem, nem edição do número principal, nem notas especiais por contato.
 
-## Implementação
+## Solução
 
-### 1. Nova função `goldenHourAlerts()` no `concierge-engine/index.ts`
+Criar uma tabela `concierge_contacts` para armazenar múltiplos contatos por viagem ativa, cada um com nome, telefone, status ativo e notas especiais individuais. Atualizar a UI do concierge no TripManager e adaptar o webhook para consultar esta nova tabela.
 
-- Buscar `active_trips` ativas com `concierge_active = true` onde `check_in_date <= hoje <= check_out_date`
-- Para cada trip com `destination_lat`/`destination_lng`:
-  1. Chamar `https://api.sunrise-sunset.org/json?lat={lat}&lng={lng}&date=today&formatted=0` (API gratuita, sem key)
-  2. Extrair `sunset` (UTC) e converter para horário local usando `destination_timezone`
-  3. Verificar se agora está entre 25-35 minutos antes do sunset (janela de envio)
-  4. Verificar `wasAlertSent(tripId, "golden_hour_{today}")` para não duplicar
-  5. Se na janela: buscar viewpoints via Google Places (`searchNearby` com type `tourist_attraction` ou `point_of_interest` + keyword "sunset viewpoint")
-  6. Gerar mensagem personalizada com `generateTeoMessage` incluindo horário exato do sunset, nome do viewpoint e distância do hotel
-  7. Enviar via `sendWhatsAppMessage` + `sendWhatsAppLocation` do viewpoint
-  8. Salvar alerta e incrementar contagem
-
-### 2. Registrar ação no switch do servidor
-
-Adicionar case `"golden_hour"` chamando `goldenHourAlerts()`.
-
-### 3. Cron job (via SQL insert)
-
-Agendar execução a cada 15 minutos (para pegar a janela de 30min antes do sunset em diferentes fusos):
+### 1. Migração de Banco
 
 ```sql
-select cron.schedule(
-  'golden-hour-alerts',
-  '*/15 * * * *',
-  $$ select net.http_post(
-    url:='https://wimdgvdpefkmjzzsklnt.supabase.co/functions/v1/concierge-engine',
-    headers:='{"Content-Type":"application/json","Authorization":"Bearer ANON_KEY"}'::jsonb,
-    body:='{"action":"golden_hour"}'::jsonb
-  ) as request_id; $$
+CREATE TABLE public.concierge_contacts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  trip_id uuid NOT NULL REFERENCES public.active_trips(id) ON DELETE CASCADE,
+  contact_name text NOT NULL,
+  contact_phone text NOT NULL,
+  is_active boolean NOT NULL DEFAULT true,
+  special_notes text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.concierge_contacts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins can manage concierge_contacts"
+  ON public.concierge_contacts FOR ALL
+  TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 ```
 
-### Arquivo modificado
+Ao ativar o concierge, o `client_phone` existente em `active_trips` continua sendo o número principal (para compatibilidade com o webhook), e uma entrada correspondente é criada em `concierge_contacts`.
 
-- **`supabase/functions/concierge-engine/index.ts`** — nova função `goldenHourAlerts()` + case no switch
+### 2. UI no TripManager (tab Concierge)
 
-### Fluxo
+Quando o concierge está ativo:
+- Mostrar o telefone principal com botão de **Editar** (ícone lápis) que permite alterar o `client_phone` em `active_trips` e o registro correspondente em `concierge_contacts`
+- Seção **"Contatos do Concierge"** com lista dos contatos cadastrados, cada um mostrando: nome, telefone, toggle ativo/inativo, textarea de notas especiais
+- Botão **"Adicionar Contato"** que abre campos inline para nome + telefone
+- O campo "Informações Especiais para o Téo" global permanece (para notas gerais da viagem)
+- Cada contato individual tem seu próprio campo de notas especiais
 
-```text
-Cron (cada 15min) → golden_hour action
-       │
-       ▼
-  Busca active_trips durante viagem
-       │
-       ▼
-  Para cada trip: sunrise-sunset.org → horário do sunset
-       │
-       ▼
-  Agora está 30min antes? + Não enviou hoje?
-       │
-       ▼
-  Google Places: "sunset viewpoint" perto do hotel
-       │
-       ▼
-  generateTeoMessage → mensagem personalizada
-       │
-       ▼
-  sendWhatsAppMessage + sendWhatsAppLocation
-```
+### 3. Webhook (whatsapp-webhook)
+
+Na verificação de concierge ativo, além de checar `active_trips.client_phone`, também verificar se o número existe em `concierge_contacts` com `is_active = true`. Se encontrado por esta via, usar o `contact_name` e `special_notes` do contato específico para enriquecer o contexto do prompt.
+
+### Arquivos Modificados
+
+1. **Migração SQL**: Criar tabela `concierge_contacts`
+2. **`src/components/admin/TripManager.tsx`**: UI para listar/adicionar/editar/remover contatos do concierge, editar telefone principal
+3. **`supabase/functions/whatsapp-webhook/index.ts`**: Consultar `concierge_contacts` para identificar contatos adicionais e injetar notas individuais no contexto
 

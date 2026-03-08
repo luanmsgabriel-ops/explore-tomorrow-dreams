@@ -929,6 +929,171 @@ async function searchByText(lat: number, lng: number, query: string, maxResults:
   } catch (e) { console.error("Text search error:", e); return []; }
 }
 
+// ========== GOLDEN HOUR ALERTS ==========
+
+async function goldenHourAlerts() {
+  const today = new Date().toISOString().split("T")[0];
+
+  const { data: trips } = await supabase
+    .from("active_trips")
+    .select("*")
+    .eq("concierge_active", true)
+    .lte("check_in_date", today)
+    .gte("check_out_date", today)
+    .not("destination_lat", "is", null)
+    .not("destination_lng", "is", null);
+
+  if (!trips?.length) {
+    console.log("[GOLDEN_HOUR] No active trips with coordinates");
+    return;
+  }
+
+  for (const trip of trips) {
+    try {
+      const alertKey = `golden_hour_${today}`;
+      if (await wasAlertSent(trip.id, alertKey)) {
+        console.log(`[GOLDEN_HOUR] Already sent for trip ${trip.id} today`);
+        continue;
+      }
+
+      const tz = trip.destination_timezone || "America/Sao_Paulo";
+      if (!(await canSendMessage(trip.id, tz))) continue;
+
+      // 1. Get sunset time from sunrise-sunset.org (free, no API key)
+      const sunRes = await fetch(
+        `https://api.sunrise-sunset.org/json?lat=${trip.destination_lat}&lng=${trip.destination_lng}&date=${today}&formatted=0`
+      );
+      if (!sunRes.ok) {
+        console.error(`[GOLDEN_HOUR] Sunrise API failed for trip ${trip.id}`);
+        continue;
+      }
+      const sunData = await sunRes.json();
+      if (sunData.status !== "OK" || !sunData.results?.sunset) continue;
+
+      const sunsetUtc = new Date(sunData.results.sunset);
+      const nowUtc = new Date();
+
+      // Calculate minutes until sunset
+      const minutesUntilSunset = (sunsetUtc.getTime() - nowUtc.getTime()) / 60000;
+
+      // Send window: between 25 and 40 minutes before sunset
+      if (minutesUntilSunset < 25 || minutesUntilSunset > 40) {
+        console.log(`[GOLDEN_HOUR] Trip ${trip.id}: sunset in ${Math.round(minutesUntilSunset)} min, outside window`);
+        continue;
+      }
+
+      console.log(`[GOLDEN_HOUR] Trip ${trip.id}: sunset in ${Math.round(minutesUntilSunset)} min — sending alert!`);
+
+      // 2. Format sunset time in local timezone
+      const sunsetLocal = new Intl.DateTimeFormat("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: tz,
+      }).format(sunsetUtc);
+
+      // 3. Search for sunset viewpoints nearby via Google Places
+      let viewpointName = "";
+      let viewpointLat = 0;
+      let viewpointLng = 0;
+      let viewpointDistance = "";
+
+      if (GOOGLE_MAPS_API_KEY) {
+        try {
+          // Try text search for sunset spots
+          const searchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=sunset+viewpoint+miradouro+praia&location=${trip.destination_lat},${trip.destination_lng}&radius=5000&language=pt-BR&key=${GOOGLE_MAPS_API_KEY}`;
+          const placesRes = await fetch(searchUrl);
+          const placesData = await placesRes.json();
+
+          if (placesData.results?.length > 0) {
+            // Pick highest rated or first result
+            const sorted = placesData.results
+              .filter((p: any) => p.rating >= 3.5)
+              .sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0));
+            const best = sorted[0] || placesData.results[0];
+
+            viewpointName = best.name;
+            viewpointLat = best.geometry.location.lat;
+            viewpointLng = best.geometry.location.lng;
+
+            // Calculate distance from hotel
+            const distMeters = getDistanceMeters(
+              Number(trip.destination_lat), Number(trip.destination_lng),
+              viewpointLat, viewpointLng
+            );
+            viewpointDistance = distMeters < 1000
+              ? `${Math.round(distMeters)}m`
+              : `${(distMeters / 1000).toFixed(1)}km`;
+          }
+        } catch (e) {
+          console.error("[GOLDEN_HOUR] Places search error:", e);
+        }
+      }
+
+      // 4. Generate personalized message
+      const clientName = trip.client_name || "viajante";
+      const city = trip.destination_city || "destino";
+
+      let viewpointInfo = "";
+      if (viewpointName) {
+        viewpointInfo = `\nMelhor ponto sugerido: "${viewpointName}" (${viewpointDistance} do hotel). Vou enviar a localização!`;
+      }
+
+      const prompt = `Gere uma mensagem curta e encantadora de alerta de Golden Hour para ${clientName} em ${city}.
+O pôr do sol será às ${sunsetLocal} (horário local), faltam ~${Math.round(minutesUntilSunset)} minutos.
+${viewpointName ? `O melhor viewpoint próximo é "${viewpointName}", a ${viewpointDistance} do hotel.` : ""}
+Use emojis de pôr do sol 🌅. Tom: amigo animado avisando para não perder o momento. Max 4 frases.`;
+
+      const message = await generateTeoMessage(prompt);
+
+      // 5. Send to main client phone
+      await sendWhatsAppMessage(trip.client_phone, message);
+
+      // 6. Send viewpoint location if found
+      if (viewpointName && viewpointLat && viewpointLng) {
+        await sendWhatsAppLocation(
+          trip.client_phone,
+          viewpointLat,
+          viewpointLng,
+          viewpointName,
+          `Melhor ponto para o pôr do sol 🌅`
+        );
+      }
+
+      // 7. Send to additional concierge contacts
+      const { data: contacts } = await supabase
+        .from("concierge_contacts")
+        .select("contact_phone, contact_name")
+        .eq("trip_id", trip.id)
+        .eq("is_active", true);
+
+      if (contacts?.length) {
+        for (const contact of contacts) {
+          if (contact.contact_phone !== trip.client_phone) {
+            await sendWhatsAppMessage(contact.contact_phone, message);
+            if (viewpointName && viewpointLat && viewpointLng) {
+              await sendWhatsAppLocation(
+                contact.contact_phone,
+                viewpointLat,
+                viewpointLng,
+                viewpointName,
+                `Melhor ponto para o pôr do sol 🌅`
+              );
+            }
+          }
+        }
+      }
+
+      // 8. Save alert and increment count
+      await saveAlert(trip.id, alertKey, `Sunset at ${sunsetLocal}, viewpoint: ${viewpointName || "none"}`);
+      await incrementMessageCount(trip.id);
+
+      console.log(`[GOLDEN_HOUR] ✅ Alert sent for trip ${trip.id} — sunset at ${sunsetLocal}`);
+    } catch (err) {
+      console.error(`[GOLDEN_HOUR] Error for trip ${trip.id}:`, err);
+    }
+  }
+}
+
 // ========== MAIN SERVER ==========
 
 serve(async (req) => {
@@ -964,6 +1129,9 @@ serve(async (req) => {
         break;
       case "daily_stories":
         await dailyStories();
+        break;
+      case "golden_hour":
+        await goldenHourAlerts();
         break;
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
