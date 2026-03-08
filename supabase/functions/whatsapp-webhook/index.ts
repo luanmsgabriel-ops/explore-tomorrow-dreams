@@ -5976,10 +5976,10 @@ Regras OBRIGATÓRIAS:
       }
 
       // ========== AUTO-DETECT MODE FROM MESSAGE CONTENT ==========
-      // If mode is "auto", analyze message to intelligently switch modes
+      // Analyze message to intelligently switch modes — works for ALL modes, not just "auto"
       let effectiveTeoMode = collectedData._teo_mode || "auto";
       
-      if (effectiveTeoMode === "auto") {
+      {
         const msgLower = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         
         // Concierge intent signals: travel companion needs, location queries, trip logistics
@@ -5988,14 +5988,36 @@ Regras OBRIGATÓRIAS:
         // Cotação intent signals: pricing, booking, destination planning  
         const cotacaoSignals = /(?:quanto custa|preco|valor|orcamento|pacote|cotar|cotacao|quero viajar|viagem para|passagem|reservar|disponibilidade|data.*(ida|volta)|quantas pessoas|lua de mel|ferias|feriado|promoc|oferta|destino|pra onde|para onde|conhecer|quero ir|vamos para|bora para|me leva)/i;
         
-        if (conciergeSignals.test(msgLower)) {
+        const hasConcierge = conciergeSignals.test(msgLower);
+        const hasCotacao = cotacaoSignals.test(msgLower);
+        
+        if (effectiveTeoMode === "auto") {
+          // Auto mode: detect and switch
+          if (hasConcierge) {
+            effectiveTeoMode = "concierge";
+            console.log(`🔄 Auto-detected CONCIERGE mode from message content`);
+          } else if (hasCotacao) {
+            effectiveTeoMode = "cotacao";
+            console.log(`🔄 Auto-detected COTAÇÃO mode from message content`);
+          }
+        } else if (effectiveTeoMode === "cotacao" && hasConcierge && !hasCotacao) {
+          // In cotação but message is clearly about concierge → switch
           effectiveTeoMode = "concierge";
-          console.log(`🔄 Auto-detected CONCIERGE mode from message content`);
-        } else if (cotacaoSignals.test(msgLower)) {
+          collectedData._teo_mode = "concierge";
+          await supabase.from("whatsapp_conversations").update({
+            collected_data: { ...collectedData, _teo_mode: "concierge" }
+          }).eq("id", conversation.id);
+          console.log(`🔄 Auto-switched from COTAÇÃO → CONCIERGE`);
+        } else if (effectiveTeoMode === "concierge" && hasCotacao && !hasConcierge) {
+          // In concierge but message is clearly about cotação → switch
           effectiveTeoMode = "cotacao";
-          console.log(`🔄 Auto-detected COTAÇÃO mode from message content`);
+          collectedData._teo_mode = "cotacao";
+          await supabase.from("whatsapp_conversations").update({
+            collected_data: { ...collectedData, _teo_mode: "cotacao" }
+          }).eq("id", conversation.id);
+          console.log(`🔄 Auto-switched from CONCIERGE → COTAÇÃO`);
         }
-        // If no signal detected, stays "auto" → falls through to existing logic
+        // If no opposing signal detected, keep current mode
       }
 
       // Check if this client is a concierge client (active trip) — use concierge prompt instead of sales
