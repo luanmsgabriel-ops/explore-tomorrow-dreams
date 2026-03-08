@@ -5365,11 +5365,14 @@ REGRAS:
             const isAboutCotacao = nonChefCotacao.test(chefMsgLower);
             const isAboutConcierge = nonChefConcierge.test(chefMsgLower);
             
-            if (!isAboutFood && (isAboutCotacao || isAboutConcierge)) {
-              // Auto-exit chef mode
-              console.log(`🔄 Auto-exiting Chef Mode — detected ${isAboutCotacao ? 'cotação' : 'concierge'} intent`);
+            if (!isAboutFood) {
+              // Auto-exit chef mode — message is not about food/menu
+              console.log(`🔄 Auto-exiting Chef Mode — message not about food: "${chefMsgLower.substring(0, 50)}"`);
               const updatedCollected = { ...modeData, _chef_mode: false };
               await supabase.from("whatsapp_conversations").update({ collected_data: updatedCollected }).eq("id", convForModeCheck.id);
+              
+              // Send brief transition message
+              await sendWhatsAppMessage(phoneNumber, "👨‍🍳 Saí do Modo Chef! Vou te ajudar com isso... 😊");
               // DON'T return — let the flow continue to normal processing
             } else {
             const savedMenuAnalysis = modeData._chef_menu_analysis || "";
