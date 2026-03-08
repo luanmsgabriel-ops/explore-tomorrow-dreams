@@ -5476,6 +5476,7 @@ REGRAS:
             return new Response(JSON.stringify({ status: "ok", mode_isolation: "chef_menu_qa" }), {
               status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
+            } // close else block for auto-exit check
           }
         }
       }
