@@ -2382,20 +2382,47 @@ serve(async (req) => {
         }
       }
 
-      // ========== TRANSLATOR MODE: Activation/Deactivation & Audio Translation ==========
+      // ========== TRANSLATOR MODE: Universal Translation (Text, Audio, Photos) ==========
       {
-        const translatorActivateRegex = /^(tradutor|modo tradutor|translator|ativar tradutor|traduzir)$/i;
+        const translatorActivateRegex = /^(tradutor|modo tradutor|translator|ativar tradutor|traduzir|tradutor universal)$/i;
         const translatorDeactivateRegex = /^(sair tradutor|desativar tradutor|sair do tradutor|parar tradutor|exit translator)$/i;
+        // Set target language: "tradutor para japonês", "traduzir para francês"
+        const translatorSetLangRegex = /^(?:tradutor|traduzir)\s+(?:para|to)\s+(.+)$/i;
+
+        // Check for language-specific activation
+        const langMatch = translatorSetLangRegex.exec(lowerMsg.trim());
+        if (langMatch) {
+          const targetLang = langMatch[1].trim();
+          const savedConvT = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+          if (savedConvT) {
+            const existingData = (savedConvT.collected_data as Record<string, any>) || {};
+            await supabase.from("whatsapp_conversations").update({
+              collected_data: { ...existingData, _translator_mode: true, _translator_target_lang: targetLang },
+            }).eq("id", savedConvT.id);
+
+            const activationMsg = `🌐 *Modo Tradutor Universal Ativado!*\n🎯 Idioma alvo: *${targetLang}*\n\nAgora você pode mandar:\n📝 *Texto* — traduzo na hora\n🎙️ *Áudio* — transcrevo e traduzo\n📸 *Foto* — leio placas, avisos e traduzo\n\n💡 Incluo contexto cultural quando relevante!\n\nPra sair: *sair tradutor*\nPra mudar idioma: *tradutor para [idioma]*`;
+            await sendWhatsAppMessage(phoneNumber, activationMsg);
+
+            const updH = [
+              ...((savedConvT.messages_history as any[]) || []),
+              { role: "assistant", content: activationMsg, timestamp: new Date().toISOString() },
+            ];
+            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConvT.id);
+          }
+          return new Response(JSON.stringify({ status: "ok", translator_activated: true, target_lang: targetLang }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
 
         if (translatorActivateRegex.test(lowerMsg.trim())) {
           const savedConvT = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
           if (savedConvT) {
             const existingData = (savedConvT.collected_data as Record<string, any>) || {};
             await supabase.from("whatsapp_conversations").update({
-              collected_data: { ...existingData, _translator_mode: true },
+              collected_data: { ...existingData, _translator_mode: true, _translator_target_lang: null },
             }).eq("id", savedConvT.id);
 
-            const activationMsg = "🌐 *Modo Tradutor Ativado!*\n\nAgora é só mandar um áudio que eu traduzo automaticamente! 🎙️\n\n🇧🇷 Português → 🇺🇸 Inglês\n🇺🇸 Inglês → 🇧🇷 Português\n\nPra sair do modo tradutor, mande: *sair tradutor*";
+            const activationMsg = "🌐 *Modo Tradutor Universal Ativado!*\n\nAgora você pode mandar:\n📝 *Texto* — traduzo na hora\n🎙️ *Áudio* — transcrevo e traduzo\n📸 *Foto de placa/aviso* — leio o texto e traduzo\n\n🔄 Auto-detecta o idioma:\n🇧🇷 Português → 🇺🇸 Inglês\n🇺🇸🇪🇸🇫🇷🇮🇹🇩🇪🇯🇵 Qualquer idioma → 🇧🇷 Português\n\n💡 Dica: mande *tradutor para japonês* pra definir um idioma alvo específico!\n\nPra sair: *sair tradutor*";
             await sendWhatsAppMessage(phoneNumber, activationMsg);
 
             const updH = [
@@ -2414,7 +2441,7 @@ serve(async (req) => {
           if (savedConvT) {
             const existingData = (savedConvT.collected_data as Record<string, any>) || {};
             await supabase.from("whatsapp_conversations").update({
-              collected_data: { ...existingData, _translator_mode: false },
+              collected_data: { ...existingData, _translator_mode: false, _translator_target_lang: null },
             }).eq("id", savedConvT.id);
 
             const deactivationMsg = "✅ Modo Tradutor desativado! Voltei ao modo normal. 😊\n\nSe precisar traduzir de novo, é só mandar *tradutor*!";
@@ -2431,21 +2458,82 @@ serve(async (req) => {
           });
         }
 
-        // If in translator mode AND incoming is audio → translate instead of normal flow
-        if (incomingWasAudio && messageText && messageText !== "[Áudio não reconhecido]" && messageText !== "[Áudio não pôde ser baixado]") {
-          const { data: convForT } = await supabase
-            .from("whatsapp_conversations")
-            .select("id, collected_data, messages_history")
-            .eq("phone_number", phoneNumber)
-            .order("updated_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
+        // Check if in translator mode for any type of message
+        const { data: convForT } = await supabase
+          .from("whatsapp_conversations")
+          .select("id, collected_data, messages_history")
+          .eq("phone_number", phoneNumber)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-          const tData = (convForT?.collected_data as Record<string, any>) || {};
-          if (tData._translator_mode === true && convForT) {
+        const tData = (convForT?.collected_data as Record<string, any>) || {};
+        if (tData._translator_mode === true && convForT) {
+          const targetLang = tData._translator_target_lang || undefined;
+
+          // === PHOTO TRANSLATION (signs, notices, labels) ===
+          if (messageType === "image" && imageBase64Data) {
+            console.log("[TRANSLATOR] Photo received in translator mode, OCR + translate...");
+            await ensureConversationAndSaveMessage(phoneNumber, contactName, "📸 [Foto para tradução]");
+
+            const imgResult = await translateImage(imageBase64Data, "image/jpeg", targetLang);
+            if (!imgResult || !imgResult.items || imgResult.items.length === 0) {
+              const noTextMsg = imgResult?.image_description
+                ? `📸 Vi a imagem: *${imgResult.image_description}*\n\nMas não encontrei texto para traduzir. Mande uma foto com texto visível (placa, aviso, menu, etc.) 🔍`
+                : "📸 Não consegui identificar texto nessa foto. Tenta mandar uma foto mais nítida de uma placa, aviso ou texto! 🔍";
+              await sendWhatsAppMessage(phoneNumber, noTextMsg);
+              return new Response(JSON.stringify({ status: "ok", translator_no_text: true }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            let resultMsg = `📸 *TRADUÇÃO DE IMAGEM*\n`;
+            if (imgResult.image_description) {
+              resultMsg += `📍 _${imgResult.image_description}_\n`;
+            }
+            resultMsg += `🗣️ Idioma: *${imgResult.source_lang_name}*\n━━━━━━━━━━━━━━━\n\n`;
+
+            for (const item of imgResult.items) {
+              resultMsg += `📌 *${item.original}*\n➡️ ${item.translation}\n\n`;
+            }
+
+            if (imgResult.cultural_context) {
+              resultMsg += `━━━━━━━━━━━━━━━\n💡 *Contexto cultural:*\n${imgResult.cultural_context}`;
+            }
+
+            // Split if too long
+            if (resultMsg.length > 4000) {
+              const mid = resultMsg.lastIndexOf("\n", 3900);
+              await sendWhatsAppMessage(phoneNumber, resultMsg.substring(0, mid > 0 ? mid : 3900));
+              await sendWhatsAppMessage(phoneNumber, resultMsg.substring(mid > 0 ? mid : 3900));
+            } else {
+              await sendWhatsAppMessage(phoneNumber, resultMsg);
+            }
+
+            // Save to history
+            const { data: convAfterImg } = await supabase
+              .from("whatsapp_conversations")
+              .select("id, messages_history")
+              .eq("id", convForT.id)
+              .single();
+
+            if (convAfterImg) {
+              const updH = [
+                ...((convAfterImg.messages_history as any[]) || []),
+                { role: "assistant", content: `🌐📸 ${resultMsg}`, timestamp: new Date().toISOString() },
+              ];
+              await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterImg.id);
+            }
+
+            return new Response(JSON.stringify({ status: "ok", translator_image: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          // === AUDIO TRANSLATION ===
+          if (incomingWasAudio && messageText && messageText !== "[Áudio não reconhecido]" && messageText !== "[Áudio não pôde ser baixado]") {
             console.log("[TRANSLATOR] Audio in translator mode, processing...");
 
-            // Re-transcribe with auto-detect for better language detection
             const audioId = message.audio?.id;
             let transcriptionResult: { text: string; detected_language?: string } | null = null;
             if (audioId) {
@@ -2458,7 +2546,7 @@ serve(async (req) => {
             const originalText = transcriptionResult?.text || messageText;
             await ensureConversationAndSaveMessage(phoneNumber, contactName, `🎙️ ${originalText}`);
 
-            const translation = await translateText(originalText);
+            const translation = await translateText(originalText, targetLang);
             if (!translation || !translation.translation) {
               await sendWhatsAppMessage(phoneNumber, "😅 Não consegui traduzir esse áudio. Tenta mandar de novo com uma fala mais clara!");
               return new Response(JSON.stringify({ status: "ok", translator_failed: true }), {
@@ -2466,10 +2554,13 @@ serve(async (req) => {
               });
             }
 
-            const sLang = translation.source_lang?.toLowerCase() || "unknown";
-            const sFlag = sLang.startsWith("pt") ? "🇧🇷" : sLang.startsWith("en") ? "🇺🇸" : "🗣️";
-            const tFlag = translation.target_lang?.toLowerCase().startsWith("pt") ? "🇧🇷" : "🇺🇸";
-            const textMsg = `${sFlag} ${originalText}\n\n${tFlag} ${translation.translation}`;
+            const sFlag = getLangFlag(translation.source_lang);
+            const tFlag = getLangFlag(translation.target_lang);
+            let textMsg = `🎙️ *Áudio traduzido*\n\n${sFlag} *${translation.source_lang_name}:*\n${originalText}\n\n${tFlag} *${translation.target_lang_name}:*\n${translation.translation}`;
+
+            if (translation.cultural_context) {
+              textMsg += `\n\n💡 _${translation.cultural_context}_`;
+            }
 
             // Generate translated audio via TTS
             let translatedAudioUrl: string | null = null;
@@ -2502,8 +2593,52 @@ serve(async (req) => {
               await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterT.id);
             }
 
-            console.log(`[TRANSLATOR] Done: ${sLang} → ${translation.target_lang}`);
+            console.log(`[TRANSLATOR] Done: ${translation.source_lang} → ${translation.target_lang}`);
             return new Response(JSON.stringify({ status: "ok", translator_translated: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          // === TEXT TRANSLATION ===
+          if (messageType === "text" && messageText && messageText.length > 1) {
+            console.log("[TRANSLATOR] Text in translator mode, translating...");
+            await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+            const translation = await translateText(messageText, targetLang);
+            if (!translation || !translation.translation) {
+              await sendWhatsAppMessage(phoneNumber, "😅 Não consegui traduzir esse texto. Tenta de novo!");
+              return new Response(JSON.stringify({ status: "ok", translator_failed: true }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            const sFlag = getLangFlag(translation.source_lang);
+            const tFlag = getLangFlag(translation.target_lang);
+            let textMsg = `${sFlag} ${messageText}\n\n${tFlag} ${translation.translation}`;
+
+            if (translation.cultural_context) {
+              textMsg += `\n\n💡 _${translation.cultural_context}_`;
+            }
+
+            await sendWhatsAppMessage(phoneNumber, textMsg);
+
+            // Save to history
+            const { data: convAfterTxt } = await supabase
+              .from("whatsapp_conversations")
+              .select("id, messages_history")
+              .eq("id", convForT.id)
+              .single();
+
+            if (convAfterTxt) {
+              const updH = [
+                ...((convAfterTxt.messages_history as any[]) || []),
+                { role: "assistant", content: `🌐 ${textMsg}`, timestamp: new Date().toISOString() },
+              ];
+              await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterTxt.id);
+            }
+
+            console.log(`[TRANSLATOR] Text done: ${translation.source_lang} → ${translation.target_lang}`);
+            return new Response(JSON.stringify({ status: "ok", translator_text: true }), {
               status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
