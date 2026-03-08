@@ -2018,9 +2018,9 @@ serve(async (req) => {
               });
               if (imageResponse.ok) {
                 const imageBlob = await imageResponse.blob();
+                const arrBuf = await imageBlob.arrayBuffer();
                 // Store base64 for chef mode
                 try {
-                  const arrBuf = await imageBlob.arrayBuffer();
                   const uint8 = new Uint8Array(arrBuf);
                   let binary = "";
                   for (let i = 0; i < uint8.length; i++) {
@@ -2031,9 +2031,10 @@ serve(async (req) => {
                   console.error("Error converting image to base64:", b64Err);
                 }
                 const fileName = `review-photos/${phoneNumber}/${Date.now()}.jpg`;
+                const uploadBlob = new Blob([arrBuf], { type: "image/jpeg" });
                 const { data: uploadData, error: uploadError } = await supabase.storage
                   .from("destination-images")
-                  .upload(fileName, imageBlob, { contentType: "image/jpeg", upsert: true });
+                  .upload(fileName, uploadBlob, { contentType: "image/jpeg", upsert: true });
                 
                 if (!uploadError && uploadData) {
                   const { data: publicUrlData } = supabase.storage
