@@ -780,6 +780,86 @@ async function transcribeAudio(audioBuffer: ArrayBuffer): Promise<string | null>
   }
 }
 
+// Transcribe audio with auto language detection (no forced language_code)
+async function transcribeAudioAutoDetect(audioBuffer: ArrayBuffer): Promise<{ text: string; detected_language?: string } | null> {
+  if (!ELEVENLABS_API_KEY) {
+    console.error("ELEVENLABS_API_KEY not configured for STT auto-detect");
+    return null;
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append("file", new Blob([audioBuffer], { type: "audio/ogg" }), "audio.ogg");
+    formData.append("model_id", "scribe_v2");
+    // No language_code — let Scribe auto-detect
+
+    const response = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+      method: "POST",
+      headers: { "xi-api-key": ELEVENLABS_API_KEY },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("ElevenLabs STT auto-detect error:", response.status, errText);
+      return null;
+    }
+
+    const result = await response.json();
+    return { text: result.text || "", detected_language: result.language_code || undefined };
+  } catch (err) {
+    console.error("ElevenLabs STT auto-detect exception:", err);
+    return null;
+  }
+}
+
+// Translate text using Gemini Flash — auto-detect source and translate
+async function translateText(text: string): Promise<{ source_lang: string; target_lang: string; translation: string } | null> {
+  try {
+    const prompt = `You are a translator. Detect the language of the following text and translate it.
+- If it's Portuguese, translate to English.
+- If it's English, translate to Portuguese (Brazilian).
+- If it's any other language, translate to Portuguese (Brazilian).
+
+Return ONLY a valid JSON object with this exact structure (no markdown, no explanation):
+{"source_lang":"detected language code (pt/en/es/etc)","target_lang":"target language code","translation":"translated text"}
+
+Text to translate:
+"${text}"`;
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("[TRANSLATOR] Gemini error:", response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    let content = data.choices?.[0]?.message?.content || "";
+    content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+
+    const parsed = JSON.parse(content);
+    return {
+      source_lang: parsed.source_lang || "unknown",
+      target_lang: parsed.target_lang || "pt",
+      translation: parsed.translation || "",
+    };
+  } catch (err) {
+    console.error("[TRANSLATOR] Error:", err);
+    return null;
+  }
+}
+
 async function uploadAudioToStorage(audioBuffer: ArrayBuffer, phone: string): Promise<string | null> {
   const fileName = `teo-audio/${phone}/${Date.now()}.mp3`;
   const { data, error } = await supabase.storage
