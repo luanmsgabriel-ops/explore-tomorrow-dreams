@@ -64,11 +64,20 @@ export function formatMemoryForPrompt(memory: ClientMemory): string {
     // Any other prefs (excluding emotional fields - handled separately)
     const emotionalKeys = ["tom_emocional", "nivel_energia", "nivel_estresse", "momento_vida", "historico_emocional"];
     const dnaKeys = ["dna_viajante", "dna_historico"];
+    const astroKeys = ["signo", "data_nascimento", "ultimo_horoscopo"];
+    const skipKeys = ["estilo_viagem", "orcamento", "tipo", "clima", "companhia", "playlist_history", ...emotionalKeys, ...dnaKeys, ...astroKeys];
     for (const [k, v] of Object.entries(prefs)) {
-      if (!["estilo_viagem", "orcamento", "tipo", "clima", "companhia", ...emotionalKeys, ...dnaKeys].includes(k) && v) {
-        parts.push(`- ${k}: ${v}`);
+      if (!skipKeys.includes(k) && v) {
+        parts.push(`- ${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`);
       }
     }
+  }
+
+  // ===== SIGNO / ASTROLOGIA (Téo Vidente) =====
+  if (prefs?.signo) {
+    parts.push(`\n🔮 SIGNO: ${prefs.signo}`);
+    if (prefs.data_nascimento) parts.push(`- Data de nascimento: ${prefs.data_nascimento}`);
+    if (prefs.ultimo_horoscopo?.data) parts.push(`- Último horóscopo: ${prefs.ultimo_horoscopo.data}`);
   }
 
   // ===== DNA DE VIAJANTE =====
@@ -177,6 +186,12 @@ REGRA DE DNA DE VIAJANTE (OBRIGATÓRIO):
 - Combine as categorias: "Como seu DNA mostra que você é Explorador Gourmet, que tal a Toscana?"
 - Se o cliente perguntar sobre seu DNA, diga: "Mande *meu dna* pra fazer/refazer o teste! 🧬"
 - Use o DNA para fazer sugestões mais assertivas sem perguntar demais
+
+REGRA DE SIGNO / ASTROLOGIA (TÉO VIDENTE):
+- Se houver SIGNO acima, use como contexto divertido quando fizer sentido
+- Exemplo: "Como bom Sagitário, você vai amar esse destino aventureiro!"
+- NÃO force referências astrológicas em toda mensagem — use com parcimônia
+- Se o cliente perguntar sobre seu signo, diga: "Mande *meu signo* pra eu consultar os astros! 🔮"
 `;
 
 export { MEMORY_RULE };
