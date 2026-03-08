@@ -2478,7 +2478,7 @@ serve(async (req) => {
               // Save to history
               const { data: convAfterChef } = await supabase
                 .from("whatsapp_conversations")
-                .select("id, messages_history")
+                .select("id, messages_history, collected_data")
                 .eq("id", convForChef.id)
                 .single();
 
