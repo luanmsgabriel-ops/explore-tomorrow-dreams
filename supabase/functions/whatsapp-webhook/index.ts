@@ -5355,6 +5355,23 @@ REGRAS:
           // Translator mode isolation removed — translator now handles text, audio, and images in the main translator block above
 
           if (modeData._chef_mode === true && messageType !== "image") {
+            // === AUTO-EXIT CHEF MODE: detect if message is NOT about food ===
+            const chefMsgLower = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const chefSignals = /(?:prato|comer|vegetariano|gluten|beber|sobremesa|menu|ingrediente|leve|pesado|cardapio|comida|vegano|lactose|alergen|drink|vinho|cerveja|suco|agua|cafe|cha|doce|salgado|frito|grelhado|assado|cru|sashimi|sushi|pizza|hamburguer|salada|sopa|entrada|principal|acompanhamento|guarnicao|porção|dose|copo|garrafa|harmoniza|sugest|recomend|indica.*prato|o que tem|opcao|opcoes)/i;
+            const nonChefCotacao = /(?:quanto custa|preco|valor|orcamento|pacote|cotar|cotacao|quero viajar|viagem para|passagem|reservar|disponibilidade|data.*(ida|volta)|quantas pessoas|lua de mel|ferias|feriado|promoc|oferta|destino|pra onde|para onde|conhecer|quero ir|vamos para|bora para|me leva)/i;
+            const nonChefConcierge = /(?:minha viagem|durante a viagem|no hotel|checkin|check-in|checkout|check-out|voo atras|meu voo|horario do voo|dica.*(restaurante|passeio|lugar)|o que fazer|perto de mim|proximo|perto daqui|localizacao|emergencia|sos|hospital|farmacia|embaixada|traduz|playlist|gastei|meus gastos|roleta|oraculo|vidente)/i;
+            
+            const isAboutFood = chefSignals.test(chefMsgLower);
+            const isAboutCotacao = nonChefCotacao.test(chefMsgLower);
+            const isAboutConcierge = nonChefConcierge.test(chefMsgLower);
+            
+            if (!isAboutFood && (isAboutCotacao || isAboutConcierge)) {
+              // Auto-exit chef mode
+              console.log(`🔄 Auto-exiting Chef Mode — detected ${isAboutCotacao ? 'cotação' : 'concierge'} intent`);
+              const updatedCollected = { ...modeData, _chef_mode: false };
+              await supabase.from("whatsapp_conversations").update({ collected_data: updatedCollected }).eq("id", convForModeCheck.id);
+              // DON'T return — let the flow continue to normal processing
+            } else {
             const savedMenuAnalysis = modeData._chef_menu_analysis || "";
             
             // If no menu has been sent yet, ask for one first
@@ -5415,7 +5432,7 @@ REGRAS:
 - Use formatação WhatsApp: *negrito*, _itálico_, emojis
 - Seja conciso (máximo 3 parágrafos)
 - Base suas respostas EXCLUSIVAMENTE no cardápio analisado
-- Se a pergunta não for sobre comida/cardápio, responda: "👨‍🍳 No Modo Chef, foco no cardápio! Pergunte sobre os pratos. Para voltar ao Téo normal, mande *sair chef*"
+- Foque nas perguntas sobre o cardápio. Se o cliente perguntar algo genérico não relacionado, responda brevemente e volte ao contexto do cardápio
 - Nunca sugira cotações de viagem
 - Lembre que o cliente pode enviar outra foto de cardápio a qualquer momento`;
 
@@ -5459,6 +5476,7 @@ REGRAS:
             return new Response(JSON.stringify({ status: "ok", mode_isolation: "chef_menu_qa" }), {
               status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
+            } // close else block for auto-exit check
           }
         }
       }
@@ -5958,10 +5976,10 @@ Regras OBRIGATÓRIAS:
       }
 
       // ========== AUTO-DETECT MODE FROM MESSAGE CONTENT ==========
-      // If mode is "auto", analyze message to intelligently switch modes
+      // Analyze message to intelligently switch modes — works for ALL modes, not just "auto"
       let effectiveTeoMode = collectedData._teo_mode || "auto";
       
-      if (effectiveTeoMode === "auto") {
+      {
         const msgLower = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         
         // Concierge intent signals: travel companion needs, location queries, trip logistics
@@ -5970,14 +5988,36 @@ Regras OBRIGATÓRIAS:
         // Cotação intent signals: pricing, booking, destination planning  
         const cotacaoSignals = /(?:quanto custa|preco|valor|orcamento|pacote|cotar|cotacao|quero viajar|viagem para|passagem|reservar|disponibilidade|data.*(ida|volta)|quantas pessoas|lua de mel|ferias|feriado|promoc|oferta|destino|pra onde|para onde|conhecer|quero ir|vamos para|bora para|me leva)/i;
         
-        if (conciergeSignals.test(msgLower)) {
+        const hasConcierge = conciergeSignals.test(msgLower);
+        const hasCotacao = cotacaoSignals.test(msgLower);
+        
+        if (effectiveTeoMode === "auto") {
+          // Auto mode: detect and switch
+          if (hasConcierge) {
+            effectiveTeoMode = "concierge";
+            console.log(`🔄 Auto-detected CONCIERGE mode from message content`);
+          } else if (hasCotacao) {
+            effectiveTeoMode = "cotacao";
+            console.log(`🔄 Auto-detected COTAÇÃO mode from message content`);
+          }
+        } else if (effectiveTeoMode === "cotacao" && hasConcierge && !hasCotacao) {
+          // In cotação but message is clearly about concierge → switch
           effectiveTeoMode = "concierge";
-          console.log(`🔄 Auto-detected CONCIERGE mode from message content`);
-        } else if (cotacaoSignals.test(msgLower)) {
+          collectedData._teo_mode = "concierge";
+          await supabase.from("whatsapp_conversations").update({
+            collected_data: { ...collectedData, _teo_mode: "concierge" }
+          }).eq("id", conversation.id);
+          console.log(`🔄 Auto-switched from COTAÇÃO → CONCIERGE`);
+        } else if (effectiveTeoMode === "concierge" && hasCotacao && !hasConcierge) {
+          // In concierge but message is clearly about cotação → switch
           effectiveTeoMode = "cotacao";
-          console.log(`🔄 Auto-detected COTAÇÃO mode from message content`);
+          collectedData._teo_mode = "cotacao";
+          await supabase.from("whatsapp_conversations").update({
+            collected_data: { ...collectedData, _teo_mode: "cotacao" }
+          }).eq("id", conversation.id);
+          console.log(`🔄 Auto-switched from CONCIERGE → COTAÇÃO`);
         }
-        // If no signal detected, stays "auto" → falls through to existing logic
+        // If no opposing signal detected, keep current mode
       }
 
       // Check if this client is a concierge client (active trip) — use concierge prompt instead of sales
