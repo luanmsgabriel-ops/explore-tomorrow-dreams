@@ -2695,7 +2695,7 @@ serve(async (req) => {
           });
         }
 
-        // If in chef mode AND incoming is image → analyze menu
+        // If incoming is image → check if it's a menu/food photo before activating chef mode
         if (messageType === "image" && imageBase64Data) {
           const { data: convForChef } = await supabase
             .from("whatsapp_conversations")
@@ -2708,14 +2708,102 @@ serve(async (req) => {
           const chefData = (convForChef?.collected_data as Record<string, any>) || {};
           const wasChefModeActive = chefData._chef_mode === true;
           
-          if (convForChef) {
-            // Auto-activate chef mode if not already active
-            if (!wasChefModeActive) {
-              console.log("[CHEF MODE] Auto-activating chef mode via image detection");
-              await sendWhatsAppMessage(phoneNumber, "👨‍🍳 *Modo Chef ativado automaticamente!*\nAnalisando seu cardápio... 📋");
-            } else {
-              console.log("[CHEF MODE] New menu image received, updating analysis...");
+          // If chef mode is already active, process as menu image directly
+          if (wasChefModeActive && convForChef) {
+            console.log("[CHEF MODE] New menu image received, updating analysis...");
+          } else if (convForChef) {
+            // NOT in chef mode — use AI to classify the image first
+            console.log("[CHEF MODE] Classifying image to check if it's a menu...");
+            try {
+              const classifyResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  model: "google/gemini-2.5-flash-lite",
+                  messages: [{
+                    role: "user",
+                    content: [
+                      { type: "text", text: "Is this image a restaurant menu, food menu, or menu card? Reply ONLY with 'yes' or 'no'." },
+                      { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64Data}` } }
+                    ]
+                  }],
+                  max_tokens: 10,
+                }),
+              });
+              
+              if (classifyResponse.ok) {
+                const classifyJson = await classifyResponse.json();
+                const answer = (classifyJson.choices?.[0]?.message?.content || "").toLowerCase().trim();
+                if (!answer.includes("yes")) {
+                  console.log("[CHEF MODE] Image is NOT a menu, skipping chef mode activation");
+                  // Not a menu — skip chef mode entirely, let the image go to normal AI flow
+                  // Continue to next block (don't return)
+                } else {
+                  console.log("[CHEF MODE] Image IS a menu, auto-activating chef mode");
+                  await sendWhatsAppMessage(phoneNumber, "👨‍🍳 *Modo Chef ativado automaticamente!*\nAnalisando seu cardápio... 📋");
+                }
+              }
+            } catch (classifyErr) {
+              console.error("[CHEF MODE] Classification error:", classifyErr);
+              // On error, skip chef mode to avoid false activation
             }
+            
+            // Re-check if we should proceed with chef analysis
+            // Only proceed if classification said yes (chef mode got activated message sent)
+            const { data: recheckConv } = await supabase
+              .from("whatsapp_conversations")
+              .select("collected_data")
+              .eq("id", convForChef.id)
+              .single();
+            const recheckData = (recheckConv?.collected_data as Record<string, any>) || {};
+            // If chef mode wasn't explicitly activated above, skip the menu analysis block
+            if (!wasChefModeActive && !recheckData._chef_mode) {
+              // Check if we sent the activation message (look for it in recent flow)
+              // We need a cleaner approach - use a flag
+            }
+          }
+          
+          // Proceed with chef analysis only if chef mode is active or was just activated
+          if (convForChef) {
+            // Re-fetch to check current state
+            const { data: currentChefConv } = await supabase
+              .from("whatsapp_conversations")
+              .select("id, collected_data, messages_history")
+              .eq("id", convForChef.id)
+              .single();
+            const currentChefData = (currentChefConv?.collected_data as Record<string, any>) || {};
+            
+            // Only analyze if chef mode was already active OR we just confirmed it's a menu
+            const shouldAnalyze = wasChefModeActive || await (async () => {
+              // Quick re-classify check — was the activation message sent?
+              try {
+                const cr = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                  method: "POST",
+                  headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    model: "google/gemini-2.5-flash-lite",
+                    messages: [{ role: "user", content: [
+                      { type: "text", text: "Is this a restaurant menu, food menu, or menu card? Reply ONLY 'yes' or 'no'." },
+                      { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64Data}` } }
+                    ]}],
+                    max_tokens: 10,
+                  }),
+                });
+                if (cr.ok) {
+                  const j = await cr.json();
+                  return (j.choices?.[0]?.message?.content || "").toLowerCase().includes("yes");
+                }
+              } catch { /* skip */ }
+              return false;
+            })();
+            
+            if (!shouldAnalyze) {
+              // Not a menu image — skip chef mode, continue to normal flow
+              console.log("[CHEF MODE] Skipping — not a menu image");
+            } else {
 
             await ensureConversationAndSaveMessage(phoneNumber, contactName, "📸 [Foto de cardápio]");
 
