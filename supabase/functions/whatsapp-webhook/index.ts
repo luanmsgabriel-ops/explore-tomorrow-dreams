@@ -2637,6 +2637,9 @@ Regras OBRIGATÓRIAS:
 
       // === CONCIERGE BYPASS: skip all quotation logic ===
       if (conciergePromptOverride) {
+        // Check for itinerary visual tag BEFORE cleaning
+        const itineraryData = parseItineraryVisualTag(aiResponse);
+        
         const cleanResponse = cleanAiResponse(aiResponse);
         
         const updatedHistory = [
@@ -2665,6 +2668,13 @@ Regras OBRIGATÓRIAS:
           } catch (audioErr) {
             console.error("Error sending audio response:", audioErr);
           }
+        }
+
+        // Send visual itinerary card if detected (before text)
+        if (itineraryData) {
+          const clientNameForVisual = conversation.client_name || contactName || undefined;
+          await generateAndSendItineraryVisual(phoneNumber, itineraryData, clientNameForVisual);
+          await sendWhatsAppMessage(phoneNumber, "Preparei um roteiro especial pra nossa viagem! 🗺️✨ Salva essa imagem, vai ser nosso guia por lá! 😄");
         }
 
         await sendWhatsAppMessage(phoneNumber, cleanResponse);
