@@ -962,6 +962,9 @@ serve(async (req) => {
       case "search_nearby":
         await searchByQuery(body.phone_number, body.latitude, body.longitude, body.query);
         break;
+      case "daily_stories":
+        await dailyStories();
+        break;
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
