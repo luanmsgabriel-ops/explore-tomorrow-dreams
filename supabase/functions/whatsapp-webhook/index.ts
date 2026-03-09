@@ -5357,18 +5357,23 @@ REGRAS:
           if (modeData._chef_mode === true && messageType !== "image") {
             // === AUTO-EXIT CHEF MODE: detect if message is NOT about food ===
             const chefMsgLower = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            const chefSignals = /(?:prato|comer|vegetariano|gluten|beber|sobremesa|menu|ingrediente|leve|pesado|cardapio|comida|vegano|lactose|alergen|drink|vinho|cerveja|suco|agua|cafe|cha|doce|salgado|frito|grelhado|assado|cru|sashimi|sushi|pizza|hamburguer|salada|sopa|entrada|principal|acompanhamento|guarnicao|porção|dose|copo|garrafa|harmoniza|sugest|recomend|indica.*prato|o que tem|opcao|opcoes)/i;
-            const nonChefCotacao = /(?:quanto custa|preco|valor|orcamento|pacote|cotar|cotacao|quero viajar|viagem para|passagem|reservar|disponibilidade|data.*(ida|volta)|quantas pessoas|lua de mel|ferias|feriado|promoc|oferta|destino|pra onde|para onde|conhecer|quero ir|vamos para|bora para|me leva)/i;
-            const nonChefConcierge = /(?:minha viagem|durante a viagem|no hotel|checkin|check-in|checkout|check-out|voo atras|meu voo|horario do voo|dica.*(restaurante|passeio|lugar)|o que fazer|perto de mim|proximo|perto daqui|localizacao|emergencia|sos|hospital|farmacia|embaixada|traduz|playlist|gastei|meus gastos|roleta|oraculo|vidente)/i;
             
+            // Explicit exit: mode commands, travel requests, concierge features, other Téo modes
+            const explicitExitSignals = /(?:quanto custa|preco|valor|orcamento|pacote|cotar|cotacao|quero viajar|viagem para|passagem|reservar|disponibilidade|quantas pessoas|lua de mel|ferias|feriado|promoc|oferta|destino|pra onde|para onde|conhecer|quero ir|vamos para|bora para|me leva|minha viagem|durante a viagem|no hotel|checkin|check-in|checkout|check-out|meu voo|horario do voo|o que fazer|perto de mim|proximo|perto daqui|localizacao|emergencia|sos|hospital|farmacia|embaixada|traduz|tradutor|playlist|gastei|meus gastos|roleta|oraculo|vidente|meu dna|dna viajante|mapa astral|meu signo|horoscopo|compatibilidade|criar grupo|modo cotacao|modo concierge|modo normal|sair modo|modo auto|modos|menu modos)/i;
+            
+            // Food-related signals that should STAY in chef mode
+            const chefSignals = /(?:prato|comer|vegetariano|gluten|beber|sobremesa|ingrediente|leve|pesado|comida|vegano|lactose|alergen|drink|vinho|cerveja|suco|agua|cafe|doce|salgado|frito|grelhado|assado|cru|sashimi|sushi|pizza|hamburguer|salada|sopa|entrada|principal|acompanhamento|guarnicao|porcao|dose|copo|garrafa|harmoniza|sugest|recomend|indica.*prato|o que tem de|opcao|opcoes|quanto.*prato|mais barato|mais caro|sem lactose|sem gluten|alergico|alergia|intolerancia)/i;
+            
+            const wantsToExit = explicitExitSignals.test(chefMsgLower);
             const isAboutFood = chefSignals.test(chefMsgLower);
-            const isAboutCotacao = nonChefCotacao.test(chefMsgLower);
-            const isAboutConcierge = nonChefConcierge.test(chefMsgLower);
             
-            if (!isAboutFood) {
+            // Exit if: explicitly wants something else, OR message is not about food
+            const shouldAutoExit = wantsToExit || !isAboutFood;
+            
+            if (shouldAutoExit) {
               // Auto-exit chef mode — message is not about food/menu
-              console.log(`🔄 Auto-exiting Chef Mode — message not about food: "${chefMsgLower.substring(0, 50)}"`);
-              const updatedCollected = { ...modeData, _chef_mode: false };
+              console.log(`🔄 Auto-exiting Chef Mode — wantsExit=${wantsToExit}, isFood=${isAboutFood}: "${chefMsgLower.substring(0, 50)}"`);
+              const updatedCollected = { ...modeData, _chef_mode: false, _chef_menu_analysis: null };
               await supabase.from("whatsapp_conversations").update({ collected_data: updatedCollected }).eq("id", convForModeCheck.id);
               
               // Send brief transition message
