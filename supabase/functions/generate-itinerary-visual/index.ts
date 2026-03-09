@@ -137,7 +137,10 @@ Generate the image now.`;
 
     const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
     const binaryData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
-    const fileName = `itinerary-visuals/${Date.now()}-${destination.toLowerCase().replace(/\s+/g, "-")}.png`;
+    const sanitized = destination.toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-");
+    const fileName = `itinerary-visuals/${Date.now()}-${sanitized}.png`;
 
     const { error: uploadError } = await supabase.storage
       .from("destination-images")
