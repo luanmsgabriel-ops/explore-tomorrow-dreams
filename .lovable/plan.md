@@ -1,118 +1,70 @@
 
 
-# Plano: 5 Features Téo 2030
+# Plano: Detectar grupos existentes antes de criar novo
 
-## Features Solicitadas (uma por vez, implementação completa)
-1. ✅ **Téo Grupal** — Viagem em grupo com cruzamento de preferências via WhatsApp
-2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
-3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
-9. ✅ **Téo Roleta** — Destino aleatório filtrado por DNA com animação textual
-10. ✅ **Téo Oráculo** — Previsão personalizada da viagem com signos, DNA e fase lunar
-4. ✅ **Téo DNA** — Perfil genético de viajante
-5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
-6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
-7. ✅ **Téo Compatibilidade** — Match de viagem entre DNAs de viajante
-8. ✅ **Téo SOS** — Assistente de emergência com embaixadas, hospitais e frases úteis
+## Problema
+Quando o usuário manda "criar grupo" e já possui grupos ativos, o Téo ignora os grupos existentes e vai direto para criar um novo. O fluxo correto deve ser:
 
----
+1. Verificar se o usuário já tem grupos ativos (`status = 'collecting'`)
+2. Se sim, perguntar: "Quer falar sobre o grupo X ou criar um novo?"
+3. Se escolher "novo", seguir o fluxo normal (nome → quantidade → link → questionário)
+4. O fluxo atual de nome → quantidade → link + confirmação de questionário já funciona corretamente
 
-## 7. Téo Compatibilidade (IMPLEMENTADO ✅)
+## Alteração em `supabase/functions/whatsapp-webhook/index.ts`
 
-### Conceito
-O cliente envia `compatibilidade com 5511999999999` e o Téo compara os DNAs de Viajante dos dois, calcula score de compatibilidade e sugere destinos ideais para ambos.
+### 1. Modificar o bloco `CREATE GROUP` (linha 2912)
 
-### Comandos WhatsApp
-| Comando | Ação |
-|---------|------|
-| `compatibilidade com [número]` / `match viagem [número]` | Compara DNAs e sugere destino |
-| `compatibilidade` (sem número) | Téo pede o número do parceiro |
+Antes de ir para `setup_name`, consultar `travel_groups` e `travel_group_members` para ver se o usuário já tem grupos ativos.
 
-### Armazenamento (zero novas tabelas)
-Usa `client_memory.preferences`:
-- `ultimo_match`: `{ parceiro_phone, parceiro_nome, score, data }`
+```typescript
+if (createGroupRegex.test(lowerMsgGroup)) {
+  const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
 
-### Arquivos modificados
-- `supabase/functions/whatsapp-webhook/index.ts`: Bloco de comando com regex, busca de 2 memórias, chamada Gemini, formatação e save
-- `supabase/functions/_shared/client-memory.ts`: `ultimo_match` no `formatMemoryForPrompt` + skipKeys
+  // Check for existing active groups (as creator or member)
+  const { data: existingCreatorGroups } = await supabase
+    .from("travel_groups")
+    .select("id, group_code, group_name, status, expected_members")
+    .eq("creator_phone", phoneNumber)
+    .eq("status", "collecting");
 
-## 3. Téo DNA de Viajante (IMPLEMENTADO ✅)
+  const { data: existingMemberships } = await supabase
+    .from("travel_group_members")
+    .select("group_id, travel_groups!inner(id, group_code, group_name, status)")
+    .eq("phone_number", phoneNumber);
+  // Filter active non-creator groups...
 
-### Conceito
-Questionário profundo de 10 perguntas que gera um perfil "genético" de viajante com 5 categorias (Explorador, Culturalista, Gourmet, Zen, Socialite) que evolui com cada viagem.
+  if (activeGroups.length > 0 && savedConv) {
+    // Set mode to "choose_existing_or_new"
+    // Show list: "Você já tem o grupo 'X' (código ABC123). Quer falar sobre ele ou criar um novo?"
+    // Store active group IDs in collected_data
+    return;
+  }
 
-### Comandos WhatsApp
-| Comando | Ação |
-|---------|------|
-| `meu dna` / `dna viajante` / `teste dna` | Inicia o questionário de 10 perguntas |
+  // No active groups — proceed to setup_name as before
+}
+```
 
-### Categorias do DNA
-- 🏔️ Explorador: aventura, adrenalina, natureza selvagem
-- 🏛️ Culturalista: história, museus, arquitetura
-- 🍽️ Gourmet: gastronomia, vinhos, experiências culinárias
-- 🧘 Zen: relaxamento, praias, spas
-- 🎉 Socialite: festas, vida noturna, experiências sociais
+### 2. Adicionar novo step `choose_existing_or_new` (após linha 3443)
 
-### Armazenamento (zero novas tabelas)
-Usa `client_memory.preferences` (JSONB):
-- `dna_viajante`: perfil atual com porcentagens, raw_result, answers
-- `dna_historico`: array com últimas 10 análises (para detectar evolução)
+No bloco de processamento de `_group_mode`, adicionar handler para quando o usuário responde à pergunta de grupo existente vs novo:
 
-### Evolução
-O DNA evolui automaticamente:
-- Cada vez que o teste é refeito, uma nova entrada é adicionada ao histórico
-- O formatMemoryForPrompt mostra a evolução (↑↓ por categoria)
-- Téo usa o DNA para personalizar sugestões sem perguntar demais
+- Se responder "novo" / "criar novo" / "2" → ir para `setup_name`
+- Se responder o nome/código do grupo ou "1" → mostrar status do grupo (reutilizar lógica do `myGroupRegex`)
 
-### Arquivos modificados
-- `supabase/functions/whatsapp-webhook/index.ts`: Comando + questionário 10 perguntas + geração via Gemini
-- `supabase/functions/_shared/client-memory.ts`: DNA no prompt, na formatação e na regra de adaptação
+### 3. Fluxo completo após as mudanças
 
----
+```text
+Usuário: "quero criar um grupo"
+  ↓
+[Tem grupo ativo?]
+  ├─ NÃO → setup_name → setup_count → cria grupo + link → setup_confirm → questioning
+  └─ SIM → "Você tem o grupo 'X'. Quer falar sobre ele (1) ou criar um novo (2)?"
+       ├─ "1" / nome do grupo → mostra status do grupo
+       └─ "2" / "novo" → setup_name → setup_count → cria grupo + link → setup_confirm → questioning
+```
 
-## 1. Téo Grupal (IMPLEMENTADO ✅)
+## Resultado Esperado
+- Téo detecta grupos ativos e pergunta antes de criar novo
+- "Criar novo" segue o fluxo completo: nome → quantidade → link WhatsApp → "Posso iniciar o questionário?"
+- Nenhuma tabela nova necessária
 
-### Tabelas criadas
-- `travel_groups`: group_code, creator_phone, creator_name, status, final_recommendation
-- `travel_group_members`: group_id, phone_number, member_name, preferences (JSONB), is_ready
-
-### Comandos WhatsApp
-| Comando | Ação |
-|---------|------|
-| `criar grupo` | Cria grupo, gera código 6 chars, inicia questionário |
-| `entrar grupo XYZABC` | Adiciona membro, inicia questionário |
-| `meu grupo` | Mostra status e membros |
-| `resultado grupo` | Cruza preferências via Gemini, envia a todos |
-| `sair grupo` | Remove membro |
-
----
-
-## 2. Téo Lê Mentes (IMPLEMENTADO ✅)
-
-### Conceito
-Análise emocional SILENCIOSA das mensagens do cliente para adaptar recomendações automaticamente, sem nunca mencionar a análise.
-
-### Implementação (zero novas tabelas)
-Usa a infraestrutura existente de `client_memory.preferences` (JSONB):
-
-**Campos emocionais adicionados:**
-- `tom_emocional`: animado/estressado/cansado/ansioso/empolgado/nostálgico/indeciso/tranquilo/comemorando/preocupado
-- `nivel_energia`: alto/médio/baixo
-- `nivel_estresse`: alto/médio/baixo
-- `momento_vida`: férias/lua-de-mel/aniversário/fuga-da-rotina/trabalho-remoto/família/amigos
-- `historico_emocional`: array com últimas 10 leituras emocionais (para detectar tendências)
-
-**Detecção de sinais:**
-- Estresse: "preciso sair daqui", "to exausto", respostas impacientes
-- Animação: "!!", emojis, "mal posso esperar"
-- Ansiedade: muitas perguntas, "será que...", indecisão
-- Comemoração: "aniversário", "lua de mel", "promoção"
-
-**Adaptação silenciosa (via MEMORY_RULE):**
-- Estressado → Sugere descanso, spas, all-inclusive
-- Animado → Sugere aventura, esportes, destinos vibrantes
-- Indeciso → Limita opções a 2-3, mais assertivo
-- Comemorando → Sugere upgrades, experiências premium
-- NUNCA menciona a análise ao cliente
-
-### Arquivos modificados
-- `supabase/functions/_shared/client-memory.ts`: Extraction prompt, merge logic, format, MEMORY_RULE
