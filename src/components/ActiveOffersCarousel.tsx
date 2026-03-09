@@ -258,8 +258,8 @@ export const ActiveOffersCarousel = () => {
   }
 
   return (
-    <section className="py-12 md:py-16">
-      <div className="container mx-auto px-4 lg:px-8">
+    <section className="py-8 md:py-12">
+      <div className="container mx-auto px-4 lg:px-8 bg-black/50 backdrop-blur-sm rounded-2xl p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
