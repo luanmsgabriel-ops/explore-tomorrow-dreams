@@ -535,15 +535,25 @@ Me conta aí! 👇`
                 <User className="w-4 h-4 text-primary-foreground" />
               </div>
             )}
-            <div
-              className={`max-w-[80%] p-3 rounded-2xl ${
-                message.role === 'user'
-                  ? 'bg-primary text-primary-foreground rounded-br-md'
-                  : 'bg-muted text-foreground rounded-bl-md'
-              }`}
-            >
-              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-            </div>
+            
+            {/* Itinerary card message */}
+            {message.itinerary ? (
+              <ChatItineraryCard
+                structured={message.itinerary.structured}
+                photos={message.itinerary.photos}
+                isLoading={message.itinerary.isLoading}
+              />
+            ) : (
+              <div
+                className={`max-w-[80%] p-3 rounded-2xl ${
+                  message.role === 'user'
+                    ? 'bg-primary text-primary-foreground rounded-br-md'
+                    : 'bg-muted text-foreground rounded-bl-md'
+                }`}
+              >
+                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+              </div>
+            )}
           </div>
         ))}
         
