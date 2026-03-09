@@ -70,7 +70,7 @@ export const HeroSection = () => {
                   </button>
                   <button 
                     onClick={() => setActiveModal('itinerary')}
-                    className="btn-outline flex items-center gap-3 text-lg px-8 py-4"
+                    className="btn-outline flex items-center gap-3 text-lg px-8 py-4 bg-teal/80 text-white border-teal"
                   >
                     <Sparkles className="w-5 h-5" />
                     Criar Roteiro com IA

@@ -102,34 +102,34 @@ const Index = () => {
 
           {/* Category cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Link to="/explorar" className="group card-gold-border p-8 transition-all duration-300 hover:scale-105">
+            <Link to="/explorar" className="group card-gold-border p-8 transition-all duration-300 hover:scale-105 bg-black/50 backdrop-blur-sm">
               <div className="w-14 h-14 rounded-xl bg-primary/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform border border-gold/30">
                 <Compass className="w-7 h-7 text-gold-light" />
               </div>
               <h3 className="font-serif text-2xl font-bold text-gold-embossed mb-3">Explorar</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
+              <p className="text-white text-sm leading-relaxed mb-4">
                 Destinos fora do comum e experiências que poucos conhecem. Para os verdadeiros exploradores.
               </p>
               <span className="text-gold-light text-sm font-medium group-hover:underline">Ver destinos →</span>
             </Link>
 
-            <Link to="/nacional" className="group card-gold-border p-8 transition-all duration-300 hover:scale-105">
+            <Link to="/nacional" className="group card-gold-border p-8 transition-all duration-300 hover:scale-105 bg-black/50 backdrop-blur-sm">
               <div className="w-14 h-14 rounded-xl bg-accent/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform border border-gold/30">
                 <MapPin className="w-7 h-7 text-gold-light" />
               </div>
               <h3 className="font-serif text-2xl font-bold text-gold-embossed mb-3">Nacional</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
+              <p className="text-white text-sm leading-relaxed mb-4">
                 As joias escondidas do Brasil. Praias paradisíacas, cachoeiras e paisagens de tirar o fôlego.
               </p>
               <span className="text-gold-light text-sm font-medium group-hover:underline">Ver destinos →</span>
             </Link>
 
-            <Link to="/internacional" className="group card-gold-border p-8 transition-all duration-300 hover:scale-105">
+            <Link to="/internacional" className="group card-gold-border p-8 transition-all duration-300 hover:scale-105 bg-black/50 backdrop-blur-sm">
               <div className="w-14 h-14 rounded-xl bg-teal/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform border border-gold/30">
                 <Globe className="w-7 h-7 text-teal-light" />
               </div>
               <h3 className="font-serif text-2xl font-bold text-gold-embossed mb-3">Internacional</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
+              <p className="text-white text-sm leading-relaxed mb-4">
                 Os melhores destinos do mundo. Culturas, paisagens e experiências que vão além das fronteiras.
               </p>
               <span className="text-teal-light text-sm font-medium group-hover:underline">Ver destinos →</span>
