@@ -1,118 +1,59 @@
 
 
-# Plano: 5 Features Téo 2030
+## Plano: Imagem de fundo + Fios animados dourados e turquesa
 
-## Features Solicitadas (uma por vez, implementação completa)
-1. ✅ **Téo Grupal** — Viagem em grupo com cruzamento de preferências via WhatsApp
-2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
-3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
-9. ✅ **Téo Roleta** — Destino aleatório filtrado por DNA com animação textual
-10. ✅ **Téo Oráculo** — Previsão personalizada da viagem com signos, DNA e fase lunar
-4. ✅ **Téo DNA** — Perfil genético de viajante
-5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
-6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
-7. ✅ **Téo Compatibilidade** — Match de viagem entre DNAs de viajante
-8. ✅ **Téo SOS** — Assistente de emergência com embaixadas, hospitais e frases úteis
+### O que muda
 
----
+**1. Copiar a imagem para o projeto**
+- Copiar `user-uploads://1773020042400.png` para `public/images/hero-worldmap-bg.png`
+- Usar como background fixo do site inteiro (não só do hero)
 
-## 7. Téo Compatibilidade (IMPLEMENTADO ✅)
+**2. Criar componente `AnimatedWires` (`src/components/AnimatedWires.tsx`)**
+- Componente SVG fullscreen com `pointer-events-none` e `position: fixed` (fica por cima de tudo, atrás dos elementos interativos via z-index)
+- Renderiza 6-8 curvas bezier (paths) animadas com `stroke-dashoffset` para efeito de "fio se desenhando"
+- Metade douradas (`hsl(40 75% 55%)`) e metade turquesa (`hsl(185 60% 50%)`)
+- Glow effect via SVG `filter` com `feGaussianBlur`
+- Sparkles/pontos brilhantes que pulsam ao longo dos fios
+- Animação CSS `@keyframes wire-flow` usando `stroke-dashoffset` para movimento contínuo
 
-### Conceito
-O cliente envia `compatibilidade com 5511999999999` e o Téo compara os DNAs de Viajante dos dois, calcula score de compatibilidade e sugere destinos ideais para ambos.
+**3. Atualizar `src/index.css`**
+- Adicionar keyframe `wire-flow` para animar `stroke-dashoffset` infinitamente
+- Adicionar keyframe `wire-glow-pulse` para pulsar opacidade dos fios
 
-### Comandos WhatsApp
-| Comando | Ação |
-|---------|------|
-| `compatibilidade com [número]` / `match viagem [número]` | Compara DNAs e sugere destino |
-| `compatibilidade` (sem número) | Téo pede o número do parceiro |
+**4. Atualizar `src/pages/Index.tsx`**
+- Adicionar `<AnimatedWires />` como filho direto do wrapper principal (fixed, z-index baixo)
+- Background do wrapper: usar a imagem `hero-worldmap-bg.png` como `bg-cover bg-center bg-fixed`
 
-### Armazenamento (zero novas tabelas)
-Usa `client_memory.preferences`:
-- `ultimo_match`: `{ parceiro_phone, parceiro_nome, score, data }`
+**5. Atualizar `src/components/HeroSection.tsx`**
+- Remover `<WorldMapBackground />` (substituído pela imagem real)
+- Manter conteúdo e bússola como estão, com fundo transparente para a imagem aparecer por trás
 
-### Arquivos modificados
-- `supabase/functions/whatsapp-webhook/index.ts`: Bloco de comando com regex, busca de 2 memórias, chamada Gemini, formatação e save
-- `supabase/functions/_shared/client-memory.ts`: `ultimo_match` no `formatMemoryForPrompt` + skipKeys
+**6. Atualizar `src/components/WorldMapBackground.tsx`**
+- Simplificar ou remover — a imagem real substitui o SVG
 
-## 3. Téo DNA de Viajante (IMPLEMENTADO ✅)
+### Detalhes dos fios animados
 
-### Conceito
-Questionário profundo de 10 perguntas que gera um perfil "genético" de viajante com 5 categorias (Explorador, Culturalista, Gourmet, Zen, Socialite) que evolui com cada viagem.
+```text
+SVG fixo (100vw x 100vh)
+├── <defs> filtro glow (feGaussianBlur stdDeviation=3)
+├── Path 1 (dourado, curva de canto sup-esq → centro-dir)
+├── Path 2 (turquesa, curva de centro-esq → canto inf-dir)
+├── Path 3 (dourado, ondulação horizontal no topo)
+├── Path 4 (turquesa, diagonal inferior)
+├── Path 5-8 (variações com delays diferentes)
+└── Sparkle circles ao longo dos paths (animate opacity)
+```
 
-### Comandos WhatsApp
-| Comando | Ação |
-|---------|------|
-| `meu dna` / `dna viajante` / `teste dna` | Inicia o questionário de 10 perguntas |
-
-### Categorias do DNA
-- 🏔️ Explorador: aventura, adrenalina, natureza selvagem
-- 🏛️ Culturalista: história, museus, arquitetura
-- 🍽️ Gourmet: gastronomia, vinhos, experiências culinárias
-- 🧘 Zen: relaxamento, praias, spas
-- 🎉 Socialite: festas, vida noturna, experiências sociais
-
-### Armazenamento (zero novas tabelas)
-Usa `client_memory.preferences` (JSONB):
-- `dna_viajante`: perfil atual com porcentagens, raw_result, answers
-- `dna_historico`: array com últimas 10 análises (para detectar evolução)
-
-### Evolução
-O DNA evolui automaticamente:
-- Cada vez que o teste é refeito, uma nova entrada é adicionada ao histórico
-- O formatMemoryForPrompt mostra a evolução (↑↓ por categoria)
-- Téo usa o DNA para personalizar sugestões sem perguntar demais
+Cada path terá:
+- `stroke-dasharray: 400 800` (segmentos visíveis intercalados com gaps)
+- `animation: wire-flow 8s linear infinite` (com delays variados)
+- `opacity: 0.4-0.7` para não sobrepor o conteúdo
+- `filter: url(#wire-glow)` para brilho
 
 ### Arquivos modificados
-- `supabase/functions/whatsapp-webhook/index.ts`: Comando + questionário 10 perguntas + geração via Gemini
-- `supabase/functions/_shared/client-memory.ts`: DNA no prompt, na formatação e na regra de adaptação
+- `public/images/hero-worldmap-bg.png` (novo - cópia da imagem)
+- `src/components/AnimatedWires.tsx` (novo)
+- `src/pages/Index.tsx` (background + componente)
+- `src/components/HeroSection.tsx` (remover WorldMapBackground)
+- `src/index.css` (keyframes dos fios)
 
----
-
-## 1. Téo Grupal (IMPLEMENTADO ✅)
-
-### Tabelas criadas
-- `travel_groups`: group_code, creator_phone, creator_name, status, final_recommendation
-- `travel_group_members`: group_id, phone_number, member_name, preferences (JSONB), is_ready
-
-### Comandos WhatsApp
-| Comando | Ação |
-|---------|------|
-| `criar grupo` | Cria grupo, gera código 6 chars, inicia questionário |
-| `entrar grupo XYZABC` | Adiciona membro, inicia questionário |
-| `meu grupo` | Mostra status e membros |
-| `resultado grupo` | Cruza preferências via Gemini, envia a todos |
-| `sair grupo` | Remove membro |
-
----
-
-## 2. Téo Lê Mentes (IMPLEMENTADO ✅)
-
-### Conceito
-Análise emocional SILENCIOSA das mensagens do cliente para adaptar recomendações automaticamente, sem nunca mencionar a análise.
-
-### Implementação (zero novas tabelas)
-Usa a infraestrutura existente de `client_memory.preferences` (JSONB):
-
-**Campos emocionais adicionados:**
-- `tom_emocional`: animado/estressado/cansado/ansioso/empolgado/nostálgico/indeciso/tranquilo/comemorando/preocupado
-- `nivel_energia`: alto/médio/baixo
-- `nivel_estresse`: alto/médio/baixo
-- `momento_vida`: férias/lua-de-mel/aniversário/fuga-da-rotina/trabalho-remoto/família/amigos
-- `historico_emocional`: array com últimas 10 leituras emocionais (para detectar tendências)
-
-**Detecção de sinais:**
-- Estresse: "preciso sair daqui", "to exausto", respostas impacientes
-- Animação: "!!", emojis, "mal posso esperar"
-- Ansiedade: muitas perguntas, "será que...", indecisão
-- Comemoração: "aniversário", "lua de mel", "promoção"
-
-**Adaptação silenciosa (via MEMORY_RULE):**
-- Estressado → Sugere descanso, spas, all-inclusive
-- Animado → Sugere aventura, esportes, destinos vibrantes
-- Indeciso → Limita opções a 2-3, mais assertivo
-- Comemorando → Sugere upgrades, experiências premium
-- NUNCA menciona a análise ao cliente
-
-### Arquivos modificados
-- `supabase/functions/_shared/client-memory.ts`: Extraction prompt, merge logic, format, MEMORY_RULE
