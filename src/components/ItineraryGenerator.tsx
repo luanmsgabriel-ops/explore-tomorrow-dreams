@@ -3,6 +3,7 @@ import { Sparkles, Loader2, Mail, Phone, Download, Send, CheckCircle, User, MapP
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
+import { ItineraryMapView } from './ItineraryMapView';
 import logo from '@/assets/logo.jpeg';
 import { useDestinations } from '@/hooks/useDestinations';
 import { itineraryFormSchema, validateForm, sanitizeText, isValidationError } from '@/lib/validations';
