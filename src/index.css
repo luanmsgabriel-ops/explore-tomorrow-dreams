@@ -189,8 +189,17 @@
   }
 
   @keyframes wire-glow-pulse {
-    0%, 100% { opacity: 0.2; r: 2; }
-    50% { opacity: 1; r: 5; }
+    0%, 100% { opacity: 0.3; r: 2.5; }
+    50% { opacity: 1; r: 6; }
+  }
+
+  @keyframes airplane-glow-pulse {
+    0%, 100% { filter: drop-shadow(0 0 6px hsl(45 80% 60% / 0.6)); }
+    50% { filter: drop-shadow(0 0 14px hsl(45 80% 60% / 1)); }
+  }
+
+  .animate-airplane-glow {
+    animation: airplane-glow-pulse 2s ease-in-out infinite;
   }
 
   .animate-wire-flow {
