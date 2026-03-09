@@ -7466,13 +7466,21 @@ Regras OBRIGATÓRIAS:
         }
       }
 
-      // Send visual itinerary card if detected (before text) — only once per conversation
+      const itineraryVisualData = itineraryVisualDataFromTag || parseItineraryFromPlainText(cleanResponse);
+
+      // Send visual itinerary card — only once per conversation
       if (itineraryVisualData && !collectedData._itinerary_sent) {
         const clientNameForVisual = newCollectedData.nome || conversation.client_name || contactName || undefined;
-        await generateAndSendItineraryVisual(phoneNumber, itineraryVisualData, clientNameForVisual);
-        await sendWhatsAppMessage(phoneNumber, "Preparei um roteiro especial pra você! 🗺️✨ Salva essa imagem, vai ser seu guia por lá! 😄\n\n✨ Quer que eu ajuste algo? Posso trocar atividades, dias ou focar em algo específico! 😊");
-        newCollectedData._itinerary_sent = true;
-        // Don't send the text version — image only
+        const visualSent = await generateAndSendItineraryVisual(phoneNumber, itineraryVisualData, clientNameForVisual);
+
+        if (visualSent) {
+          newCollectedData._itinerary_sent = true;
+        } else {
+          await sendWhatsAppMessage(phoneNumber, "Não consegui gerar o card do roteiro agora 😕 Pode me pedir novamente em alguns segundos?");
+        }
+      } else if (isLikelyItineraryText(cleanResponse)) {
+        // Never send long itinerary text, only card
+        await sendWhatsAppMessage(phoneNumber, "Estou preparando seu card de roteiro 🎨 Pode me pedir de novo com o destino para eu gerar certinho.");
       } else {
         await sendWhatsAppMessage(phoneNumber, cleanResponse);
       }
