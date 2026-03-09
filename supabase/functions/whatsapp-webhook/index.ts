@@ -6170,7 +6170,7 @@ Regras OBRIGATÓRIAS:
         conversation.collected_data = updatedCd;
         conversation.messages_history = updatedHistory;
         conversation.conversation_state = "chatting";
-
+      }
 
       // Check if conversation is waiting for a verification code
       if (collectedData._quotation_pending_code && collectedData._quotation_request) {
