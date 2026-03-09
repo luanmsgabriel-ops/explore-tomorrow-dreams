@@ -32,6 +32,8 @@ export const TeoChat = ({ fullPage = false }: TeoChatProps) => {
   const sessionIdRef = useRef<string>(generateSecureSessionId());
   const quotation = useQuotation();
   const itineraryGeneratingRef = useRef<boolean>(false);
+  const itinerarySentRef = useRef<boolean>(false);
+  const itineraryChangeRegex = /\b(altera(r|ção)?|muda(r|nça)?|ajusta(r|e)?|refa(ç|c)a|refazer|novo roteiro|outro roteiro|troca(r)?|edita(r)?|revis(a|ar)|corrig(ir|e)|não gostei|nao gostei)\b/i;
   
   const [step, setStep] = useState<ChatStep>('collect_name');
   const [userName, setUserName] = useState('');
