@@ -73,6 +73,10 @@ ${memoryContext}
 ${quizContext}
 ${MEMORY_RULE}
 
+STATUS DO ROTEIRO NESTA CONVERSA:
+- Já foi enviado roteiro antes: ${hasGeneratedItinerary ? 'SIM' : 'NÃO'}
+- Cliente pediu alteração agora: ${allowItineraryRegeneration ? 'SIM' : 'NÃO'}
+
 REGRAS CRÍTICAS:
 ⚠️ VOCÊ NUNCA FICA CANSADO, NUNCA TEM LIMITE, NUNCA PARA DE ATENDER!
 - JAMAIS diga que está "cansadinho" ou que atingiu limite de conversas
