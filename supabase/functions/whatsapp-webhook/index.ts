@@ -2802,7 +2802,9 @@ serve(async (req) => {
       // ========== MODO GALERA: Group Travel with Preference Cross-Referencing ==========
       {
         const lowerMsgGroup = (messageText || "").toLowerCase().trim();
-        const createGroupRegex = /(?:criar|novo|ativar|iniciar|montar|comecar|começar|quero)\s+(?:um[a]?\s+)?(?:nov[oa]\s+)?(?:grupo|modo\s*galera|viagem\s+(?:em\s+)?grupo|galera)/i;
+        const hasGroupIntent = /(?:criar|quero|novo|ativar|iniciar|montar|fazer|organizar|bora|vamos|começar|comecar|abrir|preparar|planejar)/i;
+        const hasGroupKeyword = /(?:grupo|galera|modo\s*galera|viagem\s+(?:em\s+)?grupo)/i;
+        const createGroupRegex = { test: (s: string) => hasGroupIntent.test(s) && hasGroupKeyword.test(s) };
         const joinGroupRegex = /^entrar grupo\s+([A-Z0-9]{6})$/i;
         const joinGroupRegexLower = /^entrar grupo\s+([a-zA-Z0-9]{6})$/i;
         const myGroupRegex = /^(meu grupo|status grupo|group status)$/i;
