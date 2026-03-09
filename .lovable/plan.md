@@ -1,56 +1,58 @@
 
 
-# Plano: Corrigir Modo Galera - Regex e Fluxo Completo
+# Plano: Corrigir Link Inválido no Modo Galera
 
-## Problema
+## Problema Raiz
 
-A mensagem "Quero fazer um novo grupo de viagem" NÃO casa com a regex atual porque "fazer" aparece entre "quero" e "grupo/viagem". A regex exige que após "quero" venha diretamente "um/uma", "novo/nova" ou o substantivo final. Palavras intermediárias como "fazer", "criar", "organizar", "montar" quebram o match.
+A regex `createGroupRegex` (linha 2805) ainda falha em frases com palavras intermediárias como "fazer", "organizar" entre o verbo e "grupo". Quando não casa, a mensagem vai para o handler geral da IA que **inventa links Typeform**. O fallback de sanitização de URLs (aprovado no plano anterior) **nunca foi implementado** no `cleanAiResponse`.
 
-Resultado: a mensagem cai no handler geral da IA, que gera links Typeform e ofertas de cotação.
+## Alterações em `supabase/functions/whatsapp-webhook/index.ts`
 
-## Alteração em `supabase/functions/whatsapp-webhook/index.ts`
+### 1. Regex ultra-permissiva (linha 2805)
 
-### 1. Regex mais permissiva (linha 2805)
-
-Trocar por uma regex que permite palavras intermediárias usando `[\w\s]*`:
+Usar uma regex simples que apenas verifica se a mensagem contém palavras-chave de grupo:
 
 ```typescript
-const createGroupRegex = /(?:criar|novo|ativar|iniciar|montar|comecar|começar|quero|fazer|organizar|bora|vamos)\s+[\w\sáéíóúãõâêîôûç]*?(?:grupo|modo\s*galera|viagem\s+(?:em\s+)?grupo|galera)/i;
+const createGroupRegex = /(?:grupo|galera|viagem\s+em\s+grupo|modo\s*galera)/i;
 ```
 
-Isso captura:
-- "Quero fazer um novo grupo de viagem"
-- "Quero criar um grupo"
-- "Vamos montar um grupo"
-- "Bora fazer viagem em grupo"
-- "criar grupo" (caso simples)
-
-### 2. Reforçar no system prompt (linhas 696-700)
-
-Tornar a instrução mais enfática e repetitiva para o modelo:
-
-```
-- Se o cliente mencionar QUALQUER coisa sobre grupo, viagem em grupo, modo galera, ou viajar com amigos/família, 
-  responda APENAS: "Para ativar o Modo Galera, mande *criar grupo* aqui no chat! 🎉"
-- NUNCA gere links, formulários ou URLs de qualquer tipo
-- NUNCA invente URLs que contenham typeform, google, jotform ou qualquer outro domínio
-```
-
-### 3. Adicionar fallback no handler da IA
-
-Antes de enviar a resposta da IA ao usuário, verificar se o texto contém URLs inventadas (typeform, jotform, google forms) e removê-las, substituindo por instrução de usar "criar grupo":
+Combinada com pelo menos uma palavra de intenção:
 
 ```typescript
-// Após gerar cleanResponse, antes de enviar:
-if (/https?:\/\/[^\s]*(?:typeform|jotform|google.*form|forms\.gle)/i.test(cleanResponse)) {
-  cleanResponse = cleanResponse.replace(/https?:\/\/[^\s]*/g, '').trim();
+const hasGroupIntent = /(?:criar|quero|novo|ativar|iniciar|montar|fazer|organizar|bora|vamos|começar|comecar)/i;
+const hasGroupKeyword = /(?:grupo|galera|modo\s*galera|viagem\s+(?:em\s+)?grupo)/i;
+const isCreateGroup = hasGroupIntent.test(lowerMsgGroup) && hasGroupKeyword.test(lowerMsgGroup);
+```
+
+Isso captura QUALQUER combinação: "Quero fazer um novo grupo de viagem", "Bora organizar a galera", etc.
+
+### 2. Sanitização de URLs no `cleanAiResponse` (linha 1303)
+
+Adicionar ao final da função `cleanAiResponse` a remoção de URLs externas inventadas (typeform, jotform, google forms, bit.ly, tally, etc.) e substituição por instrução correta:
+
+```typescript
+// Remove hallucinated external URLs
+.replace(/https?:\/\/[^\s\])*]*(?:typeform|jotform|google.*form|forms\.gle|bit\.ly|tally|survey)[^\s\])"]*/gi, "")
+// Remove any markdown links with those URLs
+.replace(/\[[^\]]*\]\(https?:\/\/[^)]*(?:typeform|jotform|google|bit\.ly|tally|survey)[^)]*\)/gi, "")
+```
+
+### 3. Sanitização geral pós-AI (linhas ~6862 e ~7226)
+
+Antes de cada `sendWhatsAppMessage(phoneNumber, cleanResponse)`, adicionar verificação:
+
+```typescript
+// Safety: strip any hallucinated external links
+if (/https?:\/\/[^\s]*(?:typeform|jotform|google.*form|forms\.gle|bit\.ly|tally)/i.test(cleanResponse)) {
+  cleanResponse = cleanResponse.replace(/https?:\/\/[^\s]*/g, '').replace(/\[[^\]]*\]\([^)]*\)/g, '').trim();
   cleanResponse += "\n\nPara viagem em grupo, mande *criar grupo* aqui no chat! 🎉";
 }
 ```
 
 ## Resultado Esperado
 
-- Qualquer variação natural de "quero grupo de viagem" ativa o Modo Galera
-- O fluxo multi-step (nome do grupo → quantidade → confirmação → questionário) funciona normalmente (já existe no código)
-- Nenhum link externo é gerado pela IA, mesmo se o regex falhar
+- Qualquer mensagem mencionando "grupo" + intenção ativa o Modo Galera diretamente
+- O fluxo multi-step (nome → quantidade → confirmação → questionário) funciona normalmente
+- O link gerado é `https://wa.me/5515991833448?text=entrar grupo CODIGO` (WhatsApp válido)
+- Mesmo se a IA alucisar, links Typeform são removidos antes do envio
 
