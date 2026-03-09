@@ -349,97 +349,80 @@ Me conta aí! 👇`
         });
       }
 
-      // Check for itinerary generation tag (ONLY ONCE)
+      // Check for itinerary generation tag (ONLY ONCE unless user asks for changes)
       const itineraryMatch = assistantContent.match(/\[GERAR_ROTEIRO:(.*?)\]/s);
       if (itineraryMatch && !itineraryGeneratingRef.current) {
-        itineraryGeneratingRef.current = true;
-        const cleanContent = assistantContent.replace(/\[GERAR_ROTEIRO:.*?\]/s, '').trim();
-        
-        // Update the message text and add a loading itinerary card
-        setMessages((prev) => {
-          const newMessages = [...prev];
-          newMessages[newMessages.length - 1] = {
-            role: 'assistant',
-            content: cleanContent,
-          };
-          return [
-            ...newMessages,
+        const canGenerateItinerary = !itinerarySentRef.current || askedForItineraryChange;
+        assistantContent = assistantContent.replace(/\[GERAR_ROTEIRO:.*?\]/gs, '').trim();
+
+        // Remove the assistant text bubble so the output is image-only
+        setMessages((prev) => prev.slice(0, -1));
+
+        if (!canGenerateItinerary) {
+          setMessages((prev) => [
+            ...prev,
             {
               role: 'assistant',
-              content: '',
-              itinerary: { structured: null, photos: {}, isLoading: true },
+              content: 'Já te enviei o roteiro ✅ Se quiser outro, me peça uma alteração (ex: trocar destino, duração ou estilo).',
             },
-          ];
-        });
+          ]);
+        } else {
+          itineraryGeneratingRef.current = true;
 
-        // Parse itinerary params
-        let itinParams = { destino: '', dias: 5, preferencias: '' };
-        try {
-          itinParams = { ...itinParams, ...JSON.parse(itineraryMatch[1]) };
-        } catch {
-          itinParams.destino = itineraryMatch[1].trim();
-        }
-
-        // Generate itinerary via edge function
-        try {
-          const { data: itinData, error: itinError } = await supabase.functions.invoke('generate-itinerary', {
-            body: {
-              destination: itinParams.destino,
-              preferences: itinParams.preferencias || '',
-              email: '',
-              whatsapp: userWhatsapp,
-              travelMood: '',
-            },
-          });
-
-          if (itinError) throw itinError;
-
-          const structured = itinData?.structured || null;
-          const placeNames: string[] = itinData?.placeNames || [];
-          const destName = structured?.destination || itinParams.destino || '';
-
-          // Fetch photos from Pexels, adding destination context for better results
-          let photos: Record<string, string> = {};
-          if (placeNames.length > 0) {
-            try {
-              const queriesWithContext = placeNames.slice(0, 10).map(
-                (name: string) => `${name} ${destName}`
-              );
-              const { data: photoData } = await supabase.functions.invoke('search-place-photos', {
-                body: { queries: queriesWithContext, originalNames: placeNames.slice(0, 10) },
-              });
-              if (photoData?.photos) photos = photoData.photos;
-            } catch { /* non-blocking */ }
+          // Parse itinerary params
+          let itinParams = { destino: '', dias: 5, preferencias: '' };
+          try {
+            itinParams = { ...itinParams, ...JSON.parse(itineraryMatch[1]) };
+          } catch {
+            itinParams.destino = itineraryMatch[1].trim();
           }
 
-          // Update the itinerary message with real data
-          setMessages((prev) => {
-            const newMessages = [...prev];
-            const itinIdx = newMessages.findIndex(m => m.itinerary?.isLoading);
-            if (itinIdx >= 0) {
-              newMessages[itinIdx] = {
-                role: 'assistant',
-                content: '',
-                itinerary: { structured, photos, isLoading: false },
-              };
+          try {
+            const { data: itinData, error: itinError } = await supabase.functions.invoke('generate-itinerary', {
+              body: {
+                destination: itinParams.destino,
+                preferences: itinParams.preferencias || '',
+                email: '',
+                whatsapp: userWhatsapp,
+                travelMood: '',
+              },
+            });
+
+            if (itinError) throw itinError;
+
+            const structured = itinData?.structured || null;
+            const destination = structured?.destination || itinParams.destino || '';
+            const days = Array.isArray(structured?.days) ? structured.days : [];
+
+            if (!destination || days.length === 0) {
+              throw new Error('Structured itinerary inválido para gerar visual');
             }
-            return newMessages;
-          });
-        } catch (err) {
-          console.error('Itinerary generation error:', err);
-          setMessages((prev) => {
-            const newMessages = [...prev];
-            const itinIdx = newMessages.findIndex(m => m.itinerary?.isLoading);
-            if (itinIdx >= 0) {
-              newMessages[itinIdx] = {
-                role: 'assistant',
-                content: '❌ Ops, não consegui gerar o roteiro visual. Tente pedir novamente!',
-              };
-            }
-            return newMessages;
-          });
-        } finally {
-          itineraryGeneratingRef.current = false;
+
+            const { data: visualData, error: visualError } = await supabase.functions.invoke('generate-itinerary-visual', {
+              body: {
+                destination,
+                days,
+                clientName: userName,
+              },
+            });
+
+            if (visualError) throw visualError;
+            if (!visualData?.imageUrl) throw new Error('Imagem não retornada');
+
+            itinerarySentRef.current = true;
+            setMessages((prev) => [
+              ...prev,
+              { role: 'assistant', content: '', itineraryImageUrl: visualData.imageUrl },
+            ]);
+          } catch (err) {
+            console.error('Itinerary generation error:', err);
+            setMessages((prev) => [
+              ...prev,
+              { role: 'assistant', content: '❌ Não consegui gerar a imagem do roteiro agora. Tente novamente em instantes.' },
+            ]);
+          } finally {
+            itineraryGeneratingRef.current = false;
+          }
         }
       } else {
         // Clean any stray itinerary tags from the text

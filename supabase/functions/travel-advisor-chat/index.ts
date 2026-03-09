@@ -15,7 +15,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, sessionId, userName, userWhatsapp, quizAnswers } = await req.json();
+    const { messages, sessionId, userName, userWhatsapp, quizAnswers, hasGeneratedItinerary = false, allowItineraryRegeneration = false } = await req.json();
     
     // Inicializa Supabase
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
