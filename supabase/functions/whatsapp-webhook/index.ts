@@ -7411,11 +7411,12 @@ Regras OBRIGATÓRIAS:
       if (itineraryVisualData && !collectedData._itinerary_sent) {
         const clientNameForVisual = newCollectedData.nome || conversation.client_name || contactName || undefined;
         await generateAndSendItineraryVisual(phoneNumber, itineraryVisualData, clientNameForVisual);
-        await sendWhatsAppMessage(phoneNumber, "Preparei um roteiro especial pra você! 🗺️✨ Salva essa imagem, vai ser seu guia por lá! 😄");
+        await sendWhatsAppMessage(phoneNumber, "Preparei um roteiro especial pra você! 🗺️✨ Salva essa imagem, vai ser seu guia por lá! 😄\n\n✨ Quer que eu ajuste algo? Posso trocar atividades, dias ou focar em algo específico! 😊");
         newCollectedData._itinerary_sent = true;
+        // Don't send the text version — image only
+      } else {
+        await sendWhatsAppMessage(phoneNumber, cleanResponse);
       }
-
-      await sendWhatsAppMessage(phoneNumber, cleanResponse);
 
       // Update client memory after response (fire-and-forget)
       const allMsgsForMemory = [
