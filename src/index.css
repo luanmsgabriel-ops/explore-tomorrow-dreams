@@ -100,20 +100,31 @@
 }
 
 @layer components {
-  /* Gold Embossed Text Effect - Premium 3D Look */
+  /* Gold Embossed Text Effect - Premium 3D Look with Metallic Shine */
   .text-gold-embossed {
     background: linear-gradient(180deg, 
-      hsl(45 80% 70%) 0%, 
-      hsl(40 75% 55%) 25%, 
-      hsl(35 70% 45%) 50%, 
-      hsl(40 75% 55%) 75%, 
-      hsl(45 80% 65%) 100%
+      hsl(45 85% 85%) 0%, 
+      hsl(40 80% 70%) 20%, 
+      hsl(45 90% 80%) 40%, 
+      hsl(35 75% 60%) 60%, 
+      hsl(40 80% 70%) 80%, 
+      hsl(45 85% 82%) 100%
+    ),
+    linear-gradient(90deg, 
+      transparent 0%, 
+      hsl(0 0% 100% / 0.4) 45%, 
+      hsl(0 0% 100% / 0.8) 50%, 
+      hsl(0 0% 100% / 0.4) 55%, 
+      transparent 100%
     );
+    background-size: 100% 100%, 200% 100%;
+    background-blend-mode: normal, overlay;
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 2px 3px hsl(0 0% 0% / 0.5)) drop-shadow(0 4px 6px hsl(35 70% 30% / 0.3));
+    filter: drop-shadow(0 2px 4px hsl(0 0% 0% / 0.4)) drop-shadow(0 0 15px hsl(45 80% 60% / 0.3));
     text-shadow: none;
+    animation: metallic-shine 4s ease-in-out infinite;
   }
 
   .text-gold-gradient {
@@ -261,7 +272,9 @@
   /* Gradient text */
   .gradient-text-teal {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(185 60% 50%), hsl(185 55% 35%));
+    background-image: linear-gradient(135deg, hsl(185 65% 65%), hsl(185 60% 50%));
+    filter: drop-shadow(0 0 12px hsl(185 60% 50% / 0.4));
+    animation: metallic-shine-teal 5s ease-in-out infinite;
   }
 
   .gradient-text-gold {
@@ -391,6 +404,27 @@
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+
+  @keyframes metallic-shine {
+    0%, 100% {
+      background-position: 100% 100%, 200% center;
+    }
+    50% {
+      background-position: 100% 100%, -200% center;
+    }
+  }
+
+  @keyframes metallic-shine-teal {
+    0%, 100% {
+      filter: drop-shadow(0 0 12px hsl(185 60% 50% / 0.4));
+      background-image: linear-gradient(135deg, hsl(185 65% 65%), hsl(185 60% 50%));
+    }
+    50% {
+      filter: drop-shadow(0 0 20px hsl(185 65% 60% / 0.6));
+      background-image: linear-gradient(135deg, hsl(185 70% 75%), hsl(185 65% 60%));
+    }
   }
 }
 
