@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, Bot, User, Phone, UserCircle, ExternalLink } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Send, Loader2, User, Phone, UserCircle, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { chatMessageSchema, generateSecureSessionId, sanitizeText, phoneSchema, nameSchema } from '@/lib/validations';
 import { supabase } from '@/integrations/supabase/client';

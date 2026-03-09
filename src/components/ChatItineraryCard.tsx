@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Clock, ChevronLeft, ChevronRight, Utensils, Camera, Mountain, Landmark, ShoppingBag, Moon, Sparkles, Sun, Loader2 } from 'lucide-react';
+import { MapPin, ChevronLeft, ChevronRight, Utensils, Camera, Mountain, Landmark, ShoppingBag, Moon, Sparkles, Sun, Loader2 } from 'lucide-react';
 
 const CATEGORY_CONFIG: Record<string, { icon: any; color: string; bg: string }> = {
   sightseeing: { icon: Camera, color: 'text-blue-400', bg: 'bg-blue-500/10' },
