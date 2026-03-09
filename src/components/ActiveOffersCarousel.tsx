@@ -258,8 +258,8 @@ export const ActiveOffersCarousel = () => {
   }
 
   return (
-    <section className="py-12 md:py-16">
-      <div className="container mx-auto px-4 lg:px-8">
+    <section className="py-8 md:py-12">
+      <div className="container mx-auto px-4 lg:px-8 bg-black/50 backdrop-blur-sm rounded-2xl p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -267,10 +267,10 @@ export const ActiveOffersCarousel = () => {
               <Tag className="w-5 h-5 text-accent" />
             </div>
             <div>
-              <h2 className="font-serif text-2xl md:text-3xl font-bold text-foreground">
+              <h2 className="font-serif text-2xl md:text-3xl font-bold text-white">
                 Ofertas <span className="gradient-text-gold">Especiais</span>
               </h2>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-white/70 text-sm">
                 Pacotes com preços imperdíveis por tempo limitado
               </p>
             </div>

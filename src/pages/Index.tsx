@@ -32,17 +32,17 @@ const Index = () => {
 
       {/* Active Offers Carousel */}
       <ActiveOffersCarousel />
-      
+
       {/* Section divider with airplane */}
-      <div className="relative py-8">
+      <div className="relative py-4">
         <div className="line-gold" />
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-4">
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/50 backdrop-blur-sm px-4 rounded-full">
           <DecorativeAirplane size="sm" className="opacity-60" />
         </div>
       </div>
 
       {/* Discover section */}
-      <section className="py-16 md:py-20 world-map-bg">
+      <section className="py-10 md:py-14 world-map-bg">
         <div className="container mx-auto px-4 lg:px-8 relative z-10">
           <div className="text-center max-w-3xl mx-auto bg-black/50 backdrop-blur-sm rounded-2xl p-8">
             <h2 className="font-serif text-3xl md:text-5xl font-bold mb-4">
@@ -140,7 +140,7 @@ const Index = () => {
 
       {/* Features Section */}
       <section className="py-20 border-t border-gold/20">
-        <div className="container mx-auto px-4 lg:px-8">
+        <div className="container mx-auto px-4 lg:px-8 bg-black/50 backdrop-blur-sm rounded-2xl p-8">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <h2 className="font-serif text-3xl md:text-4xl font-bold mb-4">
               <span className="text-gold-embossed">Por que escolher a</span>{' '}
