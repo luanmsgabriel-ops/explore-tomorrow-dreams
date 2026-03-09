@@ -2329,7 +2329,8 @@ serve(async (req) => {
       // If the message is from the admin phone number, route to admin assistant
       // BUT skip admin routing for group-related commands so admin can also use Modo Galera
       const lowerMsgForGroupCheck = (messageText || "").toLowerCase().trim();
-      const isGroupCommand = /^entrar grupo\s+[a-zA-Z0-9]{6}$/i.test(lowerMsgForGroupCheck)
+      const isJoinGroupIntent = /entrar\s+grupo/i.test(lowerMsgForGroupCheck);
+      const isGroupCommand = isJoinGroupIntent
         || /(?:criar|quero|novo|ativar|iniciar|montar|fazer|organizar|bora|vamos|começar|comecar|abrir|preparar|planejar)/i.test(lowerMsgForGroupCheck) && /(?:grupo|galera|modo\s*galera|viagem\s+(?:em\s+)?grupo)/i.test(lowerMsgForGroupCheck)
         || /^(meu grupo|status grupo|group status)$/i.test(lowerMsgForGroupCheck)
         || /^(resultado grupo|group result|ver resultado)$/i.test(lowerMsgForGroupCheck)
@@ -2843,8 +2844,8 @@ serve(async (req) => {
         const hasGroupIntent = /(?:criar|quero|novo|ativar|iniciar|montar|fazer|organizar|bora|vamos|começar|comecar|abrir|preparar|planejar)/i;
         const hasGroupKeyword = /(?:grupo|galera|modo\s*galera|viagem\s+(?:em\s+)?grupo)/i;
         const createGroupRegex = { test: (s: string) => hasGroupIntent.test(s) && hasGroupKeyword.test(s) };
-        const joinGroupRegex = /^entrar grupo\s+([A-Z0-9]{6})$/i;
-        const joinGroupRegexLower = /^entrar grupo\s+([a-zA-Z0-9]{6})$/i;
+        const joinGroupRegex = /^entrar\s+grupo(?:\s+c[oó]digo)?\s+([A-Z0-9]{6})\b/i;
+        const joinGroupRegexLower = /^entrar\s+grupo(?:\s+c[oó]digo)?\s+([a-zA-Z0-9]{6})\b/i;
         const myGroupRegex = /^(meu grupo|status grupo|group status)$/i;
         const resultGroupRegex = /^(resultado grupo|group result|ver resultado)$/i;
         const leaveGroupRegex = /^(sair grupo|sair do grupo|leave group)$/i;
