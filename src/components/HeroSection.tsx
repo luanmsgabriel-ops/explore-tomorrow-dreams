@@ -5,7 +5,7 @@ import { ItineraryGenerator } from '@/components/ItineraryGenerator';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { ImageGenerator } from '@/components/ImageGenerator';
 import { useFeaturedDestination } from '@/hooks/useDestinations';
-import { WorldMapBackground } from '@/components/WorldMapBackground';
+
 import { GoldenCompass } from '@/components/GoldenCompass';
 import { DecorativeAirplane } from '@/components/DecorativeAirplane';
 
