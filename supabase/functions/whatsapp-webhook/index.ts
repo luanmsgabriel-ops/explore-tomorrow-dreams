@@ -2869,24 +2869,33 @@ serve(async (req) => {
           return code;
         };
 
-        // Group questionnaire questions
+        // Group questionnaire questions (12 questions for refined destination matching)
         const GROUP_QUESTIONS = [
-          "1️⃣ Qual seu *estilo de viagem*?\n\n1. Aventura 🏔️\n2. Relax 🧘\n3. Cultural 🏛️\n4. Gastronômico 🍽️\n5. Festas 🎉\n6. Misto 🔀\n\nResponda com o número (ex: 1)",
-          "2️⃣ *Clima* preferido?\n\n1. Tropical/Quente ☀️\n2. Frio ❄️\n3. Temperado 🌤️\n4. Tanto faz 🤷\n\nResponda com o número (ex: 1)",
-          "3️⃣ Qual sua *prioridade* na viagem?\n\n1. Praia 🏖️\n2. Montanha 🏔️\n3. Cidade 🏙️\n4. Gastronomia 🍽️\n5. Natureza 🌿\n6. Vida noturna 🌙\n7. História/Cultura 📜\n\nResponda com o número (ex: 1)",
-          "4️⃣ Tipo de *acomodação* preferida?\n\n1. Hotel econômico 🏨\n2. Hotel confortável ⭐\n3. Resort all-inclusive 🏝️\n4. Pousada/Hostel 🛏️\n5. Tanto faz 🤷\n\nResponda com o número (ex: 1)",
-          "5️⃣ Alguma *restrição* importante?\n\n1. Sem escalas longas ✈️\n2. Visto fácil 🛂\n3. Acessibilidade ♿\n4. Nenhuma ❌\n\nResponda com o número (ex: 4)",
-          "6️⃣ Quais suas *datas disponíveis*?\n\nExemplo: 15/06 a 30/06 ou julho todo\n\n📅 Escreva suas datas:",
-          "7️⃣ Qual seu *orçamento individual*?\n\n1. Até R$ 2.000 💰\n2. R$ 2.000 a R$ 5.000 💵\n3. R$ 5.000 a R$ 10.000 💎\n4. Acima de R$ 10.000 👑\n\nResponda com o número (ex: 2)",
+          "1️⃣ Qual seu *estilo de viagem*?\n\n1. Aventura 🏔️\n2. Relax 🧘\n3. Cultural 🏛️\n4. Gastronômico 🍽️\n5. Festas 🎉\n6. Misto 🔀\n\nResponda com o número:",
+          "2️⃣ *Clima* preferido?\n\n1. Tropical/Quente ☀️\n2. Frio ❄️\n3. Temperado 🌤️\n4. Tanto faz 🤷\n\nResponda com o número:",
+          "3️⃣ Qual sua *prioridade* na viagem?\n\n1. Praia 🏖️\n2. Montanha 🏔️\n3. Cidade 🏙️\n4. Gastronomia 🍽️\n5. Natureza 🌿\n6. Vida noturna 🌙\n7. História/Cultura 📜\n\nResponda com o número:",
+          "4️⃣ Tipo de *acomodação* preferida?\n\n1. Hotel econômico 🏨\n2. Hotel confortável ⭐\n3. Resort all-inclusive 🏝️\n4. Pousada/Hostel 🛏️\n5. Airbnb/Casa 🏠\n6. Tanto faz 🤷\n\nResponda com o número:",
+          "5️⃣ *Nacional ou internacional*?\n\n1. Prefiro Brasil 🇧🇷\n2. Prefiro Internacional 🌍\n3. Tanto faz, o que for melhor 🤷\n\nResponda com o número:",
+          "6️⃣ Qual a *duração ideal* da viagem?\n\n1. Fim de semana (2-3 dias) ⚡\n2. Uma semana (5-7 dias) 📅\n3. Viagem longa (10-15 dias) 🗓️\n4. Mais de 15 dias 🌎\n\nResponda com o número:",
+          "7️⃣ Como prefere se *locomover*?\n\n1. A pé / transporte público 🚶\n2. Carro alugado 🚗\n3. Transfer/tour organizado 🚐\n4. Tanto faz 🤷\n\nResponda com o número:",
+          "8️⃣ O que *NÃO pode faltar*?\n\n1. Piscina 🏊\n2. Wi-Fi rápido 📶\n3. Boa comida local 🍲\n4. Passeios radicais 🪂\n5. Compras/shopping 🛍️\n6. Spa/bem-estar 💆\n\nResponda com o número:",
+          "9️⃣ Alguma *restrição* importante?\n\n1. Sem escalas longas ✈️\n2. Visto fácil/sem visto 🛂\n3. Acessibilidade ♿\n4. Segurança é prioridade 🔒\n5. Nenhuma ❌\n\nResponda com o número:",
+          "🔟 Quais suas *datas disponíveis*?\n\nExemplo: 15/06 a 30/06 ou julho todo\n\n📅 Escreva suas datas:",
+          "1️⃣1️⃣ Qual seu *orçamento individual*?\n\n1. Até R$ 2.000 💰\n2. R$ 2.000 a R$ 5.000 💵\n3. R$ 5.000 a R$ 10.000 💎\n4. Acima de R$ 10.000 👑\n\nResponda com o número:",
+          "1️⃣2️⃣ Tem algo *especial* que gostaria na viagem? 🌟\n\nExemplos: aniversário, lua de mel, formatura, reencontro de amigos, primeiro viagem juntos...\n\n✍️ Escreva ou mande *nenhum*:",
         ];
 
-        const PREF_KEYS = ["estilo", "clima", "prioridade", "acomodacao", "restricoes", "datas_disponiveis", "orcamento"];
+        const PREF_KEYS = ["estilo", "clima", "prioridade", "acomodacao", "destino_tipo", "duracao", "locomocao", "essencial", "restricoes", "datas_disponiveis", "orcamento", "ocasiao_especial"];
         const PREF_OPTIONS: Record<string, string[]> = {
           estilo: ["Aventura", "Relax", "Cultural", "Gastronômico", "Festas", "Misto"],
           clima: ["Tropical/Quente", "Frio", "Temperado", "Tanto faz"],
           prioridade: ["Praia", "Montanha", "Cidade", "Gastronomia", "Natureza", "Vida noturna", "História/Cultura"],
-          acomodacao: ["Hotel econômico", "Hotel confortável", "Resort all-inclusive", "Pousada/Hostel", "Tanto faz"],
-          restricoes: ["Sem escalas longas", "Visto fácil", "Acessibilidade", "Nenhuma"],
+          acomodacao: ["Hotel econômico", "Hotel confortável", "Resort all-inclusive", "Pousada/Hostel", "Airbnb/Casa", "Tanto faz"],
+          destino_tipo: ["Prefiro Brasil", "Prefiro Internacional", "Tanto faz"],
+          duracao: ["Fim de semana (2-3 dias)", "Uma semana (5-7 dias)", "Viagem longa (10-15 dias)", "Mais de 15 dias"],
+          locomocao: ["A pé / transporte público", "Carro alugado", "Transfer/tour organizado", "Tanto faz"],
+          essencial: ["Piscina", "Wi-Fi rápido", "Boa comida local", "Passeios radicais", "Compras/shopping", "Spa/bem-estar"],
+          restricoes: ["Sem escalas longas", "Visto fácil/sem visto", "Acessibilidade", "Segurança é prioridade", "Nenhuma"],
           orcamento: ["Até R$ 2.000", "R$ 2.000 a R$ 5.000", "R$ 5.000 a R$ 10.000", "Acima de R$ 10.000"],
         };
 
@@ -2894,10 +2903,10 @@ serve(async (req) => {
         const crossReferencePreferences = async (group: any, members: any[]): Promise<string> => {
           const membersList = members.map(m => {
             const prefs = m.preferences || {};
-            return `- *${m.member_name || m.phone_number}*: Estilo: ${prefs.estilo || "?"}, Clima: ${prefs.clima || "?"}, Prioridade: ${prefs.prioridade || "?"}, Acomodação: ${prefs.acomodacao || "?"}, Orçamento: ${prefs.orcamento || "?"}, Datas: ${prefs.datas_disponiveis || "?"}, Restrições: ${prefs.restricoes || "nenhuma"}`;
+            return `- *${m.member_name || m.phone_number}*: Estilo: ${prefs.estilo || "?"}, Clima: ${prefs.clima || "?"}, Prioridade: ${prefs.prioridade || "?"}, Acomodação: ${prefs.acomodacao || "?"}, Nacional/Internacional: ${prefs.destino_tipo || "?"}, Duração: ${prefs.duracao || "?"}, Locomoção: ${prefs.locomocao || "?"}, Essencial: ${prefs.essencial || "?"}, Restrições: ${prefs.restricoes || "nenhuma"}, Orçamento: ${prefs.orcamento || "?"}, Datas: ${prefs.datas_disponiveis || "?"}, Ocasião: ${prefs.ocasiao_especial || "nenhuma"}`;
           }).join("\n");
 
-          const crossPrompt = `Você é um especialista em viagens de grupo da Tomorrow Travel. Analise as preferências de ${members.length} viajantes e sugira os 3 melhores destinos.
+          const crossPrompt = `Você é um especialista em viagens de grupo da Tomorrow Travel. Analise as preferências detalhadas de ${members.length} viajantes e sugira os 3 melhores destinos.
 
 MEMBROS DO GRUPO:
 ${membersList}
@@ -2906,10 +2915,13 @@ REGRAS:
 - Sugira 3 destinos ranqueados por compatibilidade (0-100%)
 - IMPORTANTE: Numere os destinos como "1️⃣", "2️⃣", "3️⃣" para facilitar a votação
 - Para cada destino, explique por que combina com o grupo
+- Considere TODOS os critérios: estilo, clima, prioridade, acomodação, nacional/internacional, duração ideal, locomoção, itens essenciais, restrições, orçamento e datas
+- Se há uma ocasião especial (aniversário, lua de mel, etc.), destaque destinos que valorizem esse momento
 - Identifique possíveis conflitos (ex: "João prefere frio mas Maria quer praia")
 - Sugira compromissos (ex: "Gramado tem frio + gastronomia + natureza")
+- Se a maioria prefere Brasil, foque em destinos nacionais; se internacional, sugira fora do país
 - Use destinos reais e específicos (não "Nordeste", mas "Porto de Galinhas")
-- Considere o orçamento médio do grupo
+- Considere o orçamento médio do grupo e a duração preferida
 - Formato WhatsApp com emojis e *negrito*
 - Máximo 3500 caracteres
 - NÃO adicione perguntas sobre cotação no final - a votação será adicionada automaticamente`;
@@ -3075,7 +3087,7 @@ REGRAS:
             member_name: contactName || null,
           });
 
-          const joinMsg = `✅ *Você entrou no grupo ${code}!*\n${group.creator_name ? `Criado por ${group.creator_name}` : ""}\n\nVou te fazer 7 perguntas rápidas sobre suas preferências de viagem! 🌍\nResponda com o número da opção escolhida.`;
+          const joinMsg = `✅ *Você entrou no grupo ${code}!*\n${group.creator_name ? `Criado por ${group.creator_name}` : ""}\n\nVou te fazer 12 perguntas rápidas sobre suas preferências de viagem! 🌍\nResponda com o número da opção escolhida.`;
           await sendWhatsAppMessage(phoneNumber, joinMsg);
 
           // Set group mode
@@ -3700,7 +3712,7 @@ REGRAS:
                   collected_data: { ...gData, _group_mode: "questioning", _group_step: 1 },
                 }).eq("id", convForGroup.id);
 
-                await sendWhatsAppMessage(phoneNumber, "🚀 *Vamos lá!* Vou te fazer 7 perguntas rápidas!\n\n");
+                await sendWhatsAppMessage(phoneNumber, "🚀 *Vamos lá!* Vou te fazer 12 perguntas rápidas para encontrar o destino perfeito pro grupo!\n\n");
                 await sendWhatsAppMessage(phoneNumber, GROUP_QUESTIONS[0]);
               } else {
                 await sendWhatsAppMessage(phoneNumber, "👍 Sem problema! Quando quiser começar, mande *sim*.\n\nSeus amigos podem entrar pelo link que enviei! 📲");
@@ -3716,7 +3728,7 @@ REGRAS:
               const step = parseInt(gData._group_step);
               const groupId = gData._group_id;
 
-              if (step >= 1 && step <= 7) {
+              if (step >= 1 && step <= 12) {
                 const prefKey = PREF_KEYS[step - 1];
                 const { data: member } = await supabase
                   .from("travel_group_members")
@@ -3727,9 +3739,10 @@ REGRAS:
 
                 if (member) {
                   const prefs = (member.preferences as Record<string, any>) || {};
-                  // Convert numbered answer to text for multiple-choice questions (not step 6 which is free text)
+                  // Free-text steps: 10 (datas) and 12 (ocasião especial)
+                  const isFreeText = step === 10 || step === 12;
                   let answerValue = (messageText || "").trim();
-                  if (step !== 6 && PREF_OPTIONS[prefKey]) {
+                  if (!isFreeText && PREF_OPTIONS[prefKey]) {
                     const num = parseInt(answerValue);
                     if (!isNaN(num) && num >= 1 && num <= PREF_OPTIONS[prefKey].length) {
                       answerValue = PREF_OPTIONS[prefKey][num - 1];
@@ -3741,7 +3754,7 @@ REGRAS:
 
                 await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
 
-                if (step < 7) {
+                if (step < 12) {
                   const nextStep = step + 1;
                   await supabase.from("whatsapp_conversations").update({
                     collected_data: { ...gData, _group_step: nextStep },
@@ -3749,7 +3762,7 @@ REGRAS:
 
                   await sendWhatsAppMessage(phoneNumber, GROUP_QUESTIONS[nextStep - 1]);
                 } else {
-                  // All 7 questions answered — mark as ready
+                  // All 12 questions answered — mark as ready
                   await supabase.from("travel_group_members").update({ is_ready: true })
                     .eq("group_id", groupId)
                     .eq("phone_number", phoneNumber);
