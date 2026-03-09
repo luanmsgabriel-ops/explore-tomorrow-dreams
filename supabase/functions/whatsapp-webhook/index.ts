@@ -1301,7 +1301,7 @@ function extractCollectedData(aiResponse: string, existingData: Record<string, a
 }
 
 function cleanAiResponse(response: string): string {
-  return response
+  let cleaned = response
     .replace(/\[ROTEIRO_VISUAL\][\s\S]*?\[\/ROTEIRO_VISUAL\]/g, "")
     .replace(/\[DADOS:\w+=.*?\]/g, "")
     .replace(/\[STATUS:\w+\]/g, "")
@@ -1316,8 +1316,18 @@ function cleanAiResponse(response: string): string {
     .replace(/\[WHATSAPP:[^\]]*\]/gi, "")
     .replace(/\[EMAIL:[^\]]*\]/gi, "")
     .replace(/\[[A-Z_]+:[^\]]*\]/g, "")
+    // Remove hallucinated external URLs (Typeform, Jotform, Google Forms, bit.ly, tally, survey, etc.)
+    .replace(/\[[^\]]*\]\(https?:\/\/[^)]*(?:typeform|jotform|google.*form|forms\.gle|bit\.ly|tally|survey)[^)]*\)/gi, "")
+    .replace(/https?:\/\/[^\s\])"]*(?:typeform|jotform|google.*form|forms\.gle|bit\.ly|tally|survey)[^\s\])"']*/gi, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+
+  // If hallucinated URLs were removed and message mentions grupo/galera, append instruction
+  if (cleaned !== response.replace(/\[[A-Z_]+:[^\]]*\]/g, "").trim() && /grupo|galera/i.test(cleaned)) {
+    cleaned += "\n\nPara viagem em grupo, mande *criar grupo* aqui no chat! 🎉";
+  }
+
+  return cleaned;
 }
 
 // Parse [ROTEIRO_VISUAL] tag into structured data for image generation
