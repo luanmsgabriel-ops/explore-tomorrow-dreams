@@ -3106,17 +3106,19 @@ REGRAS:
 
           const result = await crossReferencePreferences(group, readyMembers);
 
-          // Save result
+          // Save result and set status to voting
           await supabase.from("travel_groups").update({
             final_recommendation: { text: result, generated_at: new Date().toISOString() },
-            status: "completed",
+            status: "voting",
+            votes: {},
           }).eq("id", groupId);
 
-          // Send to ALL members
+          // Send to ALL members with voting instructions
           const header = `🌍 *Resultado do Grupo ${group.group_code}* 🎯\n\n`;
+          const votingFooter = `\n\n🗳️ *HORA DE VOTAR!*\nEscolha seu destino favorito respondendo:\n👉 *votar 1* - para o 1º destino\n👉 *votar 2* - para o 2º destino\n👉 *votar 3* - para o 3º destino`;
           for (const member of allMembers) {
             try {
-              await sendWhatsAppMessage(member.phone_number, header + result);
+              await sendWhatsAppMessage(member.phone_number, header + result + votingFooter);
             } catch (err) {
               console.error(`[GROUP] Error sending result to ${member.phone_number}:`, err);
             }
