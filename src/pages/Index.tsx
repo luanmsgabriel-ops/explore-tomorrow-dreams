@@ -44,12 +44,12 @@ const Index = () => {
       {/* Discover section */}
       <section className="py-16 md:py-20 world-map-bg">
         <div className="container mx-auto px-4 lg:px-8 relative z-10">
-          <div className="text-center max-w-3xl mx-auto">
+          <div className="text-center max-w-3xl mx-auto bg-black/50 backdrop-blur-sm rounded-2xl p-8">
             <h2 className="font-serif text-3xl md:text-5xl font-bold mb-4">
               <span className="text-gold-embossed">Descubra o</span>{' '}
               <span className="gradient-text-teal">Extraordinário</span>
             </h2>
-            <p className="text-muted-foreground text-lg">
+            <p className="text-white text-lg">
               Tecnologia de ponta para facilitar sua viagem. O primeiro agente de IA do mundo no setor de viagens, acessível para todos.
             </p>
           </div>
@@ -102,34 +102,34 @@ const Index = () => {
 
           {/* Category cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Link to="/explorar" className="group card-gold-border p-8 transition-all duration-300 hover:scale-105">
+            <Link to="/explorar" className="group card-gold-border p-8 transition-all duration-300 hover:scale-105 bg-black/50 backdrop-blur-sm">
               <div className="w-14 h-14 rounded-xl bg-primary/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform border border-gold/30">
                 <Compass className="w-7 h-7 text-gold-light" />
               </div>
               <h3 className="font-serif text-2xl font-bold text-gold-embossed mb-3">Explorar</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
+              <p className="text-white text-sm leading-relaxed mb-4">
                 Destinos fora do comum e experiências que poucos conhecem. Para os verdadeiros exploradores.
               </p>
               <span className="text-gold-light text-sm font-medium group-hover:underline">Ver destinos →</span>
             </Link>
 
-            <Link to="/nacional" className="group card-gold-border p-8 transition-all duration-300 hover:scale-105">
+            <Link to="/nacional" className="group card-gold-border p-8 transition-all duration-300 hover:scale-105 bg-black/50 backdrop-blur-sm">
               <div className="w-14 h-14 rounded-xl bg-accent/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform border border-gold/30">
                 <MapPin className="w-7 h-7 text-gold-light" />
               </div>
               <h3 className="font-serif text-2xl font-bold text-gold-embossed mb-3">Nacional</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
+              <p className="text-white text-sm leading-relaxed mb-4">
                 As joias escondidas do Brasil. Praias paradisíacas, cachoeiras e paisagens de tirar o fôlego.
               </p>
               <span className="text-gold-light text-sm font-medium group-hover:underline">Ver destinos →</span>
             </Link>
 
-            <Link to="/internacional" className="group card-gold-border p-8 transition-all duration-300 hover:scale-105">
+            <Link to="/internacional" className="group card-gold-border p-8 transition-all duration-300 hover:scale-105 bg-black/50 backdrop-blur-sm">
               <div className="w-14 h-14 rounded-xl bg-teal/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform border border-gold/30">
                 <Globe className="w-7 h-7 text-teal-light" />
               </div>
               <h3 className="font-serif text-2xl font-bold text-gold-embossed mb-3">Internacional</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
+              <p className="text-white text-sm leading-relaxed mb-4">
                 Os melhores destinos do mundo. Culturas, paisagens e experiências que vão além das fronteiras.
               </p>
               <span className="text-teal-light text-sm font-medium group-hover:underline">Ver destinos →</span>
@@ -149,42 +149,42 @@ const Index = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="text-center p-6 card-gold-border">
+            <div className="text-center p-6 card-gold-border bg-black/50 backdrop-blur-sm">
               <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-4 border border-gold/30">
                 <Sparkles className="w-8 h-8 text-gold-light" />
               </div>
               <h3 className="font-serif text-lg font-bold text-gold-embossed mb-2">Roteiros com IA</h3>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-white text-sm">
                 Crie roteiros personalizados em segundos com nossa inteligência artificial.
               </p>
             </div>
 
-            <div className="text-center p-6 card-gold-border">
+            <div className="text-center p-6 card-gold-border bg-black/50 backdrop-blur-sm">
               <div className="w-16 h-16 rounded-2xl bg-accent/20 flex items-center justify-center mx-auto mb-4 border border-gold/30">
                 <Play className="w-8 h-8 text-gold-light" />
               </div>
               <h3 className="font-serif text-lg font-bold text-gold-embossed mb-2">Vídeos Imersivos</h3>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-white text-sm">
                 Explore os destinos antes de viajar com vídeos selecionados especialmente.
               </p>
             </div>
 
-            <div className="text-center p-6 card-gold-border">
+            <div className="text-center p-6 card-gold-border bg-black/50 backdrop-blur-sm">
               <div className="w-16 h-16 rounded-2xl bg-teal/20 flex items-center justify-center mx-auto mb-4 border border-gold/30">
                 <MessageCircle className="w-8 h-8 text-teal-light" />
               </div>
               <h3 className="font-serif text-lg font-bold text-gold-embossed mb-2">Chat Inteligente</h3>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-white text-sm">
                 Tire dúvidas sobre qualquer destino com nosso assistente virtual 24/7.
               </p>
             </div>
 
-            <div className="text-center p-6 card-gold-border">
+            <div className="text-center p-6 card-gold-border bg-black/50 backdrop-blur-sm">
               <div className="w-16 h-16 rounded-2xl bg-gold/20 flex items-center justify-center mx-auto mb-4 border border-gold/30">
                 <Globe className="w-8 h-8 text-gold-light" />
               </div>
               <h3 className="font-serif text-lg font-bold text-gold-embossed mb-2">IA Pioneira no Turismo</h3>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-white text-sm">
                 O primeiro agente de IA B2C do mundo no setor de viagens.
               </p>
             </div>
@@ -195,7 +195,7 @@ const Index = () => {
       {/* CTA Section */}
       <section className="py-20 md:py-32 relative overflow-hidden world-map-bg">
         <div className="container mx-auto px-4 lg:px-8 relative z-10">
-          <div className="max-w-3xl mx-auto text-center">
+          <div className="max-w-3xl mx-auto text-center bg-black/50 backdrop-blur-sm rounded-2xl p-8 md:p-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-gold mb-6">
               <Sparkles className="w-4 h-4 text-gold-light" />
               <span className="text-sm font-medium text-gold-light">Powered by AI</span>
@@ -204,7 +204,7 @@ const Index = () => {
               <span className="text-gold-embossed">Crie seu roteiro</span>{' '}
               <span className="gradient-text-teal">personalizado</span>
             </h2>
-            <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto">
+            <p className="text-white text-lg mb-8 max-w-2xl mx-auto">
               Nossa inteligência artificial cria roteiros sob medida para você. Informe suas preferências e receba um plano de viagem personalizado em segundos.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
@@ -212,7 +212,7 @@ const Index = () => {
                 <Compass className="w-5 h-5" />
                 Explorar Destinos
               </Link>
-              <Link to="/nacional" className="btn-outline text-lg px-8 py-4">
+              <Link to="/nacional" className="btn-outline bg-teal/80 text-white border-teal text-lg px-8 py-4">
                 Ver Brasil
               </Link>
             </div>
