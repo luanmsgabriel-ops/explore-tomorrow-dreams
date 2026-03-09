@@ -2922,7 +2922,7 @@ REGRAS:
           });
 
           const inviteLink = `https://wa.me/5515991833448?text=${encodeURIComponent(`entrar grupo ${groupCode}`)}`;
-          const createMsg = `🎉 *Grupo de Viagem Criado!*\n\nCódigo: *${groupCode}*\n\n📲 *Compartilhe este link com seus amigos para eles entrarem no grupo:*\n${inviteLink}\n\nOu peça para mandarem:\n👉 *entrar grupo ${groupCode}*\n\nQuando todos entrarem e responderem o questionário, eu cruzo as preferências e sugiro o destino perfeito pro grupo! 🌍✈️\n\nVou começar com suas preferências...`;
+          const createMsg = `🎉 *Grupo de Viagem Criado!*\n\nCódigo: *${groupCode}*\n\n📲 *Compartilhe este link com seus amigos para eles entrarem no grupo:*\n${inviteLink}\n\nOu peça para mandarem:\n👉 *entrar grupo ${groupCode}*\n\nQuando todos entrarem e responderem o questionário, eu cruzo as preferências e sugiro o destino perfeito pro grupo! 🌍✈️\n\n📅 *Negociador de Datas:* Cada membro pode enviar:\n👉 *minhas datas 15/06 a 30/06, 10/07 a 25/07*\nDepois mande *datas grupo* para encontrar a janela ideal!\n\nVou começar com suas preferências...`;
           await sendWhatsAppMessage(phoneNumber, createMsg);
 
           // Set group mode in conversation
