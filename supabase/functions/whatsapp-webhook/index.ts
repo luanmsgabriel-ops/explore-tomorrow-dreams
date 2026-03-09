@@ -3712,7 +3712,7 @@ REGRAS:
                   collected_data: { ...gData, _group_mode: "questioning", _group_step: 1 },
                 }).eq("id", convForGroup.id);
 
-                await sendWhatsAppMessage(phoneNumber, "🚀 *Vamos lá!* Vou te fazer 7 perguntas rápidas!\n\n");
+                await sendWhatsAppMessage(phoneNumber, "🚀 *Vamos lá!* Vou te fazer 12 perguntas rápidas para encontrar o destino perfeito pro grupo!\n\n");
                 await sendWhatsAppMessage(phoneNumber, GROUP_QUESTIONS[0]);
               } else {
                 await sendWhatsAppMessage(phoneNumber, "👍 Sem problema! Quando quiser começar, mande *sim*.\n\nSeus amigos podem entrar pelo link que enviei! 📲");
