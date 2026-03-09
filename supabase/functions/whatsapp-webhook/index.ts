@@ -2327,7 +2327,34 @@ serve(async (req) => {
 
       // ========== ADMIN ROUTING ==========
       // If the message is from the admin phone number, route to admin assistant
-      if (phoneNumber === ADMIN_PHONE_NUMBER) {
+      // BUT skip admin routing for group-related commands so admin can also use Modo Galera
+      const lowerMsgForGroupCheck = (messageText || "").toLowerCase().trim();
+      const isGroupCommand = /^entrar grupo\s+[a-zA-Z0-9]{6}$/i.test(lowerMsgForGroupCheck)
+        || /(?:criar|quero|novo|ativar|iniciar|montar|fazer|organizar|bora|vamos|começar|comecar|abrir|preparar|planejar)/i.test(lowerMsgForGroupCheck) && /(?:grupo|galera|modo\s*galera|viagem\s+(?:em\s+)?grupo)/i.test(lowerMsgForGroupCheck)
+        || /^(meu grupo|status grupo|group status)$/i.test(lowerMsgForGroupCheck)
+        || /^(resultado grupo|group result|ver resultado)$/i.test(lowerMsgForGroupCheck)
+        || /^(sair grupo|sair do grupo|leave group)$/i.test(lowerMsgForGroupCheck)
+        || /^votar\s+[1-3]$/i.test(lowerMsgForGroupCheck)
+        || /^minhas?\s+datas?\s+/i.test(lowerMsgForGroupCheck)
+        || /^(datas grupo|negociar datas|datas do grupo|group dates)$/i.test(lowerMsgForGroupCheck);
+
+      // Also check if admin is in a group flow (setup_name, setup_count, questioning, etc.)
+      let isAdminInGroupFlow = false;
+      if (phoneNumber === ADMIN_PHONE_NUMBER && !isGroupCommand) {
+        const { data: adminConv } = await supabase
+          .from("whatsapp_conversations")
+          .select("collected_data")
+          .eq("phone_number", phoneNumber)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const adminGroupMode = (adminConv?.collected_data as Record<string, any>)?._group_mode;
+        if (adminGroupMode && adminGroupMode !== null) {
+          isAdminInGroupFlow = true;
+        }
+      }
+
+      if (phoneNumber === ADMIN_PHONE_NUMBER && !isGroupCommand && !isAdminInGroupFlow) {
         // Save admin messages too so they appear in conversations
         await ensureConversationAndSaveMessage(phoneNumber, contactName || "Admin", messageText);
         
