@@ -2852,8 +2852,8 @@ serve(async (req) => {
         const hasGroupIntent = /(?:criar|quero|novo|ativar|iniciar|montar|fazer|organizar|bora|vamos|começar|comecar|abrir|preparar|planejar)/i;
         const hasGroupKeyword = /(?:grupo|galera|modo\s*galera|viagem\s+(?:em\s+)?grupo)/i;
         const createGroupRegex = { test: (s: string) => hasGroupIntent.test(s) && hasGroupKeyword.test(s) };
-        const joinGroupRegex = /^entrar\s+grupo(?:\s+c[oó]digo)?\s+([A-Z0-9]{6})\b/i;
-        const joinGroupRegexLower = /^entrar\s+grupo(?:\s+c[oó]digo)?\s+([a-zA-Z0-9]{6})\b/i;
+        const joinGroupRegex = /(?:entrar(?:\s+no)?\s+grupo|me\s+adicion(?:a|ar|e)(?:\s+no)?\s+grupo|quero\s+entrar(?:\s+no)?\s+grupo)\s+([A-Z0-9]{6})\b/i;
+        const joinGroupRegexLower = /(?:entrar(?:\s+no)?\s+grupo|me\s+adicion(?:a|ar|e)(?:\s+no)?\s+grupo|quero\s+entrar(?:\s+no)?\s+grupo)\s+([a-zA-Z0-9]{6})\b/i;
         const myGroupRegex = /^(meu grupo|status grupo|group status)$/i;
         const resultGroupRegex = /^(resultado grupo|group result|ver resultado)$/i;
         const leaveGroupRegex = /^(sair grupo|sair do grupo|leave group)$/i;
