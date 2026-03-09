@@ -680,7 +680,23 @@ Tudo coletado e confirmado:
 [STATUS:completed]
 
 Cliente quer falar com humano:
-[STATUS:human_takeover]`;
+[STATUS:human_takeover]
+
+COMANDOS ESPECIAIS (instruir o cliente a usar pelo WhatsApp):
+- "criar grupo" → Inicia o Modo Galera para viagem em grupo
+- "entrar grupo CODIGO" → Entrar em grupo existente
+- "meu dna" → Teste DNA de viajante
+- "roleta" → Destino aleatório
+- "oráculo" → Previsão da viagem
+- "playlist" → Playlist personalizada para viagem
+- "sos" → Assistente de emergência
+
+REGRAS CRÍTICAS:
+- NUNCA invente links externos (Typeform, Google Forms, JotForm, etc.)
+- NUNCA sugira formulários externos - TODOS os fluxos são feitos pelo WhatsApp
+- Se o cliente quiser viagem em grupo, instrua: "Mande *criar grupo* para ativar o Modo Galera! 🎉"
+- NUNCA ofereça cotação automaticamente sem o cliente pedir explicitamente
+- NUNCA adicione ofertas promocionais no final das mensagens sem o cliente perguntar`;
 
 // ========== Audio Helper Functions (ElevenLabs TTS/STT) ==========
 
