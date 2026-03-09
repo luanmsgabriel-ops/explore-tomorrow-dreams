@@ -36,6 +36,7 @@ interface TeoChatProps {
 export const TeoChat = ({ fullPage = false }: TeoChatProps) => {
   const sessionIdRef = useRef<string>(generateSecureSessionId());
   const quotation = useQuotation();
+  const itineraryGeneratingRef = useRef<boolean>(false);
   
   const [step, setStep] = useState<ChatStep>('collect_name');
   const [userName, setUserName] = useState('');
