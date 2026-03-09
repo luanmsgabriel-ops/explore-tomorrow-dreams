@@ -2869,24 +2869,33 @@ serve(async (req) => {
           return code;
         };
 
-        // Group questionnaire questions
+        // Group questionnaire questions (12 questions for refined destination matching)
         const GROUP_QUESTIONS = [
-          "1️⃣ Qual seu *estilo de viagem*?\n\n1. Aventura 🏔️\n2. Relax 🧘\n3. Cultural 🏛️\n4. Gastronômico 🍽️\n5. Festas 🎉\n6. Misto 🔀\n\nResponda com o número (ex: 1)",
-          "2️⃣ *Clima* preferido?\n\n1. Tropical/Quente ☀️\n2. Frio ❄️\n3. Temperado 🌤️\n4. Tanto faz 🤷\n\nResponda com o número (ex: 1)",
-          "3️⃣ Qual sua *prioridade* na viagem?\n\n1. Praia 🏖️\n2. Montanha 🏔️\n3. Cidade 🏙️\n4. Gastronomia 🍽️\n5. Natureza 🌿\n6. Vida noturna 🌙\n7. História/Cultura 📜\n\nResponda com o número (ex: 1)",
-          "4️⃣ Tipo de *acomodação* preferida?\n\n1. Hotel econômico 🏨\n2. Hotel confortável ⭐\n3. Resort all-inclusive 🏝️\n4. Pousada/Hostel 🛏️\n5. Tanto faz 🤷\n\nResponda com o número (ex: 1)",
-          "5️⃣ Alguma *restrição* importante?\n\n1. Sem escalas longas ✈️\n2. Visto fácil 🛂\n3. Acessibilidade ♿\n4. Nenhuma ❌\n\nResponda com o número (ex: 4)",
-          "6️⃣ Quais suas *datas disponíveis*?\n\nExemplo: 15/06 a 30/06 ou julho todo\n\n📅 Escreva suas datas:",
-          "7️⃣ Qual seu *orçamento individual*?\n\n1. Até R$ 2.000 💰\n2. R$ 2.000 a R$ 5.000 💵\n3. R$ 5.000 a R$ 10.000 💎\n4. Acima de R$ 10.000 👑\n\nResponda com o número (ex: 2)",
+          "1️⃣ Qual seu *estilo de viagem*?\n\n1. Aventura 🏔️\n2. Relax 🧘\n3. Cultural 🏛️\n4. Gastronômico 🍽️\n5. Festas 🎉\n6. Misto 🔀\n\nResponda com o número:",
+          "2️⃣ *Clima* preferido?\n\n1. Tropical/Quente ☀️\n2. Frio ❄️\n3. Temperado 🌤️\n4. Tanto faz 🤷\n\nResponda com o número:",
+          "3️⃣ Qual sua *prioridade* na viagem?\n\n1. Praia 🏖️\n2. Montanha 🏔️\n3. Cidade 🏙️\n4. Gastronomia 🍽️\n5. Natureza 🌿\n6. Vida noturna 🌙\n7. História/Cultura 📜\n\nResponda com o número:",
+          "4️⃣ Tipo de *acomodação* preferida?\n\n1. Hotel econômico 🏨\n2. Hotel confortável ⭐\n3. Resort all-inclusive 🏝️\n4. Pousada/Hostel 🛏️\n5. Airbnb/Casa 🏠\n6. Tanto faz 🤷\n\nResponda com o número:",
+          "5️⃣ *Nacional ou internacional*?\n\n1. Prefiro Brasil 🇧🇷\n2. Prefiro Internacional 🌍\n3. Tanto faz, o que for melhor 🤷\n\nResponda com o número:",
+          "6️⃣ Qual a *duração ideal* da viagem?\n\n1. Fim de semana (2-3 dias) ⚡\n2. Uma semana (5-7 dias) 📅\n3. Viagem longa (10-15 dias) 🗓️\n4. Mais de 15 dias 🌎\n\nResponda com o número:",
+          "7️⃣ Como prefere se *locomover*?\n\n1. A pé / transporte público 🚶\n2. Carro alugado 🚗\n3. Transfer/tour organizado 🚐\n4. Tanto faz 🤷\n\nResponda com o número:",
+          "8️⃣ O que *NÃO pode faltar*?\n\n1. Piscina 🏊\n2. Wi-Fi rápido 📶\n3. Boa comida local 🍲\n4. Passeios radicais 🪂\n5. Compras/shopping 🛍️\n6. Spa/bem-estar 💆\n\nResponda com o número:",
+          "9️⃣ Alguma *restrição* importante?\n\n1. Sem escalas longas ✈️\n2. Visto fácil/sem visto 🛂\n3. Acessibilidade ♿\n4. Segurança é prioridade 🔒\n5. Nenhuma ❌\n\nResponda com o número:",
+          "🔟 Quais suas *datas disponíveis*?\n\nExemplo: 15/06 a 30/06 ou julho todo\n\n📅 Escreva suas datas:",
+          "1️⃣1️⃣ Qual seu *orçamento individual*?\n\n1. Até R$ 2.000 💰\n2. R$ 2.000 a R$ 5.000 💵\n3. R$ 5.000 a R$ 10.000 💎\n4. Acima de R$ 10.000 👑\n\nResponda com o número:",
+          "1️⃣2️⃣ Tem algo *especial* que gostaria na viagem? 🌟\n\nExemplos: aniversário, lua de mel, formatura, reencontro de amigos, primeiro viagem juntos...\n\n✍️ Escreva ou mande *nenhum*:",
         ];
 
-        const PREF_KEYS = ["estilo", "clima", "prioridade", "acomodacao", "restricoes", "datas_disponiveis", "orcamento"];
+        const PREF_KEYS = ["estilo", "clima", "prioridade", "acomodacao", "destino_tipo", "duracao", "locomocao", "essencial", "restricoes", "datas_disponiveis", "orcamento", "ocasiao_especial"];
         const PREF_OPTIONS: Record<string, string[]> = {
           estilo: ["Aventura", "Relax", "Cultural", "Gastronômico", "Festas", "Misto"],
           clima: ["Tropical/Quente", "Frio", "Temperado", "Tanto faz"],
           prioridade: ["Praia", "Montanha", "Cidade", "Gastronomia", "Natureza", "Vida noturna", "História/Cultura"],
-          acomodacao: ["Hotel econômico", "Hotel confortável", "Resort all-inclusive", "Pousada/Hostel", "Tanto faz"],
-          restricoes: ["Sem escalas longas", "Visto fácil", "Acessibilidade", "Nenhuma"],
+          acomodacao: ["Hotel econômico", "Hotel confortável", "Resort all-inclusive", "Pousada/Hostel", "Airbnb/Casa", "Tanto faz"],
+          destino_tipo: ["Prefiro Brasil", "Prefiro Internacional", "Tanto faz"],
+          duracao: ["Fim de semana (2-3 dias)", "Uma semana (5-7 dias)", "Viagem longa (10-15 dias)", "Mais de 15 dias"],
+          locomocao: ["A pé / transporte público", "Carro alugado", "Transfer/tour organizado", "Tanto faz"],
+          essencial: ["Piscina", "Wi-Fi rápido", "Boa comida local", "Passeios radicais", "Compras/shopping", "Spa/bem-estar"],
+          restricoes: ["Sem escalas longas", "Visto fácil/sem visto", "Acessibilidade", "Segurança é prioridade", "Nenhuma"],
           orcamento: ["Até R$ 2.000", "R$ 2.000 a R$ 5.000", "R$ 5.000 a R$ 10.000", "Acima de R$ 10.000"],
         };
 
