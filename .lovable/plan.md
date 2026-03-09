@@ -1,118 +1,73 @@
 
 
-# Plano: 5 Features Téo 2030
+# Integração Direta com API Infotravel (Cativa)
 
-## Features Solicitadas (uma por vez, implementação completa)
-1. ✅ **Téo Grupal** — Viagem em grupo com cruzamento de preferências via WhatsApp
-2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
-3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
-9. ✅ **Téo Roleta** — Destino aleatório filtrado por DNA com animação textual
-10. ✅ **Téo Oráculo** — Previsão personalizada da viagem com signos, DNA e fase lunar
-4. ✅ **Téo DNA** — Perfil genético de viajante
-5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
-6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
-7. ✅ **Téo Compatibilidade** — Match de viagem entre DNAs de viajante
-8. ✅ **Téo SOS** — Assistente de emergência com embaixadas, hospitais e frases úteis
+## Situação Atual
+O sistema usa o Manus AI para simular cliques no portal web da Cativa — lento, frágil e limitado. A API Infotravel disponibiliza endpoints REST estruturados para buscar pacotes, hotéis, voos, seguros e veículos em tempo real.
 
----
+## O Que Muda
 
-## 7. Téo Compatibilidade (IMPLEMENTADO ✅)
+**Antes**: Téo → Edge Function `cotar-viagem` → Manus API → browser automation no portal Cativa → WhatsApp (minutos de espera)
 
-### Conceito
-O cliente envia `compatibilidade com 5511999999999` e o Téo compara os DNAs de Viajante dos dois, calcula score de compatibilidade e sugere destinos ideais para ambos.
+**Depois**: Téo → Edge Function `cativa-quotation` → API Infotravel direta → resposta em segundos → WhatsApp
 
-### Comandos WhatsApp
-| Comando | Ação |
+## Endpoints da API Infotravel Disponíveis
+
+A API oferece:
+- `POST /api/v1/authenticate` — obter JWT token (expira em ~10 min)
+- `GET /api/v1/avail/package/{packageType}` — buscar pacotes (hotel, hotel_flight, dynamic)
+- `GET /api/v1/avail/hotel` — buscar apenas hotéis
+- `GET /api/v1/avail/insurance` — seguros
+- `GET /api/v1/avail/vehicle` — veículos
+- `GET /api/v1/avail/experience` — experiências/passeios
+- `GET /api/v1/avail/circuit` — circuitos
+
+O endpoint principal para cotações de pacote é `/avail/package/hotel_flight` que retorna voos + hotéis combinados.
+
+## Plano de Implementação
+
+### 1. Armazenar credenciais da API como secrets
+Adicionar 4 secrets: `INFOTRAVEL_USERNAME`, `INFOTRAVEL_PASSWORD`, `INFOTRAVEL_CLIENT`, `INFOTRAVEL_AGENCY`.
+
+### 2. Criar Edge Function `cativa-quotation`
+Nova Edge Function dedicada à integração com a API Infotravel:
+
+- **Autenticação**: POST para `/authenticate` com as credenciais, obtém JWT token. Cachear o token por ~8 minutos para evitar re-autenticação.
+- **Busca de pacotes**: GET `/avail/package/hotel_flight` com parâmetros:
+  - `start` / `end` (datas YYYY-MM-DD)
+  - `occupancy` (formato: `2-9,4` para 2 adultos + crianças de 9 e 4 anos)
+  - `originIata` / `destinationIata` (códigos IATA dos aeroportos)
+  - `nationality` (BR)
+- **Fallback**: Se `hotel_flight` não retornar resultados, tentar `dynamic` ou `hotel` apenas.
+- **Formatação**: Processar a resposta e retornar dados estruturados (hotéis, voos, preços, regime alimentar, parcelas).
+
+### 3. Criar mapeamento de cidades para códigos
+A API usa códigos numéricos ou IATA para origem/destino. Criar um mapeamento das cidades mais comuns ou usar `originIata`/`destinationIata` com códigos IATA de aeroportos (GRU, CGH, GIG, SSA, REC, FOR, etc.).
+
+### 4. Atualizar `whatsapp-webhook` para usar a nova função
+- Substituir a chamada ao Manus/`process-quote` pela nova `cativa-quotation`
+- Quando o Téo dispara `[COTAR_VIAGEM]`, chamar a API Infotravel diretamente
+- Formatar resultado e enviar via WhatsApp imediatamente (sem espera de minutos)
+- Manter fallback: se a API falhar, registrar lead para atendimento humano
+
+### 5. Atualizar `cotar-viagem` (frontend/site)
+- Substituir a chamada ao Manus pela nova `cativa-quotation` para cotações vindas do site/chat também
+- Retornar resultados estruturados em vez de "processando"
+
+### 6. Manter `travel_quote_requests` como registro
+- Continuar salvando todas as cotações na tabela para histórico e acompanhamento
+- Atualizar status para `completed` quando a API retornar resultados, com os dados em `processing_details`
+
+## Arquivos Modificados/Criados
+
+| Arquivo | Ação |
 |---------|------|
-| `compatibilidade com [número]` / `match viagem [número]` | Compara DNAs e sugere destino |
-| `compatibilidade` (sem número) | Téo pede o número do parceiro |
+| `supabase/functions/cativa-quotation/index.ts` | Criar — nova Edge Function com integração Infotravel |
+| `supabase/functions/whatsapp-webhook/index.ts` | Modificar — usar `cativa-quotation` em vez de Manus |
+| `supabase/functions/cotar-viagem/index.ts` | Modificar — usar API Infotravel em vez de Manus |
+| `src/hooks/useQuotation.ts` | Modificar — processar resultados estruturados da nova API |
+| `supabase/config.toml` | N/A (auto-gerenciado) |
 
-### Armazenamento (zero novas tabelas)
-Usa `client_memory.preferences`:
-- `ultimo_match`: `{ parceiro_phone, parceiro_nome, score, data }`
+## Primeiro Passo
+Preciso que você forneça as 4 credenciais (username, password, client, agency) para armazená-las com segurança como secrets do projeto.
 
-### Arquivos modificados
-- `supabase/functions/whatsapp-webhook/index.ts`: Bloco de comando com regex, busca de 2 memórias, chamada Gemini, formatação e save
-- `supabase/functions/_shared/client-memory.ts`: `ultimo_match` no `formatMemoryForPrompt` + skipKeys
-
-## 3. Téo DNA de Viajante (IMPLEMENTADO ✅)
-
-### Conceito
-Questionário profundo de 10 perguntas que gera um perfil "genético" de viajante com 5 categorias (Explorador, Culturalista, Gourmet, Zen, Socialite) que evolui com cada viagem.
-
-### Comandos WhatsApp
-| Comando | Ação |
-|---------|------|
-| `meu dna` / `dna viajante` / `teste dna` | Inicia o questionário de 10 perguntas |
-
-### Categorias do DNA
-- 🏔️ Explorador: aventura, adrenalina, natureza selvagem
-- 🏛️ Culturalista: história, museus, arquitetura
-- 🍽️ Gourmet: gastronomia, vinhos, experiências culinárias
-- 🧘 Zen: relaxamento, praias, spas
-- 🎉 Socialite: festas, vida noturna, experiências sociais
-
-### Armazenamento (zero novas tabelas)
-Usa `client_memory.preferences` (JSONB):
-- `dna_viajante`: perfil atual com porcentagens, raw_result, answers
-- `dna_historico`: array com últimas 10 análises (para detectar evolução)
-
-### Evolução
-O DNA evolui automaticamente:
-- Cada vez que o teste é refeito, uma nova entrada é adicionada ao histórico
-- O formatMemoryForPrompt mostra a evolução (↑↓ por categoria)
-- Téo usa o DNA para personalizar sugestões sem perguntar demais
-
-### Arquivos modificados
-- `supabase/functions/whatsapp-webhook/index.ts`: Comando + questionário 10 perguntas + geração via Gemini
-- `supabase/functions/_shared/client-memory.ts`: DNA no prompt, na formatação e na regra de adaptação
-
----
-
-## 1. Téo Grupal (IMPLEMENTADO ✅)
-
-### Tabelas criadas
-- `travel_groups`: group_code, creator_phone, creator_name, status, final_recommendation
-- `travel_group_members`: group_id, phone_number, member_name, preferences (JSONB), is_ready
-
-### Comandos WhatsApp
-| Comando | Ação |
-|---------|------|
-| `criar grupo` | Cria grupo, gera código 6 chars, inicia questionário |
-| `entrar grupo XYZABC` | Adiciona membro, inicia questionário |
-| `meu grupo` | Mostra status e membros |
-| `resultado grupo` | Cruza preferências via Gemini, envia a todos |
-| `sair grupo` | Remove membro |
-
----
-
-## 2. Téo Lê Mentes (IMPLEMENTADO ✅)
-
-### Conceito
-Análise emocional SILENCIOSA das mensagens do cliente para adaptar recomendações automaticamente, sem nunca mencionar a análise.
-
-### Implementação (zero novas tabelas)
-Usa a infraestrutura existente de `client_memory.preferences` (JSONB):
-
-**Campos emocionais adicionados:**
-- `tom_emocional`: animado/estressado/cansado/ansioso/empolgado/nostálgico/indeciso/tranquilo/comemorando/preocupado
-- `nivel_energia`: alto/médio/baixo
-- `nivel_estresse`: alto/médio/baixo
-- `momento_vida`: férias/lua-de-mel/aniversário/fuga-da-rotina/trabalho-remoto/família/amigos
-- `historico_emocional`: array com últimas 10 leituras emocionais (para detectar tendências)
-
-**Detecção de sinais:**
-- Estresse: "preciso sair daqui", "to exausto", respostas impacientes
-- Animação: "!!", emojis, "mal posso esperar"
-- Ansiedade: muitas perguntas, "será que...", indecisão
-- Comemoração: "aniversário", "lua de mel", "promoção"
-
-**Adaptação silenciosa (via MEMORY_RULE):**
-- Estressado → Sugere descanso, spas, all-inclusive
-- Animado → Sugere aventura, esportes, destinos vibrantes
-- Indeciso → Limita opções a 2-3, mais assertivo
-- Comemorando → Sugere upgrades, experiências premium
-- NUNCA menciona a análise ao cliente
-
-### Arquivos modificados
-- `supabase/functions/_shared/client-memory.ts`: Extraction prompt, merge logic, format, MEMORY_RULE
