@@ -6834,7 +6834,13 @@ Regras OBRIGATÓRIAS:
         // Check for itinerary visual tag BEFORE cleaning
         const itineraryData = parseItineraryVisualTag(aiResponse);
         
-        const cleanResponse = cleanAiResponse(aiResponse);
+        let cleanResponse = cleanAiResponse(aiResponse);
+
+        // Safety: strip any remaining hallucinated external links
+        if (/https?:\/\/[^\s]*(?:typeform|jotform|google.*form|forms\.gle|bit\.ly|tally|survey)/i.test(cleanResponse)) {
+          cleanResponse = cleanResponse.replace(/https?:\/\/[^\s]*/g, '').replace(/\[[^\]]*\]\([^)]*\)/g, '').trim();
+          cleanResponse += "\n\nPara viagem em grupo, mande *criar grupo* aqui no chat! 🎉";
+        }
         
         const updatedHistory = [
           ...(conversation.messages_history as any[] || []),
