@@ -349,12 +349,105 @@ Me conta aí! 👇`
         });
       }
 
+      // Check for itinerary generation tag (ONLY ONCE)
+      const itineraryMatch = assistantContent.match(/\[GERAR_ROTEIRO:(.*?)\]/s);
+      if (itineraryMatch && !itineraryGeneratingRef.current) {
+        itineraryGeneratingRef.current = true;
+        const cleanContent = assistantContent.replace(/\[GERAR_ROTEIRO:.*?\]/s, '').trim();
+        
+        // Update the message text and add a loading itinerary card
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          newMessages[newMessages.length - 1] = {
+            role: 'assistant',
+            content: cleanContent,
+          };
+          return [
+            ...newMessages,
+            {
+              role: 'assistant',
+              content: '',
+              itinerary: { structured: null, photos: {}, isLoading: true },
+            },
+          ];
+        });
+
+        // Parse itinerary params
+        let itinParams = { destino: '', dias: 5, preferencias: '' };
+        try {
+          itinParams = { ...itinParams, ...JSON.parse(itineraryMatch[1]) };
+        } catch {
+          itinParams.destino = itineraryMatch[1].trim();
+        }
+
+        // Generate itinerary via edge function
+        try {
+          const { data: itinData, error: itinError } = await supabase.functions.invoke('generate-itinerary', {
+            body: {
+              destination: itinParams.destino,
+              preferences: itinParams.preferencias || '',
+              email: '',
+              whatsapp: userWhatsapp,
+              travelMood: '',
+            },
+          });
+
+          if (itinError) throw itinError;
+
+          const structured = itinData?.structured || null;
+          const placeNames: string[] = itinData?.placeNames || [];
+
+          // Fetch photos
+          let photos: Record<string, string> = {};
+          if (placeNames.length > 0) {
+            try {
+              const { data: photoData } = await supabase.functions.invoke('search-place-photos', {
+                body: { queries: placeNames.slice(0, 8) },
+              });
+              if (photoData?.photos) photos = photoData.photos;
+            } catch { /* non-blocking */ }
+          }
+
+          // Update the itinerary message with real data
+          setMessages((prev) => {
+            const newMessages = [...prev];
+            const itinIdx = newMessages.findIndex(m => m.itinerary?.isLoading);
+            if (itinIdx >= 0) {
+              newMessages[itinIdx] = {
+                role: 'assistant',
+                content: '',
+                itinerary: { structured, photos, isLoading: false },
+              };
+            }
+            return newMessages;
+          });
+        } catch (err) {
+          console.error('Itinerary generation error:', err);
+          setMessages((prev) => {
+            const newMessages = [...prev];
+            const itinIdx = newMessages.findIndex(m => m.itinerary?.isLoading);
+            if (itinIdx >= 0) {
+              newMessages[itinIdx] = {
+                role: 'assistant',
+                content: '❌ Ops, não consegui gerar o roteiro visual. Tente pedir novamente!',
+              };
+            }
+            return newMessages;
+          });
+        } finally {
+          itineraryGeneratingRef.current = false;
+        }
+      } else {
+        // Clean any stray itinerary tags from the text
+        assistantContent = assistantContent.replace(/\[GERAR_ROTEIRO:.*?\]/gs, '').trim();
+      }
+
       const destinationMatch = assistantContent.match(/\[DESTINO_ESCOLHIDO:\s*([^\]]+)\]/i);
       if (destinationMatch) {
         const destination = destinationMatch[1].trim();
         setChosenDestination(destination);
         
-        const cleanContent = assistantContent.replace(/\[DESTINO_ESCOLHIDO:\s*[^\]]+\]/gi, '').replace(/\[COTAR_VIAGEM:.*?\]/s, '').trim();
+        const cleanContent = assistantContent.replace(/\[DESTINO_ESCOLHIDO:\s*[^\]]+\]/gi, '').replace(/\[COTAR_VIAGEM:.*?\]/s, '').replace(/\[GERAR_ROTEIRO:.*?\]/gs, '').trim();
         setMessages((prev) => {
           const newMessages = [...prev];
           newMessages[newMessages.length - 1] = {
