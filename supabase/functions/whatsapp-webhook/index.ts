@@ -6914,66 +6914,7 @@ Regras OBRIGATÓRIAS:
         conversation.conversation_state = "chatting";
       }
 
-      // Check if conversation is waiting for a verification code
-      if (collectedData._quotation_pending_code && collectedData._quotation_request) {
-        console.log("Processing verification code:", messageText.trim());
-        const quotResult = await requestQuotation(collectedData._quotation_request, messageText.trim());
-
-        // Clear pending state
-        const updatedData = { ...collectedData };
-        delete updatedData._quotation_pending_code;
-        delete updatedData._quotation_request;
-
-        let responseMsg: string;
-        if (quotResult.status === "success" && quotResult.data) {
-          responseMsg = formatQuotationResults(quotResult.data);
-          responseMsg += "\n\nQuer que eu te ajude com mais alguma coisa? 😊";
-          // Fire-and-forget: generate and send visual quote card
-          generateAndSendQuoteVisual(phoneNumber, collectedData._quotation_request || collectedData, quotResult.data)
-            .catch(err => console.error("[QUOTE-VISUAL] Fire-and-forget error:", err));
-        } else if (quotResult.status === "pending_code") {
-          // Still pending, ask again
-          updatedData._quotation_pending_code = true;
-          updatedData._quotation_request = collectedData._quotation_request;
-          responseMsg = "❌ Código inválido ou expirado. Por favor, verifique seu e-mail e envie o código correto.";
-        } else {
-          responseMsg = `Olá ${collectedData.nome || 'amigo(a)'}! 👋\n\nEstamos trabalhando para encontrar as melhores opções para sua viagem a ${collectedData.destino || 'seu destino'}! ✈️\n\nPara garantir que você tenha o pacote perfeito, vamos precisar do apoio de um especialista no destino. Em breve, um de nossos consultores da Tomorrow Travel entrará em contato para personalizar sua experiência e encontrar a melhor opção para você! 🏖️\n\nAguarde nosso retorno! 😊`;
-          // Mark as failed and finalize
-          updatedData._quotation_failed = true;
-          // Create lead if needed
-          if (!conversation.quote_request_id) {
-            try {
-              const quoteRequest = await createQuoteRequest(phoneNumber, updatedData);
-              await supabase.from("whatsapp_conversations").update({ quote_request_id: quoteRequest.id }).eq("id", conversation.id);
-            } catch (err) {
-              console.error("Error creating quote on verification failure:", err);
-            }
-          }
-        }
-
-        const updatedHistory = [
-          ...(conversation.messages_history as any[] || []),
-          { role: "assistant", content: responseMsg, timestamp: new Date().toISOString() },
-        ];
-
-        const isFinalized = !!updatedData._quotation_failed;
-
-        await supabase
-          .from("whatsapp_conversations")
-          .update({
-            collected_data: updatedData,
-            messages_history: updatedHistory,
-            ...(isFinalized ? { conversation_state: "completed", is_ai_active: false } : {}),
-          })
-          .eq("id", conversation.id);
-
-        await sendWhatsAppMessage(phoneNumber, responseMsg);
-
-        return new Response(JSON.stringify({ status: "ok", quotation_code_processed: true }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      // Legacy verification code handling removed — direct API doesn't need verification codes
 
       // Build messages for AI (user message is already in conversation.messages_history)
       const historyForAi = (conversation.messages_history as any[] || []).map((msg: any) => ({
