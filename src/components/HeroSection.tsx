@@ -53,7 +53,7 @@ export const HeroSection = () => {
                 </h1>
 
                 {/* Description */}
-                <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-lg leading-relaxed">
+                <p className="text-lg md:text-xl text-white mb-10 max-w-lg leading-relaxed">
                   Tecnologia de ponta para facilitar sua viagem. 
                   <span className="text-gold-light font-medium"> O primeiro agente de IA </span>
                   do mundo no setor de viagens, acessível para todos.
