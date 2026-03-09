@@ -1642,43 +1642,37 @@ async function saveQuotationRequest(
   return { success: true, id: data.id };
 }
 
-async function requestQuotation(quotationData: Record<string, any>, verificationCode?: string): Promise<{ status: string; data: any }> {
-  const payload: Record<string, any> = {
+async function requestQuotation(quotationData: Record<string, any>): Promise<{ status: string; data: any }> {
+  const payload = {
     origem: quotationData.origem,
     destino: quotationData.destino,
     data_ida: quotationData.data_ida,
     data_volta: quotationData.data_volta,
-    passageiros: {
-      adultos: quotationData.adultos || 1,
-      criancas: quotationData.criancas || 0,
-      idades_criancas: quotationData.idades_criancas || [],
-    },
-    operadora: "all",
+    adultos: quotationData.adultos || 1,
+    criancas: quotationData.criancas || 0,
+    idades_criancas: quotationData.idades_criancas || [],
   };
 
-  if (verificationCode) {
-    payload.verification_code = verificationCode;
-  }
-
-  console.log("WhatsApp quotation request (direct):", JSON.stringify(payload));
+  console.log("[QUOTATION] Calling cativa-quotation API:", JSON.stringify(payload));
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 300000);
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout (API is fast now)
 
   try {
-    const response = await fetch(EXTERNAL_API_URL, {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/cativa-quotation`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
 
     const responseText = await response.text();
-    console.log("=== QUOTATION API RAW RESPONSE ===");
-    console.log("Status:", response.status);
-    console.log("Body (first 3000 chars):", responseText.substring(0, 3000));
-    console.log("=== END RAW RESPONSE ===");
+    console.log("[QUOTATION] Cativa API response status:", response.status);
+    console.log("[QUOTATION] Response (first 2000):", responseText.substring(0, 2000));
 
     if (!response.ok) {
       return { status: "error", data: null };
@@ -1691,17 +1685,14 @@ async function requestQuotation(quotationData: Record<string, any>, verification
       return { status: "error", data: null };
     }
 
-    if (responseData.error || responseData.erro) {
+    if (responseData.error) {
       return { status: "error", data: null };
-    }
-
-    if (responseData.status === "pending_code" || responseData.pending_code) {
-      return { status: "pending_code", data: responseData };
     }
 
     return { status: "success", data: responseData };
   } catch (err) {
     clearTimeout(timeoutId);
+    console.error("[QUOTATION] Error:", err);
     return { status: "error", data: null };
   }
 }
