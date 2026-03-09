@@ -3725,7 +3725,7 @@ REGRAS:
               const step = parseInt(gData._group_step);
               const groupId = gData._group_id;
 
-              if (step >= 1 && step <= 7) {
+              if (step >= 1 && step <= 12) {
                 const prefKey = PREF_KEYS[step - 1];
                 const { data: member } = await supabase
                   .from("travel_group_members")
@@ -3736,9 +3736,10 @@ REGRAS:
 
                 if (member) {
                   const prefs = (member.preferences as Record<string, any>) || {};
-                  // Convert numbered answer to text for multiple-choice questions (not step 6 which is free text)
+                  // Free-text steps: 10 (datas) and 12 (ocasião especial)
+                  const isFreeText = step === 10 || step === 12;
                   let answerValue = (messageText || "").trim();
-                  if (step !== 6 && PREF_OPTIONS[prefKey]) {
+                  if (!isFreeText && PREF_OPTIONS[prefKey]) {
                     const num = parseInt(answerValue);
                     if (!isNaN(num) && num >= 1 && num <= PREF_OPTIONS[prefKey].length) {
                       answerValue = PREF_OPTIONS[prefKey][num - 1];
@@ -3750,7 +3751,7 @@ REGRAS:
 
                 await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
 
-                if (step < 7) {
+                if (step < 12) {
                   const nextStep = step + 1;
                   await supabase.from("whatsapp_conversations").update({
                     collected_data: { ...gData, _group_step: nextStep },
@@ -3758,7 +3759,7 @@ REGRAS:
 
                   await sendWhatsAppMessage(phoneNumber, GROUP_QUESTIONS[nextStep - 1]);
                 } else {
-                  // All 7 questions answered — mark as ready
+                  // All 12 questions answered — mark as ready
                   await supabase.from("travel_group_members").update({ is_ready: true })
                     .eq("group_id", groupId)
                     .eq("phone_number", phoneNumber);
