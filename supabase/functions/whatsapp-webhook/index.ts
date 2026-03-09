@@ -7214,7 +7214,7 @@ Regras OBRIGATÓRIAS:
       const quotationData = alreadyQuoted ? null : parseQuotationTag(aiResponse);
 
       // Check for itinerary visual tag BEFORE cleaning
-      const itineraryVisualData = parseItineraryVisualTag(aiResponse);
+      const itineraryVisualDataFromTag = parseItineraryVisualTag(aiResponse);
 
       // Clean response (remove all tags)
       let cleanResponse = cleanAiResponse(aiResponse);
