@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, Menu, X, FileText, Sparkles, Bot } from 'lucide-react';
+import { User, Menu, X, FileText, Sparkles } from 'lucide-react';
 import logo from '@/assets/logo.jpeg';
 import { QuoteFormChat } from './QuoteFormChat';
 import { DestinationSearch } from './DestinationSearch';
@@ -35,7 +35,7 @@ export const Header = () => {
     <>
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-          isScrolled ? 'glass py-3' : 'bg-gradient-to-b from-background to-transparent py-5'
+          isScrolled ? 'glass-gold py-3' : 'bg-gradient-to-b from-background/80 to-transparent py-5'
         }`}
       >
         <div className="container mx-auto px-4 lg:px-8">
@@ -46,14 +46,14 @@ export const Header = () => {
                 <img
                   src={logo}
                   alt="Tomorrow Travel"
-                  className="h-12 w-12 rounded-lg object-cover transition-transform duration-300 group-hover:scale-110"
+                  className="h-12 w-12 rounded-lg object-cover transition-transform duration-300 group-hover:scale-110 ring-2 ring-gold/30"
                 />
               </Link>
               <Link to="/" className="hidden sm:flex items-center">
-                <span className="gradient-text-teal font-serif text-xl font-bold tracking-wide">
+                <span className="text-gold-embossed font-serif text-xl font-bold tracking-wide">
                   TOMORROW
                 </span>
-                <span className="gradient-text-gold font-serif text-xl font-bold tracking-wide ml-1">
+                <span className="gradient-text-teal font-serif text-xl font-bold tracking-wide ml-2">
                   TRAVEL
                 </span>
               </Link>
@@ -66,7 +66,7 @@ export const Header = () => {
                   key={item.path}
                   to={item.path}
                   className={`nav-link text-sm font-medium tracking-wide uppercase ${
-                    location.pathname === item.path ? 'active text-foreground' : ''
+                    location.pathname === item.path ? 'active' : ''
                   }`}
                 >
                   {item.label}
@@ -92,14 +92,14 @@ export const Header = () => {
             <div className="flex items-center gap-4">
               <Link
                 to="/cliente"
-                className="hidden sm:flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors duration-300"
+                className="hidden sm:flex items-center gap-2 text-muted-foreground hover:text-gold-light transition-colors duration-300"
               >
                 <User className="w-5 h-5" />
                 <span className="text-sm font-medium">Cliente</span>
               </Link>
               <Link
                 to="/admin"
-                className="hidden sm:flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors duration-300"
+                className="hidden sm:flex items-center gap-2 text-muted-foreground hover:text-gold-light transition-colors duration-300"
               >
                 <User className="w-5 h-5" />
                 <span className="text-sm font-medium">Admin</span>
@@ -108,7 +108,7 @@ export const Header = () => {
               {/* Mobile menu button */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden p-2 text-foreground"
+                className="lg:hidden p-2 text-gold-light"
                 aria-label="Toggle menu"
               >
                 {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -123,17 +123,17 @@ export const Header = () => {
         <div className="lg:hidden fixed inset-0 z-[60] bg-background animate-fade-in">
           <div className="flex flex-col h-full">
             {/* Mobile Header */}
-            <div className="flex items-center justify-between p-4 border-b border-border">
+            <div className="flex items-center justify-between p-4 border-b border-gold/20">
               <Link to="/" className="flex items-center gap-3" onClick={() => setIsMobileMenuOpen(false)}>
                 <img
                   src={logo}
                   alt="Tomorrow Travel"
-                  className="h-12 w-12 rounded-lg object-cover"
+                  className="h-12 w-12 rounded-lg object-cover ring-2 ring-gold/30"
                 />
               </Link>
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2 text-foreground"
+                className="p-2 text-gold-light"
                 aria-label="Fechar menu"
               >
                 <X className="w-6 h-6" />
@@ -155,15 +155,15 @@ export const Header = () => {
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={`text-lg font-medium tracking-wide ${
                       location.pathname === item.path
-                        ? 'text-primary'
-                        : 'text-muted-foreground hover:text-foreground'
+                        ? 'text-gold-light'
+                        : 'text-muted-foreground hover:text-gold-light'
                     }`}
                   >
                     {item.label}
                   </Link>
                 ))}
                 
-                <div className="border-t border-border pt-5 mt-2 flex flex-col gap-4">
+                <div className="border-t border-gold/20 pt-5 mt-2 flex flex-col gap-4">
                   <button
                     onClick={() => {
                       setIsMobileMenuOpen(false);
@@ -189,7 +189,7 @@ export const Header = () => {
                 <Link
                   to="/cliente"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground mt-4"
+                  className="flex items-center gap-2 text-muted-foreground hover:text-gold-light mt-4"
                 >
                   <User className="w-5 h-5" />
                   <span className="text-base font-medium">Área do Cliente</span>
@@ -197,7 +197,7 @@ export const Header = () => {
                 <Link
                   to="/admin"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                  className="flex items-center gap-2 text-muted-foreground hover:text-gold-light"
                 >
                   <User className="w-5 h-5" />
                   <span className="text-base font-medium">Admin</span>
@@ -215,7 +215,7 @@ export const Header = () => {
           onClick={() => setIsQuoteModalOpen(false)}
         >
           <div
-            className="relative w-full max-w-lg bg-card rounded-2xl shadow-2xl border border-border overflow-hidden"
+            className="relative w-full max-w-lg glass-gold rounded-2xl shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -236,7 +236,7 @@ export const Header = () => {
           onClick={() => setIsItineraryModalOpen(false)}
         >
           <div
-            className="relative w-full max-w-2xl bg-card rounded-2xl shadow-2xl border border-border overflow-hidden max-h-[90vh]"
+            className="relative w-full max-w-2xl glass-gold rounded-2xl shadow-2xl overflow-hidden max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
             <button
