@@ -3129,6 +3129,116 @@ REGRAS:
           });
         }
 
+        // ===== VOTE ON DESTINATION =====
+        const voteMatch = messageText?.match(voteRegex);
+        if (voteMatch) {
+          const voteChoice = parseInt(voteMatch[1]);
+          await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          // Find user's group that is in voting status
+          const { data: memberOf } = await supabase
+            .from("travel_group_members")
+            .select("id, group_id, member_name")
+            .eq("phone_number", phoneNumber);
+
+          if (!memberOf?.length) {
+            await sendWhatsAppMessage(phoneNumber, "❌ Você não faz parte de nenhum grupo.\n\nPara criar um, mande: *criar grupo*");
+            return new Response(JSON.stringify({ status: "ok" }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          // Find group in voting status
+          const groupIds = memberOf.map(m => m.group_id);
+          const { data: votingGroups } = await supabase
+            .from("travel_groups")
+            .select("*")
+            .in("id", groupIds)
+            .eq("status", "voting");
+
+          if (!votingGroups?.length) {
+            await sendWhatsAppMessage(phoneNumber, "⏳ Nenhum grupo em fase de votação no momento.");
+            return new Response(JSON.stringify({ status: "ok" }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          const group = votingGroups[0];
+          const currentVotes = (group.votes as Record<string, number>) || {};
+          const memberName = memberOf.find(m => m.group_id === group.id)?.member_name || phoneNumber;
+
+          // Check if already voted
+          if (currentVotes[phoneNumber]) {
+            await sendWhatsAppMessage(phoneNumber, `✅ Você já votou no destino *${currentVotes[phoneNumber]}*!\n\nAguarde os outros membros votarem. 🗳️`);
+            return new Response(JSON.stringify({ status: "ok" }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          // Register vote
+          currentVotes[phoneNumber] = voteChoice;
+          await supabase.from("travel_groups").update({ votes: currentVotes }).eq("id", group.id);
+
+          // Get all members to check if voting is complete
+          const { data: allMembers } = await supabase
+            .from("travel_group_members")
+            .select("*")
+            .eq("group_id", group.id);
+
+          const totalMembers = allMembers?.length || 0;
+          const totalVotes = Object.keys(currentVotes).length;
+
+          await sendWhatsAppMessage(phoneNumber, `🗳️ Voto registrado: *Destino ${voteChoice}*! ✅\n\n📊 ${totalVotes}/${totalMembers} votos recebidos.`);
+
+          // If all voted, tally and announce
+          if (totalVotes >= totalMembers) {
+            // Tally votes
+            const tally: Record<number, { count: number; voters: string[] }> = {};
+            for (const [voterPhone, choice] of Object.entries(currentVotes)) {
+              const c = choice as number;
+              if (!tally[c]) tally[c] = { count: 0, voters: [] };
+              tally[c].count++;
+              const voterName = allMembers?.find(m => m.phone_number === voterPhone)?.member_name || voterPhone;
+              tally[c].voters.push(voterName);
+            }
+
+            // Find winner
+            const sorted = Object.entries(tally).sort((a, b) => b[1].count - a[1].count);
+            const winner = sorted[0];
+            const isTie = sorted.length > 1 && sorted[0][1].count === sorted[1][1].count;
+
+            let resultMsg = `🏆 *Resultado da Votação - Grupo ${group.group_code}* 🗳️\n\n`;
+            for (const [dest, info] of sorted) {
+              const bar = "🟩".repeat(info.count);
+              resultMsg += `*Destino ${dest}:* ${bar} (${info.count} voto${info.count > 1 ? "s" : ""})\n`;
+              resultMsg += `   👤 ${info.voters.join(", ")}\n\n`;
+            }
+
+            if (isTie) {
+              resultMsg += `⚖️ *Empate!* Conversem entre vocês e decidam o destino favorito! 😄\n\n`;
+            } else {
+              resultMsg += `🎉 *Destino ${winner[0]} venceu com ${winner[1].count} voto${winner[1].count > 1 ? "s" : ""}!*\n\n`;
+            }
+            resultMsg += `Quer que eu cote esse destino para o grupo? 😊✈️\nÉ só mandar: *cotar*`;
+
+            // Update group status
+            await supabase.from("travel_groups").update({ status: "completed" }).eq("id", group.id);
+
+            // Broadcast to all
+            for (const m of (allMembers || [])) {
+              try {
+                await sendWhatsAppMessage(m.phone_number, resultMsg);
+              } catch (err) {
+                console.error(`[GROUP] Error sending vote result to ${m.phone_number}:`, err);
+              }
+            }
+          }
+
+          return new Response(JSON.stringify({ status: "ok", vote_registered: true }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
         // ===== MY DATES (submit available date ranges) =====
         const myDatesMatch = messageText?.match(myDatesRegex);
         if (myDatesMatch) {
