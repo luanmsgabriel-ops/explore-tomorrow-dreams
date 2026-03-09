@@ -7,16 +7,11 @@ import { Button } from '@/components/ui/button';
 import { TeoMascot } from '@/components/TeoMascot';
 import { QuotationStatusDisplay } from '@/components/QuotationStatusDisplay';
 import { useQuotation, parseQuotationTag, formatQuotationResults } from '@/hooks/useQuotation';
-import { ChatItineraryCard } from '@/components/ChatItineraryCard';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-  itinerary?: {
-    structured: any;
-    photos: Record<string, string>;
-    isLoading: boolean;
-  };
+  itineraryImageUrl?: string;
 }
 
 interface QuizAnswers {
