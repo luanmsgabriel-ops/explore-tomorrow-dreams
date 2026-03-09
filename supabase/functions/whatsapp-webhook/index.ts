@@ -99,7 +99,7 @@ TABELAS DISPONÍVEIS NO BANCO DE DADOS:
 
 25. client_memory - Memória de longo prazo dos clientes (perfil persistente)
 
-26. travel_groups - Grupos de viagem (Téo Grupal)
+26. travel_groups - Grupos de viagem (Modo Galera)
     Colunas: id, group_code (UNIQUE 6 chars), creator_phone, creator_name, group_name, status (collecting/ready/completed), travel_dates, budget_range, final_recommendation (JSONB), created_at, updated_at
 
 27. travel_group_members - Membros dos grupos de viagem
