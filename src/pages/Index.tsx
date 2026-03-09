@@ -195,7 +195,7 @@ const Index = () => {
       {/* CTA Section */}
       <section className="py-20 md:py-32 relative overflow-hidden world-map-bg">
         <div className="container mx-auto px-4 lg:px-8 relative z-10">
-          <div className="max-w-3xl mx-auto text-center">
+          <div className="max-w-3xl mx-auto text-center bg-black/50 backdrop-blur-sm rounded-2xl p-8 md:p-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-gold mb-6">
               <Sparkles className="w-4 h-4 text-gold-light" />
               <span className="text-sm font-medium text-gold-light">Powered by AI</span>
@@ -204,7 +204,7 @@ const Index = () => {
               <span className="text-gold-embossed">Crie seu roteiro</span>{' '}
               <span className="gradient-text-teal">personalizado</span>
             </h2>
-            <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto">
+            <p className="text-white text-lg mb-8 max-w-2xl mx-auto">
               Nossa inteligência artificial cria roteiros sob medida para você. Informe suas preferências e receba um plano de viagem personalizado em segundos.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
@@ -212,7 +212,7 @@ const Index = () => {
                 <Compass className="w-5 h-5" />
                 Explorar Destinos
               </Link>
-              <Link to="/nacional" className="btn-outline text-lg px-8 py-4">
+              <Link to="/nacional" className="btn-outline bg-teal/80 text-white border-teal text-lg px-8 py-4">
                 Ver Brasil
               </Link>
             </div>
