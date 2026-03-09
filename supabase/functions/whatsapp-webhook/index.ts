@@ -7084,17 +7084,24 @@ Regras OBRIGATÓRIAS:
           }
         }
 
-        // Send visual itinerary card if detected (before text) — only once
+        const itineraryData = itineraryDataFromTag || parseItineraryFromPlainText(cleanResponse);
+
+        // Send visual itinerary card — only once
         if (itineraryData && !conversation.collected_data?._itinerary_sent) {
           const clientNameForVisual = conversation.client_name || contactName || undefined;
-          await generateAndSendItineraryVisual(phoneNumber, itineraryData, clientNameForVisual);
-          await sendWhatsAppMessage(phoneNumber, "Preparei um roteiro especial pra nossa viagem! 🗺️✨ Salva essa imagem, vai ser nosso guia por lá! 😄\n\n✨ Quer que eu ajuste algo? Posso trocar atividades, dias ou focar em algo específico! 😊");
-          // Persist the flag
-          await supabase
-            .from("whatsapp_conversations")
-            .update({ collected_data: { ...(conversation.collected_data || {}), _itinerary_sent: true } })
-            .eq("id", conversation.id);
-          // Don't send the text version — image only
+          const visualSent = await generateAndSendItineraryVisual(phoneNumber, itineraryData, clientNameForVisual);
+
+          if (visualSent) {
+            await supabase
+              .from("whatsapp_conversations")
+              .update({ collected_data: { ...(conversation.collected_data || {}), _itinerary_sent: true } })
+              .eq("id", conversation.id);
+          } else {
+            await sendWhatsAppMessage(phoneNumber, "Não consegui gerar o card do roteiro agora 😕 Pode me pedir novamente em alguns segundos?");
+          }
+        } else if (isLikelyItineraryText(cleanResponse)) {
+          // Never send long itinerary text, only card
+          await sendWhatsAppMessage(phoneNumber, "Estou preparando seu card de roteiro 🎨 Pode me pedir de novo com o destino para eu gerar certinho.");
         } else {
           await sendWhatsAppMessage(phoneNumber, cleanResponse);
         }
