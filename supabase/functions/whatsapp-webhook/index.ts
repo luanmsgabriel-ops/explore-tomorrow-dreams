@@ -2335,7 +2335,7 @@ serve(async (req) => {
         .trim()
         .toLowerCase();
 
-      const isJoinGroupIntent = normalizedMsgForRouting.includes("entrar grupo");
+      const isJoinGroupIntent = /(entrar(?:\s+no)?\s+grupo|me\s+adicion(?:a|ar|e)(?:\s+no)?\s+grupo|quero\s+entrar(?:\s+no)?\s+grupo)\s+[a-z0-9]{6}\b/i.test(normalizedMsgForRouting);
       const isGroupCommand = isJoinGroupIntent
         || /(?:criar|quero|novo|ativar|iniciar|montar|fazer|organizar|bora|vamos|começar|comecar|abrir|preparar|planejar)/i.test(normalizedMsgForRouting) && /(?:grupo|galera|modo\s*galera|viagem\s+(?:em\s+)?grupo)/i.test(normalizedMsgForRouting)
         || /^(meu grupo|status grupo|group status)$/i.test(normalizedMsgForRouting)
