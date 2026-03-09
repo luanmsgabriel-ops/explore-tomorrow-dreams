@@ -693,9 +693,10 @@ COMANDOS ESPECIAIS (instruir o cliente a usar pelo WhatsApp):
 - "sos" → Assistente de emergência
 
 REGRAS CRÍTICAS:
-- NUNCA invente links externos (Typeform, Google Forms, JotForm, etc.)
+- NUNCA invente links externos (Typeform, Google Forms, JotForm, bit.ly, tally, etc.)
 - NUNCA sugira formulários externos - TODOS os fluxos são feitos pelo WhatsApp
-- Se o cliente quiser viagem em grupo, instrua: "Mande *criar grupo* para ativar o Modo Galera! 🎉"
+- NUNCA gere URLs de qualquer tipo que não sejam wa.me (WhatsApp)
+- Se o cliente mencionar QUALQUER coisa sobre grupo, viagem em grupo, modo galera, ou viajar com amigos/família, responda APENAS: "Para ativar o Modo Galera, mande *criar grupo* aqui no chat! 🎉"
 - NUNCA ofereça cotação automaticamente sem o cliente pedir explicitamente
 - NUNCA adicione ofertas promocionais no final das mensagens sem o cliente perguntar`;
 
@@ -1301,7 +1302,7 @@ function extractCollectedData(aiResponse: string, existingData: Record<string, a
 }
 
 function cleanAiResponse(response: string): string {
-  return response
+  let cleaned = response
     .replace(/\[ROTEIRO_VISUAL\][\s\S]*?\[\/ROTEIRO_VISUAL\]/g, "")
     .replace(/\[DADOS:\w+=.*?\]/g, "")
     .replace(/\[STATUS:\w+\]/g, "")
@@ -1316,8 +1317,18 @@ function cleanAiResponse(response: string): string {
     .replace(/\[WHATSAPP:[^\]]*\]/gi, "")
     .replace(/\[EMAIL:[^\]]*\]/gi, "")
     .replace(/\[[A-Z_]+:[^\]]*\]/g, "")
+    // Remove hallucinated external URLs (Typeform, Jotform, Google Forms, bit.ly, tally, survey, etc.)
+    .replace(/\[[^\]]*\]\(https?:\/\/[^)]*(?:typeform|jotform|google.*form|forms\.gle|bit\.ly|tally|survey)[^)]*\)/gi, "")
+    .replace(/https?:\/\/[^\s\])"]*(?:typeform|jotform|google.*form|forms\.gle|bit\.ly|tally|survey)[^\s\])"']*/gi, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+
+  // If hallucinated URLs were removed and message mentions grupo/galera, append instruction
+  if (cleaned !== response.replace(/\[[A-Z_]+:[^\]]*\]/g, "").trim() && /grupo|galera/i.test(cleaned)) {
+    cleaned += "\n\nPara viagem em grupo, mande *criar grupo* aqui no chat! 🎉";
+  }
+
+  return cleaned;
 }
 
 // Parse [ROTEIRO_VISUAL] tag into structured data for image generation
@@ -2802,7 +2813,9 @@ serve(async (req) => {
       // ========== MODO GALERA: Group Travel with Preference Cross-Referencing ==========
       {
         const lowerMsgGroup = (messageText || "").toLowerCase().trim();
-        const createGroupRegex = /(?:criar|novo|ativar|iniciar|montar|comecar|começar|quero)\s+(?:um[a]?\s+)?(?:nov[oa]\s+)?(?:grupo|modo\s*galera|viagem\s+(?:em\s+)?grupo|galera)/i;
+        const hasGroupIntent = /(?:criar|quero|novo|ativar|iniciar|montar|fazer|organizar|bora|vamos|começar|comecar|abrir|preparar|planejar)/i;
+        const hasGroupKeyword = /(?:grupo|galera|modo\s*galera|viagem\s+(?:em\s+)?grupo)/i;
+        const createGroupRegex = { test: (s: string) => hasGroupIntent.test(s) && hasGroupKeyword.test(s) };
         const joinGroupRegex = /^entrar grupo\s+([A-Z0-9]{6})$/i;
         const joinGroupRegexLower = /^entrar grupo\s+([a-zA-Z0-9]{6})$/i;
         const myGroupRegex = /^(meu grupo|status grupo|group status)$/i;
@@ -6822,7 +6835,13 @@ Regras OBRIGATÓRIAS:
         // Check for itinerary visual tag BEFORE cleaning
         const itineraryData = parseItineraryVisualTag(aiResponse);
         
-        const cleanResponse = cleanAiResponse(aiResponse);
+        let cleanResponse = cleanAiResponse(aiResponse);
+
+        // Safety: strip any remaining hallucinated external links
+        if (/https?:\/\/[^\s]*(?:typeform|jotform|google.*form|forms\.gle|bit\.ly|tally|survey)/i.test(cleanResponse)) {
+          cleanResponse = cleanResponse.replace(/https?:\/\/[^\s]*/g, '').replace(/\[[^\]]*\]\([^)]*\)/g, '').trim();
+          cleanResponse += "\n\nPara viagem em grupo, mande *criar grupo* aqui no chat! 🎉";
+        }
         
         const updatedHistory = [
           ...(conversation.messages_history as any[] || []),
@@ -6973,6 +6992,12 @@ Regras OBRIGATÓRIAS:
 
       // Clean response (remove all tags)
       let cleanResponse = cleanAiResponse(aiResponse);
+
+      // Safety: strip any remaining hallucinated external links
+      if (/https?:\/\/[^\s]*(?:typeform|jotform|google.*form|forms\.gle|bit\.ly|tally|survey)/i.test(cleanResponse)) {
+        cleanResponse = cleanResponse.replace(/https?:\/\/[^\s]*/g, '').replace(/\[[^\]]*\]\([^)]*\)/g, '').trim();
+        cleanResponse += "\n\nPara viagem em grupo, mande *criar grupo* aqui no chat! 🎉";
+      }
 
       // Handle quotation if triggered
       if (quotationData) {

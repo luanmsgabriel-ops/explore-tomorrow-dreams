@@ -1,58 +1,118 @@
 
 
-# Plano: Corrigir Link Inválido no Modo Galera
+# Plano: 5 Features Téo 2030
 
-## Problema Raiz
+## Features Solicitadas (uma por vez, implementação completa)
+1. ✅ **Téo Grupal** — Viagem em grupo com cruzamento de preferências via WhatsApp
+2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
+3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
+9. ✅ **Téo Roleta** — Destino aleatório filtrado por DNA com animação textual
+10. ✅ **Téo Oráculo** — Previsão personalizada da viagem com signos, DNA e fase lunar
+4. ✅ **Téo DNA** — Perfil genético de viajante
+5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
+6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
+7. ✅ **Téo Compatibilidade** — Match de viagem entre DNAs de viajante
+8. ✅ **Téo SOS** — Assistente de emergência com embaixadas, hospitais e frases úteis
 
-A regex `createGroupRegex` (linha 2805) ainda falha em frases com palavras intermediárias como "fazer", "organizar" entre o verbo e "grupo". Quando não casa, a mensagem vai para o handler geral da IA que **inventa links Typeform**. O fallback de sanitização de URLs (aprovado no plano anterior) **nunca foi implementado** no `cleanAiResponse`.
+---
 
-## Alterações em `supabase/functions/whatsapp-webhook/index.ts`
+## 7. Téo Compatibilidade (IMPLEMENTADO ✅)
 
-### 1. Regex ultra-permissiva (linha 2805)
+### Conceito
+O cliente envia `compatibilidade com 5511999999999` e o Téo compara os DNAs de Viajante dos dois, calcula score de compatibilidade e sugere destinos ideais para ambos.
 
-Usar uma regex simples que apenas verifica se a mensagem contém palavras-chave de grupo:
+### Comandos WhatsApp
+| Comando | Ação |
+|---------|------|
+| `compatibilidade com [número]` / `match viagem [número]` | Compara DNAs e sugere destino |
+| `compatibilidade` (sem número) | Téo pede o número do parceiro |
 
-```typescript
-const createGroupRegex = /(?:grupo|galera|viagem\s+em\s+grupo|modo\s*galera)/i;
-```
+### Armazenamento (zero novas tabelas)
+Usa `client_memory.preferences`:
+- `ultimo_match`: `{ parceiro_phone, parceiro_nome, score, data }`
 
-Combinada com pelo menos uma palavra de intenção:
+### Arquivos modificados
+- `supabase/functions/whatsapp-webhook/index.ts`: Bloco de comando com regex, busca de 2 memórias, chamada Gemini, formatação e save
+- `supabase/functions/_shared/client-memory.ts`: `ultimo_match` no `formatMemoryForPrompt` + skipKeys
 
-```typescript
-const hasGroupIntent = /(?:criar|quero|novo|ativar|iniciar|montar|fazer|organizar|bora|vamos|começar|comecar)/i;
-const hasGroupKeyword = /(?:grupo|galera|modo\s*galera|viagem\s+(?:em\s+)?grupo)/i;
-const isCreateGroup = hasGroupIntent.test(lowerMsgGroup) && hasGroupKeyword.test(lowerMsgGroup);
-```
+## 3. Téo DNA de Viajante (IMPLEMENTADO ✅)
 
-Isso captura QUALQUER combinação: "Quero fazer um novo grupo de viagem", "Bora organizar a galera", etc.
+### Conceito
+Questionário profundo de 10 perguntas que gera um perfil "genético" de viajante com 5 categorias (Explorador, Culturalista, Gourmet, Zen, Socialite) que evolui com cada viagem.
 
-### 2. Sanitização de URLs no `cleanAiResponse` (linha 1303)
+### Comandos WhatsApp
+| Comando | Ação |
+|---------|------|
+| `meu dna` / `dna viajante` / `teste dna` | Inicia o questionário de 10 perguntas |
 
-Adicionar ao final da função `cleanAiResponse` a remoção de URLs externas inventadas (typeform, jotform, google forms, bit.ly, tally, etc.) e substituição por instrução correta:
+### Categorias do DNA
+- 🏔️ Explorador: aventura, adrenalina, natureza selvagem
+- 🏛️ Culturalista: história, museus, arquitetura
+- 🍽️ Gourmet: gastronomia, vinhos, experiências culinárias
+- 🧘 Zen: relaxamento, praias, spas
+- 🎉 Socialite: festas, vida noturna, experiências sociais
 
-```typescript
-// Remove hallucinated external URLs
-.replace(/https?:\/\/[^\s\])*]*(?:typeform|jotform|google.*form|forms\.gle|bit\.ly|tally|survey)[^\s\])"]*/gi, "")
-// Remove any markdown links with those URLs
-.replace(/\[[^\]]*\]\(https?:\/\/[^)]*(?:typeform|jotform|google|bit\.ly|tally|survey)[^)]*\)/gi, "")
-```
+### Armazenamento (zero novas tabelas)
+Usa `client_memory.preferences` (JSONB):
+- `dna_viajante`: perfil atual com porcentagens, raw_result, answers
+- `dna_historico`: array com últimas 10 análises (para detectar evolução)
 
-### 3. Sanitização geral pós-AI (linhas ~6862 e ~7226)
+### Evolução
+O DNA evolui automaticamente:
+- Cada vez que o teste é refeito, uma nova entrada é adicionada ao histórico
+- O formatMemoryForPrompt mostra a evolução (↑↓ por categoria)
+- Téo usa o DNA para personalizar sugestões sem perguntar demais
 
-Antes de cada `sendWhatsAppMessage(phoneNumber, cleanResponse)`, adicionar verificação:
+### Arquivos modificados
+- `supabase/functions/whatsapp-webhook/index.ts`: Comando + questionário 10 perguntas + geração via Gemini
+- `supabase/functions/_shared/client-memory.ts`: DNA no prompt, na formatação e na regra de adaptação
 
-```typescript
-// Safety: strip any hallucinated external links
-if (/https?:\/\/[^\s]*(?:typeform|jotform|google.*form|forms\.gle|bit\.ly|tally)/i.test(cleanResponse)) {
-  cleanResponse = cleanResponse.replace(/https?:\/\/[^\s]*/g, '').replace(/\[[^\]]*\]\([^)]*\)/g, '').trim();
-  cleanResponse += "\n\nPara viagem em grupo, mande *criar grupo* aqui no chat! 🎉";
-}
-```
+---
 
-## Resultado Esperado
+## 1. Téo Grupal (IMPLEMENTADO ✅)
 
-- Qualquer mensagem mencionando "grupo" + intenção ativa o Modo Galera diretamente
-- O fluxo multi-step (nome → quantidade → confirmação → questionário) funciona normalmente
-- O link gerado é `https://wa.me/5515991833448?text=entrar grupo CODIGO` (WhatsApp válido)
-- Mesmo se a IA alucisar, links Typeform são removidos antes do envio
+### Tabelas criadas
+- `travel_groups`: group_code, creator_phone, creator_name, status, final_recommendation
+- `travel_group_members`: group_id, phone_number, member_name, preferences (JSONB), is_ready
 
+### Comandos WhatsApp
+| Comando | Ação |
+|---------|------|
+| `criar grupo` | Cria grupo, gera código 6 chars, inicia questionário |
+| `entrar grupo XYZABC` | Adiciona membro, inicia questionário |
+| `meu grupo` | Mostra status e membros |
+| `resultado grupo` | Cruza preferências via Gemini, envia a todos |
+| `sair grupo` | Remove membro |
+
+---
+
+## 2. Téo Lê Mentes (IMPLEMENTADO ✅)
+
+### Conceito
+Análise emocional SILENCIOSA das mensagens do cliente para adaptar recomendações automaticamente, sem nunca mencionar a análise.
+
+### Implementação (zero novas tabelas)
+Usa a infraestrutura existente de `client_memory.preferences` (JSONB):
+
+**Campos emocionais adicionados:**
+- `tom_emocional`: animado/estressado/cansado/ansioso/empolgado/nostálgico/indeciso/tranquilo/comemorando/preocupado
+- `nivel_energia`: alto/médio/baixo
+- `nivel_estresse`: alto/médio/baixo
+- `momento_vida`: férias/lua-de-mel/aniversário/fuga-da-rotina/trabalho-remoto/família/amigos
+- `historico_emocional`: array com últimas 10 leituras emocionais (para detectar tendências)
+
+**Detecção de sinais:**
+- Estresse: "preciso sair daqui", "to exausto", respostas impacientes
+- Animação: "!!", emojis, "mal posso esperar"
+- Ansiedade: muitas perguntas, "será que...", indecisão
+- Comemoração: "aniversário", "lua de mel", "promoção"
+
+**Adaptação silenciosa (via MEMORY_RULE):**
+- Estressado → Sugere descanso, spas, all-inclusive
+- Animado → Sugere aventura, esportes, destinos vibrantes
+- Indeciso → Limita opções a 2-3, mais assertivo
+- Comemorando → Sugere upgrades, experiências premium
+- NUNCA menciona a análise ao cliente
+
+### Arquivos modificados
+- `supabase/functions/_shared/client-memory.ts`: Extraction prompt, merge logic, format, MEMORY_RULE
