@@ -26,7 +26,7 @@
 
     /* Muted surfaces */
     --muted: 192 50% 22%;
-    --muted-foreground: 185 20% 70%;
+    --muted-foreground: 0 0% 100%;
 
     /* Accent: Metallic Gold */
     --accent: 40 75% 50%;

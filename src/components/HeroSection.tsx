@@ -89,7 +89,7 @@ export const HeroSection = () => {
                   </button>
                   <button 
                     onClick={() => setActiveModal('image')}
-                    className="flex items-center gap-2 text-white/80 hover:text-gold-light transition-colors"
+                    className="flex items-center gap-2 text-white hover:text-gold-light transition-colors"
                   >
                     <Image className="w-4 h-4" />
                     <span className="text-sm">Gerar Imagem com IA</span>
