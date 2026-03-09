@@ -182,6 +182,25 @@
     animation: pulse-glow 2s ease-in-out infinite;
   }
 
+  /* Animated wires */
+  @keyframes wire-flow {
+    from { stroke-dashoffset: 0; }
+    to { stroke-dashoffset: -900; }
+  }
+
+  @keyframes wire-glow-pulse {
+    0%, 100% { opacity: 0.2; r: 2; }
+    50% { opacity: 1; r: 5; }
+  }
+
+  .animate-wire-flow {
+    animation: wire-flow 10s linear infinite;
+  }
+
+  .animate-wire-glow-pulse {
+    animation: wire-glow-pulse 3s ease-in-out infinite;
+  }
+
   /* Glass effect with ocean theme */
   .glass {
     @apply backdrop-blur-xl;

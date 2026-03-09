@@ -9,6 +9,7 @@ import { useDestinations } from '@/hooks/useDestinations';
 import { Compass, Globe, MapPin, Sparkles, Play, MessageCircle, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { DecorativeAirplane } from '@/components/DecorativeAirplane';
+import AnimatedWires from '@/components/AnimatedWires';
 
 const Index = () => {
   const { destinations: explorarDestinations, isLoading: loadingExplorar } = useDestinations('explorar');
@@ -18,7 +19,8 @@ const Index = () => {
   const isLoading = loadingExplorar || loadingNacional || loadingInternacional;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-cover bg-center bg-fixed bg-no-repeat" style={{ backgroundImage: "url('/images/hero-worldmap-bg.png')" }}>
+      <AnimatedWires />
       <Header />
       <TeoWelcomePopup />
       
