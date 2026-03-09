@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Loader2, Bot, User, Phone, UserCircle, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { chatMessageSchema, generateSecureSessionId, sanitizeText, phoneSchema, nameSchema } from '@/lib/validations';
@@ -7,9 +7,16 @@ import { Button } from '@/components/ui/button';
 import { TeoMascot } from '@/components/TeoMascot';
 import { QuotationStatusDisplay } from '@/components/QuotationStatusDisplay';
 import { useQuotation, parseQuotationTag, formatQuotationResults } from '@/hooks/useQuotation';
+import { ChatItineraryCard } from '@/components/ChatItineraryCard';
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  itinerary?: {
+    structured: any;
+    photos: Record<string, string>;
+    isLoading: boolean;
+  };
 }
 
 interface QuizAnswers {
