@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const INFOTRAVEL_API = "http://api.infotravel.com.br/api/v1";
+const INFOTRAVEL_API = "https://reservas.cativaoperadora.com.br/infotravel/api/v1";
 const INFOTRAVEL_USERNAME = Deno.env.get("INFOTRAVEL_USERNAME")!;
 const INFOTRAVEL_PASSWORD = Deno.env.get("INFOTRAVEL_PASSWORD")!;
 const INFOTRAVEL_CLIENT = Deno.env.get("INFOTRAVEL_CLIENT")!;
