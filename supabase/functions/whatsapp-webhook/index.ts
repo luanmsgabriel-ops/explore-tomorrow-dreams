@@ -3350,7 +3350,7 @@ Destinos que maximizam a compatibilidade do grupo, com score.
 REGRAS:
 - Formato WhatsApp com *negrito* e emojis
 - Máximo 3500 caracteres
-- Se alguém não fez o DNA, use as preferências do questionário grupal
+- Se alguém não fez o DNA, use as preferências do questionário do Modo Galera
 - Destinos REAIS e específicos
 - No final: "Quer que eu cote algum desses destinos? 😊✈️"`;
 
