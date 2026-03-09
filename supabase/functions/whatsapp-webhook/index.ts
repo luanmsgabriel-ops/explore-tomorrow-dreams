@@ -1417,7 +1417,7 @@ function parseItineraryFromPlainText(text: string): { destination: string; days:
 }
 
 // Generate and send itinerary visual card
-async function generateAndSendItineraryVisual(phoneNumber: string, itineraryData: { destination: string; days: any[]; totalDays: number }, clientName?: string) {
+async function generateAndSendItineraryVisual(phoneNumber: string, itineraryData: { destination: string; days: any[]; totalDays: number }, clientName?: string): Promise<boolean> {
   try {
     console.log("[ITINERARY-VISUAL] Generating visual for:", itineraryData.destination);
     
@@ -1437,7 +1437,7 @@ async function generateAndSendItineraryVisual(phoneNumber: string, itineraryData
 
     if (!visualResponse.ok) {
       console.error("[ITINERARY-VISUAL] Edge function error:", visualResponse.status);
-      return;
+      return false;
     }
 
     const visualData = await visualResponse.json();
@@ -1445,9 +1445,14 @@ async function generateAndSendItineraryVisual(phoneNumber: string, itineraryData
       const caption = `🗺️ Roteiro ${itineraryData.destination} - ${itineraryData.totalDays} dias ✨\nPreparado por Téo | Tomorrow Travel ✈️`;
       await sendWhatsAppImage(phoneNumber, visualData.imageUrl, caption);
       console.log("[ITINERARY-VISUAL] Visual card sent to", phoneNumber);
+      return true;
     }
+
+    console.error("[ITINERARY-VISUAL] No imageUrl returned");
+    return false;
   } catch (err) {
     console.error("[ITINERARY-VISUAL] Error generating/sending visual:", err);
+    return false;
   }
 }
 
