@@ -5350,74 +5350,110 @@ REGRAS:
           .maybeSingle();
 
         if (convForModeCheck) {
+          const normalizedMsg = (messageText || "")
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim();
+
+          const switchIntentSignals = /(?:quero cotar|cotar|cotacao|quanto custa|preco|valor|orcamento|pacote|passagem|reserva|reservar|destino|viagem|modo cotacao|modo concierge|modo normal|sair modo|tradutor|modo tradutor|chef|modo chef|meu dna|dna viajante|roleta|oraculo|vidente|mapa astral|criar grupo|entrar grupo|resultado grupo|meu grupo|sair grupo|cancelar|parar|sair)/i;
+
           const modeData = (convForModeCheck.collected_data as Record<string, any>) || {};
+          const updatedModeData = { ...modeData };
+          const clearedModes: string[] = [];
+
+          if (switchIntentSignals.test(normalizedMsg)) {
+            if (updatedModeData._chef_mode === true) {
+              updatedModeData._chef_mode = false;
+              updatedModeData._chef_menu_analysis = null;
+              clearedModes.push("chef");
+            }
+            if (updatedModeData._translator_mode === true) {
+              updatedModeData._translator_mode = false;
+              updatedModeData._translator_target_lang = null;
+              clearedModes.push("tradutor");
+            }
+            if (updatedModeData._group_mode === "questioning") {
+              delete updatedModeData._group_mode;
+              delete updatedModeData._group_id;
+              delete updatedModeData._group_step;
+              clearedModes.push("grupal");
+            }
+            if (updatedModeData._dna_mode === "questioning") {
+              delete updatedModeData._dna_mode;
+              delete updatedModeData._dna_step;
+              delete updatedModeData._dna_answers;
+              clearedModes.push("dna");
+            }
+            if (updatedModeData._vidente_waiting_sign === true) {
+              delete updatedModeData._vidente_waiting_sign;
+              clearedModes.push("vidente");
+            }
+
+            if (clearedModes.length > 0) {
+              await supabase
+                .from("whatsapp_conversations")
+                .update({ collected_data: updatedModeData })
+                .eq("id", convForModeCheck.id);
+
+              console.log(`Auto-exit modes [${clearedModes.join(", ")}] on intent switch: "${normalizedMsg.substring(0, 80)}"`);
+            }
+          }
 
           // Translator mode isolation removed — translator now handles text, audio, and images in the main translator block above
 
-          if (modeData._chef_mode === true && messageType !== "image") {
-            // === AUTO-EXIT CHEF MODE: detect if message is NOT about food ===
-            const chefMsgLower = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            
-            // Explicit exit: mode commands, travel requests, concierge features, other Téo modes
+          if (updatedModeData._chef_mode === true && messageType !== "image") {
+            const chefMsgLower = normalizedMsg;
+
             const explicitExitSignals = /(?:quanto custa|preco|valor|orcamento|pacote|cotar|cotacao|quero viajar|viagem para|passagem|reservar|disponibilidade|quantas pessoas|lua de mel|ferias|feriado|promoc|oferta|destino|pra onde|para onde|conhecer|quero ir|vamos para|bora para|me leva|minha viagem|durante a viagem|no hotel|checkin|check-in|checkout|check-out|meu voo|horario do voo|o que fazer|perto de mim|proximo|perto daqui|localizacao|emergencia|sos|hospital|farmacia|embaixada|traduz|tradutor|playlist|gastei|meus gastos|roleta|oraculo|vidente|meu dna|dna viajante|mapa astral|meu signo|horoscopo|compatibilidade|criar grupo|modo cotacao|modo concierge|modo normal|sair modo|modo auto|modos|menu modos)/i;
-            
-            // Food-related signals that should STAY in chef mode
+
             const chefSignals = /(?:prato|comer|vegetariano|gluten|beber|sobremesa|ingrediente|leve|pesado|comida|vegano|lactose|alergen|drink|vinho|cerveja|suco|agua|cafe|doce|salgado|frito|grelhado|assado|cru|sashimi|sushi|pizza|hamburguer|salada|sopa|entrada|principal|acompanhamento|guarnicao|porcao|dose|copo|garrafa|harmoniza|sugest|recomend|indica.*prato|o que tem de|opcao|opcoes|quanto.*prato|mais barato|mais caro|sem lactose|sem gluten|alergico|alergia|intolerancia)/i;
-            
+
             const wantsToExit = explicitExitSignals.test(chefMsgLower);
             const isAboutFood = chefSignals.test(chefMsgLower);
-            
-            // Exit if: explicitly wants something else, OR message is not about food
             const shouldAutoExit = wantsToExit || !isAboutFood;
-            
+
             if (shouldAutoExit) {
-              // Auto-exit chef mode — message is not about food/menu
-              console.log(`🔄 Auto-exiting Chef Mode — wantsExit=${wantsToExit}, isFood=${isAboutFood}: "${chefMsgLower.substring(0, 50)}"`);
-              const updatedCollected = { ...modeData, _chef_mode: false, _chef_menu_analysis: null };
+              const updatedCollected = { ...updatedModeData, _chef_mode: false, _chef_menu_analysis: null };
               await supabase.from("whatsapp_conversations").update({ collected_data: updatedCollected }).eq("id", convForModeCheck.id);
-              
-              // Send brief transition message
-              await sendWhatsAppMessage(phoneNumber, "👨‍🍳 Saí do Modo Chef! Vou te ajudar com isso... 😊");
-              // DON'T return — let the flow continue to normal processing
+              console.log(`Auto-exiting Chef Mode — wantsExit=${wantsToExit}, isFood=${isAboutFood}: "${chefMsgLower.substring(0, 50)}"`);
             } else {
-            const savedMenuAnalysis = modeData._chef_menu_analysis || "";
-            
-            // If no menu has been sent yet, ask for one first
-            if (!savedMenuAnalysis) {
-              const noMenuMsg = "👨‍🍳 *Modo Chef ativo!*\n\nPrimeiro, mande uma *foto do cardápio* 📸 que eu analiso pra você!\n\nDepois da análise, pode me perguntar coisas como:\n• _\"Quero algo leve\"_\n• _\"O que tem sem glúten?\"_\n• _\"Qual o melhor custo-benefício?\"_\n\nPara sair: *sair chef*";
-              await sendWhatsAppMessage(phoneNumber, noMenuMsg);
+              const savedMenuAnalysis = updatedModeData._chef_menu_analysis || "";
 
-              const updH = [
-                ...((convForModeCheck.messages_history as any[]) || []),
-                { role: "user", content: messageText || "[mídia]", timestamp: new Date().toISOString() },
-                { role: "assistant", content: noMenuMsg, timestamp: new Date().toISOString() },
-              ];
-              await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convForModeCheck.id);
+              if (!savedMenuAnalysis) {
+                const noMenuMsg = "👨‍🍳 *Modo Chef ativo!*\n\nPrimeiro, mande uma *foto do cardápio* 📸 que eu analiso pra você!\n\nDepois da análise, pode me perguntar coisas como:\n• _\"Quero algo leve\"_\n• _\"O que tem sem glúten?\"_\n• _\"Qual o melhor custo-benefício?\"_\n\nPara sair: *sair chef*";
+                await sendWhatsAppMessage(phoneNumber, noMenuMsg);
 
-              return new Response(JSON.stringify({ status: "ok", mode_isolation: "chef_no_menu" }), {
-                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-              });
-            }
+                const updH = [
+                  ...((convForModeCheck.messages_history as any[]) || []),
+                  { role: "user", content: messageText || "[mídia]", timestamp: new Date().toISOString() },
+                  { role: "assistant", content: noMenuMsg, timestamp: new Date().toISOString() },
+                ];
+                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convForModeCheck.id);
 
-            // Has menu context → answer based on it
-            let chefResponse = "";
-            try {
-              // Fetch current USD→BRL exchange rate
-              let exchangeRateInfo = "";
-              try {
-                const rateRes = await fetch("https://open.er-api.com/v6/latest/USD");
-                if (rateRes.ok) {
-                  const rateData = await rateRes.json();
-                  const brlRate = rateData.rates?.BRL;
-                  if (brlRate) {
-                    exchangeRateInfo = `\n\nCOTAÇÃO DO DIA: 1 USD = R$ ${brlRate.toFixed(2)}`;
-                  }
-                }
-              } catch (e) {
-                console.error("Exchange rate fetch error:", e);
+                return new Response(JSON.stringify({ status: "ok", mode_isolation: "chef_no_menu" }), {
+                  status: 200,
+                  headers: { ...corsHeaders, "Content-Type": "application/json" },
+                });
               }
 
-              const CHEF_MENU_CONTEXT_PROMPT = `Você é o Téo, um assistente culinário expert da Tomorrow Travel. Você está no *Modo Chef* 👨‍🍳.
+              let chefResponse = "";
+              try {
+                let exchangeRateInfo = "";
+                try {
+                  const rateRes = await fetch("https://open.er-api.com/v6/latest/USD");
+                  if (rateRes.ok) {
+                    const rateData = await rateRes.json();
+                    const brlRate = rateData.rates?.BRL;
+                    if (brlRate) {
+                      exchangeRateInfo = `\n\nCOTAÇÃO DO DIA: 1 USD = R$ ${brlRate.toFixed(2)}`;
+                    }
+                  }
+                } catch (e) {
+                  console.error("Exchange rate fetch error:", e);
+                }
+
+                const CHEF_MENU_CONTEXT_PROMPT = `Você é o Téo, um assistente culinário expert da Tomorrow Travel. Você está no *Modo Chef* 👨‍🍳.
 
 O cliente já enviou uma foto do cardápio e aqui está a análise completa:
 
@@ -5444,52 +5480,51 @@ REGRAS:
 - Nunca sugira cotações de viagem
 - Lembre que o cliente pode enviar outra foto de cardápio a qualquer momento`;
 
-              const chefAiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${LOVABLE_API_KEY}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  model: "google/gemini-2.5-flash",
-                  messages: [
-                    { role: "system", content: CHEF_MENU_CONTEXT_PROMPT },
-                    { role: "user", content: messageText },
-                  ],
-                  max_tokens: 2000,
-                }),
-              });
+                const chefAiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    model: "google/gemini-2.5-flash",
+                    messages: [
+                      { role: "system", content: CHEF_MENU_CONTEXT_PROMPT },
+                      { role: "user", content: messageText },
+                    ],
+                    max_tokens: 2000,
+                  }),
+                });
 
-              if (chefAiResponse.ok) {
-                const chefJson = await chefAiResponse.json();
-                chefResponse = chefJson.choices?.[0]?.message?.content || "";
+                if (chefAiResponse.ok) {
+                  const chefJson = await chefAiResponse.json();
+                  chefResponse = chefJson.choices?.[0]?.message?.content || "";
+                }
+              } catch (e) {
+                console.error("Chef mode AI error:", e);
               }
-            } catch (e) {
-              console.error("Chef mode AI error:", e);
+
+              if (!chefResponse) {
+                chefResponse = "👨‍🍳 Não consegui processar sua pergunta. Tente novamente ou mande outra *foto do cardápio*! 📸\n\nPara sair: *sair chef*";
+              }
+
+              await sendWhatsAppMessage(phoneNumber, chefResponse);
+
+              const updH = [
+                ...((convForModeCheck.messages_history as any[]) || []),
+                { role: "user", content: messageText || "[mídia]", timestamp: new Date().toISOString() },
+                { role: "assistant", content: chefResponse, timestamp: new Date().toISOString() },
+              ];
+              await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convForModeCheck.id);
+
+              return new Response(JSON.stringify({ status: "ok", mode_isolation: "chef_menu_qa" }), {
+                status: 200,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
             }
-
-            if (!chefResponse) {
-              chefResponse = "👨‍🍳 Não consegui processar sua pergunta. Tente novamente ou mande outra *foto do cardápio*! 📸\n\nPara sair: *sair chef*";
-            }
-
-            await sendWhatsAppMessage(phoneNumber, chefResponse);
-
-            const updH = [
-              ...((convForModeCheck.messages_history as any[]) || []),
-              { role: "user", content: messageText || "[mídia]", timestamp: new Date().toISOString() },
-              { role: "assistant", content: chefResponse, timestamp: new Date().toISOString() },
-            ];
-            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convForModeCheck.id);
-
-            return new Response(JSON.stringify({ status: "ok", mode_isolation: "chef_menu_qa" }), {
-              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-            } // close else block for auto-exit check
           }
         }
       }
-
-      {
         // Check both active_trips.client_phone AND concierge_contacts
         let activeTripForGreeting: any = null;
         let conciergeContactMatch: any = null;
