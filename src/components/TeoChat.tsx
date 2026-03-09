@@ -554,35 +554,6 @@ Me conta aí! 👇`
           </div>
         )}
 
-        <QuotationStatusDisplay
-          status={quotation.status}
-          onSubmitCode={async (code) => {
-            setMessages((prev) => [...prev, { 
-              role: 'assistant', 
-              content: '⏳ Código enviado! Aguardando a operadora processar... isso pode levar alguns minutos. 🔄'
-            }]);
-            const result = await quotation.submitVerificationCode(code);
-            if (result?.status === 'success' && result.data) {
-              const hasQuotationData = result.data.resultados || result.data.results || 
-                result.data.cotacoes || result.data.preco || result.data.valor || 
-                result.data.price || Array.isArray(result.data);
-              
-              if (hasQuotationData) {
-                const formatted = formatQuotationResults(result.data);
-                setMessages((prev) => [...prev, { role: 'assistant', content: formatted }]);
-              } else {
-                // Server returned ack but no prices yet — show what we got and keep status visible
-                const formatted = formatQuotationResults(result.data);
-                setMessages((prev) => [...prev, { role: 'assistant', content: formatted }]);
-              }
-            } else if (result?.status === 'error') {
-              setMessages((prev) => [...prev, { 
-                role: 'assistant', 
-                content: '❌ Não foi possível processar o código. Tente novamente ou peça uma nova cotação.'
-              }]);
-            }
-          }}
-        />
 
         {step === 'destination_chosen' && whatsappRedirectLink && (
           <div className="flex justify-center mt-4">

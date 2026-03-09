@@ -778,16 +778,6 @@ Me conta aí! 👇`
             </div>
           </div>
         )}
-        <QuotationStatusDisplay
-          status={quotation.status}
-          onSubmitCode={async (code) => {
-            const result = await quotation.submitVerificationCode(code);
-            if (result?.status === 'success' && result.data) {
-              const formatted = formatQuotationResults(result.data);
-              setMessages((prev) => [...prev, { role: 'assistant', content: formatted }]);
-            }
-          }}
-        />
         <div ref={messagesEndRef} />
       </div>
 
