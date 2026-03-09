@@ -5606,7 +5606,7 @@ REGRAS:
               delete updatedModeData._group_mode;
               delete updatedModeData._group_id;
               delete updatedModeData._group_step;
-              clearedModes.push("grupal");
+              clearedModes.push("galera");
             }
             if (updatedModeData._dna_mode === "questioning") {
               delete updatedModeData._dna_mode;
