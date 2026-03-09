@@ -2906,7 +2906,7 @@ serve(async (req) => {
             return `- *${m.member_name || m.phone_number}*: Estilo: ${prefs.estilo || "?"}, Clima: ${prefs.clima || "?"}, Prioridade: ${prefs.prioridade || "?"}, Acomodação: ${prefs.acomodacao || "?"}, Nacional/Internacional: ${prefs.destino_tipo || "?"}, Duração: ${prefs.duracao || "?"}, Locomoção: ${prefs.locomocao || "?"}, Essencial: ${prefs.essencial || "?"}, Restrições: ${prefs.restricoes || "nenhuma"}, Orçamento: ${prefs.orcamento || "?"}, Datas: ${prefs.datas_disponiveis || "?"}, Ocasião: ${prefs.ocasiao_especial || "nenhuma"}`;
           }).join("\n");
 
-          const crossPrompt = `Você é um especialista em viagens de grupo da Tomorrow Travel. Analise as preferências de ${members.length} viajantes e sugira os 3 melhores destinos.
+          const crossPrompt = `Você é um especialista em viagens de grupo da Tomorrow Travel. Analise as preferências detalhadas de ${members.length} viajantes e sugira os 3 melhores destinos.
 
 MEMBROS DO GRUPO:
 ${membersList}
@@ -2915,10 +2915,13 @@ REGRAS:
 - Sugira 3 destinos ranqueados por compatibilidade (0-100%)
 - IMPORTANTE: Numere os destinos como "1️⃣", "2️⃣", "3️⃣" para facilitar a votação
 - Para cada destino, explique por que combina com o grupo
+- Considere TODOS os critérios: estilo, clima, prioridade, acomodação, nacional/internacional, duração ideal, locomoção, itens essenciais, restrições, orçamento e datas
+- Se há uma ocasião especial (aniversário, lua de mel, etc.), destaque destinos que valorizem esse momento
 - Identifique possíveis conflitos (ex: "João prefere frio mas Maria quer praia")
 - Sugira compromissos (ex: "Gramado tem frio + gastronomia + natureza")
+- Se a maioria prefere Brasil, foque em destinos nacionais; se internacional, sugira fora do país
 - Use destinos reais e específicos (não "Nordeste", mas "Porto de Galinhas")
-- Considere o orçamento médio do grupo
+- Considere o orçamento médio do grupo e a duração preferida
 - Formato WhatsApp com emojis e *negrito*
 - Máximo 3500 caracteres
 - NÃO adicione perguntas sobre cotação no final - a votação será adicionada automaticamente`;
