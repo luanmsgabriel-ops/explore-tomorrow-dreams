@@ -1,12 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MapPin, Clock, Utensils, Camera, Mountain, Landmark, ShoppingBag, 
   Moon, Sparkles, ChevronRight, ChevronLeft, CheckCircle2, 
   Sun, CloudSun, Wallet, Shield, Luggage, Globe,
-  Download, Send, Loader2, ExternalLink
+  Download, Send, Loader2
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 // Category icons and colors
 const CATEGORY_CONFIG: Record<string, { icon: any; color: string; bg: string }> = {
