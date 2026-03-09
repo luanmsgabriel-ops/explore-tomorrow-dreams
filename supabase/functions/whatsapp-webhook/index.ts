@@ -2838,6 +2838,7 @@ ${membersList}
 
 REGRAS:
 - Sugira 3 destinos ranqueados por compatibilidade (0-100%)
+- IMPORTANTE: Numere os destinos como "1️⃣", "2️⃣", "3️⃣" para facilitar a votação
 - Para cada destino, explique por que combina com o grupo
 - Identifique possíveis conflitos (ex: "João prefere frio mas Maria quer praia")
 - Sugira compromissos (ex: "Gramado tem frio + gastronomia + natureza")
@@ -2845,7 +2846,7 @@ REGRAS:
 - Considere o orçamento médio do grupo
 - Formato WhatsApp com emojis e *negrito*
 - Máximo 3500 caracteres
-- No final, adicione: "Quer que eu cote algum desses destinos para o grupo? 😊✈️"`;
+- NÃO adicione perguntas sobre cotação no final - a votação será adicionada automaticamente`;
 
           try {
             const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
