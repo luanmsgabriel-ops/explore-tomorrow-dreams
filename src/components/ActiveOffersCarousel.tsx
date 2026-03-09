@@ -267,10 +267,10 @@ export const ActiveOffersCarousel = () => {
               <Tag className="w-5 h-5 text-accent" />
             </div>
             <div>
-              <h2 className="font-serif text-2xl md:text-3xl font-bold text-foreground">
+              <h2 className="font-serif text-2xl md:text-3xl font-bold text-white">
                 Ofertas <span className="gradient-text-gold">Especiais</span>
               </h2>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-white/70 text-sm">
                 Pacotes com preços imperdíveis por tempo limitado
               </p>
             </div>
