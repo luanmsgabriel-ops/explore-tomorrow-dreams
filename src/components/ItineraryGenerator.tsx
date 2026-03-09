@@ -661,7 +661,39 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
     );
   }
 
-  // Result Step
+  // Result Step - Premium Visual View
+  if (structuredData) {
+    const moodLabel = TRAVEL_MOODS.find(m => m.id === selectedMood)?.label;
+    
+    return (
+      <div className="flex flex-col h-full max-h-[80vh]">
+        <ItineraryMapView
+          structured={structuredData}
+          destinationName={selectedDestinationName}
+          photos={placePhotos}
+          selectedMood={moodLabel}
+          onRequestQuote={(selected) => {
+            // Map selected activities to the old format for quote request
+            const selectedList = selected.map(s => ({
+              day: `Dia ${s.day}`,
+              title: s.title,
+              description: '',
+            }));
+            handleRequestQuoteFromMapView(selectedList);
+          }}
+          onDownload={handleDownload}
+          isRequestingQuote={isRequestingQuote}
+        />
+        {onClose && (
+          <div className="p-3 border-t border-border">
+            <button onClick={onClose} className="btn-outline w-full">Fechar</button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Fallback: Legacy markdown result view
   return (
     <div className="flex flex-col h-full max-h-[80vh]">
       <div className="p-6 border-b border-border">
@@ -686,7 +718,6 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {/* Activities Selection */}
         {activities.length > 0 && (
           <div className="bg-secondary/50 rounded-2xl p-4 border border-border">
             <div className="flex items-center justify-between mb-4">
@@ -752,7 +783,6 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
           </div>
         )}
 
-        {/* Full Itinerary */}
         <div className="prose prose-invert max-w-none">
           <ReactMarkdown>{itinerary}</ReactMarkdown>
         </div>
