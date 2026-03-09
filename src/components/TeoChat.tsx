@@ -396,13 +396,17 @@ Me conta aí! 👇`
 
           const structured = itinData?.structured || null;
           const placeNames: string[] = itinData?.placeNames || [];
+          const destName = structured?.destination || itinParams.destino || '';
 
-          // Fetch photos
+          // Fetch photos from Pexels, adding destination context for better results
           let photos: Record<string, string> = {};
           if (placeNames.length > 0) {
             try {
+              const queriesWithContext = placeNames.slice(0, 10).map(
+                (name: string) => `${name} ${destName}`
+              );
               const { data: photoData } = await supabase.functions.invoke('search-place-photos', {
-                body: { queries: placeNames.slice(0, 8) },
+                body: { queries: queriesWithContext, originalNames: placeNames.slice(0, 10) },
               });
               if (photoData?.photos) photos = photoData.photos;
             } catch { /* non-blocking */ }

@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { queries } = await req.json();
+    const { queries, originalNames } = await req.json();
 
     if (!queries || !Array.isArray(queries)) {
       return new Response(
@@ -30,13 +30,17 @@ serve(async (req) => {
 
     // Search photos for each query in parallel (max 10)
     const limitedQueries = queries.slice(0, 10);
+    // Use originalNames as keys if provided, otherwise use queries
+    const nameKeys: string[] = originalNames && Array.isArray(originalNames) 
+      ? originalNames.slice(0, 10) 
+      : limitedQueries;
     const results: Record<string, string> = {};
 
-    const searches = limitedQueries.map(async (query: string) => {
+    const searches = limitedQueries.map(async (query: string, index: number) => {
       try {
-        const searchQuery = `${query} travel tourism`;
+        const searchQuery = `${query} travel tourism landscape`;
         const response = await fetch(
-          `https://api.pexels.com/v1/search?query=${encodeURIComponent(searchQuery)}&per_page=1&orientation=landscape`,
+          `https://api.pexels.com/v1/search?query=${encodeURIComponent(searchQuery)}&per_page=3&orientation=landscape`,
           {
             headers: { Authorization: PEXELS_API_KEY },
           }
@@ -49,8 +53,10 @@ serve(async (req) => {
 
         const data = await response.json();
         if (data.photos?.length > 0) {
-          // Use medium size for good quality without huge downloads
-          results[query] = data.photos[0].src.large;
+          // Use the best quality photo available
+          const photo = data.photos[0];
+          const key = nameKeys[index] || query;
+          results[key] = photo.src.large2x || photo.src.large;
         }
       } catch (err) {
         console.error(`Error searching "${query}":`, err);
