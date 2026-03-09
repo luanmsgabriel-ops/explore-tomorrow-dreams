@@ -2820,14 +2820,24 @@ serve(async (req) => {
 
         // Group questionnaire questions
         const GROUP_QUESTIONS = [
-          "1️⃣ Qual seu *estilo de viagem*?\n\n🏔️ Aventura\n🧘 Relax\n🏛️ Cultural\n🍽️ Gastronômico\n🎉 Festas\n🔀 Misto",
-          "2️⃣ *Clima* preferido?\n\n☀️ Tropical/Quente\n❄️ Frio\n🌤️ Temperado\n🤷 Tanto faz",
-          "3️⃣ Top 3 *prioridades* (separe por vírgula):\n\n🏖️ Praia | 🏔️ Montanha | 🏙️ Cidade\n🍽️ Gastronomia | ⚡ Esportes | 🌙 Vida noturna\n🌿 Natureza | 📜 História",
-          "4️⃣ Faixa de *orçamento*?\n\n💰 Econômico\n💵 Moderado\n💎 Premium\n👑 Luxo",
-          "5️⃣ Alguma *restrição* importante?\n\n📅 Datas fixas\n✈️ Sem escalas longas\n🛂 Visto fácil\n❌ Nenhuma\n\n(Ou escreva sua restrição)",
+          "1️⃣ Qual seu *estilo de viagem*?\n\n1. Aventura 🏔️\n2. Relax 🧘\n3. Cultural 🏛️\n4. Gastronômico 🍽️\n5. Festas 🎉\n6. Misto 🔀\n\nResponda com o número (ex: 1)",
+          "2️⃣ *Clima* preferido?\n\n1. Tropical/Quente ☀️\n2. Frio ❄️\n3. Temperado 🌤️\n4. Tanto faz 🤷\n\nResponda com o número (ex: 1)",
+          "3️⃣ Qual sua *prioridade* na viagem?\n\n1. Praia 🏖️\n2. Montanha 🏔️\n3. Cidade 🏙️\n4. Gastronomia 🍽️\n5. Natureza 🌿\n6. Vida noturna 🌙\n7. História/Cultura 📜\n\nResponda com o número (ex: 1)",
+          "4️⃣ Tipo de *acomodação* preferida?\n\n1. Hotel econômico 🏨\n2. Hotel confortável ⭐\n3. Resort all-inclusive 🏝️\n4. Pousada/Hostel 🛏️\n5. Tanto faz 🤷\n\nResponda com o número (ex: 1)",
+          "5️⃣ Alguma *restrição* importante?\n\n1. Sem escalas longas ✈️\n2. Visto fácil 🛂\n3. Acessibilidade ♿\n4. Nenhuma ❌\n\nResponda com o número (ex: 4)",
+          "6️⃣ Quais suas *datas disponíveis*?\n\nExemplo: 15/06 a 30/06 ou julho todo\n\n📅 Escreva suas datas:",
+          "7️⃣ Qual seu *orçamento individual*?\n\n1. Até R$ 2.000 💰\n2. R$ 2.000 a R$ 5.000 💵\n3. R$ 5.000 a R$ 10.000 💎\n4. Acima de R$ 10.000 👑\n\nResponda com o número (ex: 2)",
         ];
 
-        const PREF_KEYS = ["estilo", "clima", "prioridades", "orcamento", "restricoes"];
+        const PREF_KEYS = ["estilo", "clima", "prioridade", "acomodacao", "restricoes", "datas_disponiveis", "orcamento"];
+        const PREF_OPTIONS: Record<string, string[]> = {
+          estilo: ["Aventura", "Relax", "Cultural", "Gastronômico", "Festas", "Misto"],
+          clima: ["Tropical/Quente", "Frio", "Temperado", "Tanto faz"],
+          prioridade: ["Praia", "Montanha", "Cidade", "Gastronomia", "Natureza", "Vida noturna", "História/Cultura"],
+          acomodacao: ["Hotel econômico", "Hotel confortável", "Resort all-inclusive", "Pousada/Hostel", "Tanto faz"],
+          restricoes: ["Sem escalas longas", "Visto fácil", "Acessibilidade", "Nenhuma"],
+          orcamento: ["Até R$ 2.000", "R$ 2.000 a R$ 5.000", "R$ 5.000 a R$ 10.000", "Acima de R$ 10.000"],
+        };
 
         // Cross-reference preferences via AI
         const crossReferencePreferences = async (group: any, members: any[]): Promise<string> => {
