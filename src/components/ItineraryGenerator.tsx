@@ -393,6 +393,44 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
     toast.success('Roteiro baixado!');
   };
 
+  const handleRequestQuoteFromMapView = async (selectedList: { day: string; title: string; description?: string }[]) => {
+    setIsRequestingQuote(true);
+    try {
+      if (itineraryId) {
+        await supabase.from('ai_itineraries').update({
+          selected_activities: selectedList,
+          quote_requested: true,
+          quote_requested_at: new Date().toISOString(),
+        }).eq('id', itineraryId);
+      }
+
+      const selectedActivitiesText = selectedList.length > 0
+        ? `\n\nPASSEIOS SELECIONADOS:\n${selectedList.map(a => `- ${a.day}: ${a.title}`).join('\n')}`
+        : '';
+
+      const moodLabel = TRAVEL_MOODS.find(m => m.id === selectedMood)?.label || '';
+      
+      const { error } = await supabase.from('quote_requests').insert({
+        destination_name: selectedDestinationName,
+        destination_id: selectedDestinationId || null,
+        email: email.trim() || 'nao-informado@temp.com',
+        whatsapp: whatsapp.trim(),
+        special_requests: `Clima: ${moodLabel || 'Não especificado'}. Preferências: ${preferences || 'Nenhuma especificada'}.${selectedActivitiesText}`,
+        travel_word: moodLabel,
+        status: 'pending',
+      });
+
+      if (error) throw error;
+      setStep('quote_success');
+      toast.success('Solicitação enviada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao solicitar cotação:', error);
+      toast.error('Erro ao solicitar cotação.');
+    } finally {
+      setIsRequestingQuote(false);
+    }
+  };
+
   const handleRequestQuote = async () => {
     setIsRequestingQuote(true);
     
