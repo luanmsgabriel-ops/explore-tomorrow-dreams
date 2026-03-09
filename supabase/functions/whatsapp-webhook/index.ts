@@ -6986,6 +6986,12 @@ Regras OBRIGATÓRIAS:
       // Clean response (remove all tags)
       let cleanResponse = cleanAiResponse(aiResponse);
 
+      // Safety: strip any remaining hallucinated external links
+      if (/https?:\/\/[^\s]*(?:typeform|jotform|google.*form|forms\.gle|bit\.ly|tally|survey)/i.test(cleanResponse)) {
+        cleanResponse = cleanResponse.replace(/https?:\/\/[^\s]*/g, '').replace(/\[[^\]]*\]\([^)]*\)/g, '').trim();
+        cleanResponse += "\n\nPara viagem em grupo, mande *criar grupo* aqui no chat! 🎉";
+      }
+
       // Handle quotation if triggered
       if (quotationData) {
         console.log("AI triggered quotation request:", JSON.stringify(quotationData));
