@@ -171,6 +171,7 @@ Me conta aí! 👇`
     }
 
     const sanitizedInput = sanitizeText(input);
+    const askedForItineraryChange = itineraryChangeRegex.test(sanitizedInput);
     
     const lowerInput = sanitizedInput.toLowerCase();
     const newQuizAnswers = { ...quizAnswers };
@@ -236,6 +237,8 @@ Me conta aí! 👇`
           userName,
           userWhatsapp,
           quizAnswers: newQuizAnswers,
+          hasGeneratedItinerary: itinerarySentRef.current,
+          allowItineraryRegeneration: askedForItineraryChange,
         }),
       });
 
