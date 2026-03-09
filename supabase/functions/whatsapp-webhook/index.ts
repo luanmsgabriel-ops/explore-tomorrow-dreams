@@ -3268,7 +3268,6 @@ REGRAS:
             }
           }
         }
-      }
 
         // ===== GROUP COMPATIBILITY PANEL (DNA cruzado) =====
         const groupCompatRegex = /^(compatibilidade grupo|dna grupo|mapa do grupo|group compatibility|group dna)$/i;
