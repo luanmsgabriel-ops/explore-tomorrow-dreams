@@ -1,0 +1,1 @@
+ALTER TABLE public.travel_groups ADD COLUMN IF NOT EXISTS expected_members integer DEFAULT NULL;
