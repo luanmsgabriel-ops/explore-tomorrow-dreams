@@ -15,7 +15,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, sessionId, userName, userWhatsapp, quizAnswers } = await req.json();
+    const { messages, sessionId, userName, userWhatsapp, quizAnswers, hasGeneratedItinerary = false, allowItineraryRegeneration = false } = await req.json();
     
     // Inicializa Supabase
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -72,6 +72,10 @@ ${userWhatsapp ? `WHATSAPP: ${userWhatsapp}` : ''}
 ${memoryContext}
 ${quizContext}
 ${MEMORY_RULE}
+
+STATUS DO ROTEIRO NESTA CONVERSA:
+- Já foi enviado roteiro antes: ${hasGeneratedItinerary ? 'SIM' : 'NÃO'}
+- Cliente pediu alteração agora: ${allowItineraryRegeneration ? 'SIM' : 'NÃO'}
 
 REGRAS CRÍTICAS:
 ⚠️ VOCÊ NUNCA FICA CANSADO, NUNCA TEM LIMITE, NUNCA PARA DE ATENDER!
@@ -155,8 +159,8 @@ GERAÇÃO DE ROTEIRO (OBRIGATÓRIO):
 - Ajuste "preferencias" conforme o que o cliente mencionou ao longo da conversa
 - ⚠️ NUNCA inclua a tag [GERAR_ROTEIRO] mais de UMA VEZ na mesma mensagem
 - ⚠️ NUNCA escreva o roteiro dia-a-dia como texto — o sistema vai gerar visualmente
-- Diga algo como: "Preparando seu roteiro premium para [destino]... ✨🗺️ Aguarda só um instantinho!"
-- Após a tag, NÃO adicione mais texto sobre o roteiro
+- ⚠️ Se já foi enviado roteiro e o cliente NÃO pediu alteração, NÃO gere outro roteiro
+- Só gere novo roteiro quando o cliente pedir claramente alteração, revisão, novo destino, novos dias ou ajustes
 
 RESPOSTAS CONTEXTUAIS:
 - "Achei caro" → Ofereça alternativas econômicas, pergunte orçamento ideal
