@@ -149,42 +149,42 @@ const Index = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="text-center p-6 card-gold-border">
+            <div className="text-center p-6 card-gold-border bg-black/50 backdrop-blur-sm">
               <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-4 border border-gold/30">
                 <Sparkles className="w-8 h-8 text-gold-light" />
               </div>
               <h3 className="font-serif text-lg font-bold text-gold-embossed mb-2">Roteiros com IA</h3>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-white text-sm">
                 Crie roteiros personalizados em segundos com nossa inteligência artificial.
               </p>
             </div>
 
-            <div className="text-center p-6 card-gold-border">
+            <div className="text-center p-6 card-gold-border bg-black/50 backdrop-blur-sm">
               <div className="w-16 h-16 rounded-2xl bg-accent/20 flex items-center justify-center mx-auto mb-4 border border-gold/30">
                 <Play className="w-8 h-8 text-gold-light" />
               </div>
               <h3 className="font-serif text-lg font-bold text-gold-embossed mb-2">Vídeos Imersivos</h3>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-white text-sm">
                 Explore os destinos antes de viajar com vídeos selecionados especialmente.
               </p>
             </div>
 
-            <div className="text-center p-6 card-gold-border">
+            <div className="text-center p-6 card-gold-border bg-black/50 backdrop-blur-sm">
               <div className="w-16 h-16 rounded-2xl bg-teal/20 flex items-center justify-center mx-auto mb-4 border border-gold/30">
                 <MessageCircle className="w-8 h-8 text-teal-light" />
               </div>
               <h3 className="font-serif text-lg font-bold text-gold-embossed mb-2">Chat Inteligente</h3>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-white text-sm">
                 Tire dúvidas sobre qualquer destino com nosso assistente virtual 24/7.
               </p>
             </div>
 
-            <div className="text-center p-6 card-gold-border">
+            <div className="text-center p-6 card-gold-border bg-black/50 backdrop-blur-sm">
               <div className="w-16 h-16 rounded-2xl bg-gold/20 flex items-center justify-center mx-auto mb-4 border border-gold/30">
                 <Globe className="w-8 h-8 text-gold-light" />
               </div>
               <h3 className="font-serif text-lg font-bold text-gold-embossed mb-2">IA Pioneira no Turismo</h3>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-white text-sm">
                 O primeiro agente de IA B2C do mundo no setor de viagens.
               </p>
             </div>
