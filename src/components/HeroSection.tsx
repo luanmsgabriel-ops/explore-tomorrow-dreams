@@ -18,8 +18,6 @@ export const HeroSection = () => {
   return (
     <>
       <section className="relative min-h-screen overflow-hidden">
-        {/* World Map Background */}
-        <WorldMapBackground />
         
         {/* Decorative airplanes */}
         <div className="absolute top-20 right-[15%] opacity-40 animate-float" style={{ animationDelay: '0.5s' }}>
