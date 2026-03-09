@@ -2914,18 +2914,77 @@ REGRAS:
           
           if (savedConv) {
             const existingData = (savedConv.collected_data as Record<string, any>) || {};
-            await supabase.from("whatsapp_conversations").update({
-              collected_data: { ...existingData, _group_mode: "setup_name" },
-            }).eq("id", savedConv.id);
 
-            const askNameMsg = "🎉 *Modo Galera ativado!*\n\nVamos montar o grupo de viagem perfeito! 🌍\n\n📝 *Como quer chamar o grupo?*\n\n(Ex: Viagem da Galera, Férias 2026, Amigos SP...)";
-            await sendWhatsAppMessage(phoneNumber, askNameMsg);
+            // Check for existing active groups (as creator)
+            const { data: existingCreatorGroups } = await supabase
+              .from("travel_groups")
+              .select("id, group_code, group_name, status, expected_members")
+              .eq("creator_phone", phoneNumber)
+              .eq("status", "collecting");
 
-            const updH = [
-              ...((savedConv.messages_history as any[]) || []),
-              { role: "assistant", content: askNameMsg, timestamp: new Date().toISOString() },
-            ];
-            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConv.id);
+            // Check for existing active groups (as member)
+            const { data: existingMemberships } = await supabase
+              .from("travel_group_members")
+              .select("group_id, phone_number")
+              .eq("phone_number", phoneNumber);
+
+            const memberGroupIds = (existingMemberships || []).map(m => m.group_id);
+            const creatorGroupIds = (existingCreatorGroups || []).map(g => g.id);
+            
+            // Get member-only groups (where user is member but not creator)
+            const memberOnlyIds = memberGroupIds.filter(id => !creatorGroupIds.includes(id));
+            let memberOnlyGroups: any[] = [];
+            if (memberOnlyIds.length > 0) {
+              const { data: mGroups } = await supabase
+                .from("travel_groups")
+                .select("id, group_code, group_name, status, expected_members")
+                .in("id", memberOnlyIds)
+                .eq("status", "collecting");
+              memberOnlyGroups = mGroups || [];
+            }
+
+            const activeGroups = [...(existingCreatorGroups || []), ...memberOnlyGroups];
+
+            if (activeGroups.length > 0) {
+              // User has active groups — ask if they want to use existing or create new
+              let groupListMsg = "🎉 *Modo Galera!*\n\nVi que você já tem grupo(s) ativo(s):\n\n";
+              activeGroups.forEach((g, i) => {
+                const isCreator = creatorGroupIds.includes(g.id);
+                groupListMsg += `${i + 1}️⃣ *${g.group_name || "Sem nome"}* (código: ${g.group_code})${isCreator ? " 👑" : ""}\n`;
+              });
+              groupListMsg += `\n${activeGroups.length + 1}️⃣ *Criar um novo grupo*\n`;
+              groupListMsg += `\n📝 Responda com o *número* da opção desejada:`;
+
+              await sendWhatsAppMessage(phoneNumber, groupListMsg);
+
+              await supabase.from("whatsapp_conversations").update({
+                collected_data: { 
+                  ...existingData, 
+                  _group_mode: "choose_existing_or_new",
+                  _active_groups: activeGroups.map(g => ({ id: g.id, code: g.group_code, name: g.group_name })),
+                },
+              }).eq("id", savedConv.id);
+
+              const updH = [
+                ...((savedConv.messages_history as any[]) || []),
+                { role: "assistant", content: groupListMsg, timestamp: new Date().toISOString() },
+              ];
+              await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConv.id);
+            } else {
+              // No active groups — proceed to setup_name directly
+              await supabase.from("whatsapp_conversations").update({
+                collected_data: { ...existingData, _group_mode: "setup_name" },
+              }).eq("id", savedConv.id);
+
+              const askNameMsg = "🎉 *Modo Galera ativado!*\n\nVamos montar o grupo de viagem perfeito! 🌍\n\n📝 *Como quer chamar o grupo?*\n\n(Ex: Viagem da Galera, Férias 2026, Amigos SP...)";
+              await sendWhatsAppMessage(phoneNumber, askNameMsg);
+
+              const updH = [
+                ...((savedConv.messages_history as any[]) || []),
+                { role: "assistant", content: askNameMsg, timestamp: new Date().toISOString() },
+              ];
+              await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConv.id);
+            }
           }
 
           return new Response(JSON.stringify({ status: "ok", group_setup_started: true }), {
