@@ -3169,7 +3169,179 @@ REGRAS:
           });
         }
 
-        // ===== GROUP QUESTIONNAIRE (in-progress) =====
+        // ===== MY DATES (submit available date ranges) =====
+        const myDatesMatch = messageText?.match(myDatesRegex);
+        if (myDatesMatch) {
+          const datesText = myDatesMatch[1].trim();
+          await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          const { data: memberOf } = await supabase
+            .from("travel_group_members")
+            .select("id, group_id, preferences")
+            .eq("phone_number", phoneNumber);
+
+          if (!memberOf?.length) {
+            await sendWhatsAppMessage(phoneNumber, "❌ Você não faz parte de nenhum grupo.\n\nPara criar um, mande: *criar grupo*");
+            return new Response(JSON.stringify({ status: "ok", no_group: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          const member = memberOf[0];
+          const prefs = (member.preferences as Record<string, any>) || {};
+          prefs.datas_disponiveis = datesText;
+          await supabase.from("travel_group_members").update({ preferences: prefs }).eq("id", member.id);
+
+          // Notify group
+          const { data: group } = await supabase.from("travel_groups").select("group_code, creator_phone").eq("id", member.group_id).single();
+          const confirmMsg = `📅 *Datas registradas!*\n\nSuas disponibilidades: *${datesText}*\n\nQuando todos informarem, mande *datas grupo* para encontrar a janela ideal! 📆`;
+          await sendWhatsAppMessage(phoneNumber, confirmMsg);
+
+          // Notify creator
+          if (group && group.creator_phone !== phoneNumber) {
+            await sendWhatsAppMessage(group.creator_phone, `📅 *${contactName || "Um membro"}* informou suas datas disponíveis no grupo *${group.group_code}*!`);
+          }
+
+          return new Response(JSON.stringify({ status: "ok", dates_submitted: true }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // ===== GROUP DATES NEGOTIATOR =====
+        if (groupDatesRegex.test(lowerMsgGroup)) {
+          await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          const { data: memberOf } = await supabase
+            .from("travel_group_members")
+            .select("group_id")
+            .eq("phone_number", phoneNumber);
+
+          if (!memberOf?.length) {
+            await sendWhatsAppMessage(phoneNumber, "❌ Você não faz parte de nenhum grupo.\n\nPara criar um, mande: *criar grupo*");
+            return new Response(JSON.stringify({ status: "ok", no_group: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          const groupId = memberOf[0].group_id;
+          const { data: group } = await supabase.from("travel_groups").select("group_code").eq("id", groupId).single();
+          const { data: allMembers } = await supabase.from("travel_group_members").select("member_name, phone_number, preferences").eq("group_id", groupId);
+
+          if (!allMembers || allMembers.length < 2) {
+            await sendWhatsAppMessage(phoneNumber, "⚠️ O grupo precisa de pelo menos 2 membros para negociar datas.");
+            return new Response(JSON.stringify({ status: "ok", group_too_small: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          // Check who has dates
+          const withDates = allMembers.filter(m => (m.preferences as any)?.datas_disponiveis);
+          const withoutDates = allMembers.filter(m => !(m.preferences as any)?.datas_disponiveis);
+
+          if (withDates.length < 2) {
+            const missingNames = withoutDates.map(m => m.member_name || m.phone_number).join(", ");
+            await sendWhatsAppMessage(phoneNumber, `📅 *Faltam datas!*\n\nApenas ${withDates.length} membro(s) informaram datas.\n\n⏳ Faltam: ${missingNames}\n\nCada membro deve enviar:\n*minhas datas 15/06 a 30/06, 10/07 a 25/07*`);
+            return new Response(JSON.stringify({ status: "ok", dates_missing: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          await sendWhatsAppMessage(phoneNumber, "📅 *Negociando datas do grupo...*\nAnalisando disponibilidades! ⏳");
+
+          const membersDatesList = allMembers.map(m => {
+            const prefs = (m.preferences as any) || {};
+            return `- *${m.member_name || m.phone_number}*: ${prefs.datas_disponiveis || "NÃO INFORMOU"}`;
+          }).join("\n");
+
+          const dateNegotiatorPrompt = `Você é o Téo, negociador de datas da Tomorrow Travel. Analise as disponibilidades de ${allMembers.length} membros de um grupo de viagem e encontre as melhores janelas comuns.
+
+MEMBROS DO GRUPO "${group?.group_code || ""}":
+${membersDatesList}
+
+GERE:
+
+1. 📊 *ANÁLISE DE DISPONIBILIDADES*
+Visualize as datas de cada membro em uma linha do tempo simples.
+
+2. ✅ *JANELAS COMUNS*
+Liste TODAS as janelas onde TODOS (ou a maioria) estão disponíveis, ordenadas por:
+- Maior sobreposição de membros
+- Maior duração da janela
+
+Formato: 📅 *DD/MM a DD/MM* (X dias) — ✅ X de Y membros disponíveis
+
+3. 🏆 *MELHOR JANELA RECOMENDADA*
+A janela com maior sobreposição e duração ideal (5-10 dias para viagem).
+
+4. ⚠️ *CONFLITOS*
+Se alguém não pode em nenhuma janela comum, sugira alternativas ou compromissos.
+
+5. 💡 *SUGESTÃO*
+Considere feriados nacionais (brasileiros) e alta temporada para sugerir a melhor data.
+
+REGRAS:
+- Formato WhatsApp com *negrito* e emojis
+- Máximo 3000 caracteres
+- Se um membro não informou datas, destaque que falta a informação
+- Considere o ano atual: ${new Date().getFullYear()}
+- No final: "Quer que eu cote a viagem para a melhor data? É só pedir! 😊✈️"`;
+
+          try {
+            const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash",
+                messages: [
+                  { role: "system", content: dateNegotiatorPrompt },
+                  { role: "user", content: "Analise as disponibilidades e encontre as melhores janelas comuns." },
+                ],
+                max_tokens: 4000,
+              }),
+            });
+
+            if (!response.ok) {
+              console.error("[GROUP-DATES] AI error:", response.status);
+              await sendWhatsAppMessage(phoneNumber, "😅 Erro ao analisar datas. Tente novamente!");
+            } else {
+              const data = await response.json();
+              const dateResult = data.choices?.[0]?.message?.content || "Erro ao processar datas.";
+
+              // Save to group
+              await supabase.from("travel_groups").update({
+                travel_dates: dateResult.substring(0, 500),
+              }).eq("id", groupId);
+
+              // Send to all members
+              const header = `📅 *Negociação de Datas — Grupo ${group?.group_code || ""}* 📆\n\n`;
+              for (const m of allMembers) {
+                try {
+                  if ((dateResult.length + header.length) > 4000) {
+                    const fullMsg = header + dateResult;
+                    const mid = fullMsg.lastIndexOf("\n", 3900);
+                    await sendWhatsAppMessage(m.phone_number, fullMsg.substring(0, mid > 0 ? mid : 3900));
+                    await sendWhatsAppMessage(m.phone_number, fullMsg.substring(mid > 0 ? mid : 3900));
+                  } else {
+                    await sendWhatsAppMessage(m.phone_number, header + dateResult);
+                  }
+                } catch (err) {
+                  console.error(`[GROUP-DATES] Error sending to ${m.phone_number}:`, err);
+                }
+              }
+            }
+          } catch (err) {
+            console.error("[GROUP-DATES] Error:", err);
+            await sendWhatsAppMessage(phoneNumber, "😅 Erro ao processar. Tente novamente!");
+          }
+
+          return new Response(JSON.stringify({ status: "ok", group_dates_negotiated: true }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
         {
           const { data: convForGroup } = await supabase
             .from("whatsapp_conversations")
