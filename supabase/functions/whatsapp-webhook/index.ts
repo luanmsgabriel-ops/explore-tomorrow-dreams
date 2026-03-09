@@ -2329,7 +2329,8 @@ serve(async (req) => {
       // If the message is from the admin phone number, route to admin assistant
       // BUT skip admin routing for group-related commands so admin can also use Modo Galera
       const lowerMsgForGroupCheck = (messageText || "").toLowerCase().trim();
-      const isGroupCommand = /^entrar grupo\s+[a-zA-Z0-9]{6}$/i.test(lowerMsgForGroupCheck)
+      const isJoinGroupIntent = /entrar\s+grupo/i.test(lowerMsgForGroupCheck);
+      const isGroupCommand = isJoinGroupIntent
         || /(?:criar|quero|novo|ativar|iniciar|montar|fazer|organizar|bora|vamos|começar|comecar|abrir|preparar|planejar)/i.test(lowerMsgForGroupCheck) && /(?:grupo|galera|modo\s*galera|viagem\s+(?:em\s+)?grupo)/i.test(lowerMsgForGroupCheck)
         || /^(meu grupo|status grupo|group status)$/i.test(lowerMsgForGroupCheck)
         || /^(resultado grupo|group result|ver resultado)$/i.test(lowerMsgForGroupCheck)
