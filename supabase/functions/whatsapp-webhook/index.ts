@@ -643,7 +643,8 @@ Se o usuário enviar UMA MENSAGEM com TODAS as informações (destino, datas, vi
    Calcule a quantidade de dias baseado nas datas de ida e volta.
    Use locais, restaurantes e atrações REAIS e conhecidos do destino.
    NÃO seja genérico - cite nomes de praias, restaurantes, mirantes, etc.
-   O roteiro deve ter entre 800 e 1500 caracteres (versão texto).
+    O roteiro versão texto deve ter NO MÁXIMO 3000 caracteres.
+    NÃO envie o mesmo roteiro mais de uma vez na mesma conversa.
 
 6. DETECÇÃO DE ALTERAÇÕES:
    Se o cliente, APÓS já ter recebido uma cotação ou ter uma cotação em processamento, pedir qualquer tipo de alteração (mudar datas, trocar destino, mais/menos pessoas, upgrade, downgrade, customização), NÃO crie nova cotação. Em vez disso, ADICIONE a tag:
@@ -6851,8 +6852,8 @@ Regras OBRIGATÓRIAS:
           }
         }
 
-        // Send visual itinerary card if detected (before text)
-        if (itineraryData) {
+        // Send visual itinerary card if detected (before text) — only once
+        if (itineraryData && !conversation.collected_data?._itinerary_sent) {
           const clientNameForVisual = conversation.client_name || contactName || undefined;
           await generateAndSendItineraryVisual(phoneNumber, itineraryData, clientNameForVisual);
           await sendWhatsAppMessage(phoneNumber, "Preparei um roteiro especial pra nossa viagem! 🗺️✨ Salva essa imagem, vai ser nosso guia por lá! 😄");
@@ -7214,11 +7215,12 @@ Regras OBRIGATÓRIAS:
         }
       }
 
-      // Send visual itinerary card if detected (before text)
-      if (itineraryVisualData) {
+      // Send visual itinerary card if detected (before text) — only once per conversation
+      if (itineraryVisualData && !collectedData._itinerary_sent) {
         const clientNameForVisual = newCollectedData.nome || conversation.client_name || contactName || undefined;
         await generateAndSendItineraryVisual(phoneNumber, itineraryVisualData, clientNameForVisual);
         await sendWhatsAppMessage(phoneNumber, "Preparei um roteiro especial pra você! 🗺️✨ Salva essa imagem, vai ser seu guia por lá! 😄");
+        newCollectedData._itinerary_sent = true;
       }
 
       await sendWhatsAppMessage(phoneNumber, cleanResponse);

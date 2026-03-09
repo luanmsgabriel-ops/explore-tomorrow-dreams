@@ -137,7 +137,10 @@ Generate the image now.`;
 
     const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
     const binaryData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
-    const fileName = `itinerary-visuals/${Date.now()}-${destination.toLowerCase().replace(/\s+/g, "-")}.png`;
+    const sanitized = destination.toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-");
+    const fileName = `itinerary-visuals/${Date.now()}-${sanitized}.png`;
 
     const { error: uploadError } = await supabase.storage
       .from("destination-images")
@@ -149,8 +152,8 @@ Generate the image now.`;
     if (uploadError) {
       console.error("[ITINERARY-VISUAL] Upload error:", uploadError);
       return new Response(
-        JSON.stringify({ imageUrl: imageData }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Upload failed", imageUrl: null }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
