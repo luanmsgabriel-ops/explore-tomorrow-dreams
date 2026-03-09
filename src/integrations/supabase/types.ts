@@ -1172,6 +1172,7 @@ export type Database = {
           status: string
           travel_dates: string | null
           updated_at: string
+          votes: Json | null
         }
         Insert: {
           budget_range?: string | null
@@ -1186,6 +1187,7 @@ export type Database = {
           status?: string
           travel_dates?: string | null
           updated_at?: string
+          votes?: Json | null
         }
         Update: {
           budget_range?: string | null
@@ -1200,6 +1202,7 @@ export type Database = {
           status?: string
           travel_dates?: string | null
           updated_at?: string
+          votes?: Json | null
         }
         Relationships: []
       }

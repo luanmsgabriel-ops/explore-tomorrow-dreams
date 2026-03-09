@@ -1,0 +1,1 @@
+ALTER TABLE public.travel_groups ADD COLUMN IF NOT EXISTS votes jsonb DEFAULT '{}'::jsonb;
