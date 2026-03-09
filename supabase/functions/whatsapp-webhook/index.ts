@@ -2964,7 +2964,7 @@ REGRAS:
             member_name: contactName || null,
           });
 
-          const joinMsg = `✅ *Você entrou no grupo ${code}!*\n${group.creator_name ? `Criado por ${group.creator_name}` : ""}\n\nVou te fazer 5 perguntas rápidas sobre suas preferências de viagem! 🌍`;
+          const joinMsg = `✅ *Você entrou no grupo ${code}!*\n${group.creator_name ? `Criado por ${group.creator_name}` : ""}\n\nVou te fazer 7 perguntas rápidas sobre suas preferências de viagem! 🌍\nResponda com o número da opção escolhida.`;
           await sendWhatsAppMessage(phoneNumber, joinMsg);
 
           // Set group mode
