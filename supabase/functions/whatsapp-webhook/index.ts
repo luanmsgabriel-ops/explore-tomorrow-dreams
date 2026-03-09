@@ -2044,6 +2044,126 @@ serve(async (req) => {
         });
       }
 
+      // Handle async quotation processing (self-invoked, non-blocking)
+      if (body.action === "process_quotation") {
+        const phone = body.phone_number;
+        const quotationData = body.quotation_data;
+        const saveResultId = body.save_result_id;
+        const conversationId = body.conversation_id;
+        const clientName = body.client_name;
+        const collectedDataForQuote = body.collected_data || {};
+
+        if (phone && quotationData) {
+          console.log(`[ASYNC-QUOTATION] Processing quotation for ${phone} → ${quotationData.destino}`);
+
+          // Call Cativa/Infotravel API directly
+          const quotationResult = await requestQuotation(quotationData);
+
+          let quotationMsg: string;
+
+          if (quotationResult.status === "success" && quotationResult.data?.resultados?.length > 0) {
+            quotationMsg = formatQuotationResults(quotationResult.data);
+
+            // Update travel_quote_requests with results
+            if (saveResultId) {
+              await supabase.from("travel_quote_requests").update({
+                status: "completed",
+                processed_at: new Date().toISOString(),
+                processing_details: quotationResult.data,
+              }).eq("id", saveResultId);
+            }
+
+            // Generate quote visual card (fire-and-forget)
+            generateAndSendQuoteVisual(phone, quotationData, quotationResult.data)
+              .catch(err => console.error("[QUOTE-VISUAL] Fire-and-forget error:", err));
+
+          } else {
+            // No results or API error — fallback to human specialist
+            quotationMsg = `${clientName || 'Amigo(a)'}! 👋\n\nNão encontrei opções automáticas para ${quotationData.destino} nessas datas, mas isso não é problema! 🌴\n\nVou encaminhar seu pedido para um especialista do destino que vai encontrar o pacote perfeito pra você! ✈️\n\nUm consultor da Tomorrow Travel entra em contato em breve! 😊`;
+
+            if (saveResultId) {
+              await supabase.from("travel_quote_requests").update({
+                status: "failed",
+                error_message: "Nenhum resultado encontrado na API Infotravel",
+                processed_at: new Date().toISOString(),
+              }).eq("id", saveResultId);
+            }
+
+            // Create lead for human follow-up
+            try {
+              await createQuoteRequest(phone, collectedDataForQuote);
+            } catch (err) {
+              console.error("Error creating quote on failure:", err);
+            }
+          }
+
+          // Send results to client
+          await sendWhatsAppMessage(phone, quotationMsg);
+
+          // Save to conversation history
+          try {
+            const { data: conv } = await supabase
+              .from("whatsapp_conversations")
+              .select("id, messages_history, collected_data")
+              .eq("id", conversationId)
+              .single();
+
+            if (conv) {
+              const hasResults = quotationResult.status === "success" && quotationResult.data?.resultados?.length > 0;
+              const updatedHistory = [
+                ...((conv.messages_history as any[]) || []),
+                { role: "assistant", content: quotationMsg, timestamp: new Date().toISOString() },
+              ];
+              const updatedCd = { ...(conv.collected_data as Record<string, any> || {}), _last_quote_id: saveResultId };
+
+              await supabase.from("whatsapp_conversations").update({
+                messages_history: updatedHistory,
+                collected_data: updatedCd,
+                conversation_state: hasResults ? "quotation_sent" : "completed",
+                is_ai_active: hasResults,
+              }).eq("id", conv.id);
+            }
+          } catch (histErr) {
+            console.error("[ASYNC-QUOTATION] Error updating conversation:", histErr);
+          }
+
+          // Generate travel tips (non-blocking, delayed)
+          try {
+            const tipsResponse = await getAiResponse([
+              { role: "user", content: `Você é o Téo, assistente de viagens divertido e humano da Tomorrow Travel. Gere uma mensagem para o cliente ${clientName || ''} com exatamente 5 dicas incríveis sobre ${quotationData.destino} (passeios, comidas, curiosidades, experiências). Seja divertido, use emojis, tom leve e descontraído. Uma dica por linha numerada. Comece com algo como "${clientName ? clientName + ', e' : 'E'}nquanto isso, bora conhecer um pouco mais sobre ${quotationData.destino}? 🗺️✨" e depois as 5 dicas. No FINAL da mensagem, adicione uma quebra de linha e pergunte de forma divertida e natural se o cliente sabia que você (o Téo) também pode montar um roteiro personalizado dia a dia pra viagem dele. Algo como: "Ah, e sabia que eu também posso montar um roteiro completinho dia a dia pra sua viagem? 🗓️✨ Quer que eu prepare um pra você?" Seja criativo e mantenha o tom do Téo!` }
+            ]);
+            const cleanTips = cleanAiResponse(tipsResponse);
+            if (cleanTips && cleanTips.length > 20) {
+              await new Promise(r => setTimeout(r, 30000));
+              await sendWhatsAppMessage(phone, cleanTips);
+
+              // Save tips to history
+              const { data: convAfterTips } = await supabase
+                .from("whatsapp_conversations")
+                .select("id, messages_history")
+                .eq("id", conversationId)
+                .single();
+              if (convAfterTips) {
+                const updH = [
+                  ...((convAfterTips.messages_history as any[]) || []),
+                  { role: "assistant", content: cleanTips, timestamp: new Date().toISOString() },
+                ];
+                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterTips.id);
+              }
+            }
+          } catch (tipErr) {
+            console.error("[ASYNC-QUOTATION] Tips error:", tipErr);
+          }
+
+          console.log(`[ASYNC-QUOTATION] Done for ${phone}`);
+        }
+
+        return new Response(JSON.stringify({ status: "ok", quotation_processed: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Handle follow-up quote (self-invoked after 60s of inactivity)
       if (body.action === "follow_up_quote") {
         const phone = body.phone_number;
