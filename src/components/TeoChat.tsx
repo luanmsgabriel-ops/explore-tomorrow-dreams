@@ -328,11 +328,6 @@ Me conta aí! 👇`
               setMessages((prev) => [...prev, { role: 'assistant', content: `📋 **Sua cotação visual:**\n\n![Cotação ${quotationData.destino}](${visualData.imageUrl})\n\n[📥 Baixar cotação](${visualData.imageUrl})` }]);
             }
           }).catch(() => {/* non-blocking */});
-        } else if (quotResult.status === 'pending_code') {
-          setMessages((prev) => [...prev, { 
-            role: 'assistant', 
-            content: `Recebi o pedido! 📧 A operadora enviou um código de verificação para o seu e-mail. Por favor, digite-o no campo abaixo para eu prosseguir com a cotação! 🔐`
-          }]);
         }
       }
 
