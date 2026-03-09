@@ -3,6 +3,7 @@ import { Sparkles, Loader2, Mail, Phone, Download, Send, CheckCircle, User, MapP
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
+import { ItineraryMapView } from './ItineraryMapView';
 import logo from '@/assets/logo.jpeg';
 import { useDestinations } from '@/hooks/useDestinations';
 import { itineraryFormSchema, validateForm, sanitizeText, isValidationError } from '@/lib/validations';
@@ -52,6 +53,8 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
   const [isRequestingQuote, setIsRequestingQuote] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [fromCache, setFromCache] = useState(false);
+  const [structuredData, setStructuredData] = useState<any>(null);
+  const [placePhotos, setPlacePhotos] = useState<Record<string, string>>({});
 
   // Parse itinerary to extract activities
   const parseItineraryActivities = (content: string): Activity[] => {
@@ -212,17 +215,29 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
         throw response.error;
       }
 
-      const { itinerary: generatedItinerary, destination: actualDestination } = response.data;
+      const { itinerary: generatedItinerary, destination: actualDestination, structured, placeNames } = response.data;
       setItinerary(generatedItinerary);
+      setStructuredData(structured || null);
       
       const finalDestinationName = actualDestination || selectedDestinationName;
       setSelectedDestinationName(finalDestinationName);
       
-      // Parse activities from generated itinerary
+      // Parse activities from generated itinerary (fallback for non-structured)
       const parsedActivities = parseItineraryActivities(generatedItinerary);
       setActivities(parsedActivities);
       if (parsedActivities.length > 0) {
         setExpandedDays([parsedActivities[0].day]);
+      }
+      
+      // Fetch photos for places in background
+      if (placeNames?.length > 0) {
+        supabase.functions.invoke('search-place-photos', {
+          body: { queries: placeNames },
+        }).then(({ data: photoData }) => {
+          if (photoData?.photos) {
+            setPlacePhotos(photoData.photos);
+          }
+        }).catch(err => console.error('Photo fetch error:', err));
       }
       
       // Salva no cache
@@ -376,6 +391,44 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Roteiro baixado!');
+  };
+
+  const handleRequestQuoteFromMapView = async (selectedList: { day: string; title: string; description?: string }[]) => {
+    setIsRequestingQuote(true);
+    try {
+      if (itineraryId) {
+        await supabase.from('ai_itineraries').update({
+          selected_activities: selectedList,
+          quote_requested: true,
+          quote_requested_at: new Date().toISOString(),
+        }).eq('id', itineraryId);
+      }
+
+      const selectedActivitiesText = selectedList.length > 0
+        ? `\n\nPASSEIOS SELECIONADOS:\n${selectedList.map(a => `- ${a.day}: ${a.title}`).join('\n')}`
+        : '';
+
+      const moodLabel = TRAVEL_MOODS.find(m => m.id === selectedMood)?.label || '';
+      
+      const { error } = await supabase.from('quote_requests').insert({
+        destination_name: selectedDestinationName,
+        destination_id: selectedDestinationId || null,
+        email: email.trim() || 'nao-informado@temp.com',
+        whatsapp: whatsapp.trim(),
+        special_requests: `Clima: ${moodLabel || 'Não especificado'}. Preferências: ${preferences || 'Nenhuma especificada'}.${selectedActivitiesText}`,
+        travel_word: moodLabel,
+        status: 'pending',
+      });
+
+      if (error) throw error;
+      setStep('quote_success');
+      toast.success('Solicitação enviada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao solicitar cotação:', error);
+      toast.error('Erro ao solicitar cotação.');
+    } finally {
+      setIsRequestingQuote(false);
+    }
   };
 
   const handleRequestQuote = async () => {
@@ -646,7 +699,39 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
     );
   }
 
-  // Result Step
+  // Result Step - Premium Visual View
+  if (structuredData) {
+    const moodLabel = TRAVEL_MOODS.find(m => m.id === selectedMood)?.label;
+    
+    return (
+      <div className="flex flex-col h-full max-h-[80vh]">
+        <ItineraryMapView
+          structured={structuredData}
+          destinationName={selectedDestinationName}
+          photos={placePhotos}
+          selectedMood={moodLabel}
+          onRequestQuote={(selected) => {
+            // Map selected activities to the old format for quote request
+            const selectedList = selected.map(s => ({
+              day: `Dia ${s.day}`,
+              title: s.title,
+              description: '',
+            }));
+            handleRequestQuoteFromMapView(selectedList);
+          }}
+          onDownload={handleDownload}
+          isRequestingQuote={isRequestingQuote}
+        />
+        {onClose && (
+          <div className="p-3 border-t border-border">
+            <button onClick={onClose} className="btn-outline w-full">Fechar</button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Fallback: Legacy markdown result view
   return (
     <div className="flex flex-col h-full max-h-[80vh]">
       <div className="p-6 border-b border-border">
@@ -671,7 +756,6 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {/* Activities Selection */}
         {activities.length > 0 && (
           <div className="bg-secondary/50 rounded-2xl p-4 border border-border">
             <div className="flex items-center justify-between mb-4">
@@ -737,7 +821,6 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
           </div>
         )}
 
-        {/* Full Itinerary */}
         <div className="prose prose-invert max-w-none">
           <ReactMarkdown>{itinerary}</ReactMarkdown>
         </div>
