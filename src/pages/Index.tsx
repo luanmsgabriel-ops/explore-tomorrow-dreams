@@ -44,12 +44,12 @@ const Index = () => {
       {/* Discover section */}
       <section className="py-16 md:py-20 world-map-bg">
         <div className="container mx-auto px-4 lg:px-8 relative z-10">
-          <div className="text-center max-w-3xl mx-auto">
+          <div className="text-center max-w-3xl mx-auto bg-black/50 backdrop-blur-sm rounded-2xl p-8">
             <h2 className="font-serif text-3xl md:text-5xl font-bold mb-4">
               <span className="text-gold-embossed">Descubra o</span>{' '}
               <span className="gradient-text-teal">Extraordinário</span>
             </h2>
-            <p className="text-muted-foreground text-lg">
+            <p className="text-white text-lg">
               Tecnologia de ponta para facilitar sua viagem. O primeiro agente de IA do mundo no setor de viagens, acessível para todos.
             </p>
           </div>
