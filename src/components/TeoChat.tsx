@@ -5,7 +5,7 @@ import { chatMessageSchema, generateSecureSessionId, sanitizeText, phoneSchema, 
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { TeoMascot } from '@/components/TeoMascot';
-import { QuotationStatusDisplay } from '@/components/QuotationStatusDisplay';
+
 import { useQuotation, parseQuotationTag, formatQuotationResults } from '@/hooks/useQuotation';
 
 interface Message {
@@ -328,11 +328,6 @@ Me conta aí! 👇`
               setMessages((prev) => [...prev, { role: 'assistant', content: `📋 **Sua cotação visual:**\n\n![Cotação ${quotationData.destino}](${visualData.imageUrl})\n\n[📥 Baixar cotação](${visualData.imageUrl})` }]);
             }
           }).catch(() => {/* non-blocking */});
-        } else if (quotResult.status === 'pending_code') {
-          setMessages((prev) => [...prev, { 
-            role: 'assistant', 
-            content: `Recebi o pedido! 📧 A operadora enviou um código de verificação para o seu e-mail. Por favor, digite-o no campo abaixo para eu prosseguir com a cotação! 🔐`
-          }]);
         }
       }
 
@@ -559,35 +554,6 @@ Me conta aí! 👇`
           </div>
         )}
 
-        <QuotationStatusDisplay
-          status={quotation.status}
-          onSubmitCode={async (code) => {
-            setMessages((prev) => [...prev, { 
-              role: 'assistant', 
-              content: '⏳ Código enviado! Aguardando a operadora processar... isso pode levar alguns minutos. 🔄'
-            }]);
-            const result = await quotation.submitVerificationCode(code);
-            if (result?.status === 'success' && result.data) {
-              const hasQuotationData = result.data.resultados || result.data.results || 
-                result.data.cotacoes || result.data.preco || result.data.valor || 
-                result.data.price || Array.isArray(result.data);
-              
-              if (hasQuotationData) {
-                const formatted = formatQuotationResults(result.data);
-                setMessages((prev) => [...prev, { role: 'assistant', content: formatted }]);
-              } else {
-                // Server returned ack but no prices yet — show what we got and keep status visible
-                const formatted = formatQuotationResults(result.data);
-                setMessages((prev) => [...prev, { role: 'assistant', content: formatted }]);
-              }
-            } else if (result?.status === 'error') {
-              setMessages((prev) => [...prev, { 
-                role: 'assistant', 
-                content: '❌ Não foi possível processar o código. Tente novamente ou peça uma nova cotação.'
-              }]);
-            }
-          }}
-        />
 
         {step === 'destination_chosen' && whatsappRedirectLink && (
           <div className="flex justify-center mt-4">

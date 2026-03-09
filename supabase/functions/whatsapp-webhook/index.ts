@@ -598,7 +598,7 @@ Se o usuário enviar UMA MENSAGEM com TODAS as informações (destino, datas, vi
    ⚠️ NÃO dispare [COTAR_VIAGEM] sem o cliente confirmar o resumo!
    ⚠️ Só dispare [COTAR_VIAGEM] quando o cliente responder positivamente ("sim", "isso", "pode ir", "tá certo", "manda ver", etc.)
 
-4. CONFIRMAÇÃO - Após o cliente confirmar o resumo, dispare a cotação e informe que vai buscar as melhores opções (~1 minuto)
+4. CONFIRMAÇÃO - Após o cliente confirmar o resumo, dispare a cotação e informe que vai buscar as melhores opções (uns segundinhos!)
 
 5. PÓS-COTAÇÃO:
    ⚠️ NÃO FINALIZAR após enviar cotação. AGUARDAR RESPOSTA.
@@ -1642,43 +1642,37 @@ async function saveQuotationRequest(
   return { success: true, id: data.id };
 }
 
-async function requestQuotation(quotationData: Record<string, any>, verificationCode?: string): Promise<{ status: string; data: any }> {
-  const payload: Record<string, any> = {
+async function requestQuotation(quotationData: Record<string, any>): Promise<{ status: string; data: any }> {
+  const payload = {
     origem: quotationData.origem,
     destino: quotationData.destino,
     data_ida: quotationData.data_ida,
     data_volta: quotationData.data_volta,
-    passageiros: {
-      adultos: quotationData.adultos || 1,
-      criancas: quotationData.criancas || 0,
-      idades_criancas: quotationData.idades_criancas || [],
-    },
-    operadora: "all",
+    adultos: quotationData.adultos || 1,
+    criancas: quotationData.criancas || 0,
+    idades_criancas: quotationData.idades_criancas || [],
   };
 
-  if (verificationCode) {
-    payload.verification_code = verificationCode;
-  }
-
-  console.log("WhatsApp quotation request (direct):", JSON.stringify(payload));
+  console.log("[QUOTATION] Calling cativa-quotation API:", JSON.stringify(payload));
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 300000);
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout (API is fast now)
 
   try {
-    const response = await fetch(EXTERNAL_API_URL, {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/cativa-quotation`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
 
     const responseText = await response.text();
-    console.log("=== QUOTATION API RAW RESPONSE ===");
-    console.log("Status:", response.status);
-    console.log("Body (first 3000 chars):", responseText.substring(0, 3000));
-    console.log("=== END RAW RESPONSE ===");
+    console.log("[QUOTATION] Cativa API response status:", response.status);
+    console.log("[QUOTATION] Response (first 2000):", responseText.substring(0, 2000));
 
     if (!response.ok) {
       return { status: "error", data: null };
@@ -1691,17 +1685,14 @@ async function requestQuotation(quotationData: Record<string, any>, verification
       return { status: "error", data: null };
     }
 
-    if (responseData.error || responseData.erro) {
+    if (responseData.error) {
       return { status: "error", data: null };
-    }
-
-    if (responseData.status === "pending_code" || responseData.pending_code) {
-      return { status: "pending_code", data: responseData };
     }
 
     return { status: "success", data: responseData };
   } catch (err) {
     clearTimeout(timeoutId);
+    console.error("[QUOTATION] Error:", err);
     return { status: "error", data: null };
   }
 }
@@ -7234,7 +7225,7 @@ Regras OBRIGATÓRIAS:
           await sendWhatsAppMessage(phoneNumber, cleanResponse);
         }
 
-        // Save quotation request to table for Manus polling
+        // Save quotation request to table for tracking
         const saveResult = await saveQuotationRequest(
           quotationData,
           phoneNumber,
@@ -7248,40 +7239,45 @@ Regras OBRIGATÓRIAS:
         // Mark quotation as triggered to prevent duplicates
         newCollectedData._quotation_triggered = true;
 
-        if (saveResult.success) {
-          quotationMsg = `Recebi sua solicitação! 🌴✨\n\nEstou processando as melhores opções para ${quotationData.destino}. Aguarde aproximadamente 1 minuto! ✈️🏨`;
-          
-          // Generate tips now, schedule sending after 60s via self-invocation
-          const destino = quotationData.destino;
-          const clienteName = newCollectedData.nome || conversation.client_name || contactName || "";
-          try {
-            const tipsResponse = await getAiResponse([
-              { role: "user", content: `Você é o Téo, assistente de viagens divertido e humano da Tomorrow Travel. Gere uma mensagem para o cliente ${clienteName} com exatamente 5 dicas incríveis sobre ${destino} (passeios, comidas, curiosidades, experiências). Seja divertido, use emojis, tom leve e descontraído. Uma dica por linha numerada. Comece com algo como "${clienteName ? clienteName + ', e' : 'E'}nquanto eu busco as melhores opções pra você, bora conhecer um pouco mais sobre ${destino}? 🗺️✨" e depois as 5 dicas. No FINAL da mensagem, adicione uma quebra de linha e pergunte de forma divertida e natural se o cliente sabia que você (o Téo) também pode montar um roteiro personalizado dia a dia pra viagem dele. Algo como: "Ah, e sabia que eu também posso montar um roteiro completinho dia a dia pra sua viagem? 🗓️✨ Quer que eu prepare um pra você?" Seja criativo e mantenha o tom do Téo!` }
-            ]);
-            const cleanTips = cleanAiResponse(tipsResponse);
-            if (cleanTips && cleanTips.length > 20) {
-              // Schedule delayed tips via self-invocation (non-blocking) - 60 seconds
-              const selfUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
-              fetch(selfUrl, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-                },
-                body: JSON.stringify({
-                  action: "delayed_tips",
-                  phone_number: phoneNumber,
-                  message: cleanTips,
-                  delay_seconds: 60,
-                }),
-              }).catch(err => console.error("Error scheduling delayed tips:", err));
-            }
-          } catch (tipErr) {
-            console.error("Error generating tips:", tipErr);
+        // Send "searching" message immediately
+        const searchingMsg = `Buscando as melhores opções para ${quotationData.destino}... ✈️🔍 Já volto!`;
+        await sendWhatsAppMessage(phoneNumber, searchingMsg);
+
+        // Call Cativa/Infotravel API directly (fast, ~5-15s)
+        const quotationResult = await requestQuotation(quotationData);
+
+        if (quotationResult.status === "success" && quotationResult.data?.resultados?.length > 0) {
+          // Format and send results immediately!
+          quotationMsg = formatQuotationResults(quotationResult.data);
+
+          // Update travel_quote_requests with results
+          if (saveResult.success && saveResult.id) {
+            await supabase.from("travel_quote_requests").update({
+              status: "completed",
+              processed_at: new Date().toISOString(),
+              processing_details: quotationResult.data,
+            }).eq("id", saveResult.id);
+            newCollectedData._last_quote_id = saveResult.id;
           }
+
+          // Generate quote visual card (fire-and-forget)
+          generateAndSendQuoteVisual(phoneNumber, quotationData, quotationResult.data)
+            .catch(err => console.error("[QUOTE-VISUAL] Fire-and-forget error:", err));
+
         } else {
-          quotationMsg = `Olá ${newCollectedData.nome || conversation.client_name || 'amigo(a)'}! 👋\n\nEstamos trabalhando para encontrar as melhores opções para sua viagem a ${quotationData.destino}! ✈️\n\nPara garantir que você tenha o pacote perfeito, vamos precisar do apoio de um especialista no destino. Em breve, um de nossos consultores da Tomorrow Travel entrará em contato para personalizar sua experiência e encontrar a melhor opção para você! 🏖️\n\nAguarde nosso retorno! 😊`;
-          // Create lead as fallback
+          // No results or API error — fallback to human specialist
+          quotationMsg = `${newCollectedData.nome || conversation.client_name || 'Amigo(a)'}! 👋\n\nNão encontrei opções automáticas para ${quotationData.destino} nessas datas, mas isso não é problema! 🌴\n\nVou encaminhar seu pedido para um especialista do destino que vai encontrar o pacote perfeito pra você! ✈️\n\nUm consultor da Tomorrow Travel entra em contato em breve! 😊`;
+
+          // Mark as needing human follow-up
+          if (saveResult.success && saveResult.id) {
+            await supabase.from("travel_quote_requests").update({
+              status: "failed",
+              error_message: "Nenhum resultado encontrado na API Infotravel",
+              processed_at: new Date().toISOString(),
+            }).eq("id", saveResult.id);
+          }
+
+          // Create lead for human follow-up
           if (!quoteRequestId) {
             try {
               const quoteRequest = await createQuoteRequest(phoneNumber, newCollectedData);
@@ -7292,17 +7288,47 @@ Regras OBRIGATÓRIAS:
           }
         }
 
+        // Generate travel tips (non-blocking, delayed)
+        const destino = quotationData.destino;
+        const clienteName = newCollectedData.nome || conversation.client_name || contactName || "";
+        try {
+          const tipsResponse = await getAiResponse([
+            { role: "user", content: `Você é o Téo, assistente de viagens divertido e humano da Tomorrow Travel. Gere uma mensagem para o cliente ${clienteName} com exatamente 5 dicas incríveis sobre ${destino} (passeios, comidas, curiosidades, experiências). Seja divertido, use emojis, tom leve e descontraído. Uma dica por linha numerada. Comece com algo como "${clienteName ? clienteName + ', e' : 'E'}nquanto isso, bora conhecer um pouco mais sobre ${destino}? 🗺️✨" e depois as 5 dicas. No FINAL da mensagem, adicione uma quebra de linha e pergunte de forma divertida e natural se o cliente sabia que você (o Téo) também pode montar um roteiro personalizado dia a dia pra viagem dele. Algo como: "Ah, e sabia que eu também posso montar um roteiro completinho dia a dia pra sua viagem? 🗓️✨ Quer que eu prepare um pra você?" Seja criativo e mantenha o tom do Téo!` }
+          ]);
+          const cleanTips = cleanAiResponse(tipsResponse);
+          if (cleanTips && cleanTips.length > 20) {
+            // Schedule delayed tips via self-invocation (non-blocking) - 30 seconds
+            const selfUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
+            fetch(selfUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              },
+              body: JSON.stringify({
+                action: "delayed_tips",
+                phone_number: phoneNumber,
+                message: cleanTips,
+                delay_seconds: 30,
+              }),
+            }).catch(err => console.error("Error scheduling delayed tips:", err));
+          }
+        } catch (tipErr) {
+          console.error("Error generating tips:", tipErr);
+        }
+
         // Update history with all messages
         const updatedHistory = [
           ...(conversation.messages_history as any[] || []),
           { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
+          { role: "assistant", content: searchingMsg, timestamp: new Date().toISOString() },
           { role: "assistant", content: quotationMsg, timestamp: new Date().toISOString() },
         ];
 
-        // After quotation is triggered, set to awaiting_quotation but DISABLE AI
-        // AI should NOT keep sending messages. Only manual_send (from Manus) or human should respond.
+        // Keep AI active so Téo can continue chatting after results
+        const hasResults = quotationResult.status === "success" && quotationResult.data?.resultados?.length > 0;
         let newState = conversationStatus === "human_takeover" ? "human_takeover"
-          : saveResult.success ? "awaiting_quotation"
+          : hasResults ? "quotation_sent"
           : "completed";
 
         if (newState === "completed" && !quoteRequestId) {
@@ -7314,8 +7340,8 @@ Regras OBRIGATÓRIAS:
           }
         }
 
-        // DISABLE AI after quotation to prevent loops - Manus will respond via manual_send
-        const keepAiActive = false;
+        // Keep AI ACTIVE after quotation so Téo can answer follow-up questions
+        const keepAiActive = hasResults;
 
         await supabase
           .from("whatsapp_conversations")
@@ -7331,7 +7357,7 @@ Regras OBRIGATÓRIAS:
 
         await sendWhatsAppMessage(phoneNumber, quotationMsg);
 
-        return new Response(JSON.stringify({ status: "ok", state: newState, quotation: true, saved: saveResult.success }), {
+        return new Response(JSON.stringify({ status: "ok", state: newState, quotation: true, has_results: hasResults }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
