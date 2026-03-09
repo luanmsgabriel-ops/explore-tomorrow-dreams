@@ -7046,7 +7046,7 @@ Regras OBRIGATÓRIAS:
       // === CONCIERGE BYPASS: skip all quotation logic ===
       if (conciergePromptOverride) {
         // Check for itinerary visual tag BEFORE cleaning
-        const itineraryData = parseItineraryVisualTag(aiResponse);
+        const itineraryDataFromTag = parseItineraryVisualTag(aiResponse);
         
         let cleanResponse = cleanAiResponse(aiResponse);
 
