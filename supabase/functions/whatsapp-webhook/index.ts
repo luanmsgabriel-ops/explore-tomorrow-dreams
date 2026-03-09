@@ -2798,7 +2798,7 @@ serve(async (req) => {
           // If not a menu image, continue to normal AI flow below
         }
 
-      // ========== TÉO GRUPAL: Group Travel with Preference Cross-Referencing ==========
+      // ========== MODO GALERA: Group Travel with Preference Cross-Referencing ==========
       {
         const lowerMsgGroup = (messageText || "").toLowerCase().trim();
         const createGroupRegex = /^(criar grupo|viagem em grupo|grupo viagem|travel group)$/i;
