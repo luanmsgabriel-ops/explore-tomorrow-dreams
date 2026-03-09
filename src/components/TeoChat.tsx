@@ -5,7 +5,7 @@ import { chatMessageSchema, generateSecureSessionId, sanitizeText, phoneSchema, 
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { TeoMascot } from '@/components/TeoMascot';
-import { QuotationStatusDisplay } from '@/components/QuotationStatusDisplay';
+
 import { useQuotation, parseQuotationTag, formatQuotationResults } from '@/hooks/useQuotation';
 
 interface Message {
