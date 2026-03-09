@@ -1,84 +1,118 @@
 
 
-## Reestruturação do Modo Galera
+# Plano: 5 Features Téo 2030
 
-### Problemas Identificados (screenshot)
-1. Link enviado com formatação markdown duplicada (raw markdown no WhatsApp)
-2. Link aponta para typeform ao invés do wa.me
-3. Fluxo não pede nome do grupo nem quantidade de pessoas antes de criar
-4. Questionário é texto livre, deveria ser múltipla escolha
-5. Resultado é disparado manualmente; deveria ser automático quando todos responderem
+## Features Solicitadas (uma por vez, implementação completa)
+1. ✅ **Téo Grupal** — Viagem em grupo com cruzamento de preferências via WhatsApp
+2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
+3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
+9. ✅ **Téo Roleta** — Destino aleatório filtrado por DNA com animação textual
+10. ✅ **Téo Oráculo** — Previsão personalizada da viagem com signos, DNA e fase lunar
+4. ✅ **Téo DNA** — Perfil genético de viajante
+5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
+6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
+7. ✅ **Téo Compatibilidade** — Match de viagem entre DNAs de viajante
+8. ✅ **Téo SOS** — Assistente de emergência com embaixadas, hospitais e frases úteis
 
-### Plano de Implementação
+---
 
-**Arquivo:** `supabase/functions/whatsapp-webhook/index.ts`
+## 7. Téo Compatibilidade (IMPLEMENTADO ✅)
 
-#### 1. Reestruturar o fluxo de criação do grupo
+### Conceito
+O cliente envia `compatibilidade com 5511999999999` e o Téo compara os DNAs de Viajante dos dois, calcula score de compatibilidade e sugere destinos ideais para ambos.
 
-Quando o usuário digita "criar grupo", ao invés de criar imediatamente:
-- Setar `_group_mode: "setup_name"` na conversa
-- Perguntar: "Como quer chamar o grupo?"
-- Ao receber o nome, setar `_group_mode: "setup_count"` e salvar nome
-- Perguntar: "Quantas pessoas vão participar (incluindo você)?"
-- Ao receber o número, criar o grupo na tabela `travel_groups` com o nome e salvar `expected_members` (precisa de migração DB)
-- Gerar o link wa.me corretamente (sem markdown, texto plano)
-- Perguntar ao criador: "Posso começar o seu questionário agora?"
-- Ao responder "sim", iniciar questionário
+### Comandos WhatsApp
+| Comando | Ação |
+|---------|------|
+| `compatibilidade com [número]` / `match viagem [número]` | Compara DNAs e sugere destino |
+| `compatibilidade` (sem número) | Téo pede o número do parceiro |
 
-#### 2. Migração de banco de dados
+### Armazenamento (zero novas tabelas)
+Usa `client_memory.preferences`:
+- `ultimo_match`: `{ parceiro_phone, parceiro_nome, score, data }`
 
-Adicionar coluna `expected_members` (integer) na tabela `travel_groups` para rastrear quantas pessoas devem responder.
+### Arquivos modificados
+- `supabase/functions/whatsapp-webhook/index.ts`: Bloco de comando com regex, busca de 2 memórias, chamada Gemini, formatação e save
+- `supabase/functions/_shared/client-memory.ts`: `ultimo_match` no `formatMemoryForPrompt` + skipKeys
 
-#### 3. Corrigir o link de convite
+## 3. Téo DNA de Viajante (IMPLEMENTADO ✅)
 
-Gerar link limpo sem duplicação:
-```
-https://wa.me/5515991833448?text=entrar%20grupo%20CODIGO
-```
-Enviar como texto plano, sem markdown `[texto](url)`.
+### Conceito
+Questionário profundo de 10 perguntas que gera um perfil "genético" de viajante com 5 categorias (Explorador, Culturalista, Gourmet, Zen, Socialite) que evolui com cada viagem.
 
-#### 4. Questionário com múltipla escolha numerada
+### Comandos WhatsApp
+| Comando | Ação |
+|---------|------|
+| `meu dna` / `dna viajante` / `teste dna` | Inicia o questionário de 10 perguntas |
 
-Reformatar as 5 perguntas + adicionar perguntas de datas e orçamento individual:
+### Categorias do DNA
+- 🏔️ Explorador: aventura, adrenalina, natureza selvagem
+- 🏛️ Culturalista: história, museus, arquitetura
+- 🍽️ Gourmet: gastronomia, vinhos, experiências culinárias
+- 🧘 Zen: relaxamento, praias, spas
+- 🎉 Socialite: festas, vida noturna, experiências sociais
 
-```
-1️⃣ Qual seu estilo de viagem?
-1. Aventura 🏔️
-2. Relax 🧘
-3. Cultural 🏛️
-4. Gastronômico 🍽️
-5. Festas 🎉
-6. Misto 🔀
+### Armazenamento (zero novas tabelas)
+Usa `client_memory.preferences` (JSONB):
+- `dna_viajante`: perfil atual com porcentagens, raw_result, answers
+- `dna_historico`: array com últimas 10 análises (para detectar evolução)
 
-Responda com o número (ex: 1)
-```
+### Evolução
+O DNA evolui automaticamente:
+- Cada vez que o teste é refeito, uma nova entrada é adicionada ao histórico
+- O formatMemoryForPrompt mostra a evolução (↑↓ por categoria)
+- Téo usa o DNA para personalizar sugestões sem perguntar demais
 
-Total de 7 perguntas: 5 de preferência + datas disponíveis + orçamento individual.
+### Arquivos modificados
+- `supabase/functions/whatsapp-webhook/index.ts`: Comando + questionário 10 perguntas + geração via Gemini
+- `supabase/functions/_shared/client-memory.ts`: DNA no prompt, na formatação e na regra de adaptação
 
-#### 5. Auto-apuração por contagem
+---
 
-Na lógica de conclusão do questionário (step == total), verificar:
-- `allMembers.filter(m => m.is_ready).length === group.expected_members`
-- Se sim, auto-disparar `crossReferencePreferences` e enviar resultado a todos
-- Se não, notificar quantos faltam
+## 1. Téo Grupal (IMPLEMENTADO ✅)
 
-#### 6. Fluxo de estados no `collected_data`
+### Tabelas criadas
+- `travel_groups`: group_code, creator_phone, creator_name, status, final_recommendation
+- `travel_group_members`: group_id, phone_number, member_name, preferences (JSONB), is_ready
 
-```
-_group_mode: "setup_name" → "setup_count" → "setup_confirm" → "questioning"
-_group_name: string
-_group_expected: number
-_group_step: 1-7
-```
+### Comandos WhatsApp
+| Comando | Ação |
+|---------|------|
+| `criar grupo` | Cria grupo, gera código 6 chars, inicia questionário |
+| `entrar grupo XYZABC` | Adiciona membro, inicia questionário |
+| `meu grupo` | Mostra status e membros |
+| `resultado grupo` | Cruza preferências via Gemini, envia a todos |
+| `sair grupo` | Remove membro |
 
-### Resumo das Mudanças
+---
 
-| Componente | Ação |
-|---|---|
-| `travel_groups` table | Adicionar colunas `expected_members` (int) e `group_name` já existe |
-| Criação do grupo | Fluxo multi-step: nome → quantidade → link → confirmar questionário |
-| Link de convite | Texto plano, sem markdown duplicado |
-| Questionário | 7 perguntas com alternativas numeradas |
-| Apuração | Automática quando `ready_count == expected_members` |
-| `whatsapp-webhook/index.ts` | Reescrever seção CREATE GROUP e questionnaire handler |
+## 2. Téo Lê Mentes (IMPLEMENTADO ✅)
 
+### Conceito
+Análise emocional SILENCIOSA das mensagens do cliente para adaptar recomendações automaticamente, sem nunca mencionar a análise.
+
+### Implementação (zero novas tabelas)
+Usa a infraestrutura existente de `client_memory.preferences` (JSONB):
+
+**Campos emocionais adicionados:**
+- `tom_emocional`: animado/estressado/cansado/ansioso/empolgado/nostálgico/indeciso/tranquilo/comemorando/preocupado
+- `nivel_energia`: alto/médio/baixo
+- `nivel_estresse`: alto/médio/baixo
+- `momento_vida`: férias/lua-de-mel/aniversário/fuga-da-rotina/trabalho-remoto/família/amigos
+- `historico_emocional`: array com últimas 10 leituras emocionais (para detectar tendências)
+
+**Detecção de sinais:**
+- Estresse: "preciso sair daqui", "to exausto", respostas impacientes
+- Animação: "!!", emojis, "mal posso esperar"
+- Ansiedade: muitas perguntas, "será que...", indecisão
+- Comemoração: "aniversário", "lua de mel", "promoção"
+
+**Adaptação silenciosa (via MEMORY_RULE):**
+- Estressado → Sugere descanso, spas, all-inclusive
+- Animado → Sugere aventura, esportes, destinos vibrantes
+- Indeciso → Limita opções a 2-3, mais assertivo
+- Comemorando → Sugere upgrades, experiências premium
+- NUNCA menciona a análise ao cliente
+
+### Arquivos modificados
+- `supabase/functions/_shared/client-memory.ts`: Extraction prompt, merge logic, format, MEMORY_RULE

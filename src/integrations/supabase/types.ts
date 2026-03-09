@@ -1164,6 +1164,7 @@ export type Database = {
           created_at: string
           creator_name: string | null
           creator_phone: string
+          expected_members: number | null
           final_recommendation: Json | null
           group_code: string
           group_name: string | null
@@ -1177,6 +1178,7 @@ export type Database = {
           created_at?: string
           creator_name?: string | null
           creator_phone: string
+          expected_members?: number | null
           final_recommendation?: Json | null
           group_code: string
           group_name?: string | null
@@ -1190,6 +1192,7 @@ export type Database = {
           created_at?: string
           creator_name?: string | null
           creator_phone?: string
+          expected_members?: number | null
           final_recommendation?: Json | null
           group_code?: string
           group_name?: string | null
