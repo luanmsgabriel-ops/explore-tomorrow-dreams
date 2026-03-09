@@ -3514,6 +3514,65 @@ REGRAS:
             const gData = (convForGroup.collected_data as Record<string, any>) || {};
             const groupMode = gData._group_mode;
 
+            // ===== CHOOSE EXISTING OR NEW GROUP =====
+            if (groupMode === "choose_existing_or_new") {
+              await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+              const answer = (messageText || "").trim();
+              const activeGroupsList = gData._active_groups || [];
+              const choiceNum = parseInt(answer);
+
+              if (!isNaN(choiceNum) && choiceNum >= 1 && choiceNum <= activeGroupsList.length) {
+                // User chose an existing group — show its status
+                const chosenGroup = activeGroupsList[choiceNum - 1];
+                const { data: group } = await supabase
+                  .from("travel_groups")
+                  .select("id, group_code, group_name, status, expected_members, creator_phone, travel_dates, budget_range")
+                  .eq("id", chosenGroup.id)
+                  .maybeSingle();
+
+                if (group) {
+                  const { data: members } = await supabase
+                    .from("travel_group_members")
+                    .select("id, phone_number, member_name, is_ready, preferences")
+                    .eq("group_id", group.id);
+
+                  const totalMembers = members?.length || 0;
+                  const readyMembers = members?.filter(m => m.is_ready)?.length || 0;
+                  const membersList = (members || []).map(m => `  ${m.is_ready ? "✅" : "⏳"} ${m.member_name || m.phone_number}`).join("\n");
+
+                  const statusMsg = `📊 *Grupo "${group.group_name || "Sem nome"}"*\n\n📋 Código: *${group.group_code}*\n👥 Membros: ${totalMembers}/${group.expected_members || "?"}\n✅ Prontos: ${readyMembers}/${totalMembers}\n\n*Participantes:*\n${membersList}\n\n📲 Link para convidar:\nhttps://wa.me/5515991833448?text=${encodeURIComponent(`entrar grupo ${group.group_code}`)}\n\n${readyMembers === totalMembers && totalMembers >= 2 ? "🎉 *Todos prontos!* Mande *resultado grupo* para ver as sugestões!" : `⏳ Aguardando ${totalMembers - readyMembers} membro(s) responder o questionário.`}`;
+                  await sendWhatsAppMessage(phoneNumber, statusMsg);
+                }
+
+                // Clear group mode
+                await supabase.from("whatsapp_conversations").update({
+                  collected_data: { ...gData, _group_mode: null, _active_groups: null },
+                }).eq("id", convForGroup.id);
+
+                return new Response(JSON.stringify({ status: "ok", group_existing_chosen: true }), {
+                  status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+                });
+              } else if (choiceNum === activeGroupsList.length + 1 || /novo|criar|new/i.test(answer)) {
+                // User wants to create a new group — go to setup_name
+                await supabase.from("whatsapp_conversations").update({
+                  collected_data: { ...gData, _group_mode: "setup_name", _active_groups: null },
+                }).eq("id", convForGroup.id);
+
+                const askNameMsg = "🎉 *Novo grupo!*\n\n📝 *Como quer chamar o grupo?*\n\n(Ex: Viagem da Galera, Férias 2026, Amigos SP...)";
+                await sendWhatsAppMessage(phoneNumber, askNameMsg);
+
+                return new Response(JSON.stringify({ status: "ok", group_create_new: true }), {
+                  status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+                });
+              } else {
+                // Invalid answer
+                await sendWhatsAppMessage(phoneNumber, `⚠️ Responda com um número de *1* a *${activeGroupsList.length + 1}*.`);
+                return new Response(JSON.stringify({ status: "ok", group_invalid_choice: true }), {
+                  status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+                });
+              }
+            }
+
             // ===== SETUP STEP 1: Receive group name =====
             if (groupMode === "setup_name") {
               await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
