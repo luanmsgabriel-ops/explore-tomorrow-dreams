@@ -99,7 +99,7 @@ TABELAS DISPONÍVEIS NO BANCO DE DADOS:
 
 25. client_memory - Memória de longo prazo dos clientes (perfil persistente)
 
-26. travel_groups - Grupos de viagem (Téo Grupal)
+26. travel_groups - Grupos de viagem (Modo Galera)
     Colunas: id, group_code (UNIQUE 6 chars), creator_phone, creator_name, group_name, status (collecting/ready/completed), travel_dates, budget_range, final_recommendation (JSONB), created_at, updated_at
 
 27. travel_group_members - Membros dos grupos de viagem
@@ -2798,7 +2798,7 @@ serve(async (req) => {
           // If not a menu image, continue to normal AI flow below
         }
 
-      // ========== TÉO GRUPAL: Group Travel with Preference Cross-Referencing ==========
+      // ========== MODO GALERA: Group Travel with Preference Cross-Referencing ==========
       {
         const lowerMsgGroup = (messageText || "").toLowerCase().trim();
         const createGroupRegex = /^(criar grupo|viagem em grupo|grupo viagem|travel group)$/i;
@@ -3350,7 +3350,7 @@ Destinos que maximizam a compatibilidade do grupo, com score.
 REGRAS:
 - Formato WhatsApp com *negrito* e emojis
 - Máximo 3500 caracteres
-- Se alguém não fez o DNA, use as preferências do questionário grupal
+- Se alguém não fez o DNA, use as preferências do questionário do Modo Galera
 - Destinos REAIS e específicos
 - No final: "Quer que eu cote algum desses destinos? 😊✈️"`;
 
@@ -5606,7 +5606,7 @@ REGRAS:
               delete updatedModeData._group_mode;
               delete updatedModeData._group_id;
               delete updatedModeData._group_step;
-              clearedModes.push("grupal");
+              clearedModes.push("galera");
             }
             if (updatedModeData._dna_mode === "questioning") {
               delete updatedModeData._dna_mode;
@@ -5999,7 +5999,7 @@ Regras OBRIGATÓRIAS:
               responseMsg = "🔄 *Modo Automático Ativado!*\n\nAgora eu decido o melhor modo pra te atender. É só me mandar sua mensagem! 😊";
             } else if (modoMenuRegex.test(modoLower)) {
               const modeLabel = currentMode === "cotacao" ? "✈️ Cotação" : currentMode === "concierge" ? "🎒 Concierge" : "🔄 Automático";
-              responseMsg = `🎯 *Modos do Téo:*\n\n✈️ *Cotação* — Te ajudo a encontrar e cotar viagens\n👉 mande: *modo cotação*\n\n🎒 *Concierge* — Sou seu companheiro durante a viagem\n👉 mande: *modo concierge*\n\n👨‍🍳 *Chef* — Traduzo e explico cardápios (envie foto!)\n👉 envie uma *foto de cardápio*\n\n🧬 *DNA Viajante* — Descubra seu perfil de viajante\n👉 mande: *meu dna*\n\n🎰 *Roleta* — Destino aleatório surpresa\n👉 mande: *roleta*\n\n🔮 *Oráculo* — Previsão personalizada da viagem\n👉 mande: *oráculo*\n\n🆘 *SOS* — Assistência de emergência\n👉 mande: *sos*\n\n🎵 *Playlist* — Playlist personalizada da viagem\n👉 mande: *playlist*\n\n💰 *Carteira* — Controle de gastos da viagem\n👉 mande: *gastei [valor]*\n\n🌐 *Tradutor* — Tradução universal\n👉 mande: *traduzir [texto]*\n\n👥 *Grupal* — Planeje viagem em grupo\n👉 mande: *criar grupo*\n\n💕 *Compatibilidade* — Compare perfis de viajante\n👉 mande: *compatibilidade com [número]*\n\n🔄 *Automático* — Eu decido o melhor modo\n👉 mande: *sair modo*\n\n📌 Modo atual: *${modeLabel}*`;
+              responseMsg = `🎯 *Modos do Téo:*\n\n✈️ *Cotação* — Te ajudo a encontrar e cotar viagens\n👉 mande: *modo cotação*\n\n🎒 *Concierge* — Sou seu companheiro durante a viagem\n👉 mande: *modo concierge*\n\n👨‍🍳 *Chef* — Traduzo e explico cardápios (envie foto!)\n👉 envie uma *foto de cardápio*\n\n🧬 *DNA Viajante* — Descubra seu perfil de viajante\n👉 mande: *meu dna*\n\n🎰 *Roleta* — Destino aleatório surpresa\n👉 mande: *roleta*\n\n🔮 *Oráculo* — Previsão personalizada da viagem\n👉 mande: *oráculo*\n\n🆘 *SOS* — Assistência de emergência\n👉 mande: *sos*\n\n🎵 *Playlist* — Playlist personalizada da viagem\n👉 mande: *playlist*\n\n💰 *Carteira* — Controle de gastos da viagem\n👉 mande: *gastei [valor]*\n\n🌐 *Tradutor* — Tradução universal\n👉 mande: *traduzir [texto]*\n\n👥 *Modo Galera* — Planeje viagem em grupo\n👉 mande: *criar grupo*\n\n💕 *Compatibilidade* — Compare perfis de viajante\n👉 mande: *compatibilidade com [número]*\n\n🔄 *Automático* — Eu decido o melhor modo\n👉 mande: *sair modo*\n\n📌 Modo atual: *${modeLabel}*`;
             }
 
             const updatedCd = { ...cd, _teo_mode: newMode };
