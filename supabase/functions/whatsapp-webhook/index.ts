@@ -1369,6 +1369,53 @@ function parseItineraryVisualTag(response: string): { destination: string; days:
   return { destination, days, totalDays: totalDays || days.length };
 }
 
+function isLikelyItineraryText(text: string): boolean {
+  return /roteiro personalizado|dia\s*1|manhã:|tarde:|noite:/i.test(text);
+}
+
+function parseItineraryFromPlainText(text: string): { destination: string; days: any[]; totalDays: number } | null {
+  if (!isLikelyItineraryText(text)) return null;
+
+  const destinationMatch = text.match(/roteiro\s+personalizado\s*[-–]\s*([^\n(]+)(?:\((\d+)\s*dias?\))?/i);
+  const destination = destinationMatch?.[1]?.trim();
+
+  const dayBlocks = text.match(/(?:☀️\s*)?\*?Dia\s+\d+\s*[-–][\s\S]*?(?=(?:\n\s*(?:☀️\s*)?\*?Dia\s+\d+\s*[-–])|$)/gi) || [];
+  const days: any[] = [];
+
+  for (const block of dayBlocks) {
+    const headerMatch = block.match(/Dia\s+(\d+)\s*[-–]\s*([^\n*]+)/i);
+    if (!headerMatch) continue;
+
+    const dayNumber = headerMatch[1];
+    const theme = headerMatch[2].trim();
+    const activities: any[] = [];
+
+    const morning = block.match(/manhã:\s*([^\n]+)/i)?.[1]?.trim();
+    const afternoon = block.match(/tarde:\s*([^\n]+)/i)?.[1]?.trim();
+    const night = block.match(/noite:\s*([^\n]+)/i)?.[1]?.trim();
+
+    if (morning) activities.push({ time: "09:00", name: morning, emoji: "☀️" });
+    if (afternoon) activities.push({ time: "14:00", name: afternoon, emoji: "🌤️" });
+    if (night) activities.push({ time: "19:00", name: night, emoji: "🌙" });
+
+    if (activities.length === 0) {
+      const genericItems = [...block.matchAll(/•\s*([^\n]+)/g)].map(m => m[1].trim()).slice(0, 3);
+      genericItems.forEach((item, idx) => {
+        const fallbackTime = ["09:00", "14:00", "19:00"][idx] || "12:00";
+        activities.push({ time: fallbackTime, name: item, emoji: "•" });
+      });
+    }
+
+    if (activities.length > 0) {
+      days.push({ day: `Dia ${dayNumber}`, theme, activities });
+    }
+  }
+
+  if (!destination || days.length === 0) return null;
+  const totalDays = parseInt(destinationMatch?.[2] || "", 10) || days.length;
+  return { destination, days, totalDays };
+}
+
 // Generate and send itinerary visual card
 async function generateAndSendItineraryVisual(phoneNumber: string, itineraryData: { destination: string; days: any[]; totalDays: number }, clientName?: string) {
   try {
