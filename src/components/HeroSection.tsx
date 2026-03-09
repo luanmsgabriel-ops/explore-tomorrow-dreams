@@ -81,7 +81,7 @@ export const HeroSection = () => {
                 <div className="flex flex-wrap gap-4 mt-8">
                   <button 
                     onClick={() => setActiveModal('videos')}
-                    className="flex items-center gap-2 text-white/80 hover:text-gold-light transition-colors"
+                    className="flex items-center gap-2 text-white hover:text-gold-light transition-colors"
                     disabled={isLoading}
                   >
                     <Play className="w-4 h-4" />
@@ -89,7 +89,7 @@ export const HeroSection = () => {
                   </button>
                   <button 
                     onClick={() => setActiveModal('image')}
-                    className="flex items-center gap-2 text-white/80 hover:text-gold-light transition-colors"
+                    className="flex items-center gap-2 text-white hover:text-gold-light transition-colors"
                   >
                     <Image className="w-4 h-4" />
                     <span className="text-sm">Gerar Imagem com IA</span>
