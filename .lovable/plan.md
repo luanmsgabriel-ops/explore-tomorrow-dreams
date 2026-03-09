@@ -1,92 +1,118 @@
 
-## Plano: Redesign Completo do Site - Estilo Visual Premium
 
-### Visão Geral
-Transformar todo o layout visual do site para seguir o estilo das imagens de referência: fundo oceânico teal com mapa-múndi dourado, elementos metálicos 3D (bússola, aviões), textos dourados com efeito embossed, e trilhas de luz/sparkles.
+# Plano: 5 Features Téo 2030
 
-### Elementos de Design Identificados nas Imagens
-- **Background**: Teal oceânico (#1a5a6c) com mapa-múndi em dourado/bronze
-- **Tipografia**: Textos dourados com gradiente e sombra 3D (embossed effect)
-- **Elementos decorativos**: Bússola 3D central, aviões dourados, trilhas de luz, sparkles
-- **Botões**: Teal com bordas douradas, efeito metálico
-- **Logo**: Tomorrow Travel 3D metálico (teal + dourado)
-
----
-
-### Arquivos a Modificar
-
-**1. `src/index.css`** — Variáveis e estilos base
-- Mudar `--background` para teal oceânico (#0f4c5c ou similar)
-- Adicionar gradiente de mapa-múndi como background pattern
-- Criar classe `.text-gold-embossed` com text-shadow 3D
-- Criar classe `.text-gold-gradient` para títulos
-- Adicionar animação de trilha de luz (light-trail)
-- Criar `.world-map-bg` para o padrão de fundo
-
-**2. `src/components/HeroSection.tsx`** — Hero completamente novo
-- Remover imagem de destino como background
-- Usar o estilo mapa-múndi teal/dourado
-- Adicionar elemento de bússola decorativa (SVG ou imagem)
-- Título com efeito dourado embossed
-- Botão CTA estilo "Falar com Consultor" das imagens
-- Adicionar elementos decorativos (aviões, sparkles)
-
-**3. `src/components/Header.tsx`** — Header estilizado
-- Background glass com o tema teal
-- Logo com efeito metálico
-
-**4. `src/pages/Index.tsx`** — Seções redesenhadas
-- Background consistente em todas as seções
-- Cards com bordas douradas e glass effect
-- Seções com separadores decorativos (linhas douradas com aviões)
-
-**5. `tailwind.config.ts`** — Novas cores e animações
-- Adicionar paleta `ocean` para os tons teal
-- Adicionar paleta `bronze` para os tons dourados
-- Keyframes para sparkle e light-trail
-
-**6. Novos Assets**
-- Criar/adicionar imagem de mapa-múndi como background SVG
-- Adicionar ícone de bússola decorativa
-- Adicionar aviões decorativos
+## Features Solicitadas (uma por vez, implementação completa)
+1. ✅ **Téo Grupal** — Viagem em grupo com cruzamento de preferências via WhatsApp
+2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
+3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
+9. ✅ **Téo Roleta** — Destino aleatório filtrado por DNA com animação textual
+10. ✅ **Téo Oráculo** — Previsão personalizada da viagem com signos, DNA e fase lunar
+4. ✅ **Téo DNA** — Perfil genético de viajante
+5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
+6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
+7. ✅ **Téo Compatibilidade** — Match de viagem entre DNAs de viajante
+8. ✅ **Téo SOS** — Assistente de emergência com embaixadas, hospitais e frases úteis
 
 ---
 
-### Detalhes Técnicos
+## 7. Téo Compatibilidade (IMPLEMENTADO ✅)
 
-**Nova paleta de cores:**
-```css
---ocean-deep: 195 70% 15%;      /* Fundo principal */
---ocean-mid: 190 60% 25%;        /* Superfícies */
---gold-metallic: 40 70% 50%;     /* Dourado principal */
---gold-light: 45 80% 65%;        /* Dourado claro */
---bronze: 30 60% 40%;            /* Bronze/sombras */
-```
+### Conceito
+O cliente envia `compatibilidade com 5511999999999` e o Téo compara os DNAs de Viajante dos dois, calcula score de compatibilidade e sugere destinos ideais para ambos.
 
-**Efeito de texto dourado embossed:**
-```css
-.text-gold-embossed {
-  background: linear-gradient(180deg, #d4a54a 0%, #c4944a 50%, #8b6914 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.5),
-               0 0 20px rgba(212,165,74,0.3);
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
-}
-```
+### Comandos WhatsApp
+| Comando | Ação |
+|---------|------|
+| `compatibilidade com [número]` / `match viagem [número]` | Compara DNAs e sugere destino |
+| `compatibilidade` (sem número) | Téo pede o número do parceiro |
 
-**Background mapa-múndi:**
-- Usar SVG inline ou imagem de mapa estilizado
-- Continentes em dourado/bronze com opacidade
-- Linhas de grade sutis
-- Sparkles animados em pontos específicos
+### Armazenamento (zero novas tabelas)
+Usa `client_memory.preferences`:
+- `ultimo_match`: `{ parceiro_phone, parceiro_nome, score, data }`
+
+### Arquivos modificados
+- `supabase/functions/whatsapp-webhook/index.ts`: Bloco de comando com regex, busca de 2 memórias, chamada Gemini, formatação e save
+- `supabase/functions/_shared/client-memory.ts`: `ultimo_match` no `formatMemoryForPrompt` + skipKeys
+
+## 3. Téo DNA de Viajante (IMPLEMENTADO ✅)
+
+### Conceito
+Questionário profundo de 10 perguntas que gera um perfil "genético" de viajante com 5 categorias (Explorador, Culturalista, Gourmet, Zen, Socialite) que evolui com cada viagem.
+
+### Comandos WhatsApp
+| Comando | Ação |
+|---------|------|
+| `meu dna` / `dna viajante` / `teste dna` | Inicia o questionário de 10 perguntas |
+
+### Categorias do DNA
+- 🏔️ Explorador: aventura, adrenalina, natureza selvagem
+- 🏛️ Culturalista: história, museus, arquitetura
+- 🍽️ Gourmet: gastronomia, vinhos, experiências culinárias
+- 🧘 Zen: relaxamento, praias, spas
+- 🎉 Socialite: festas, vida noturna, experiências sociais
+
+### Armazenamento (zero novas tabelas)
+Usa `client_memory.preferences` (JSONB):
+- `dna_viajante`: perfil atual com porcentagens, raw_result, answers
+- `dna_historico`: array com últimas 10 análises (para detectar evolução)
+
+### Evolução
+O DNA evolui automaticamente:
+- Cada vez que o teste é refeito, uma nova entrada é adicionada ao histórico
+- O formatMemoryForPrompt mostra a evolução (↑↓ por categoria)
+- Téo usa o DNA para personalizar sugestões sem perguntar demais
+
+### Arquivos modificados
+- `supabase/functions/whatsapp-webhook/index.ts`: Comando + questionário 10 perguntas + geração via Gemini
+- `supabase/functions/_shared/client-memory.ts`: DNA no prompt, na formatação e na regra de adaptação
 
 ---
 
-### Fluxo de Implementação
-1. Atualizar variáveis CSS em `index.css`
-2. Criar componentes decorativos (WorldMapBackground, GoldenCompass)
-3. Redesenhar HeroSection com novo layout
-4. Atualizar cards e seções do Index
-5. Ajustar Header e Footer
-6. Adicionar animações e efeitos finais
+## 1. Téo Grupal (IMPLEMENTADO ✅)
+
+### Tabelas criadas
+- `travel_groups`: group_code, creator_phone, creator_name, status, final_recommendation
+- `travel_group_members`: group_id, phone_number, member_name, preferences (JSONB), is_ready
+
+### Comandos WhatsApp
+| Comando | Ação |
+|---------|------|
+| `criar grupo` | Cria grupo, gera código 6 chars, inicia questionário |
+| `entrar grupo XYZABC` | Adiciona membro, inicia questionário |
+| `meu grupo` | Mostra status e membros |
+| `resultado grupo` | Cruza preferências via Gemini, envia a todos |
+| `sair grupo` | Remove membro |
+
+---
+
+## 2. Téo Lê Mentes (IMPLEMENTADO ✅)
+
+### Conceito
+Análise emocional SILENCIOSA das mensagens do cliente para adaptar recomendações automaticamente, sem nunca mencionar a análise.
+
+### Implementação (zero novas tabelas)
+Usa a infraestrutura existente de `client_memory.preferences` (JSONB):
+
+**Campos emocionais adicionados:**
+- `tom_emocional`: animado/estressado/cansado/ansioso/empolgado/nostálgico/indeciso/tranquilo/comemorando/preocupado
+- `nivel_energia`: alto/médio/baixo
+- `nivel_estresse`: alto/médio/baixo
+- `momento_vida`: férias/lua-de-mel/aniversário/fuga-da-rotina/trabalho-remoto/família/amigos
+- `historico_emocional`: array com últimas 10 leituras emocionais (para detectar tendências)
+
+**Detecção de sinais:**
+- Estresse: "preciso sair daqui", "to exausto", respostas impacientes
+- Animação: "!!", emojis, "mal posso esperar"
+- Ansiedade: muitas perguntas, "será que...", indecisão
+- Comemoração: "aniversário", "lua de mel", "promoção"
+
+**Adaptação silenciosa (via MEMORY_RULE):**
+- Estressado → Sugere descanso, spas, all-inclusive
+- Animado → Sugere aventura, esportes, destinos vibrantes
+- Indeciso → Limita opções a 2-3, mais assertivo
+- Comemorando → Sugere upgrades, experiências premium
+- NUNCA menciona a análise ao cliente
+
+### Arquivos modificados
+- `supabase/functions/_shared/client-memory.ts`: Extraction prompt, merge logic, format, MEMORY_RULE

@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Play, Sparkles, MessageCircle, X, Loader2, Image } from 'lucide-react';
-import heroImage from '@/assets/hero-noronha.jpg';
+import { Play, Sparkles, MessageCircle, X, Loader2, Image, Phone } from 'lucide-react';
 import { QuoteFormChat } from '@/components/QuoteFormChat';
 import { ItineraryGenerator } from '@/components/ItineraryGenerator';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { ImageGenerator } from '@/components/ImageGenerator';
 import { useFeaturedDestination } from '@/hooks/useDestinations';
+import { WorldMapBackground } from '@/components/WorldMapBackground';
+import { GoldenCompass } from '@/components/GoldenCompass';
+import { DecorativeAirplane } from '@/components/DecorativeAirplane';
 
 type ModalType = 'videos' | 'itinerary' | 'quote' | 'image' | null;
 
@@ -13,113 +15,93 @@ export const HeroSection = () => {
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const { destination, isLoading } = useFeaturedDestination();
 
-  // Use featured destination data or fallback
-  const displayName = destination?.name || 'Fernando de Noronha';
-  const displayDescription = destination?.description || 'Descubra o paraíso brasileiro. Praias cristalinas, vida marinha exuberante e momentos inesquecíveis esperam por você.';
-  const displayLocation = destination?.location || 'Brasil';
-  const displayCategory = destination?.category || 'Praia & Natureza';
-  const displayBestTime = destination?.bestTime || 'Ago - Fev';
-  const displayImage = destination?.image && destination.image !== '/placeholder.svg' ? destination.image : heroImage;
-
-  // Split name for styling (first part normal, last part colored)
-  const nameParts = displayName.split(' ');
-  const lastName = nameParts.pop() || '';
-  const firstName = nameParts.join(' ');
-
   return (
     <>
-      <section className="relative h-screen min-h-[600px] overflow-hidden">
-        {/* Background Image */}
-        <div className="absolute inset-0">
-          <img
-            src={displayImage}
-            alt={`${displayName} - Destino em destaque`}
-            className="w-full h-full object-cover"
-          />
-          {/* Gradient overlays */}
-          <div
-            className="absolute inset-0"
-            style={{ background: 'var(--gradient-hero-overlay)' }}
-          />
-          <div
-            className="absolute bottom-0 left-0 right-0 h-40"
-            style={{ background: 'var(--gradient-hero-bottom)' }}
-          />
+      <section className="relative min-h-screen overflow-hidden">
+        {/* World Map Background */}
+        <WorldMapBackground />
+        
+        {/* Decorative airplanes */}
+        <div className="absolute top-20 right-[15%] opacity-40 animate-float" style={{ animationDelay: '0.5s' }}>
+          <DecorativeAirplane size="lg" direction="right" />
+        </div>
+        <div className="absolute bottom-32 left-[10%] opacity-30 animate-float" style={{ animationDelay: '1.5s' }}>
+          <DecorativeAirplane size="md" direction="left" />
+        </div>
+        <div className="absolute top-[40%] right-[5%] opacity-25 animate-float" style={{ animationDelay: '2s' }}>
+          <DecorativeAirplane size="sm" direction="right" />
         </div>
 
         {/* Content */}
-        <div className="relative z-10 h-full flex items-center">
+        <div className="relative z-10 min-h-screen flex items-center">
           <div className="container mx-auto px-4 lg:px-8">
-            <div className="max-w-2xl animate-fade-up">
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
-                <Sparkles className="w-4 h-4 text-accent" />
-                <span className="text-sm font-medium text-accent">Destino em Destaque</span>
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              {/* Left side - Text content */}
+              <div className="animate-fade-up">
+                {/* Badge */}
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-gold mb-8">
+                  <Sparkles className="w-4 h-4 text-gold-light" />
+                  <span className="text-sm font-medium text-gold-light">Viagens Extraordinárias</span>
+                </div>
+
+                {/* Title with embossed gold effect */}
+                <h1 className="font-serif text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
+                  <span className="text-gold-embossed">Explore o</span>
+                  <br />
+                  <span className="text-gold-embossed">Mundo com a</span>
+                  <br />
+                  <span className="gradient-text-teal">Tomorrow</span>
+                  <span className="text-gold-embossed"> Travel</span>
+                </h1>
+
+                {/* Description */}
+                <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-lg leading-relaxed">
+                  Tecnologia de ponta para facilitar sua viagem. 
+                  <span className="text-gold-light font-medium"> O primeiro agente de IA </span>
+                  do mundo no setor de viagens, acessível para todos.
+                </p>
+
+                {/* CTA Buttons */}
+                <div className="flex flex-wrap gap-4">
+                  <button 
+                    onClick={() => setActiveModal('quote')}
+                    className="btn-gold flex items-center gap-3 text-lg px-8 py-4"
+                  >
+                    <Phone className="w-5 h-5" />
+                    Falar com Consultor
+                  </button>
+                  <button 
+                    onClick={() => setActiveModal('itinerary')}
+                    className="btn-outline flex items-center gap-3 text-lg px-8 py-4"
+                  >
+                    <Sparkles className="w-5 h-5" />
+                    Criar Roteiro com IA
+                  </button>
+                </div>
+
+                {/* Quick actions */}
+                <div className="flex flex-wrap gap-4 mt-8">
+                  <button 
+                    onClick={() => setActiveModal('videos')}
+                    className="flex items-center gap-2 text-muted-foreground hover:text-gold-light transition-colors"
+                    disabled={isLoading}
+                  >
+                    <Play className="w-4 h-4" />
+                    <span className="text-sm">Assistir Vídeos</span>
+                  </button>
+                  <button 
+                    onClick={() => setActiveModal('image')}
+                    className="flex items-center gap-2 text-muted-foreground hover:text-gold-light transition-colors"
+                  >
+                    <Image className="w-4 h-4" />
+                    <span className="text-sm">Gerar Imagem com IA</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Title */}
-              <h1 className="font-serif text-5xl md:text-7xl font-bold text-foreground mb-4 text-shadow-lg">
-                {firstName && (
-                  <>
-                    {firstName}
-                    <br />
-                  </>
-                )}
-                <span className="gradient-text-teal">{lastName}</span>
-              </h1>
-
-              {/* Description */}
-              <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-lg">
-                {displayDescription}
-              </p>
-
-              {/* Actions */}
-              <div className="flex flex-wrap gap-4">
-                <button 
-                  onClick={() => setActiveModal('videos')}
-                  className="btn-primary flex items-center gap-2"
-                  disabled={isLoading}
-                >
-                  <Play className="w-5 h-5" />
-                  Assistir Vídeos
-                </button>
-                <button 
-                  onClick={() => setActiveModal('itinerary')}
-                  className="btn-gold flex items-center gap-2"
-                >
-                  <Sparkles className="w-5 h-5" />
-                  Criar Roteiro com IA
-                </button>
-                <button 
-                  onClick={() => setActiveModal('quote')}
-                  className="btn-outline flex items-center gap-2"
-                >
-                  <MessageCircle className="w-5 h-5" />
-                  Solicitar Cotação
-                </button>
-                <button 
-                  onClick={() => setActiveModal('image')}
-                  className="btn-outline flex items-center gap-2"
-                >
-                  <Image className="w-5 h-5" />
-                  Gerar Imagem com IA
-                </button>
-              </div>
-
-              {/* Quick info */}
-              <div className="flex flex-wrap gap-6 mt-10 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-primary" />
-                  {displayLocation}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-accent" />
-                  {displayCategory}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-teal-light" />
-                  Melhor época: {displayBestTime}
-                </div>
+              {/* Right side - Compass */}
+              <div className="hidden lg:flex items-center justify-center">
+                <GoldenCompass size="lg" className="opacity-90" />
               </div>
             </div>
           </div>
@@ -127,8 +109,8 @@ export const HeroSection = () => {
 
         {/* Scroll indicator */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 animate-bounce">
-          <div className="w-6 h-10 rounded-full border-2 border-muted-foreground/50 flex justify-center pt-2">
-            <div className="w-1.5 h-3 rounded-full bg-muted-foreground/50" />
+          <div className="w-6 h-10 rounded-full border-2 border-gold/50 flex justify-center pt-2">
+            <div className="w-1.5 h-3 rounded-full bg-gold/50" />
           </div>
         </div>
       </section>
@@ -136,7 +118,7 @@ export const HeroSection = () => {
       {/* Modal */}
       {activeModal && destination && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm" onClick={() => setActiveModal(null)}>
-          <div className="relative w-full max-w-4xl max-h-[90vh] bg-card border border-border rounded-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full max-w-4xl max-h-[90vh] glass-gold rounded-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setActiveModal(null)} className="absolute top-4 right-4 z-10 p-2 rounded-full bg-secondary hover:bg-muted transition-colors">
               <X className="w-5 h-5 text-foreground" />
             </button>
@@ -171,7 +153,7 @@ export const HeroSection = () => {
       {/* Loading Modal */}
       {activeModal && isLoading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <Loader2 className="w-8 h-8 animate-spin text-gold" />
         </div>
       )}
     </>

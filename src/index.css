@@ -6,68 +6,77 @@
 
 @layer base {
   :root {
-    /* Tomorrow Travel Brand Colors - Dark Luxurious Theme */
-    --background: 220 20% 4%;
+    /* Tomorrow Travel Brand Colors - Ocean Teal Premium Theme */
+    --background: 192 65% 12%;
     --foreground: 45 20% 95%;
 
-    --card: 220 20% 7%;
+    --card: 192 60% 15%;
     --card-foreground: 45 20% 95%;
 
-    --popover: 220 20% 7%;
+    --popover: 192 60% 15%;
     --popover-foreground: 45 20% 95%;
 
-    /* Primary: Teal/Turquoise from logo */
-    --primary: 174 72% 45%;
-    --primary-foreground: 220 20% 4%;
+    /* Primary: Ocean Teal */
+    --primary: 185 65% 35%;
+    --primary-foreground: 45 20% 95%;
 
-    /* Secondary: Dark surface */
-    --secondary: 220 15% 12%;
+    /* Secondary: Darker ocean */
+    --secondary: 192 55% 18%;
     --secondary-foreground: 45 20% 95%;
 
     /* Muted surfaces */
-    --muted: 220 15% 15%;
-    --muted-foreground: 220 10% 60%;
+    --muted: 192 50% 22%;
+    --muted-foreground: 185 20% 70%;
 
-    /* Accent: Gold from logo */
-    --accent: 43 75% 55%;
-    --accent-foreground: 220 20% 4%;
+    /* Accent: Metallic Gold */
+    --accent: 40 75% 50%;
+    --accent-foreground: 192 65% 12%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 45 20% 95%;
 
-    --border: 220 15% 18%;
-    --input: 220 15% 18%;
-    --ring: 174 72% 45%;
+    --border: 192 40% 25%;
+    --input: 192 40% 25%;
+    --ring: 40 75% 50%;
 
     --radius: 0.75rem;
 
+    /* Ocean Premium Colors */
+    --ocean-deep: 192 65% 12%;
+    --ocean-mid: 190 60% 20%;
+    --ocean-light: 185 55% 30%;
+    --gold-metallic: 40 70% 50%;
+    --gold-light: 45 80% 60%;
+    --gold-dark: 35 65% 40%;
+    --bronze: 30 55% 35%;
+
     /* Custom gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(174 72% 45%), hsl(174 72% 35%));
-    --gradient-gold: linear-gradient(135deg, hsl(43 75% 55%), hsl(35 80% 45%));
-    --gradient-dark: linear-gradient(180deg, hsl(220 20% 4%) 0%, hsl(220 20% 8%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(220 20% 10%) 0%, hsl(220 20% 6%) 100%);
-    --gradient-hero-overlay: linear-gradient(90deg, hsl(220 20% 4% / 0.95) 0%, hsl(220 20% 4% / 0.6) 50%, transparent 100%);
-    --gradient-hero-bottom: linear-gradient(0deg, hsl(220 20% 4%) 0%, transparent 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(185 65% 35%), hsl(185 65% 25%));
+    --gradient-gold: linear-gradient(180deg, hsl(45 80% 60%) 0%, hsl(40 70% 50%) 50%, hsl(35 65% 40%) 100%);
+    --gradient-ocean: linear-gradient(180deg, hsl(192 65% 15%) 0%, hsl(192 65% 10%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(192 60% 18%) 0%, hsl(192 60% 12%) 100%);
+    --gradient-hero-overlay: linear-gradient(90deg, hsl(192 65% 12% / 0.95) 0%, hsl(192 65% 12% / 0.7) 50%, hsl(192 65% 12% / 0.4) 100%);
+    --gradient-hero-bottom: linear-gradient(0deg, hsl(192 65% 12%) 0%, transparent 100%);
 
     /* Shadows */
-    --shadow-glow-primary: 0 0 30px hsl(174 72% 45% / 0.3);
-    --shadow-glow-gold: 0 0 30px hsl(43 75% 55% / 0.3);
-    --shadow-card: 0 10px 40px hsl(220 20% 0% / 0.5);
-    --shadow-card-hover: 0 20px 60px hsl(220 20% 0% / 0.7);
+    --shadow-glow-primary: 0 0 30px hsl(185 65% 35% / 0.3);
+    --shadow-glow-gold: 0 0 40px hsl(40 75% 50% / 0.4);
+    --shadow-card: 0 10px 40px hsl(192 65% 5% / 0.5);
+    --shadow-card-hover: 0 20px 60px hsl(192 65% 5% / 0.7);
 
     /* Sidebar */
-    --sidebar-background: 220 20% 6%;
+    --sidebar-background: 192 65% 10%;
     --sidebar-foreground: 45 20% 95%;
-    --sidebar-primary: 174 72% 45%;
-    --sidebar-primary-foreground: 220 20% 4%;
-    --sidebar-accent: 220 15% 15%;
+    --sidebar-primary: 185 65% 35%;
+    --sidebar-primary-foreground: 192 65% 12%;
+    --sidebar-accent: 192 55% 20%;
     --sidebar-accent-foreground: 45 20% 95%;
-    --sidebar-border: 220 15% 18%;
-    --sidebar-ring: 174 72% 45%;
+    --sidebar-border: 192 40% 25%;
+    --sidebar-ring: 40 75% 50%;
   }
 
   .dark {
-    /* Same as root - always dark theme */
+    /* Same as root - always dark ocean theme */
   }
 }
 
@@ -91,22 +100,120 @@
 }
 
 @layer components {
+  /* Gold Embossed Text Effect - Premium 3D Look */
+  .text-gold-embossed {
+    background: linear-gradient(180deg, 
+      hsl(45 80% 70%) 0%, 
+      hsl(40 75% 55%) 25%, 
+      hsl(35 70% 45%) 50%, 
+      hsl(40 75% 55%) 75%, 
+      hsl(45 80% 65%) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 2px 3px hsl(0 0% 0% / 0.5)) drop-shadow(0 4px 6px hsl(35 70% 30% / 0.3));
+    text-shadow: none;
+  }
+
+  .text-gold-gradient {
+    background: linear-gradient(135deg, hsl(45 80% 65%), hsl(35 70% 45%));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* World Map Background Pattern */
+  .world-map-bg {
+    position: relative;
+    background: linear-gradient(180deg, 
+      hsl(192 65% 14%) 0%, 
+      hsl(192 65% 10%) 50%, 
+      hsl(192 65% 8%) 100%
+    );
+  }
+
+  .world-map-bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 500'%3E%3Cpath fill='%23b8860b' fill-opacity='0.08' d='M150,100 Q200,80 250,90 T350,85 Q400,75 450,95 T550,90 Q600,85 650,100 L650,150 Q600,145 550,155 T450,160 Q400,150 350,165 T250,160 Q200,155 150,170 Z'/%3E%3Cpath fill='%23b8860b' fill-opacity='0.06' d='M700,80 Q750,70 800,85 T900,75 L900,130 Q850,125 800,140 T700,135 Z'/%3E%3Cpath fill='%23b8860b' fill-opacity='0.07' d='M100,200 Q150,190 200,210 T300,205 Q350,200 400,220 T500,215 Q550,210 600,230 L600,320 Q550,310 500,330 T400,325 Q350,320 300,340 T200,335 Q150,330 100,350 Z'/%3E%3Cpath fill='%23b8860b' fill-opacity='0.05' d='M650,220 Q700,210 750,225 T850,220 L850,310 Q800,305 750,320 T650,315 Z'/%3E%3Cpath fill='%23b8860b' fill-opacity='0.06' d='M200,380 Q250,370 300,385 T400,380 Q450,375 500,395 L500,450 Q450,445 400,455 T300,450 Q250,445 200,460 Z'/%3E%3C/svg%3E");
+    background-size: cover;
+    background-position: center;
+    pointer-events: none;
+    opacity: 0.8;
+  }
+
+  /* Sparkle animation */
+  @keyframes sparkle {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-10px) rotate(2deg); }
+  }
+
+  @keyframes light-trail {
+    0% { opacity: 0; transform: translateX(-100%); }
+    50% { opacity: 1; }
+    100% { opacity: 0; transform: translateX(100%); }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px hsl(40 75% 50% / 0.3); }
+    50% { box-shadow: 0 0 40px hsl(40 75% 50% / 0.6); }
+  }
+
+  .animate-sparkle {
+    animation: sparkle 2s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+
+  .animate-light-trail {
+    animation: light-trail 3s ease-in-out infinite;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* Glass effect with ocean theme */
+  .glass {
+    @apply backdrop-blur-xl;
+    background: hsl(192 60% 15% / 0.85);
+    border: 1px solid hsl(40 70% 50% / 0.2);
+  }
+
+  .glass-gold {
+    @apply backdrop-blur-xl;
+    background: hsl(192 60% 15% / 0.9);
+    border: 1px solid hsl(40 70% 50% / 0.4);
+    box-shadow: 0 0 30px hsl(40 75% 50% / 0.15);
+  }
+
   /* Netflix-style card hover effect */
   .destination-card {
     @apply relative overflow-hidden rounded-lg transition-all duration-500 ease-out cursor-pointer;
     transform-origin: center center;
+    border: 1px solid hsl(40 70% 50% / 0.15);
   }
 
   .destination-card:hover {
     @apply z-10;
     transform: scale(1.08);
-    box-shadow: var(--shadow-card-hover);
+    box-shadow: var(--shadow-card-hover), 0 0 30px hsl(40 75% 50% / 0.2);
+    border-color: hsl(40 70% 50% / 0.4);
   }
 
   .destination-card::after {
     content: '';
     @apply absolute inset-0 opacity-0 transition-opacity duration-300;
-    background: linear-gradient(0deg, hsl(220 20% 4% / 0.9) 0%, transparent 60%);
+    background: linear-gradient(0deg, hsl(192 65% 8% / 0.9) 0%, transparent 60%);
   }
 
   .destination-card:hover::after {
@@ -126,74 +233,101 @@
   /* Gradient text */
   .gradient-text-teal {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(174 72% 55%), hsl(174 72% 40%));
+    background-image: linear-gradient(135deg, hsl(185 60% 50%), hsl(185 55% 35%));
   }
 
   .gradient-text-gold {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(43 75% 65%), hsl(35 80% 50%));
+    background-image: linear-gradient(180deg, hsl(45 80% 65%) 0%, hsl(40 70% 50%) 50%, hsl(35 65% 40%) 100%);
   }
 
   /* Button variants */
   .btn-primary {
-    @apply bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-lg;
+    @apply font-semibold px-6 py-3 rounded-lg;
     @apply transition-all duration-300 ease-out;
-    @apply hover:shadow-lg;
+    background: linear-gradient(135deg, hsl(185 65% 35%), hsl(185 65% 28%));
+    color: hsl(45 20% 95%);
+    border: 1px solid hsl(40 70% 50% / 0.3);
     box-shadow: var(--shadow-glow-primary);
   }
 
   .btn-primary:hover {
     @apply scale-105;
-    box-shadow: var(--shadow-glow-primary), 0 10px 30px hsl(174 72% 45% / 0.4);
+    box-shadow: var(--shadow-glow-primary), 0 10px 30px hsl(185 65% 35% / 0.4);
+    border-color: hsl(40 70% 50% / 0.5);
   }
 
   .btn-gold {
     @apply font-semibold px-6 py-3 rounded-lg;
     @apply transition-all duration-300 ease-out;
-    background: var(--gradient-gold);
-    color: hsl(220 20% 4%);
+    background: linear-gradient(180deg, hsl(45 80% 60%) 0%, hsl(40 70% 48%) 50%, hsl(35 65% 40%) 100%);
+    color: hsl(192 65% 10%);
+    border: 1px solid hsl(45 80% 65% / 0.5);
   }
 
   .btn-gold:hover {
     @apply scale-105;
-    box-shadow: var(--shadow-glow-gold);
+    box-shadow: var(--shadow-glow-gold), 0 0 30px hsl(40 75% 50% / 0.5);
   }
 
   .btn-outline {
-    @apply border-2 border-primary text-primary font-semibold px-6 py-3 rounded-lg;
+    @apply font-semibold px-6 py-3 rounded-lg;
     @apply transition-all duration-300 ease-out bg-transparent;
+    border: 2px solid hsl(40 70% 50% / 0.5);
+    color: hsl(45 80% 65%);
   }
 
   .btn-outline:hover {
-    @apply bg-primary text-primary-foreground scale-105;
-  }
-
-  /* Glass effect */
-  .glass {
-    @apply backdrop-blur-xl;
-    background: hsl(220 20% 10% / 0.8);
-    border: 1px solid hsl(220 15% 25% / 0.3);
+    background: hsl(40 70% 50% / 0.15);
+    border-color: hsl(40 70% 50% / 0.8);
+    @apply scale-105;
+    box-shadow: 0 0 20px hsl(40 75% 50% / 0.3);
   }
 
   /* Navigation active state */
   .nav-link {
-    @apply relative text-muted-foreground transition-colors duration-300;
+    @apply relative transition-colors duration-300;
+    color: hsl(185 30% 70%);
   }
 
   .nav-link:hover,
   .nav-link.active {
-    @apply text-foreground;
+    color: hsl(45 80% 65%);
   }
 
   .nav-link.active::after {
     content: '';
-    @apply absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full;
+    @apply absolute -bottom-1 left-0 right-0 h-0.5 rounded-full;
+    background: linear-gradient(90deg, hsl(45 80% 60%), hsl(40 70% 50%));
+  }
+
+  /* Golden border card */
+  .card-gold-border {
+    @apply rounded-2xl;
+    background: linear-gradient(180deg, hsl(192 60% 18%) 0%, hsl(192 60% 12%) 100%);
+    border: 1px solid hsl(40 70% 50% / 0.25);
+    box-shadow: 0 0 20px hsl(40 75% 50% / 0.1);
+  }
+
+  .card-gold-border:hover {
+    border-color: hsl(40 70% 50% / 0.5);
+    box-shadow: 0 0 30px hsl(40 75% 50% / 0.2);
+  }
+
+  /* Decorative line with gold */
+  .line-gold {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(40 70% 50% / 0.5), transparent);
   }
 }
 
 @layer utilities {
   .text-shadow-lg {
-    text-shadow: 0 4px 20px hsl(220 20% 0% / 0.8);
+    text-shadow: 0 4px 20px hsl(0 0% 0% / 0.8);
+  }
+
+  .text-shadow-gold {
+    text-shadow: 0 2px 10px hsl(40 75% 50% / 0.5);
   }
 
   .animate-fade-up {

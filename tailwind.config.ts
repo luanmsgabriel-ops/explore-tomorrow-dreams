@@ -57,16 +57,29 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // Tomorrow Travel custom colors
+        // Tomorrow Travel Ocean Premium colors
+        ocean: {
+          DEFAULT: "hsl(192 65% 12%)",
+          deep: "hsl(192 65% 8%)",
+          mid: "hsl(190 60% 20%)",
+          light: "hsl(185 55% 30%)",
+          surface: "hsl(192 60% 15%)",
+        },
         teal: {
-          DEFAULT: "hsl(174 72% 45%)",
-          light: "hsl(174 72% 55%)",
-          dark: "hsl(174 72% 35%)",
+          DEFAULT: "hsl(185 65% 35%)",
+          light: "hsl(185 60% 45%)",
+          dark: "hsl(185 65% 25%)",
         },
         gold: {
-          DEFAULT: "hsl(43 75% 55%)",
-          light: "hsl(43 75% 65%)",
-          dark: "hsl(35 80% 45%)",
+          DEFAULT: "hsl(40 70% 50%)",
+          light: "hsl(45 80% 60%)",
+          dark: "hsl(35 65% 40%)",
+          metallic: "hsl(40 75% 55%)",
+        },
+        bronze: {
+          DEFAULT: "hsl(30 55% 35%)",
+          light: "hsl(35 60% 45%)",
+          dark: "hsl(25 50% 25%)",
         },
       },
       fontFamily: {
@@ -103,6 +116,23 @@ export default {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
+        sparkle: {
+          "0%, 100%": { opacity: "0.3", transform: "scale(1)" },
+          "50%": { opacity: "1", transform: "scale(1.2)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0px) rotate(0deg)" },
+          "50%": { transform: "translateY(-10px) rotate(2deg)" },
+        },
+        "light-trail": {
+          "0%": { opacity: "0", transform: "translateX(-100%)" },
+          "50%": { opacity: "1" },
+          "100%": { opacity: "0", transform: "translateX(100%)" },
+        },
+        "pulse-glow": {
+          "0%, 100%": { boxShadow: "0 0 20px hsl(40 75% 50% / 0.3)" },
+          "50%": { boxShadow: "0 0 40px hsl(40 75% 50% / 0.6)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -111,9 +141,15 @@ export default {
         "slide-in-right": "slide-in-right 0.5s ease-out",
         "fade-up": "fade-up 0.6s ease-out",
         shimmer: "shimmer 2s infinite linear",
+        sparkle: "sparkle 2s ease-in-out infinite",
+        float: "float 4s ease-in-out infinite",
+        "light-trail": "light-trail 3s ease-in-out infinite",
+        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
+        "gradient-ocean": "linear-gradient(180deg, hsl(192 65% 15%) 0%, hsl(192 65% 8%) 100%)",
+        "gradient-gold": "linear-gradient(180deg, hsl(45 80% 60%) 0%, hsl(40 70% 50%) 50%, hsl(35 65% 40%) 100%)",
       },
     },
   },
