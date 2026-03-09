@@ -523,23 +523,27 @@ Me conta aí! 👇`
               </div>
             )}
             
-            {/* Itinerary card message */}
-            {message.itinerary ? (
-              <ChatItineraryCard
-                structured={message.itinerary.structured}
-                photos={message.itinerary.photos}
-                isLoading={message.itinerary.isLoading}
-              />
-            ) : (
-              <div
-                className={`max-w-[80%] p-3 rounded-2xl ${
-                  message.role === 'user'
-                    ? 'bg-primary text-primary-foreground rounded-br-md'
-                    : 'bg-muted text-foreground rounded-bl-md'
-                }`}
-              >
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+            {message.itineraryImageUrl ? (
+              <div className="max-w-[80%] overflow-hidden rounded-2xl border bg-card">
+                <img
+                  src={message.itineraryImageUrl}
+                  alt="Roteiro de viagem gerado"
+                  loading="lazy"
+                  className="w-full h-auto object-cover"
+                />
               </div>
+            ) : (
+              message.content.trim() && (
+                <div
+                  className={`max-w-[80%] p-3 rounded-2xl ${
+                    message.role === 'user'
+                      ? 'bg-primary text-primary-foreground rounded-br-md'
+                      : 'bg-muted text-foreground rounded-bl-md'
+                  }`}
+                >
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                </div>
+              )
             )}
           </div>
         ))}
