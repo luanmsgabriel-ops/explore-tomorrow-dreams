@@ -3019,12 +3019,14 @@ REGRAS:
 
           if (group && allMembers) {
             const readyCount = allMembers.filter(m => m.is_ready).length;
+            const expectedCount = (group as any).expected_members || allMembers.length;
             const membersList = allMembers.map(m => {
               const status = m.is_ready ? "✅" : "⏳";
               return `${status} ${m.member_name || m.phone_number}`;
             }).join("\n");
 
-            const statusMsg = `👥 *Grupo ${group.group_code}*\nStatus: ${group.status === "completed" ? "✅ Completo" : "📝 Coletando preferências"}\n\n*Membros (${allMembers.length}):*\n${membersList}\n\n${readyCount}/${allMembers.length} prontos\n\n${readyCount === allMembers.length ? "Todos prontos! Mande *resultado grupo* para ver as recomendações! 🎉" : "Aguardando membros responderem o questionário..."}`;
+            const groupName = group.group_name ? ` "${group.group_name}"` : "";
+            const statusMsg = `👥 *Grupo${groupName} (${group.group_code})*\nStatus: ${group.status === "completed" ? "✅ Completo" : "📝 Coletando preferências"}\n\n*Membros (${allMembers.length}/${expectedCount}):*\n${membersList}\n\n${readyCount}/${expectedCount} prontos\n\n${readyCount >= expectedCount ? "Todos prontos! O resultado será gerado automaticamente! 🎉" : `⏳ Faltam ${expectedCount - readyCount} pessoa(s) para completar.`}`;
             await sendWhatsAppMessage(phoneNumber, statusMsg);
           }
 
