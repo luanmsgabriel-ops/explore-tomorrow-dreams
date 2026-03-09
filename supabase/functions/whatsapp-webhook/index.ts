@@ -1369,8 +1369,55 @@ function parseItineraryVisualTag(response: string): { destination: string; days:
   return { destination, days, totalDays: totalDays || days.length };
 }
 
+function isLikelyItineraryText(text: string): boolean {
+  return /roteiro personalizado|dia\s*1|manhã:|tarde:|noite:/i.test(text);
+}
+
+function parseItineraryFromPlainText(text: string): { destination: string; days: any[]; totalDays: number } | null {
+  if (!isLikelyItineraryText(text)) return null;
+
+  const destinationMatch = text.match(/roteiro\s+personalizado\s*[-–]\s*([^\n(]+)(?:\((\d+)\s*dias?\))?/i);
+  const destination = destinationMatch?.[1]?.trim();
+
+  const dayBlocks = text.match(/(?:☀️\s*)?\*?Dia\s+\d+\s*[-–][\s\S]*?(?=(?:\n\s*(?:☀️\s*)?\*?Dia\s+\d+\s*[-–])|$)/gi) || [];
+  const days: any[] = [];
+
+  for (const block of dayBlocks) {
+    const headerMatch = block.match(/Dia\s+(\d+)\s*[-–]\s*([^\n*]+)/i);
+    if (!headerMatch) continue;
+
+    const dayNumber = headerMatch[1];
+    const theme = headerMatch[2].trim();
+    const activities: any[] = [];
+
+    const morning = block.match(/manhã:\s*([^\n]+)/i)?.[1]?.trim();
+    const afternoon = block.match(/tarde:\s*([^\n]+)/i)?.[1]?.trim();
+    const night = block.match(/noite:\s*([^\n]+)/i)?.[1]?.trim();
+
+    if (morning) activities.push({ time: "09:00", name: morning, emoji: "☀️" });
+    if (afternoon) activities.push({ time: "14:00", name: afternoon, emoji: "🌤️" });
+    if (night) activities.push({ time: "19:00", name: night, emoji: "🌙" });
+
+    if (activities.length === 0) {
+      const genericItems = [...block.matchAll(/•\s*([^\n]+)/g)].map(m => m[1].trim()).slice(0, 3);
+      genericItems.forEach((item, idx) => {
+        const fallbackTime = ["09:00", "14:00", "19:00"][idx] || "12:00";
+        activities.push({ time: fallbackTime, name: item, emoji: "•" });
+      });
+    }
+
+    if (activities.length > 0) {
+      days.push({ day: `Dia ${dayNumber}`, theme, activities });
+    }
+  }
+
+  if (!destination || days.length === 0) return null;
+  const totalDays = parseInt(destinationMatch?.[2] || "", 10) || days.length;
+  return { destination, days, totalDays };
+}
+
 // Generate and send itinerary visual card
-async function generateAndSendItineraryVisual(phoneNumber: string, itineraryData: { destination: string; days: any[]; totalDays: number }, clientName?: string) {
+async function generateAndSendItineraryVisual(phoneNumber: string, itineraryData: { destination: string; days: any[]; totalDays: number }, clientName?: string): Promise<boolean> {
   try {
     console.log("[ITINERARY-VISUAL] Generating visual for:", itineraryData.destination);
     
@@ -1390,7 +1437,7 @@ async function generateAndSendItineraryVisual(phoneNumber: string, itineraryData
 
     if (!visualResponse.ok) {
       console.error("[ITINERARY-VISUAL] Edge function error:", visualResponse.status);
-      return;
+      return false;
     }
 
     const visualData = await visualResponse.json();
@@ -1398,9 +1445,14 @@ async function generateAndSendItineraryVisual(phoneNumber: string, itineraryData
       const caption = `🗺️ Roteiro ${itineraryData.destination} - ${itineraryData.totalDays} dias ✨\nPreparado por Téo | Tomorrow Travel ✈️`;
       await sendWhatsAppImage(phoneNumber, visualData.imageUrl, caption);
       console.log("[ITINERARY-VISUAL] Visual card sent to", phoneNumber);
+      return true;
     }
+
+    console.error("[ITINERARY-VISUAL] No imageUrl returned");
+    return false;
   } catch (err) {
     console.error("[ITINERARY-VISUAL] Error generating/sending visual:", err);
+    return false;
   }
 }
 
@@ -6994,7 +7046,7 @@ Regras OBRIGATÓRIAS:
       // === CONCIERGE BYPASS: skip all quotation logic ===
       if (conciergePromptOverride) {
         // Check for itinerary visual tag BEFORE cleaning
-        const itineraryData = parseItineraryVisualTag(aiResponse);
+        const itineraryDataFromTag = parseItineraryVisualTag(aiResponse);
         
         let cleanResponse = cleanAiResponse(aiResponse);
 
@@ -7032,17 +7084,24 @@ Regras OBRIGATÓRIAS:
           }
         }
 
-        // Send visual itinerary card if detected (before text) — only once
+        const itineraryData = itineraryDataFromTag || parseItineraryFromPlainText(cleanResponse);
+
+        // Send visual itinerary card — only once
         if (itineraryData && !conversation.collected_data?._itinerary_sent) {
           const clientNameForVisual = conversation.client_name || contactName || undefined;
-          await generateAndSendItineraryVisual(phoneNumber, itineraryData, clientNameForVisual);
-          await sendWhatsAppMessage(phoneNumber, "Preparei um roteiro especial pra nossa viagem! 🗺️✨ Salva essa imagem, vai ser nosso guia por lá! 😄\n\n✨ Quer que eu ajuste algo? Posso trocar atividades, dias ou focar em algo específico! 😊");
-          // Persist the flag
-          await supabase
-            .from("whatsapp_conversations")
-            .update({ collected_data: { ...(conversation.collected_data || {}), _itinerary_sent: true } })
-            .eq("id", conversation.id);
-          // Don't send the text version — image only
+          const visualSent = await generateAndSendItineraryVisual(phoneNumber, itineraryData, clientNameForVisual);
+
+          if (visualSent) {
+            await supabase
+              .from("whatsapp_conversations")
+              .update({ collected_data: { ...(conversation.collected_data || {}), _itinerary_sent: true } })
+              .eq("id", conversation.id);
+          } else {
+            await sendWhatsAppMessage(phoneNumber, "Não consegui gerar o card do roteiro agora 😕 Pode me pedir novamente em alguns segundos?");
+          }
+        } else if (isLikelyItineraryText(cleanResponse)) {
+          // Never send long itinerary text, only card
+          await sendWhatsAppMessage(phoneNumber, "Estou preparando seu card de roteiro 🎨 Pode me pedir de novo com o destino para eu gerar certinho.");
         } else {
           await sendWhatsAppMessage(phoneNumber, cleanResponse);
         }
@@ -7155,7 +7214,7 @@ Regras OBRIGATÓRIAS:
       const quotationData = alreadyQuoted ? null : parseQuotationTag(aiResponse);
 
       // Check for itinerary visual tag BEFORE cleaning
-      const itineraryVisualData = parseItineraryVisualTag(aiResponse);
+      const itineraryVisualDataFromTag = parseItineraryVisualTag(aiResponse);
 
       // Clean response (remove all tags)
       let cleanResponse = cleanAiResponse(aiResponse);
@@ -7407,13 +7466,21 @@ Regras OBRIGATÓRIAS:
         }
       }
 
-      // Send visual itinerary card if detected (before text) — only once per conversation
+      const itineraryVisualData = itineraryVisualDataFromTag || parseItineraryFromPlainText(cleanResponse);
+
+      // Send visual itinerary card — only once per conversation
       if (itineraryVisualData && !collectedData._itinerary_sent) {
         const clientNameForVisual = newCollectedData.nome || conversation.client_name || contactName || undefined;
-        await generateAndSendItineraryVisual(phoneNumber, itineraryVisualData, clientNameForVisual);
-        await sendWhatsAppMessage(phoneNumber, "Preparei um roteiro especial pra você! 🗺️✨ Salva essa imagem, vai ser seu guia por lá! 😄\n\n✨ Quer que eu ajuste algo? Posso trocar atividades, dias ou focar em algo específico! 😊");
-        newCollectedData._itinerary_sent = true;
-        // Don't send the text version — image only
+        const visualSent = await generateAndSendItineraryVisual(phoneNumber, itineraryVisualData, clientNameForVisual);
+
+        if (visualSent) {
+          newCollectedData._itinerary_sent = true;
+        } else {
+          await sendWhatsAppMessage(phoneNumber, "Não consegui gerar o card do roteiro agora 😕 Pode me pedir novamente em alguns segundos?");
+        }
+      } else if (isLikelyItineraryText(cleanResponse)) {
+        // Never send long itinerary text, only card
+        await sendWhatsAppMessage(phoneNumber, "Estou preparando seu card de roteiro 🎨 Pode me pedir de novo com o destino para eu gerar certinho.");
       } else {
         await sendWhatsAppMessage(phoneNumber, cleanResponse);
       }
