@@ -7036,10 +7036,16 @@ Regras OBRIGATÓRIAS:
         if (itineraryData && !conversation.collected_data?._itinerary_sent) {
           const clientNameForVisual = conversation.client_name || contactName || undefined;
           await generateAndSendItineraryVisual(phoneNumber, itineraryData, clientNameForVisual);
-          await sendWhatsAppMessage(phoneNumber, "Preparei um roteiro especial pra nossa viagem! 🗺️✨ Salva essa imagem, vai ser nosso guia por lá! 😄");
+          await sendWhatsAppMessage(phoneNumber, "Preparei um roteiro especial pra nossa viagem! 🗺️✨ Salva essa imagem, vai ser nosso guia por lá! 😄\n\n✨ Quer que eu ajuste algo? Posso trocar atividades, dias ou focar em algo específico! 😊");
+          // Persist the flag
+          await supabase
+            .from("whatsapp_conversations")
+            .update({ collected_data: { ...(conversation.collected_data || {}), _itinerary_sent: true } })
+            .eq("id", conversation.id);
+          // Don't send the text version — image only
+        } else {
+          await sendWhatsAppMessage(phoneNumber, cleanResponse);
         }
-
-        await sendWhatsAppMessage(phoneNumber, cleanResponse);
 
         // Check if client asked for vouchers/documents and send them
         const docKeywords = ["voucher", "documento", "pdf", "passagem", "reserva", "comprovante", "bilhete", "ticket"];
