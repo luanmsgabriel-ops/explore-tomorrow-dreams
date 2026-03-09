@@ -2333,7 +2333,6 @@ serve(async (req) => {
       }
 
       // ========== GLOBAL MODE AUTO-EXIT GUARD ==========
-      // If the user changes intent (e.g. "quero cotar"), clear any temporary/special mode first
       {
         const normalizedMsg = (messageText || "")
           .toLowerCase()
@@ -2341,7 +2340,7 @@ serve(async (req) => {
           .replace(/[\u0300-\u036f]/g, "")
           .trim();
 
-        const switchIntentRegex = /(?:quero cotar|cotar|cotacao|quanto custa|preco|valor|orcamento|pacote|passagem|reserva|reservar|destino|viagem|modo cotacao|modo concierge|modo normal|sair modo|tradutor|modo tradutor|chef|modo chef|meu dna|dna viajante|roleta|oraculo|vidente|mapa astral|criar grupo|entrar grupo|resultado grupo|meu grupo|sair grupo|cancelar|parar|sair)/i;
+        const switchIntentRegex = /(quero cotar|cotar|cotacao|quanto custa|preco|valor|orcamento|pacote|passagem|reserva|reservar|destino|viagem|modo cotacao|modo concierge|modo normal|sair modo|tradutor|modo tradutor|chef|modo chef|meu dna|dna viajante|roleta|oraculo|vidente|mapa astral|criar grupo|entrar grupo|resultado grupo|meu grupo|sair grupo|cancelar|parar|sair)/i;
 
         const { data: convForGlobalModeGuard } = await supabase
           .from("whatsapp_conversations")
@@ -2351,59 +2350,49 @@ serve(async (req) => {
           .limit(1)
           .maybeSingle();
 
-        if (convForGlobalModeGuard) {
+        if (convForGlobalModeGuard && switchIntentRegex.test(normalizedMsg)) {
           const modeData = (convForGlobalModeGuard.collected_data as Record<string, any>) || {};
+          const cleanedData = { ...modeData };
+          const clearedModes = [] as string[];
 
-          const hasAnyActiveMode =
-            modeData._chef_mode === true ||
-            modeData._translator_mode === true ||
-            modeData._group_mode === "questioning" ||
-            modeData._dna_mode === "questioning" ||
-            modeData._vidente_waiting_sign === true;
+          if (cleanedData._chef_mode === true) {
+            cleanedData._chef_mode = false;
+            cleanedData._chef_menu_analysis = null;
+            clearedModes.push("chef");
+          }
 
-          if (hasAnyActiveMode && switchIntentRegex.test(normalizedMsg)) {
-            const cleanedData = { ...modeData };
-            const clearedModes: string[] = [];
+          if (cleanedData._translator_mode === true) {
+            cleanedData._translator_mode = false;
+            cleanedData._translator_target_lang = null;
+            clearedModes.push("tradutor");
+          }
 
-            if (cleanedData._chef_mode === true) {
-              cleanedData._chef_mode = false;
-              cleanedData._chef_menu_analysis = null;
-              clearedModes.push("chef");
-            }
+          if (cleanedData._group_mode === "questioning") {
+            delete cleanedData._group_mode;
+            delete cleanedData._group_id;
+            delete cleanedData._group_step;
+            clearedModes.push("grupal");
+          }
 
-            if (cleanedData._translator_mode === true) {
-              cleanedData._translator_mode = false;
-              cleanedData._translator_target_lang = null;
-              clearedModes.push("tradutor");
-            }
+          if (cleanedData._dna_mode === "questioning") {
+            delete cleanedData._dna_mode;
+            delete cleanedData._dna_step;
+            delete cleanedData._dna_answers;
+            clearedModes.push("dna");
+          }
 
-            if (cleanedData._group_mode === "questioning") {
-              delete cleanedData._group_mode;
-              delete cleanedData._group_id;
-              delete cleanedData._group_step;
-              clearedModes.push("grupal");
-            }
+          if (cleanedData._vidente_waiting_sign === true) {
+            delete cleanedData._vidente_waiting_sign;
+            clearedModes.push("vidente");
+          }
 
-            if (cleanedData._dna_mode === "questioning") {
-              delete cleanedData._dna_mode;
-              delete cleanedData._dna_step;
-              delete cleanedData._dna_answers;
-              clearedModes.push("dna");
-            }
+          if (clearedModes.length > 0) {
+            await supabase
+              .from("whatsapp_conversations")
+              .update({ collected_data: cleanedData })
+              .eq("id", convForGlobalModeGuard.id);
 
-            if (cleanedData._vidente_waiting_sign === true) {
-              delete cleanedData._vidente_waiting_sign;
-              clearedModes.push("vidente");
-            }
-
-            if (clearedModes.length > 0) {
-              await supabase
-                .from("whatsapp_conversations")
-                .update({ collected_data: cleanedData })
-                .eq("id", convForGlobalModeGuard.id);
-
-              console.log(`🔄 Auto-exit global de modos [${clearedModes.join(", ")}] por troca de intenção: "${normalizedMsg.substring(0, 80)}"`);
-            }
+            console.log(`Auto-exit modes [${clearedModes.join(", ")}] due to intent switch: "${normalizedMsg.substring(0, 80)}"`);
           }
         }
       }
