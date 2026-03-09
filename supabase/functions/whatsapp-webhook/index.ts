@@ -2843,7 +2843,7 @@ serve(async (req) => {
         const crossReferencePreferences = async (group: any, members: any[]): Promise<string> => {
           const membersList = members.map(m => {
             const prefs = m.preferences || {};
-            return `- *${m.member_name || m.phone_number}*: Estilo: ${prefs.estilo || "?"}, Clima: ${prefs.clima || "?"}, Prioridades: ${prefs.prioridades || "?"}, Orçamento: ${prefs.orcamento || "?"}, Restrições: ${prefs.restricoes || "nenhuma"}`;
+            return `- *${m.member_name || m.phone_number}*: Estilo: ${prefs.estilo || "?"}, Clima: ${prefs.clima || "?"}, Prioridade: ${prefs.prioridade || "?"}, Acomodação: ${prefs.acomodacao || "?"}, Orçamento: ${prefs.orcamento || "?"}, Datas: ${prefs.datas_disponiveis || "?"}, Restrições: ${prefs.restricoes || "nenhuma"}`;
           }).join("\n");
 
           const crossPrompt = `Você é um especialista em viagens de grupo da Tomorrow Travel. Analise as preferências de ${members.length} viajantes e sugira os 3 melhores destinos.
