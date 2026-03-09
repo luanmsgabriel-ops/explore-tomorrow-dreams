@@ -215,17 +215,29 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
         throw response.error;
       }
 
-      const { itinerary: generatedItinerary, destination: actualDestination } = response.data;
+      const { itinerary: generatedItinerary, destination: actualDestination, structured, placeNames } = response.data;
       setItinerary(generatedItinerary);
+      setStructuredData(structured || null);
       
       const finalDestinationName = actualDestination || selectedDestinationName;
       setSelectedDestinationName(finalDestinationName);
       
-      // Parse activities from generated itinerary
+      // Parse activities from generated itinerary (fallback for non-structured)
       const parsedActivities = parseItineraryActivities(generatedItinerary);
       setActivities(parsedActivities);
       if (parsedActivities.length > 0) {
         setExpandedDays([parsedActivities[0].day]);
+      }
+      
+      // Fetch photos for places in background
+      if (placeNames?.length > 0) {
+        supabase.functions.invoke('search-place-photos', {
+          body: { queries: placeNames },
+        }).then(({ data: photoData }) => {
+          if (photoData?.photos) {
+            setPlacePhotos(photoData.photos);
+          }
+        }).catch(err => console.error('Photo fetch error:', err));
       }
       
       // Salva no cache
