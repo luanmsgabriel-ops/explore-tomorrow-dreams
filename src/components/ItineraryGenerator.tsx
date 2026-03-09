@@ -53,6 +53,8 @@ export const ItineraryGenerator = ({ destinationId: initialDestinationId, destin
   const [isRequestingQuote, setIsRequestingQuote] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [fromCache, setFromCache] = useState(false);
+  const [structuredData, setStructuredData] = useState<any>(null);
+  const [placePhotos, setPlacePhotos] = useState<Record<string, string>>({});
 
   // Parse itinerary to extract activities
   const parseItineraryActivities = (content: string): Activity[] => {
