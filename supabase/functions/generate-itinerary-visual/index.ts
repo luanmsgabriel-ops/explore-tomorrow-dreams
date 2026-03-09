@@ -152,8 +152,8 @@ Generate the image now.`;
     if (uploadError) {
       console.error("[ITINERARY-VISUAL] Upload error:", uploadError);
       return new Response(
-        JSON.stringify({ imageUrl: imageData }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Upload failed", imageUrl: null }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
