@@ -3398,7 +3398,7 @@ REGRAS:
                     collected_data: cleanData,
                   }).eq("id", convForGroup.id);
 
-                  await sendWhatsAppMessage(phoneNumber, "✅ *Pronto!* Suas preferências foram registradas! 🎉\n\nQuando todos responderem, mande *resultado grupo* para ver as recomendações!\n\nPara ver o status: *meu grupo*");
+                  await sendWhatsAppMessage(phoneNumber, "✅ *Pronto!* Suas preferências foram registradas! 🎉\n\nQuando todos responderem, mande *resultado grupo* para ver as recomendações!\n\n📅 *Negociador de Datas:*\nInforme suas datas disponíveis:\n👉 *minhas datas 15/06 a 30/06, 10/07 a 25/07*\nDepois mande *datas grupo* para encontrar a janela ideal!\n\nPara ver o status: *meu grupo*");
 
                   // Check if all members are ready and auto-trigger
                   const { data: allMembers } = await supabase.from("travel_group_members").select("*").eq("group_id", groupId);
