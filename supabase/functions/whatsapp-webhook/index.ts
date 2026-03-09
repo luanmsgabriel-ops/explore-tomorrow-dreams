@@ -6852,8 +6852,8 @@ Regras OBRIGATÓRIAS:
           }
         }
 
-        // Send visual itinerary card if detected (before text)
-        if (itineraryData) {
+        // Send visual itinerary card if detected (before text) — only once
+        if (itineraryData && !conversation.collected_data?._itinerary_sent) {
           const clientNameForVisual = conversation.client_name || contactName || undefined;
           await generateAndSendItineraryVisual(phoneNumber, itineraryData, clientNameForVisual);
           await sendWhatsAppMessage(phoneNumber, "Preparei um roteiro especial pra nossa viagem! 🗺️✨ Salva essa imagem, vai ser nosso guia por lá! 😄");
