@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Bot, User, Phone, UserCircle, ExternalLink } from 'lucide-react';
+import { Send, Loader2, User, Phone, UserCircle, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { chatMessageSchema, generateSecureSessionId, sanitizeText, phoneSchema, nameSchema } from '@/lib/validations';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,9 +7,16 @@ import { Button } from '@/components/ui/button';
 import { TeoMascot } from '@/components/TeoMascot';
 import { QuotationStatusDisplay } from '@/components/QuotationStatusDisplay';
 import { useQuotation, parseQuotationTag, formatQuotationResults } from '@/hooks/useQuotation';
+import { ChatItineraryCard } from '@/components/ChatItineraryCard';
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  itinerary?: {
+    structured: any;
+    photos: Record<string, string>;
+    isLoading: boolean;
+  };
 }
 
 interface QuizAnswers {
@@ -29,6 +36,7 @@ interface TeoChatProps {
 export const TeoChat = ({ fullPage = false }: TeoChatProps) => {
   const sessionIdRef = useRef<string>(generateSecureSessionId());
   const quotation = useQuotation();
+  const itineraryGeneratingRef = useRef<boolean>(false);
   
   const [step, setStep] = useState<ChatStep>('collect_name');
   const [userName, setUserName] = useState('');
@@ -341,12 +349,105 @@ Me conta aí! 👇`
         });
       }
 
+      // Check for itinerary generation tag (ONLY ONCE)
+      const itineraryMatch = assistantContent.match(/\[GERAR_ROTEIRO:(.*?)\]/s);
+      if (itineraryMatch && !itineraryGeneratingRef.current) {
+        itineraryGeneratingRef.current = true;
+        const cleanContent = assistantContent.replace(/\[GERAR_ROTEIRO:.*?\]/s, '').trim();
+        
+        // Update the message text and add a loading itinerary card
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          newMessages[newMessages.length - 1] = {
+            role: 'assistant',
+            content: cleanContent,
+          };
+          return [
+            ...newMessages,
+            {
+              role: 'assistant',
+              content: '',
+              itinerary: { structured: null, photos: {}, isLoading: true },
+            },
+          ];
+        });
+
+        // Parse itinerary params
+        let itinParams = { destino: '', dias: 5, preferencias: '' };
+        try {
+          itinParams = { ...itinParams, ...JSON.parse(itineraryMatch[1]) };
+        } catch {
+          itinParams.destino = itineraryMatch[1].trim();
+        }
+
+        // Generate itinerary via edge function
+        try {
+          const { data: itinData, error: itinError } = await supabase.functions.invoke('generate-itinerary', {
+            body: {
+              destination: itinParams.destino,
+              preferences: itinParams.preferencias || '',
+              email: '',
+              whatsapp: userWhatsapp,
+              travelMood: '',
+            },
+          });
+
+          if (itinError) throw itinError;
+
+          const structured = itinData?.structured || null;
+          const placeNames: string[] = itinData?.placeNames || [];
+
+          // Fetch photos
+          let photos: Record<string, string> = {};
+          if (placeNames.length > 0) {
+            try {
+              const { data: photoData } = await supabase.functions.invoke('search-place-photos', {
+                body: { queries: placeNames.slice(0, 8) },
+              });
+              if (photoData?.photos) photos = photoData.photos;
+            } catch { /* non-blocking */ }
+          }
+
+          // Update the itinerary message with real data
+          setMessages((prev) => {
+            const newMessages = [...prev];
+            const itinIdx = newMessages.findIndex(m => m.itinerary?.isLoading);
+            if (itinIdx >= 0) {
+              newMessages[itinIdx] = {
+                role: 'assistant',
+                content: '',
+                itinerary: { structured, photos, isLoading: false },
+              };
+            }
+            return newMessages;
+          });
+        } catch (err) {
+          console.error('Itinerary generation error:', err);
+          setMessages((prev) => {
+            const newMessages = [...prev];
+            const itinIdx = newMessages.findIndex(m => m.itinerary?.isLoading);
+            if (itinIdx >= 0) {
+              newMessages[itinIdx] = {
+                role: 'assistant',
+                content: '❌ Ops, não consegui gerar o roteiro visual. Tente pedir novamente!',
+              };
+            }
+            return newMessages;
+          });
+        } finally {
+          itineraryGeneratingRef.current = false;
+        }
+      } else {
+        // Clean any stray itinerary tags from the text
+        assistantContent = assistantContent.replace(/\[GERAR_ROTEIRO:.*?\]/gs, '').trim();
+      }
+
       const destinationMatch = assistantContent.match(/\[DESTINO_ESCOLHIDO:\s*([^\]]+)\]/i);
       if (destinationMatch) {
         const destination = destinationMatch[1].trim();
         setChosenDestination(destination);
         
-        const cleanContent = assistantContent.replace(/\[DESTINO_ESCOLHIDO:\s*[^\]]+\]/gi, '').replace(/\[COTAR_VIAGEM:.*?\]/s, '').trim();
+        const cleanContent = assistantContent.replace(/\[DESTINO_ESCOLHIDO:\s*[^\]]+\]/gi, '').replace(/\[COTAR_VIAGEM:.*?\]/s, '').replace(/\[GERAR_ROTEIRO:.*?\]/gs, '').trim();
         setMessages((prev) => {
           const newMessages = [...prev];
           newMessages[newMessages.length - 1] = {
@@ -434,15 +535,25 @@ Me conta aí! 👇`
                 <User className="w-4 h-4 text-primary-foreground" />
               </div>
             )}
-            <div
-              className={`max-w-[80%] p-3 rounded-2xl ${
-                message.role === 'user'
-                  ? 'bg-primary text-primary-foreground rounded-br-md'
-                  : 'bg-muted text-foreground rounded-bl-md'
-              }`}
-            >
-              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-            </div>
+            
+            {/* Itinerary card message */}
+            {message.itinerary ? (
+              <ChatItineraryCard
+                structured={message.itinerary.structured}
+                photos={message.itinerary.photos}
+                isLoading={message.itinerary.isLoading}
+              />
+            ) : (
+              <div
+                className={`max-w-[80%] p-3 rounded-2xl ${
+                  message.role === 'user'
+                    ? 'bg-primary text-primary-foreground rounded-br-md'
+                    : 'bg-muted text-foreground rounded-bl-md'
+                }`}
+              >
+                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+              </div>
+            )}
           </div>
         ))}
         
