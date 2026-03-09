@@ -1984,24 +1984,8 @@ serve(async (req) => {
             console.log(`Follow-up check: wasUpdated=${wasUpdated}, hasQuote=${hasQuote}, aiActive=${aiActive}, alreadyTriggered=${alreadyTriggered}`);
 
             if (!wasUpdated && !hasQuote && aiActive && !alreadyTriggered) {
-              const clientName = currentConv.client_name || "";
-              const greeting = clientName ? `Ei ${clientName}` : "Ei";
-              const destino = collectedData.destino ? ` pra ${collectedData.destino}` : "";
-              const followUpMsg = `${greeting}! Se quiser, posso buscar uma cotação${destino} pra você. É só me dizer! ✈️😊`;
-
-              await sendWhatsAppMessage(phone, followUpMsg);
-
-              // Save to history
-              const updatedHistory = [
-                ...((currentConv.messages_history as any[]) || []),
-                { role: "assistant", content: followUpMsg, timestamp: new Date().toISOString() },
-              ];
-              await supabase
-                .from("whatsapp_conversations")
-                .update({ messages_history: updatedHistory })
-                .eq("id", conversationId);
-
-              console.log("Follow-up quote sent successfully");
+              // Follow-up desativado - não enviar mensagem automática de cotação
+              console.log("Follow-up quote skipped (disabled)");
             } else {
               console.log("Follow-up cancelled: conversation was updated or quote already exists");
             }
