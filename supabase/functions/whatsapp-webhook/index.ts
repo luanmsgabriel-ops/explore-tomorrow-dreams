@@ -2807,6 +2807,8 @@ serve(async (req) => {
         const myGroupRegex = /^(meu grupo|status grupo|group status)$/i;
         const resultGroupRegex = /^(resultado grupo|group result|ver resultado)$/i;
         const leaveGroupRegex = /^(sair grupo|sair do grupo|leave group)$/i;
+        const myDatesRegex = /^minhas?\s+datas?\s+(.+)$/i;
+        const groupDatesRegex = /^(datas grupo|negociar datas|datas do grupo|group dates)$/i;
 
         // Generate 6-char alphanumeric code
         const generateGroupCode = (): string => {
