@@ -2785,7 +2785,7 @@ serve(async (req) => {
       // ========== MODO GALERA: Group Travel with Preference Cross-Referencing ==========
       {
         const lowerMsgGroup = (messageText || "").toLowerCase().trim();
-        const createGroupRegex = /^(criar grupo|viagem em grupo|grupo viagem|travel group)$/i;
+        const createGroupRegex = /(?:criar|novo|ativar|iniciar|montar|comecar|começar|quero)\s+(?:um[a]?\s+)?(?:nov[oa]\s+)?(?:grupo|modo\s*galera|viagem\s+(?:em\s+)?grupo|galera)/i;
         const joinGroupRegex = /^entrar grupo\s+([A-Z0-9]{6})$/i;
         const joinGroupRegexLower = /^entrar grupo\s+([a-zA-Z0-9]{6})$/i;
         const myGroupRegex = /^(meu grupo|status grupo|group status)$/i;
