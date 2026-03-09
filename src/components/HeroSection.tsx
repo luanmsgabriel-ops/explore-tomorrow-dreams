@@ -35,7 +35,7 @@ export const HeroSection = () => {
           <div className="container mx-auto px-4 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               {/* Left side - Text content */}
-              <div className="animate-fade-up">
+              <div className="animate-fade-up bg-black/50 backdrop-blur-sm rounded-2xl p-6 md:p-8">
                 {/* Badge */}
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-gold mb-8">
                   <Sparkles className="w-4 h-4 text-gold-light" />
