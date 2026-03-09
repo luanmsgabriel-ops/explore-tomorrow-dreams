@@ -2892,67 +2892,27 @@ REGRAS:
           }
         };
 
-        // ===== CREATE GROUP =====
+        // ===== CREATE GROUP (multi-step setup) =====
         if (createGroupRegex.test(lowerMsgGroup)) {
           const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
           
-          let groupCode = generateGroupCode();
-          // Ensure uniqueness
-          let attempts = 0;
-          while (attempts < 5) {
-            const { data: existing } = await supabase.from("travel_groups").select("id").eq("group_code", groupCode).maybeSingle();
-            if (!existing) break;
-            groupCode = generateGroupCode();
-            attempts++;
-          }
-
-          const { data: newGroup, error: groupErr } = await supabase
-            .from("travel_groups")
-            .insert({
-              group_code: groupCode,
-              creator_phone: phoneNumber,
-              creator_name: contactName || null,
-            })
-            .select("id")
-            .single();
-
-          if (groupErr || !newGroup) {
-            console.error("[GROUP] Error creating group:", groupErr);
-            await sendWhatsAppMessage(phoneNumber, "😅 Erro ao criar o grupo. Tente novamente!");
-            return new Response(JSON.stringify({ status: "ok", group_error: true }), {
-              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
-
-          // Add creator as first member
-          await supabase.from("travel_group_members").insert({
-            group_id: newGroup.id,
-            phone_number: phoneNumber,
-            member_name: contactName || null,
-          });
-
-          const inviteLink = `https://wa.me/5515991833448?text=${encodeURIComponent(`entrar grupo ${groupCode}`)}`;
-          const createMsg = `🎉 *Grupo de Viagem Criado!*\n\nCódigo: *${groupCode}*\n\n📲 *Compartilhe este link com seus amigos para eles entrarem no grupo:*\n${inviteLink}\n\nOu peça para mandarem:\n👉 *entrar grupo ${groupCode}*\n\nQuando todos entrarem e responderem o questionário, eu cruzo as preferências e sugiro o destino perfeito pro grupo! 🌍✈️\n\n📅 *Negociador de Datas:* Cada membro pode enviar:\n👉 *minhas datas 15/06 a 30/06, 10/07 a 25/07*\nDepois mande *datas grupo* para encontrar a janela ideal!\n\nVou começar com suas preferências...`;
-          await sendWhatsAppMessage(phoneNumber, createMsg);
-
-          // Set group mode in conversation
           if (savedConv) {
             const existingData = (savedConv.collected_data as Record<string, any>) || {};
             await supabase.from("whatsapp_conversations").update({
-              collected_data: { ...existingData, _group_mode: "questioning", _group_id: newGroup.id, _group_step: 1 },
+              collected_data: { ...existingData, _group_mode: "setup_name" },
             }).eq("id", savedConv.id);
+
+            const askNameMsg = "🎉 *Modo Galera ativado!*\n\nVamos montar o grupo de viagem perfeito! 🌍\n\n📝 *Como quer chamar o grupo?*\n\n(Ex: Viagem da Galera, Férias 2026, Amigos SP...)";
+            await sendWhatsAppMessage(phoneNumber, askNameMsg);
 
             const updH = [
               ...((savedConv.messages_history as any[]) || []),
-              { role: "assistant", content: createMsg, timestamp: new Date().toISOString() },
+              { role: "assistant", content: askNameMsg, timestamp: new Date().toISOString() },
             ];
             await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConv.id);
           }
 
-          // Send first question
-          await sendWhatsAppMessage(phoneNumber, GROUP_QUESTIONS[0]);
-
-          return new Response(JSON.stringify({ status: "ok", group_created: groupCode }), {
+          return new Response(JSON.stringify({ status: "ok", group_setup_started: true }), {
             status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
