@@ -1,118 +1,72 @@
 
 
-# Plano: 5 Features Téo 2030
+# Plano: Corrigir Roteiro Visual no WhatsApp
 
-## Features Solicitadas (uma por vez, implementação completa)
-1. ✅ **Téo Grupal** — Viagem em grupo com cruzamento de preferências via WhatsApp
-2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
-3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
-9. ✅ **Téo Roleta** — Destino aleatório filtrado por DNA com animação textual
-10. ✅ **Téo Oráculo** — Previsão personalizada da viagem com signos, DNA e fase lunar
-4. ✅ **Téo DNA** — Perfil genético de viajante
-5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
-6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
-7. ✅ **Téo Compatibilidade** — Match de viagem entre DNAs de viajante
-8. ✅ **Téo SOS** — Assistente de emergência com embaixadas, hospitais e frases úteis
+## Problemas Identificados (dos logs)
+
+1. **Upload falha por caractere acentuado no filename**: `itinerary-visuals/1773029669483-maceió.png` → Supabase Storage rejeita com "Invalid key". Quando falha, retorna data URI base64, que o WhatsApp rejeita (400).
+
+2. **Roteiro enviado múltiplas vezes**: O texto do roteiro é muito longo (7 dias detalhados) e o AI gera o roteiro completo no `cleanResponse`. Como o visual falha, o sistema reenvia. Além disso, o `follow_up_quote` pode re-triggerar a conversa.
 
 ---
 
-## 7. Téo Compatibilidade (IMPLEMENTADO ✅)
+## Alterações
 
-### Conceito
-O cliente envia `compatibilidade com 5511999999999` e o Téo compara os DNAs de Viajante dos dois, calcula score de compatibilidade e sugere destinos ideais para ambos.
+### 1. `supabase/functions/generate-itinerary-visual/index.ts` (linha 140)
 
-### Comandos WhatsApp
-| Comando | Ação |
-|---------|------|
-| `compatibilidade com [número]` / `match viagem [número]` | Compara DNAs e sugere destino |
-| `compatibilidade` (sem número) | Téo pede o número do parceiro |
+Sanitizar o filename removendo acentos antes do upload:
 
-### Armazenamento (zero novas tabelas)
-Usa `client_memory.preferences`:
-- `ultimo_match`: `{ parceiro_phone, parceiro_nome, score, data }`
+```typescript
+// Antes:
+const fileName = `itinerary-visuals/${Date.now()}-${destination.toLowerCase().replace(/\s+/g, "-")}.png`;
 
-### Arquivos modificados
-- `supabase/functions/whatsapp-webhook/index.ts`: Bloco de comando com regex, busca de 2 memórias, chamada Gemini, formatação e save
-- `supabase/functions/_shared/client-memory.ts`: `ultimo_match` no `formatMemoryForPrompt` + skipKeys
+// Depois:
+const sanitized = destination.toLowerCase()
+  .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  .replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-");
+const fileName = `itinerary-visuals/${Date.now()}-${sanitized}.png`;
+```
 
-## 3. Téo DNA de Viajante (IMPLEMENTADO ✅)
+### 2. `supabase/functions/whatsapp-webhook/index.ts` — Limitar tamanho do roteiro
 
-### Conceito
-Questionário profundo de 10 perguntas que gera um perfil "genético" de viajante com 5 categorias (Explorador, Culturalista, Gourmet, Zen, Socialite) que evolui com cada viagem.
+No `TEO_SYSTEM_PROMPT` (seção "ROTEIRO PERSONALIZADO", linha ~646):
+- Adicionar regra: "O roteiro versão texto deve ter NO MÁXIMO 3000 caracteres"
+- Adicionar regra: "NÃO envie o mesmo roteiro mais de uma vez"
+- Reduzir de "800-1500 caracteres" para manter o limite mas reforçar
 
-### Comandos WhatsApp
-| Comando | Ação |
-|---------|------|
-| `meu dna` / `dna viajante` / `teste dna` | Inicia o questionário de 10 perguntas |
+### 3. `supabase/functions/whatsapp-webhook/index.ts` — Prevenir envio repetido
 
-### Categorias do DNA
-- 🏔️ Explorador: aventura, adrenalina, natureza selvagem
-- 🏛️ Culturalista: história, museus, arquitetura
-- 🍽️ Gourmet: gastronomia, vinhos, experiências culinárias
-- 🧘 Zen: relaxamento, praias, spas
-- 🎉 Socialite: festas, vida noturna, experiências sociais
+Marcar na `collected_data` quando um roteiro já foi enviado (`_itinerary_sent: true`). Antes de gerar o visual ou enviar o texto do roteiro novamente, checar esse flag.
 
-### Armazenamento (zero novas tabelas)
-Usa `client_memory.preferences` (JSONB):
-- `dna_viajante`: perfil atual com porcentagens, raw_result, answers
-- `dna_historico`: array com últimas 10 análises (para detectar evolução)
+Nos dois locais onde `itineraryVisualData` é processado (linha ~6855 concierge e ~7218 standard):
+```typescript
+if (itineraryVisualData && !collectedData._itinerary_sent) {
+  // ... gerar e enviar
+  // Marcar como enviado
+  newCollectedData._itinerary_sent = true;
+}
+```
 
-### Evolução
-O DNA evolui automaticamente:
-- Cada vez que o teste é refeito, uma nova entrada é adicionada ao histórico
-- O formatMemoryForPrompt mostra a evolução (↑↓ por categoria)
-- Téo usa o DNA para personalizar sugestões sem perguntar demais
+### 4. `supabase/functions/generate-itinerary-visual/index.ts` — Fallback quando upload falha
 
-### Arquivos modificados
-- `supabase/functions/whatsapp-webhook/index.ts`: Comando + questionário 10 perguntas + geração via Gemini
-- `supabase/functions/_shared/client-memory.ts`: DNA no prompt, na formatação e na regra de adaptação
+Quando o upload falha, não retornar o data URI (que WhatsApp não aceita). Em vez disso, retornar erro para que o webhook não tente enviar uma imagem inválida:
 
----
-
-## 1. Téo Grupal (IMPLEMENTADO ✅)
-
-### Tabelas criadas
-- `travel_groups`: group_code, creator_phone, creator_name, status, final_recommendation
-- `travel_group_members`: group_id, phone_number, member_name, preferences (JSONB), is_ready
-
-### Comandos WhatsApp
-| Comando | Ação |
-|---------|------|
-| `criar grupo` | Cria grupo, gera código 6 chars, inicia questionário |
-| `entrar grupo XYZABC` | Adiciona membro, inicia questionário |
-| `meu grupo` | Mostra status e membros |
-| `resultado grupo` | Cruza preferências via Gemini, envia a todos |
-| `sair grupo` | Remove membro |
+```typescript
+if (uploadError) {
+  console.error("[ITINERARY-VISUAL] Upload error:", uploadError);
+  return new Response(
+    JSON.stringify({ error: "Upload failed", imageUrl: null }),
+    { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+```
 
 ---
 
-## 2. Téo Lê Mentes (IMPLEMENTADO ✅)
+## Resultado Esperado
 
-### Conceito
-Análise emocional SILENCIOSA das mensagens do cliente para adaptar recomendações automaticamente, sem nunca mencionar a análise.
+- Filenames sem acentos → upload funciona → WhatsApp recebe a imagem do card visual
+- Roteiro enviado apenas UMA vez como texto
+- Card visual do roteiro enviado como imagem antes do texto
+- Sem loops de reenvio
 
-### Implementação (zero novas tabelas)
-Usa a infraestrutura existente de `client_memory.preferences` (JSONB):
-
-**Campos emocionais adicionados:**
-- `tom_emocional`: animado/estressado/cansado/ansioso/empolgado/nostálgico/indeciso/tranquilo/comemorando/preocupado
-- `nivel_energia`: alto/médio/baixo
-- `nivel_estresse`: alto/médio/baixo
-- `momento_vida`: férias/lua-de-mel/aniversário/fuga-da-rotina/trabalho-remoto/família/amigos
-- `historico_emocional`: array com últimas 10 leituras emocionais (para detectar tendências)
-
-**Detecção de sinais:**
-- Estresse: "preciso sair daqui", "to exausto", respostas impacientes
-- Animação: "!!", emojis, "mal posso esperar"
-- Ansiedade: muitas perguntas, "será que...", indecisão
-- Comemoração: "aniversário", "lua de mel", "promoção"
-
-**Adaptação silenciosa (via MEMORY_RULE):**
-- Estressado → Sugere descanso, spas, all-inclusive
-- Animado → Sugere aventura, esportes, destinos vibrantes
-- Indeciso → Limita opções a 2-3, mais assertivo
-- Comemorando → Sugere upgrades, experiências premium
-- NUNCA menciona a análise ao cliente
-
-### Arquivos modificados
-- `supabase/functions/_shared/client-memory.ts`: Extraction prompt, merge logic, format, MEMORY_RULE
