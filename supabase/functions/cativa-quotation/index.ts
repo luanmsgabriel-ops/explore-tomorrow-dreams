@@ -115,27 +115,38 @@ async function authenticate(): Promise<string> {
   }
 
   console.log("[CATIVA] Authenticating with Infotravel API...");
+  console.log("[CATIVA] Auth URL:", `${INFOTRAVEL_API}/authenticate`);
+  console.log("[CATIVA] Has username:", !!INFOTRAVEL_USERNAME, "length:", INFOTRAVEL_USERNAME?.length);
+  console.log("[CATIVA] Has password:", !!INFOTRAVEL_PASSWORD, "length:", INFOTRAVEL_PASSWORD?.length);
+  console.log("[CATIVA] Has client:", !!INFOTRAVEL_CLIENT, "client value:", INFOTRAVEL_CLIENT);
+  console.log("[CATIVA] Has agency:", !!INFOTRAVEL_AGENCY, "agency value:", INFOTRAVEL_AGENCY);
+
+  const authBody = {
+    username: INFOTRAVEL_USERNAME,
+    password: INFOTRAVEL_PASSWORD,
+    client: INFOTRAVEL_CLIENT,
+    agency: INFOTRAVEL_AGENCY,
+  };
+  console.log("[CATIVA] Auth body keys:", Object.keys(authBody));
+
   const response = await fetch(`${INFOTRAVEL_API}/authenticate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      username: INFOTRAVEL_USERNAME,
-      password: INFOTRAVEL_PASSWORD,
-      client: INFOTRAVEL_CLIENT,
-      agency: INFOTRAVEL_AGENCY,
-    }),
+    body: JSON.stringify(authBody),
   });
 
   if (!response.ok) {
     const errText = await response.text();
     console.error("[CATIVA] Auth failed:", response.status, errText);
+    // Log username hint for debugging (first 3 chars only)
+    console.error("[CATIVA] Username starts with:", INFOTRAVEL_USERNAME?.substring(0, 3));
     throw new Error(`Infotravel auth failed: ${response.status}`);
   }
 
   const data = await response.json();
-  cachedToken = data.accessToken;
-  tokenExpiry = Date.now() + (data.expire_seconds || 500) * 1000;
-  console.log("[CATIVA] Authenticated successfully, token expires in", data.expire_seconds, "s");
+  cachedToken = data.accessToken || data.access_token || data.token;
+  tokenExpiry = Date.now() + (data.expire_seconds || data.expiresIn || 500) * 1000;
+  console.log("[CATIVA] Authenticated successfully, token expires in", data.expire_seconds || data.expiresIn, "s");
   return cachedToken!;
 }
 
