@@ -3270,6 +3270,235 @@ REGRAS:
         }
       }
 
+        // ===== GROUP COMPATIBILITY PANEL (DNA cruzado) =====
+        const groupCompatRegex = /^(compatibilidade grupo|dna grupo|mapa do grupo|group compatibility|group dna)$/i;
+        if (groupCompatRegex.test(lowerMsgGroup)) {
+          const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          const { data: memberOf } = await supabase
+            .from("travel_group_members")
+            .select("group_id")
+            .eq("phone_number", phoneNumber);
+
+          if (!memberOf?.length) {
+            await sendWhatsAppMessage(phoneNumber, "❌ Você não faz parte de nenhum grupo de viagem.\n\nPara criar um, mande: *criar grupo*");
+            return new Response(JSON.stringify({ status: "ok", no_group: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          const groupId = memberOf[0].group_id;
+          const { data: group } = await supabase.from("travel_groups").select("*").eq("id", groupId).single();
+          const { data: allMembers } = await supabase.from("travel_group_members").select("*").eq("group_id", groupId);
+
+          if (!group || !allMembers || allMembers.length < 2) {
+            await sendWhatsAppMessage(phoneNumber, "⚠️ O grupo precisa ter pelo menos 2 membros para gerar o mapa de compatibilidade.");
+            return new Response(JSON.stringify({ status: "ok", group_too_small: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          const membersWithDna: Array<{ name: string; phone: string; dna: any; prefs: any }> = [];
+          for (const m of allMembers) {
+            const { data: memory } = await supabase
+              .from("client_memory")
+              .select("preferences, client_name")
+              .eq("whatsapp", m.phone_number)
+              .maybeSingle();
+
+            const dna = (memory?.preferences as any)?.dna_viajante || null;
+            membersWithDna.push({
+              name: m.member_name || memory?.client_name || m.phone_number,
+              phone: m.phone_number,
+              dna,
+              prefs: m.preferences || {},
+            });
+          }
+
+          await sendWhatsAppMessage(phoneNumber, "🧬 *Analisando DNAs do grupo...*\nIsso pode levar alguns segundos! ⏳");
+
+          const membersInfo = membersWithDna.map(m => {
+            const dnaStr = m.dna
+              ? `DNA: 🏔️Explorador ${m.dna.explorador || 0}% | 🏛️Culturalista ${m.dna.culturalista || 0}% | 🍽️Gourmet ${m.dna.gourmet || 0}% | 🧘Zen ${m.dna.zen || 0}% | 🎉Socialite ${m.dna.socialite || 0}%`
+              : `DNA: não fez o teste. Preferências: estilo=${m.prefs.estilo || "?"}, clima=${m.prefs.clima || "?"}`;
+            return `- *${m.name}*: ${dnaStr}`;
+          }).join("\n");
+
+          const compatPrompt = `Você é um especialista em compatibilidade de viagens da Tomorrow Travel.
+
+MEMBROS DO GRUPO "${group.group_code}" (${membersWithDna.length} pessoas):
+${membersInfo}
+
+GERE:
+
+1. 📊 *MATRIZ DE COMPATIBILIDADE*
+Para CADA PAR de membros, calcule um score de 0-100% e uma breve justificativa.
+Formato: 👫 *Nome1 × Nome2*: XX% — "justificativa curta"
+
+2. 🧬 *DNA COLETIVO DO GRUPO*
+Calcule a média ponderada dos perfis e apresente o "DNA do grupo" com as 5 categorias.
+
+3. ⚡ *PONTOS DE CONFLITO*
+Identifique onde há divergência forte.
+
+4. 🤝 *PONTOS DE CONVERGÊNCIA*
+O que todo mundo tem em comum.
+
+5. 🏆 *TOP 3 DESTINOS IDEAIS*
+Destinos que maximizam a compatibilidade do grupo, com score.
+
+REGRAS:
+- Formato WhatsApp com *negrito* e emojis
+- Máximo 3500 caracteres
+- Se alguém não fez o DNA, use as preferências do questionário grupal
+- Destinos REAIS e específicos
+- No final: "Quer que eu cote algum desses destinos? 😊✈️"`;
+
+          try {
+            const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash",
+                messages: [
+                  { role: "system", content: compatPrompt },
+                  { role: "user", content: "Gere o painel completo de compatibilidade do grupo." },
+                ],
+                max_tokens: 4000,
+              }),
+            });
+
+            if (!response.ok) {
+              await sendWhatsAppMessage(phoneNumber, "😅 Erro ao gerar o painel. Tente novamente!");
+            } else {
+              const data = await response.json();
+              const result = data.choices?.[0]?.message?.content || "Não consegui gerar o painel.";
+              const header = `🧬 *Painel de Compatibilidade — Grupo ${group.group_code}* 🎯\n\n`;
+              if ((header + result).length > 4000) {
+                const mid = result.lastIndexOf("\n", 3500);
+                await sendWhatsAppMessage(phoneNumber, header + result.substring(0, mid > 0 ? mid : 3500));
+                await sendWhatsAppMessage(phoneNumber, result.substring(mid > 0 ? mid : 3500));
+              } else {
+                await sendWhatsAppMessage(phoneNumber, header + result);
+              }
+            }
+          } catch (err) {
+            console.error("[GROUP-COMPAT] Error:", err);
+            await sendWhatsAppMessage(phoneNumber, "😅 Erro ao processar. Tente novamente!");
+          }
+
+          return new Response(JSON.stringify({ status: "ok", group_compat: true }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // ===== ANONYMOUS MEDIATOR CHAT =====
+        const mediatorActivateRegex = /^(mediador|modo mediador|mediator|ativar mediador|chat anonimo|chat anônimo)$/i;
+        const mediatorDeactivateRegex = /^(sair mediador|desativar mediador|sair do mediador)$/i;
+        const anonMsgRegex = /^mensagem\s+an[oô]nima\s+(.+)$/is;
+
+        if (mediatorActivateRegex.test(lowerMsgGroup)) {
+          const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          const { data: memberOf } = await supabase
+            .from("travel_group_members")
+            .select("group_id")
+            .eq("phone_number", phoneNumber);
+
+          if (!memberOf?.length) {
+            await sendWhatsAppMessage(phoneNumber, "❌ Você precisa estar em um grupo para usar o mediador.\n\nCrie um com: *criar grupo*");
+            return new Response(JSON.stringify({ status: "ok", no_group: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          const groupId = memberOf[0].group_id;
+          const { data: group } = await supabase.from("travel_groups").select("group_code").eq("id", groupId).single();
+
+          if (savedConv) {
+            const existingData = (savedConv.collected_data as Record<string, any>) || {};
+            await supabase.from("whatsapp_conversations").update({
+              collected_data: { ...existingData, _mediator_mode: true, _mediator_group_id: groupId },
+            }).eq("id", savedConv.id);
+          }
+
+          const activateMsg = `🎭 *Modo Mediador Ativado — Grupo ${group?.group_code}*\n\nAgora você pode enviar mensagens anônimas para o grupo!\n\nComo usar:\n👉 *mensagem anonima* seguido do texto\n\nExemplo:\n_mensagem anonima Acho que o orçamento tá alto_\n\nO Téo repassa para todos sem revelar quem mandou. 🤫\n\nPara sair: *sair mediador*`;
+          await sendWhatsAppMessage(phoneNumber, activateMsg);
+
+          return new Response(JSON.stringify({ status: "ok", mediator_activated: true }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        if (mediatorDeactivateRegex.test(lowerMsgGroup)) {
+          const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+          if (savedConv) {
+            const existingData = (savedConv.collected_data as Record<string, any>) || {};
+            delete existingData._mediator_mode;
+            delete existingData._mediator_group_id;
+            await supabase.from("whatsapp_conversations").update({
+              collected_data: existingData,
+            }).eq("id", savedConv.id);
+          }
+
+          await sendWhatsAppMessage(phoneNumber, "✅ Modo Mediador desativado! Voltei ao modo normal. 😊");
+          return new Response(JSON.stringify({ status: "ok", mediator_deactivated: true }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const anonMatch = (messageText || "").match(anonMsgRegex);
+        if (anonMatch) {
+          const anonContent = anonMatch[1].trim();
+          await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          const { data: memberOf } = await supabase
+            .from("travel_group_members")
+            .select("group_id")
+            .eq("phone_number", phoneNumber);
+
+          if (!memberOf?.length) {
+            await sendWhatsAppMessage(phoneNumber, "❌ Você precisa estar em um grupo para enviar mensagens anônimas.");
+            return new Response(JSON.stringify({ status: "ok", no_group: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          const groupId = memberOf[0].group_id;
+          const { data: group } = await supabase.from("travel_groups").select("group_code").eq("id", groupId).single();
+          const { data: allMembers } = await supabase.from("travel_group_members").select("phone_number, member_name").eq("group_id", groupId);
+
+          if (!allMembers || allMembers.length < 2) {
+            await sendWhatsAppMessage(phoneNumber, "⚠️ O grupo precisa ter pelo menos 2 membros.");
+            return new Response(JSON.stringify({ status: "ok", group_too_small: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          const anonMsg = `🎭 *Mensagem Anônima*\n*Grupo ${group?.group_code || "?"}*\n\n💬 _"${anonContent}"_\n\n_Para responder anonimamente: mensagem anonima [texto]_`;
+          let sentCount = 0;
+          for (const m of allMembers) {
+            if (m.phone_number === phoneNumber) continue;
+            try {
+              await sendWhatsAppMessage(m.phone_number, anonMsg);
+              sentCount++;
+              await new Promise(r => setTimeout(r, 500));
+            } catch (err) {
+              console.error(`[MEDIATOR] Error sending to ${m.phone_number}:`, err);
+            }
+          }
+
+          await sendWhatsAppMessage(phoneNumber, `✅ Sua mensagem anônima foi enviada para *${sentCount}* membro(s) do grupo! 🤫`);
+
+          return new Response(JSON.stringify({ status: "ok", anon_msg_sent: true, recipients: sentCount }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
       // ========== TÉO DNA DE VIAJANTE: Deep Traveler Genetic Profile ==========
       {
         const lowerMsgDna = (messageText || "").toLowerCase().trim();
