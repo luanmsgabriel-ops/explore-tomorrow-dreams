@@ -275,16 +275,38 @@ async function executeAdminAction(action: any): Promise<any> {
         .eq("id", quoteId);
       
       try {
-        await fetch(`${SUPABASE_URL}/functions/v1/process-quote`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          },
-          body: JSON.stringify({ record: { ...quote, status: "pending" } }),
+        // Use Cativa/Infotravel API directly instead of Manus
+        const result = await requestQuotation({
+          origem: quote.origin,
+          destino: quote.destination,
+          data_ida: quote.raw_request?.data_ida || quote.departure_date,
+          data_volta: quote.raw_request?.data_volta || quote.return_date,
+          adultos: quote.adults || 1,
+          criancas: quote.children || 0,
+          idades_criancas: quote.children_ages || [],
         });
+        
+        if (result.status === "success" && result.data?.resultados?.length > 0) {
+          await supabase.from("travel_quote_requests").update({
+            status: "completed",
+            processed_at: new Date().toISOString(),
+            processing_details: result.data,
+          }).eq("id", quoteId);
+          
+          // Send results via WhatsApp if phone available
+          if (quote.phone_number) {
+            const msg = formatQuotationResults(result.data);
+            await sendWhatsAppMessage(quote.phone_number, msg);
+          }
+        } else {
+          await supabase.from("travel_quote_requests").update({
+            status: "failed",
+            error_message: "Nenhum resultado encontrado na API",
+            processed_at: new Date().toISOString(),
+          }).eq("id", quoteId);
+        }
       } catch (e) {
-        console.error("[ADMIN] Process quote call error:", e);
+        console.error("[ADMIN] Cativa quotation error:", e);
       }
       
       return { success: true, message: `Cotação ${quoteId} enviada para processamento` };

@@ -1,0 +1,1 @@
+DROP TRIGGER IF EXISTS on_new_quote_trigger ON public.travel_quote_requests;
