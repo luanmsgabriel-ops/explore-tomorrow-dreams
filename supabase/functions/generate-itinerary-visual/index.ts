@@ -29,21 +29,19 @@ serve(async (req) => {
     // Determine color theme based on destination keywords
     const destLower = destination.toLowerCase();
     let colorTheme = "deep navy blue (#1a1f3a) and gold (#d4a853)"; // default
-    let bgStyle = "luxury city skyline at golden hour";
     
-    if (/praia|beach|maldiv|carib|cancun|punta|bali|noronha|litoral|ilha|island|costa|riviera|mar|ocean|cabo|aruba|cura[çc]ao/.test(destLower)) {
+    if (/praia|beach|maldiv|carib|cancun|punta|bali|noronha|litoral|ilha|island|costa|riviera|mar|ocean|cabo|aruba|cura[çc]ao|san andr[eé]s/.test(destLower)) {
       colorTheme = "deep ocean blue (#0a3d62) and turquoise (#38ada9) with white accents";
-      bgStyle = "pristine tropical beach with crystal clear turquoise water";
     } else if (/floresta|selva|jungle|amazon|chapada|bonito|foz|catarat|parque|serra|montanha|patagonia|torres|iguaçu/.test(destLower)) {
       colorTheme = "deep emerald green (#0a6332) and warm amber (#d4a853) with earth tones";
-      bgStyle = "lush green rainforest with dramatic waterfalls";
     } else if (/histori|colonial|ouro preto|roma|paris|lisboa|london|florença|atenas|cairo|petra|machu|cusco/.test(destLower)) {
       colorTheme = "warm gold (#b8860b) and burgundy (#800020) with cream accents";
-      bgStyle = "ancient historic architecture at sunset with warm golden light";
     } else if (/neve|ski|alpes|aspen|whistler|suíça|switzerland|iceland|islândia|lapland|noruega/.test(destLower)) {
       colorTheme = "icy blue (#4a90d9) and silver (#c0c0c0) with white accents";
-      bgStyle = "snow-capped mountains with northern lights";
     }
+
+    // Always use the actual destination name for the background photo
+    const bgStyle = `iconic and recognizable landscape or landmark of ${destination}, real photography style`;
 
     // Build structured day content for the prompt
     let daysContent = "";
