@@ -3966,10 +3966,14 @@ REGRAS:
                     .eq("group_id", groupId)
                     .eq("phone_number", phoneNumber);
 
-                  // Clear group mode
+                  // Clear ALL group mode flags to prevent context pollution
                   const cleanData = { ...gData };
                   delete cleanData._group_mode;
                   delete cleanData._group_step;
+                  delete cleanData._group_id;
+                  delete cleanData._group_name;
+                  delete cleanData._group_expected;
+                  delete cleanData._active_groups;
                   await supabase.from("whatsapp_conversations").update({
                     collected_data: cleanData,
                   }).eq("id", convForGroup.id);
