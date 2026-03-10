@@ -3221,7 +3221,7 @@ REGRAS:
             } else {
               // No active groups — proceed to setup_name directly
               await supabase.from("whatsapp_conversations").update({
-                collected_data: { ...existingData, _group_mode: "setup_name" },
+                collected_data: { ...existingData, _group_mode: "setup_name", _mode_activated_at: new Date().toISOString() },
               }).eq("id", savedConv.id);
 
               const askNameMsg = "🎉 *Modo Galera ativado!*\n\nVamos montar o grupo de viagem perfeito! 🌍\n\n📝 *Como quer chamar o grupo?*\n\n(Ex: Viagem da Galera, Férias 2026, Amigos SP...)";
