@@ -2903,7 +2903,7 @@ serve(async (req) => {
           if (savedConvC) {
             const existingData = (savedConvC.collected_data as Record<string, any>) || {};
             await supabase.from("whatsapp_conversations").update({
-              collected_data: { ...existingData, _chef_mode: true },
+              collected_data: { ...existingData, _chef_mode: true, _mode_activated_at: new Date().toISOString() },
             }).eq("id", savedConvC.id);
 
             const activationMsg = "👨‍🍳 *Modo Chef Ativado!*\n\nAgora é só mandar uma *foto do cardápio* que eu traduzo tudo pra você! 📸\n\n📋 Tradução dos pratos\n🥗 Ingredientes principais\n⚠️ Alertas de alergênicos\n⭐ Recomendação de melhor custo-benefício\n\nPra sair do modo chef, mande: *sair chef*";
