@@ -4442,19 +4442,7 @@ REGRAS:
                     await sendWhatsAppMessage(phoneNumber, dnaResult);
                   }
 
-                  // Save to conversation history
-                  const { data: convAfterDna } = await supabase
-                    .from("whatsapp_conversations")
-                    .select("id, messages_history")
-                    .eq("id", convForDna.id)
-                    .single();
-                  if (convAfterDna) {
-                    const updH = [
-                      ...((convAfterDna.messages_history as any[]) || []),
-                      { role: "assistant", content: `🧬 ${dnaResult}`, timestamp: new Date().toISOString() },
-                    ];
-                    await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterDna.id);
-                  }
+                  // Mode messages NOT saved to messages_history to keep main context clean
                 }
 
                 return new Response(JSON.stringify({ status: "ok", dna_questionnaire: step }), {
