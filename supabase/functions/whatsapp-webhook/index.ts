@@ -2644,17 +2644,13 @@ serve(async (req) => {
           if (savedConvT) {
             const existingData = (savedConvT.collected_data as Record<string, any>) || {};
             await supabase.from("whatsapp_conversations").update({
-              collected_data: { ...existingData, _translator_mode: true, _translator_target_lang: targetLang },
+              collected_data: { ...existingData, _translator_mode: true, _translator_target_lang: targetLang, _mode_activated_at: new Date().toISOString() },
             }).eq("id", savedConvT.id);
 
             const activationMsg = `🌐 *Modo Tradutor Universal Ativado!*\n🎯 Idioma alvo: *${targetLang}*\n\nAgora você pode mandar:\n📝 *Texto* — traduzo na hora\n🎙️ *Áudio* — transcrevo e traduzo\n📸 *Foto* — leio placas, avisos e traduzo\n\n💡 Incluo contexto cultural quando relevante!\n\nPra sair: *sair tradutor*\nPra mudar idioma: *tradutor para [idioma]*`;
             await sendWhatsAppMessage(phoneNumber, activationMsg);
 
-            const updH = [
-              ...((savedConvT.messages_history as any[]) || []),
-              { role: "assistant", content: activationMsg, timestamp: new Date().toISOString() },
-            ];
-            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConvT.id);
+            // Mode messages NOT saved to messages_history to keep main context clean
           }
           return new Response(JSON.stringify({ status: "ok", translator_activated: true, target_lang: targetLang }), {
             status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -2666,17 +2662,13 @@ serve(async (req) => {
           if (savedConvT) {
             const existingData = (savedConvT.collected_data as Record<string, any>) || {};
             await supabase.from("whatsapp_conversations").update({
-              collected_data: { ...existingData, _translator_mode: true, _translator_target_lang: null },
+              collected_data: { ...existingData, _translator_mode: true, _translator_target_lang: null, _mode_activated_at: new Date().toISOString() },
             }).eq("id", savedConvT.id);
 
             const activationMsg = "🌐 *Modo Tradutor Universal Ativado!*\n\nAgora você pode mandar:\n📝 *Texto* — traduzo na hora\n🎙️ *Áudio* — transcrevo e traduzo\n📸 *Foto de placa/aviso* — leio o texto e traduzo\n\n🔄 Auto-detecta o idioma:\n🇧🇷 Português → 🇺🇸 Inglês\n🇺🇸🇪🇸🇫🇷🇮🇹🇩🇪🇯🇵 Qualquer idioma → 🇧🇷 Português\n\n💡 Dica: mande *tradutor para japonês* pra definir um idioma alvo específico!\n\nPra sair: *sair tradutor*";
             await sendWhatsAppMessage(phoneNumber, activationMsg);
 
-            const updH = [
-              ...((savedConvT.messages_history as any[]) || []),
-              { role: "assistant", content: activationMsg, timestamp: new Date().toISOString() },
-            ];
-            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConvT.id);
+            // Mode messages NOT saved to messages_history to keep main context clean
           }
           return new Response(JSON.stringify({ status: "ok", translator_activated: true }), {
             status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -2694,11 +2686,7 @@ serve(async (req) => {
             const deactivationMsg = "✅ Modo Tradutor desativado! Voltei ao modo normal. 😊\n\nSe precisar traduzir de novo, é só mandar *tradutor*!";
             await sendWhatsAppMessage(phoneNumber, deactivationMsg);
 
-            const updH = [
-              ...((savedConvT.messages_history as any[]) || []),
-              { role: "assistant", content: deactivationMsg, timestamp: new Date().toISOString() },
-            ];
-            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConvT.id);
+            // Mode messages NOT saved to messages_history to keep main context clean
           }
           return new Response(JSON.stringify({ status: "ok", translator_deactivated: true }), {
             status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -2757,20 +2745,9 @@ serve(async (req) => {
               await sendWhatsAppMessage(phoneNumber, resultMsg);
             }
 
-            // Save to history
-            const { data: convAfterImg } = await supabase
-              .from("whatsapp_conversations")
-              .select("id, messages_history")
-              .eq("id", convForT.id)
-              .single();
-
-            if (convAfterImg) {
-              const updH = [
-                ...((convAfterImg.messages_history as any[]) || []),
-                { role: "assistant", content: `🌐📸 ${resultMsg}`, timestamp: new Date().toISOString() },
-              ];
-              await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterImg.id);
-            }
+            // Mode messages NOT saved to messages_history to keep main context clean
+            // Reset timer
+            await supabase.from("whatsapp_conversations").update({ collected_data: { ...tData, _mode_activated_at: new Date().toISOString() } }).eq("id", convForT.id);
 
             return new Response(JSON.stringify({ status: "ok", translator_image: true }), {
               status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -2825,20 +2802,9 @@ serve(async (req) => {
               await sendWhatsAppAudio(phoneNumber, translatedAudioUrl);
             }
 
-            // Save to history
-            const { data: convAfterT } = await supabase
-              .from("whatsapp_conversations")
-              .select("id, messages_history")
-              .eq("id", convForT.id)
-              .single();
-
-            if (convAfterT) {
-              const updH = [
-                ...((convAfterT.messages_history as any[]) || []),
-                { role: "assistant", content: `🌐 ${textMsg}`, timestamp: new Date().toISOString() },
-              ];
-              await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterT.id);
-            }
+            // Mode messages NOT saved to messages_history to keep main context clean
+            // Reset timer
+            await supabase.from("whatsapp_conversations").update({ collected_data: { ...tData, _mode_activated_at: new Date().toISOString() } }).eq("id", convForT.id);
 
             console.log(`[TRANSLATOR] Done: ${translation.source_lang} → ${translation.target_lang}`);
             return new Response(JSON.stringify({ status: "ok", translator_translated: true }), {
@@ -2869,20 +2835,9 @@ serve(async (req) => {
 
             await sendWhatsAppMessage(phoneNumber, textMsg);
 
-            // Save to history
-            const { data: convAfterTxt } = await supabase
-              .from("whatsapp_conversations")
-              .select("id, messages_history")
-              .eq("id", convForT.id)
-              .single();
-
-            if (convAfterTxt) {
-              const updH = [
-                ...((convAfterTxt.messages_history as any[]) || []),
-                { role: "assistant", content: `🌐 ${textMsg}`, timestamp: new Date().toISOString() },
-              ];
-              await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterTxt.id);
-            }
+            // Mode messages NOT saved to messages_history to keep main context clean
+            // Reset timer
+            await supabase.from("whatsapp_conversations").update({ collected_data: { ...tData, _mode_activated_at: new Date().toISOString() } }).eq("id", convForT.id);
 
             console.log(`[TRANSLATOR] Text done: ${translation.source_lang} → ${translation.target_lang}`);
             return new Response(JSON.stringify({ status: "ok", translator_text: true }), {
@@ -2903,17 +2858,13 @@ serve(async (req) => {
           if (savedConvC) {
             const existingData = (savedConvC.collected_data as Record<string, any>) || {};
             await supabase.from("whatsapp_conversations").update({
-              collected_data: { ...existingData, _chef_mode: true },
+              collected_data: { ...existingData, _chef_mode: true, _mode_activated_at: new Date().toISOString() },
             }).eq("id", savedConvC.id);
 
             const activationMsg = "👨‍🍳 *Modo Chef Ativado!*\n\nAgora é só mandar uma *foto do cardápio* que eu traduzo tudo pra você! 📸\n\n📋 Tradução dos pratos\n🥗 Ingredientes principais\n⚠️ Alertas de alergênicos\n⭐ Recomendação de melhor custo-benefício\n\nPra sair do modo chef, mande: *sair chef*";
             await sendWhatsAppMessage(phoneNumber, activationMsg);
 
-            const updH = [
-              ...((savedConvC.messages_history as any[]) || []),
-              { role: "assistant", content: activationMsg, timestamp: new Date().toISOString() },
-            ];
-            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConvC.id);
+            // Mode messages NOT saved to messages_history to keep main context clean
           }
           return new Response(JSON.stringify({ status: "ok", chef_mode_activated: true }), {
             status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -2931,11 +2882,7 @@ serve(async (req) => {
             const deactivationMsg = "✅ Modo Chef desativado! Voltei ao modo normal. 😊\n\nSe precisar traduzir outro cardápio, é só mandar *chef*!";
             await sendWhatsAppMessage(phoneNumber, deactivationMsg);
 
-            const updH = [
-              ...((savedConvC.messages_history as any[]) || []),
-              { role: "assistant", content: deactivationMsg, timestamp: new Date().toISOString() },
-            ];
-            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConvC.id);
+            // Mode messages NOT saved to messages_history to keep main context clean
           }
           return new Response(JSON.stringify({ status: "ok", chef_mode_deactivated: true }), {
             status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -3023,14 +2970,10 @@ serve(async (req) => {
                 .single();
 
               if (convAfterChef) {
-                const updH = [
-                  ...((convAfterChef.messages_history as any[]) || []),
-                  { role: "assistant", content: `👨‍🍳 ${analysisResult}`, timestamp: new Date().toISOString() },
-                ];
+                // Mode messages NOT saved to messages_history to keep main context clean
                 const existingChefData = (convAfterChef as any).collected_data || chefData || {};
                 await supabase.from("whatsapp_conversations").update({ 
-                  messages_history: updH,
-                  collected_data: { ...existingChefData, _chef_mode: true, _chef_menu_analysis: analysisResult },
+                  collected_data: { ...existingChefData, _chef_mode: true, _chef_menu_analysis: analysisResult, _mode_activated_at: new Date().toISOString() },
                 }).eq("id", convAfterChef.id);
               }
             } catch (chefErr) {
@@ -3209,28 +3152,21 @@ REGRAS:
                   ...existingData, 
                   _group_mode: "choose_existing_or_new",
                   _active_groups: activeGroups.map(g => ({ id: g.id, code: g.group_code, name: g.group_name })),
+                  _mode_activated_at: new Date().toISOString(),
                 },
               }).eq("id", savedConv.id);
 
-              const updH = [
-                ...((savedConv.messages_history as any[]) || []),
-                { role: "assistant", content: groupListMsg, timestamp: new Date().toISOString() },
-              ];
-              await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConv.id);
+              // Mode messages NOT saved to messages_history to keep main context clean
             } else {
               // No active groups — proceed to setup_name directly
               await supabase.from("whatsapp_conversations").update({
-                collected_data: { ...existingData, _group_mode: "setup_name" },
+                collected_data: { ...existingData, _group_mode: "setup_name", _mode_activated_at: new Date().toISOString() },
               }).eq("id", savedConv.id);
 
               const askNameMsg = "🎉 *Modo Galera ativado!*\n\nVamos montar o grupo de viagem perfeito! 🌍\n\n📝 *Como quer chamar o grupo?*\n\n(Ex: Viagem da Galera, Férias 2026, Amigos SP...)";
               await sendWhatsAppMessage(phoneNumber, askNameMsg);
 
-              const updH = [
-                ...((savedConv.messages_history as any[]) || []),
-                { role: "assistant", content: askNameMsg, timestamp: new Date().toISOString() },
-              ];
-              await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConv.id);
+              // Mode messages NOT saved to messages_history to keep main context clean
             }
           }
 
@@ -3293,14 +3229,10 @@ REGRAS:
           if (savedConv) {
             const existingData = (savedConv.collected_data as Record<string, any>) || {};
             await supabase.from("whatsapp_conversations").update({
-              collected_data: { ...existingData, _group_mode: "questioning", _group_id: group.id, _group_step: 1 },
+              collected_data: { ...existingData, _group_mode: "questioning", _group_id: group.id, _group_step: 1, _mode_activated_at: new Date().toISOString() },
             }).eq("id", savedConv.id);
 
-            const updH = [
-              ...((savedConv.messages_history as any[]) || []),
-              { role: "assistant", content: joinMsg, timestamp: new Date().toISOString() },
-            ];
-            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConv.id);
+            // Mode messages NOT saved to messages_history to keep main context clean
           }
 
           // Send first question
@@ -3914,7 +3846,7 @@ REGRAS:
 
               if (isYes) {
                 await supabase.from("whatsapp_conversations").update({
-                  collected_data: { ...gData, _group_mode: "questioning", _group_step: 1 },
+                  collected_data: { ...gData, _group_mode: "questioning", _group_step: 1, _mode_activated_at: new Date().toISOString() },
                 }).eq("id", convForGroup.id);
 
                 await sendWhatsAppMessage(phoneNumber, "🚀 *Vamos lá!* Vou te fazer 12 perguntas rápidas para encontrar o destino perfeito pro grupo!\n\n");
@@ -3962,7 +3894,7 @@ REGRAS:
                 if (step < 12) {
                   const nextStep = step + 1;
                   await supabase.from("whatsapp_conversations").update({
-                    collected_data: { ...gData, _group_step: nextStep },
+                    collected_data: { ...gData, _group_step: nextStep, _mode_activated_at: new Date().toISOString() },
                   }).eq("id", convForGroup.id);
 
                   await sendWhatsAppMessage(phoneNumber, GROUP_QUESTIONS[nextStep - 1]);
@@ -4391,14 +4323,10 @@ REGRAS:
           if (savedConv) {
             const existingData = (savedConv.collected_data as Record<string, any>) || {};
             await supabase.from("whatsapp_conversations").update({
-              collected_data: { ...existingData, _dna_mode: "questioning", _dna_step: 1, _dna_answers: [] },
+              collected_data: { ...existingData, _dna_mode: "questioning", _dna_step: 1, _dna_answers: [], _mode_activated_at: new Date().toISOString() },
             }).eq("id", savedConv.id);
 
-            const updH = [
-              ...((savedConv.messages_history as any[]) || []),
-              { role: "assistant", content: DNA_QUESTIONS[0], timestamp: new Date().toISOString() },
-            ];
-            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConv.id);
+            // Mode messages NOT saved to messages_history to keep main context clean
           }
 
           await sendWhatsAppMessage(phoneNumber, DNA_QUESTIONS[0]);
@@ -4433,7 +4361,7 @@ REGRAS:
                   // Next question
                   const nextStep = step + 1;
                   await supabase.from("whatsapp_conversations").update({
-                    collected_data: { ...dnaData, _dna_step: nextStep, _dna_answers: answers },
+                    collected_data: { ...dnaData, _dna_step: nextStep, _dna_answers: answers, _mode_activated_at: new Date().toISOString() },
                   }).eq("id", convForDna.id);
 
                   await sendWhatsAppMessage(phoneNumber, DNA_QUESTIONS[nextStep - 1]);
@@ -4514,19 +4442,7 @@ REGRAS:
                     await sendWhatsAppMessage(phoneNumber, dnaResult);
                   }
 
-                  // Save to conversation history
-                  const { data: convAfterDna } = await supabase
-                    .from("whatsapp_conversations")
-                    .select("id, messages_history")
-                    .eq("id", convForDna.id)
-                    .single();
-                  if (convAfterDna) {
-                    const updH = [
-                      ...((convAfterDna.messages_history as any[]) || []),
-                      { role: "assistant", content: `🧬 ${dnaResult}`, timestamp: new Date().toISOString() },
-                    ];
-                    await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterDna.id);
-                  }
+                  // Mode messages NOT saved to messages_history to keep main context clean
                 }
 
                 return new Response(JSON.stringify({ status: "ok", dna_questionnaire: step }), {
@@ -4740,21 +4656,7 @@ REGRAS:
                 await sendWhatsAppMessage(phoneNumber, compatResult);
               }
 
-              // Save to conversation history
-              if (savedConv) {
-                const { data: convAfterCompat } = await supabase
-                  .from("whatsapp_conversations")
-                  .select("id, messages_history")
-                  .eq("id", savedConv.id)
-                  .single();
-                if (convAfterCompat) {
-                  const updH = [
-                    ...((convAfterCompat.messages_history as any[]) || []),
-                    { role: "assistant", content: `💞 ${compatResult}`, timestamp: new Date().toISOString() },
-                  ];
-                  await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterCompat.id);
-                }
-              }
+              // One-shot mode — not saved to messages_history to keep main context clean
 
             } catch (err) {
               console.error("[COMPAT] Error:", err);
@@ -5021,21 +4923,7 @@ REGRAS CRÍTICAS:
               }
             }
 
-            // Save to conversation history
-            if (savedConv) {
-              const { data: convAfterSos } = await supabase
-                .from("whatsapp_conversations")
-                .select("id, messages_history")
-                .eq("id", savedConv.id)
-                .single();
-              if (convAfterSos) {
-                const updH = [
-                  ...((convAfterSos.messages_history as any[]) || []),
-                  { role: "assistant", content: `🆘 SOS ${destinationContext || ""}`, timestamp: new Date().toISOString() },
-                ];
-                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterSos.id);
-              }
-            }
+            // One-shot mode — not saved to messages_history to keep main context clean
 
           } catch (err) {
             console.error("[SOS] Error:", err);
@@ -5220,21 +5108,7 @@ IMPORTANTE:
               console.error("[PLAYLIST] Memory save error:", memErr);
             }
 
-            // Save to conversation history
-            if (savedConv) {
-              const { data: convAfterPlaylist } = await supabase
-                .from("whatsapp_conversations")
-                .select("id, messages_history")
-                .eq("id", savedConv.id)
-                .single();
-              if (convAfterPlaylist) {
-                const updH = [
-                  ...((convAfterPlaylist.messages_history as any[]) || []),
-                  { role: "assistant", content: `🎵 ${playlistResult}`, timestamp: new Date().toISOString() },
-                ];
-                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterPlaylist.id);
-              }
-            }
+            // One-shot mode — not saved to messages_history to keep main context clean
 
             console.log(`[PLAYLIST] Generated for ${phoneNumber}, destination: ${destinationHint || "universal"}`);
           } catch (err) {
@@ -5378,21 +5252,16 @@ ${spinsUsed > 0 ? `\nEsta é a ${spinsUsed + 1}ª girada. Escolha um destino DIF
 
             await sendWhatsAppMessage(phoneNumber, roletaResult);
 
-            // Update spin count
+            // Update spin count only — mode messages NOT saved to messages_history
             if (savedConv) {
               const { data: convAfterRoleta } = await supabase
                 .from("whatsapp_conversations")
-                .select("id, messages_history, collected_data")
+                .select("id, collected_data")
                 .eq("id", savedConv.id)
                 .single();
               if (convAfterRoleta) {
                 const cd = (convAfterRoleta.collected_data as Record<string, any>) || {};
-                const updH = [
-                  ...((convAfterRoleta.messages_history as any[]) || []),
-                  { role: "assistant", content: `🎰 ${roletaResult}`, timestamp: new Date().toISOString() },
-                ];
                 await supabase.from("whatsapp_conversations").update({
-                  messages_history: updH,
                   collected_data: { ...cd, _roleta_spins: (cd._roleta_spins || 0) + 1 },
                 }).eq("id", convAfterRoleta.id);
               }
@@ -5610,21 +5479,7 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
               await sendWhatsAppMessage(phoneNumber, oraculoResult);
             }
 
-            // Save to conversation history
-            if (savedConv) {
-              const { data: convAfterOraculo } = await supabase
-                .from("whatsapp_conversations")
-                .select("id, messages_history")
-                .eq("id", savedConv.id)
-                .single();
-              if (convAfterOraculo) {
-                const updH = [
-                  ...((convAfterOraculo.messages_history as any[]) || []),
-                  { role: "assistant", content: `🔮 ${oraculoResult}`, timestamp: new Date().toISOString() },
-                ];
-                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterOraculo.id);
-              }
-            }
+            // One-shot mode — not saved to messages_history to keep main context clean
 
             // Save to client memory
             try {
@@ -6314,21 +6169,7 @@ REGRAS:
               console.error("[VIDENTE] Memory save error:", memErr);
             }
 
-            // Save to conversation history
-            if (savedConv) {
-              const { data: convAfterVidente } = await supabase
-                .from("whatsapp_conversations")
-                .select("id, messages_history")
-                .eq("id", savedConv.id)
-                .single();
-              if (convAfterVidente) {
-                const updH = [
-                  ...((convAfterVidente.messages_history as any[]) || []),
-                  { role: "assistant", content: `🔮 ${videnteResult}`, timestamp: new Date().toISOString() },
-                ];
-                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterVidente.id);
-              }
-            }
+            // Mode messages NOT saved to messages_history to keep main context clean
 
             console.log(`[VIDENTE] Generated for ${phoneNumber}, signo: ${signData.signo}`);
           } catch (err) {
@@ -6341,6 +6182,74 @@ REGRAS:
           });
         }
       }
+
+      // ========== AUTO-DEACTIVATE MODES AFTER 5 MINUTES OF INACTIVITY ==========
+      {
+        const { data: convForTimeout } = await supabase
+          .from("whatsapp_conversations")
+          .select("id, collected_data")
+          .eq("phone_number", phoneNumber)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (convForTimeout) {
+          const td = (convForTimeout.collected_data as Record<string, any>) || {};
+          const modeActivatedAt = td._mode_activated_at;
+          const FIVE_MINUTES = 5 * 60 * 1000;
+
+          if (modeActivatedAt && (Date.now() - new Date(modeActivatedAt).getTime()) > FIVE_MINUTES) {
+            // Check if any special mode is active (NOT cotacao — cotacao never auto-expires)
+            const hasChef = td._chef_mode === true;
+            const hasTranslator = td._translator_mode === true;
+            const hasGroup = !!td._group_mode;
+            const hasDna = td._dna_mode === "questioning";
+            const hasVidente = td._vidente_waiting_sign === true;
+
+            if (hasChef || hasTranslator || hasGroup || hasDna || hasVidente) {
+              const cleanTd = { ...td };
+
+              if (hasChef) {
+                cleanTd._chef_mode = false;
+                cleanTd._chef_menu_analysis = null;
+              }
+              if (hasTranslator) {
+                cleanTd._translator_mode = false;
+                cleanTd._translator_target_lang = null;
+              }
+              if (hasGroup) {
+                delete cleanTd._group_mode;
+                delete cleanTd._group_id;
+                delete cleanTd._group_step;
+                delete cleanTd._group_name;
+                delete cleanTd._group_expected;
+                delete cleanTd._active_groups;
+              }
+              if (hasDna) {
+                delete cleanTd._dna_mode;
+                delete cleanTd._dna_step;
+                delete cleanTd._dna_answers;
+              }
+              if (hasVidente) {
+                delete cleanTd._vidente_waiting_sign;
+              }
+
+              delete cleanTd._mode_activated_at;
+
+              await supabase.from("whatsapp_conversations")
+                .update({ collected_data: cleanTd })
+                .eq("id", convForTimeout.id);
+
+              const expiredModes = [
+                hasChef && "Chef", hasTranslator && "Tradutor", hasGroup && "Galera",
+                hasDna && "DNA", hasVidente && "Vidente"
+              ].filter(Boolean);
+              console.log(`⏰ Auto-deactivated modes [${expiredModes.join(", ")}] after 5min inactivity for ${phoneNumber}`);
+            }
+          }
+        }
+      }
+
       {
         const { data: convForModeCheck } = await supabase
           .from("whatsapp_conversations")
@@ -6425,12 +6334,9 @@ REGRAS:
                 const noMenuMsg = "👨‍🍳 *Modo Chef ativo!*\n\nPrimeiro, mande uma *foto do cardápio* 📸 que eu analiso pra você!\n\nDepois da análise, pode me perguntar coisas como:\n• _\"Quero algo leve\"_\n• _\"O que tem sem glúten?\"_\n• _\"Qual o melhor custo-benefício?\"_\n\nPara sair: *sair chef*";
                 await sendWhatsAppMessage(phoneNumber, noMenuMsg);
 
-                const updH = [
-                  ...((convForModeCheck.messages_history as any[]) || []),
-                  { role: "user", content: messageText || "[mídia]", timestamp: new Date().toISOString() },
-                  { role: "assistant", content: noMenuMsg, timestamp: new Date().toISOString() },
-                ];
-                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convForModeCheck.id);
+                // Mode messages NOT saved to messages_history to keep main context clean
+                // Reset timer
+                await supabase.from("whatsapp_conversations").update({ collected_data: { ...updatedModeData, _mode_activated_at: new Date().toISOString() } }).eq("id", convForModeCheck.id);
 
                 return new Response(JSON.stringify({ status: "ok", mode_isolation: "chef_no_menu" }), {
                   status: 200,
@@ -6511,12 +6417,9 @@ REGRAS:
 
               await sendWhatsAppMessage(phoneNumber, chefResponse);
 
-              const updH = [
-                ...((convForModeCheck.messages_history as any[]) || []),
-                { role: "user", content: messageText || "[mídia]", timestamp: new Date().toISOString() },
-                { role: "assistant", content: chefResponse, timestamp: new Date().toISOString() },
-              ];
-              await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convForModeCheck.id);
+              // Mode messages NOT saved to messages_history to keep main context clean
+              // Reset timer
+              await supabase.from("whatsapp_conversations").update({ collected_data: { ...updatedModeData, _mode_activated_at: new Date().toISOString() } }).eq("id", convForModeCheck.id);
 
               return new Response(JSON.stringify({ status: "ok", mode_isolation: "chef_menu_qa" }), {
                 status: 200,
