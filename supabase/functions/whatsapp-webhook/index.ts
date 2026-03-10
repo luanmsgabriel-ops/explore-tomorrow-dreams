@@ -6242,21 +6242,7 @@ REGRAS:
               console.error("[VIDENTE] Memory save error:", memErr);
             }
 
-            // Save to conversation history
-            if (savedConv) {
-              const { data: convAfterVidente } = await supabase
-                .from("whatsapp_conversations")
-                .select("id, messages_history")
-                .eq("id", savedConv.id)
-                .single();
-              if (convAfterVidente) {
-                const updH = [
-                  ...((convAfterVidente.messages_history as any[]) || []),
-                  { role: "assistant", content: `🔮 ${videnteResult}`, timestamp: new Date().toISOString() },
-                ];
-                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterVidente.id);
-              }
-            }
+            // Mode messages NOT saved to messages_history to keep main context clean
 
             console.log(`[VIDENTE] Generated for ${phoneNumber}, signo: ${signData.signo}`);
           } catch (err) {
