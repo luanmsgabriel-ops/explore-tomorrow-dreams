@@ -3791,9 +3791,15 @@ REGRAS:
                   await sendWhatsAppMessage(phoneNumber, statusMsg);
                 }
 
-                // Clear group mode
+                // Clear ALL group flags
+                const cleanGData = { ...gData };
+                delete cleanGData._group_mode;
+                delete cleanGData._group_id;
+                delete cleanGData._group_name;
+                delete cleanGData._group_expected;
+                delete cleanGData._active_groups;
                 await supabase.from("whatsapp_conversations").update({
-                  collected_data: { ...gData, _group_mode: null, _active_groups: null },
+                  collected_data: cleanGData,
                 }).eq("id", convForGroup.id);
 
                 return new Response(JSON.stringify({ status: "ok", group_existing_chosen: true }), {
@@ -3966,10 +3972,14 @@ REGRAS:
                     .eq("group_id", groupId)
                     .eq("phone_number", phoneNumber);
 
-                  // Clear group mode
+                  // Clear ALL group mode flags to prevent context pollution
                   const cleanData = { ...gData };
                   delete cleanData._group_mode;
                   delete cleanData._group_step;
+                  delete cleanData._group_id;
+                  delete cleanData._group_name;
+                  delete cleanData._group_expected;
+                  delete cleanData._active_groups;
                   await supabase.from("whatsapp_conversations").update({
                     collected_data: cleanData,
                   }).eq("id", convForGroup.id);
@@ -6936,8 +6946,38 @@ Regras OBRIGATÓRIAS:
 
       // Legacy verification code handling removed — direct API doesn't need verification codes
 
-      // Build messages for AI (user message is already in conversation.messages_history)
-      const historyForAi = (conversation.messages_history as any[] || []).map((msg: any) => ({
+      // Build messages for AI — filter out orphan survey responses and limit history
+      const rawHistory = (conversation.messages_history as any[] || []);
+      
+      // Smart filtering: remove orphan sequences (multiple user msgs without assistant response)
+      // and very short messages typical of survey/questionnaire answers
+      const filteredHistory: any[] = [];
+      for (let i = 0; i < rawHistory.length; i++) {
+        const msg = rawHistory[i];
+        if (!msg?.content) continue;
+        
+        const content = (msg.content || "").trim();
+        const isUser = msg.role === "user";
+        
+        // Skip very short user messages (1-2 chars like "2", "3") that are survey answers
+        // UNLESS they are the last message (the current one)
+        if (isUser && content.length <= 2 && i < rawHistory.length - 1) {
+          continue;
+        }
+        
+        // Skip user messages that look like survey answers (just a number, "sim", "não", etc.)
+        // UNLESS they are the last message
+        if (isUser && i < rawHistory.length - 1 && /^(?:\d{1,2}|sim|nao|não|nenhum|votar\s*\d)$/i.test(content)) {
+          continue;
+        }
+        
+        filteredHistory.push(msg);
+      }
+      
+      // Limit to last 20 messages to avoid context overflow
+      const limitedHistory = filteredHistory.slice(-20);
+      
+      const historyForAi = limitedHistory.map((msg: any) => ({
         role: msg.role === "user" ? "user" : "assistant",
         content: msg.content,
       }));
