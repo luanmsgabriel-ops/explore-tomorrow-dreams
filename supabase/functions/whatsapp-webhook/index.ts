@@ -3294,7 +3294,7 @@ REGRAS:
           if (savedConv) {
             const existingData = (savedConv.collected_data as Record<string, any>) || {};
             await supabase.from("whatsapp_conversations").update({
-              collected_data: { ...existingData, _group_mode: "questioning", _group_id: group.id, _group_step: 1 },
+              collected_data: { ...existingData, _group_mode: "questioning", _group_id: group.id, _group_step: 1, _mode_activated_at: new Date().toISOString() },
             }).eq("id", savedConv.id);
 
             const updH = [
