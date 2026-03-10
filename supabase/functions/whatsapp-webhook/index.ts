@@ -4656,21 +4656,7 @@ REGRAS:
                 await sendWhatsAppMessage(phoneNumber, compatResult);
               }
 
-              // Save to conversation history
-              if (savedConv) {
-                const { data: convAfterCompat } = await supabase
-                  .from("whatsapp_conversations")
-                  .select("id, messages_history")
-                  .eq("id", savedConv.id)
-                  .single();
-                if (convAfterCompat) {
-                  const updH = [
-                    ...((convAfterCompat.messages_history as any[]) || []),
-                    { role: "assistant", content: `💞 ${compatResult}`, timestamp: new Date().toISOString() },
-                  ];
-                  await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterCompat.id);
-                }
-              }
+              // One-shot mode — not saved to messages_history to keep main context clean
 
             } catch (err) {
               console.error("[COMPAT] Error:", err);
