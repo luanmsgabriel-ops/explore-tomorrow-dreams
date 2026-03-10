@@ -4434,7 +4434,7 @@ REGRAS:
                   // Next question
                   const nextStep = step + 1;
                   await supabase.from("whatsapp_conversations").update({
-                    collected_data: { ...dnaData, _dna_step: nextStep, _dna_answers: answers },
+                    collected_data: { ...dnaData, _dna_step: nextStep, _dna_answers: answers, _mode_activated_at: new Date().toISOString() },
                   }).eq("id", convForDna.id);
 
                   await sendWhatsAppMessage(phoneNumber, DNA_QUESTIONS[nextStep - 1]);
