@@ -6458,12 +6458,9 @@ REGRAS:
                 const noMenuMsg = "👨‍🍳 *Modo Chef ativo!*\n\nPrimeiro, mande uma *foto do cardápio* 📸 que eu analiso pra você!\n\nDepois da análise, pode me perguntar coisas como:\n• _\"Quero algo leve\"_\n• _\"O que tem sem glúten?\"_\n• _\"Qual o melhor custo-benefício?\"_\n\nPara sair: *sair chef*";
                 await sendWhatsAppMessage(phoneNumber, noMenuMsg);
 
-                const updH = [
-                  ...((convForModeCheck.messages_history as any[]) || []),
-                  { role: "user", content: messageText || "[mídia]", timestamp: new Date().toISOString() },
-                  { role: "assistant", content: noMenuMsg, timestamp: new Date().toISOString() },
-                ];
-                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convForModeCheck.id);
+                // Mode messages NOT saved to messages_history to keep main context clean
+                // Reset timer
+                await supabase.from("whatsapp_conversations").update({ collected_data: { ...updatedModeData, _mode_activated_at: new Date().toISOString() } }).eq("id", convForModeCheck.id);
 
                 return new Response(JSON.stringify({ status: "ok", mode_isolation: "chef_no_menu" }), {
                   status: 200,
