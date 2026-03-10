@@ -2686,11 +2686,7 @@ serve(async (req) => {
             const deactivationMsg = "✅ Modo Tradutor desativado! Voltei ao modo normal. 😊\n\nSe precisar traduzir de novo, é só mandar *tradutor*!";
             await sendWhatsAppMessage(phoneNumber, deactivationMsg);
 
-            const updH = [
-              ...((savedConvT.messages_history as any[]) || []),
-              { role: "assistant", content: deactivationMsg, timestamp: new Date().toISOString() },
-            ];
-            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConvT.id);
+            // Mode messages NOT saved to messages_history to keep main context clean
           }
           return new Response(JSON.stringify({ status: "ok", translator_deactivated: true }), {
             status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
