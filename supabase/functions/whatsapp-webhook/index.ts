@@ -2909,11 +2909,7 @@ serve(async (req) => {
             const activationMsg = "👨‍🍳 *Modo Chef Ativado!*\n\nAgora é só mandar uma *foto do cardápio* que eu traduzo tudo pra você! 📸\n\n📋 Tradução dos pratos\n🥗 Ingredientes principais\n⚠️ Alertas de alergênicos\n⭐ Recomendação de melhor custo-benefício\n\nPra sair do modo chef, mande: *sair chef*";
             await sendWhatsAppMessage(phoneNumber, activationMsg);
 
-            const updH = [
-              ...((savedConvC.messages_history as any[]) || []),
-              { role: "assistant", content: activationMsg, timestamp: new Date().toISOString() },
-            ];
-            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConvC.id);
+            // Mode messages NOT saved to messages_history to keep main context clean
           }
           return new Response(JSON.stringify({ status: "ok", chef_mode_activated: true }), {
             status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
