@@ -1,118 +1,58 @@
 
 
-# Plano: 5 Features Téo 2030
+## Plano: Isolamento de Contexto por Modo + Auto-desativação após 5 minutos
 
-## Features Solicitadas (uma por vez, implementação completa)
-1. ✅ **Téo Grupal** — Viagem em grupo com cruzamento de preferências via WhatsApp
-2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
-3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
-9. ✅ **Téo Roleta** — Destino aleatório filtrado por DNA com animação textual
-10. ✅ **Téo Oráculo** — Previsão personalizada da viagem com signos, DNA e fase lunar
-4. ✅ **Téo DNA** — Perfil genético de viajante
-5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
-6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
-7. ✅ **Téo Compatibilidade** — Match de viagem entre DNAs de viajante
-8. ✅ **Téo SOS** — Assistente de emergência com embaixadas, hospitais e frases úteis
+### Problema Atual
 
----
+1. **Histórico poluído**: Mensagens dos modos especiais (Galera, Chef, Tradutor, DNA) ficam no `messages_history` principal e contaminam o contexto da IA quando o cliente volta ao chat normal.
+2. **Sem timeout**: Modos ficam ativos indefinidamente. Se o cliente para de interagir por horas e volta com outra pergunta, o modo ainda intercepta.
+3. **Sem separação de contexto**: Todas as mensagens (de todos os modos) ficam no mesmo `messages_history`.
 
-## 7. Téo Compatibilidade (IMPLEMENTADO ✅)
+### Solução: 2 ações principais
 
-### Conceito
-O cliente envia `compatibilidade com 5511999999999` e o Téo compara os DNAs de Viajante dos dois, calcula score de compatibilidade e sugere destinos ideais para ambos.
+#### 1. Histórico separado por modo no `collected_data`
 
-### Comandos WhatsApp
-| Comando | Ação |
-|---------|------|
-| `compatibilidade com [número]` / `match viagem [número]` | Compara DNAs e sugere destino |
-| `compatibilidade` (sem número) | Téo pede o número do parceiro |
+Em vez de salvar mensagens de modos especiais no `messages_history` principal, criar campos isolados no `collected_data`:
 
-### Armazenamento (zero novas tabelas)
-Usa `client_memory.preferences`:
-- `ultimo_match`: `{ parceiro_phone, parceiro_nome, score, data }`
+- `_chef_history`: array de mensagens do Modo Chef
+- `_translator_history`: array de mensagens do Modo Tradutor  
+- `_group_history`: array de mensagens do Modo Galera
+- `_dna_history`: array de mensagens do Modo DNA
 
-### Arquivos modificados
-- `supabase/functions/whatsapp-webhook/index.ts`: Bloco de comando com regex, busca de 2 memórias, chamada Gemini, formatação e save
-- `supabase/functions/_shared/client-memory.ts`: `ultimo_match` no `formatMemoryForPrompt` + skipKeys
+Quando um modo é ativado, suas mensagens vão para o histórico separado. Quando desativado, o histórico do modo é limpo do `collected_data`. O `messages_history` principal fica limpo e contém apenas conversas do chat normal/cotação/concierge.
 
-## 3. Téo DNA de Viajante (IMPLEMENTADO ✅)
+**Na construção do `historyForAi`** (linha ~6950): usar APENAS o `messages_history` principal, ignorando completamente os históricos de modos.
 
-### Conceito
-Questionário profundo de 10 perguntas que gera um perfil "genético" de viajante com 5 categorias (Explorador, Culturalista, Gourmet, Zen, Socialite) que evolui com cada viagem.
+**Nos handlers de cada modo**: usar o `_X_history` correspondente para manter contexto dentro do modo.
 
-### Comandos WhatsApp
-| Comando | Ação |
-|---------|------|
-| `meu dna` / `dna viajante` / `teste dna` | Inicia o questionário de 10 perguntas |
+#### 2. Auto-desativação após 5 minutos de inatividade
 
-### Categorias do DNA
-- 🏔️ Explorador: aventura, adrenalina, natureza selvagem
-- 🏛️ Culturalista: história, museus, arquitetura
-- 🍽️ Gourmet: gastronomia, vinhos, experiências culinárias
-- 🧘 Zen: relaxamento, praias, spas
-- 🎉 Socialite: festas, vida noturna, experiências sociais
+Adicionar campo `_mode_activated_at` no `collected_data` quando qualquer modo especial é ativado (Chef, Tradutor, Galera questioning, DNA).
 
-### Armazenamento (zero novas tabelas)
-Usa `client_memory.preferences` (JSONB):
-- `dna_viajante`: perfil atual com porcentagens, raw_result, answers
-- `dna_historico`: array com últimas 10 análises (para detectar evolução)
+No início do processamento de cada mensagem (antes dos handlers de modo, ~linha 6344), verificar:
 
-### Evolução
-O DNA evolui automaticamente:
-- Cada vez que o teste é refeito, uma nova entrada é adicionada ao histórico
-- O formatMemoryForPrompt mostra a evolução (↑↓ por categoria)
-- Téo usa o DNA para personalizar sugestões sem perguntar demais
+```
+Se _mode_activated_at existe E (agora - _mode_activated_at) > 5 minutos:
+  → Limpar todos os flags do modo ativo
+  → Limpar o histórico separado do modo
+  → Continuar processamento normal (sem interceptar pelo modo)
+```
+
+**Exceção**: Modo Cotação (`_teo_mode: "cotacao"`) NÃO é desativado automaticamente.
 
 ### Arquivos modificados
-- `supabase/functions/whatsapp-webhook/index.ts`: Comando + questionário 10 perguntas + geração via Gemini
-- `supabase/functions/_shared/client-memory.ts`: DNA no prompt, na formatação e na regra de adaptação
 
----
+- `supabase/functions/whatsapp-webhook/index.ts`:
+  - Adicionar lógica de timeout no início do fluxo (antes da checagem de modos, ~linha 6344)
+  - Nos handlers do Chef, Tradutor, Galera, DNA: salvar mensagens no `_X_history` em vez de (ou além de) `messages_history`
+  - Salvar `_mode_activated_at` quando um modo é ativado
+  - Atualizar `_mode_activated_at` a cada interação dentro do modo (reset do timer)
+  - Na construção de `historyForAi` (~linha 6950): filtrar mensagens que foram geradas durante modos especiais
 
-## 1. Téo Grupal (IMPLEMENTADO ✅)
+### Impacto
 
-### Tabelas criadas
-- `travel_groups`: group_code, creator_phone, creator_name, status, final_recommendation
-- `travel_group_members`: group_id, phone_number, member_name, preferences (JSONB), is_ready
+- Téo nunca mais mistura contextos de modos diferentes
+- Modos expiram automaticamente após 5 minutos sem interação
+- Se o cliente quiser voltar ao modo, basta pedir novamente
+- Histórico principal fica limpo para a IA responder perguntas normais corretamente
 
-### Comandos WhatsApp
-| Comando | Ação |
-|---------|------|
-| `criar grupo` | Cria grupo, gera código 6 chars, inicia questionário |
-| `entrar grupo XYZABC` | Adiciona membro, inicia questionário |
-| `meu grupo` | Mostra status e membros |
-| `resultado grupo` | Cruza preferências via Gemini, envia a todos |
-| `sair grupo` | Remove membro |
-
----
-
-## 2. Téo Lê Mentes (IMPLEMENTADO ✅)
-
-### Conceito
-Análise emocional SILENCIOSA das mensagens do cliente para adaptar recomendações automaticamente, sem nunca mencionar a análise.
-
-### Implementação (zero novas tabelas)
-Usa a infraestrutura existente de `client_memory.preferences` (JSONB):
-
-**Campos emocionais adicionados:**
-- `tom_emocional`: animado/estressado/cansado/ansioso/empolgado/nostálgico/indeciso/tranquilo/comemorando/preocupado
-- `nivel_energia`: alto/médio/baixo
-- `nivel_estresse`: alto/médio/baixo
-- `momento_vida`: férias/lua-de-mel/aniversário/fuga-da-rotina/trabalho-remoto/família/amigos
-- `historico_emocional`: array com últimas 10 leituras emocionais (para detectar tendências)
-
-**Detecção de sinais:**
-- Estresse: "preciso sair daqui", "to exausto", respostas impacientes
-- Animação: "!!", emojis, "mal posso esperar"
-- Ansiedade: muitas perguntas, "será que...", indecisão
-- Comemoração: "aniversário", "lua de mel", "promoção"
-
-**Adaptação silenciosa (via MEMORY_RULE):**
-- Estressado → Sugere descanso, spas, all-inclusive
-- Animado → Sugere aventura, esportes, destinos vibrantes
-- Indeciso → Limita opções a 2-3, mais assertivo
-- Comemorando → Sugere upgrades, experiências premium
-- NUNCA menciona a análise ao cliente
-
-### Arquivos modificados
-- `supabase/functions/_shared/client-memory.ts`: Extraction prompt, merge logic, format, MEMORY_RULE
