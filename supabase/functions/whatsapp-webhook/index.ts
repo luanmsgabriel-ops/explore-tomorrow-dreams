@@ -2970,13 +2970,9 @@ serve(async (req) => {
                 .single();
 
               if (convAfterChef) {
-                const updH = [
-                  ...((convAfterChef.messages_history as any[]) || []),
-                  { role: "assistant", content: `👨‍🍳 ${analysisResult}`, timestamp: new Date().toISOString() },
-                ];
+                // Mode messages NOT saved to messages_history to keep main context clean
                 const existingChefData = (convAfterChef as any).collected_data || chefData || {};
                 await supabase.from("whatsapp_conversations").update({ 
-                  messages_history: updH,
                   collected_data: { ...existingChefData, _chef_mode: true, _chef_menu_analysis: analysisResult, _mode_activated_at: new Date().toISOString() },
                 }).eq("id", convAfterChef.id);
               }
