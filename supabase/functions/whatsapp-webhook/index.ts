@@ -5484,21 +5484,7 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
               await sendWhatsAppMessage(phoneNumber, oraculoResult);
             }
 
-            // Save to conversation history
-            if (savedConv) {
-              const { data: convAfterOraculo } = await supabase
-                .from("whatsapp_conversations")
-                .select("id, messages_history")
-                .eq("id", savedConv.id)
-                .single();
-              if (convAfterOraculo) {
-                const updH = [
-                  ...((convAfterOraculo.messages_history as any[]) || []),
-                  { role: "assistant", content: `🔮 ${oraculoResult}`, timestamp: new Date().toISOString() },
-                ];
-                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterOraculo.id);
-              }
-            }
+            // One-shot mode — not saved to messages_history to keep main context clean
 
             // Save to client memory
             try {
