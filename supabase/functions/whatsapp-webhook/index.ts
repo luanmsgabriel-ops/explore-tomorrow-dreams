@@ -6940,8 +6940,38 @@ Regras OBRIGATÓRIAS:
 
       // Legacy verification code handling removed — direct API doesn't need verification codes
 
-      // Build messages for AI (user message is already in conversation.messages_history)
-      const historyForAi = (conversation.messages_history as any[] || []).map((msg: any) => ({
+      // Build messages for AI — filter out orphan survey responses and limit history
+      const rawHistory = (conversation.messages_history as any[] || []);
+      
+      // Smart filtering: remove orphan sequences (multiple user msgs without assistant response)
+      // and very short messages typical of survey/questionnaire answers
+      const filteredHistory: any[] = [];
+      for (let i = 0; i < rawHistory.length; i++) {
+        const msg = rawHistory[i];
+        if (!msg?.content) continue;
+        
+        const content = (msg.content || "").trim();
+        const isUser = msg.role === "user";
+        
+        // Skip very short user messages (1-2 chars like "2", "3") that are survey answers
+        // UNLESS they are the last message (the current one)
+        if (isUser && content.length <= 2 && i < rawHistory.length - 1) {
+          continue;
+        }
+        
+        // Skip user messages that look like survey answers (just a number, "sim", "não", etc.)
+        // UNLESS they are the last message
+        if (isUser && i < rawHistory.length - 1 && /^(?:\d{1,2}|sim|nao|não|nenhum|votar\s*\d)$/i.test(content)) {
+          continue;
+        }
+        
+        filteredHistory.push(msg);
+      }
+      
+      // Limit to last 20 messages to avoid context overflow
+      const limitedHistory = filteredHistory.slice(-20);
+      
+      const historyForAi = limitedHistory.map((msg: any) => ({
         role: msg.role === "user" ? "user" : "assistant",
         content: msg.content,
       }));
