@@ -3269,11 +3269,7 @@ REGRAS:
               collected_data: { ...existingData, _group_mode: "questioning", _group_id: group.id, _group_step: 1, _mode_activated_at: new Date().toISOString() },
             }).eq("id", savedConv.id);
 
-            const updH = [
-              ...((savedConv.messages_history as any[]) || []),
-              { role: "assistant", content: joinMsg, timestamp: new Date().toISOString() },
-            ];
-            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConv.id);
+            // Mode messages NOT saved to messages_history to keep main context clean
           }
 
           // Send first question
