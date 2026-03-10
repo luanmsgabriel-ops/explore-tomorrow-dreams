@@ -3193,11 +3193,7 @@ REGRAS:
                 },
               }).eq("id", savedConv.id);
 
-              const updH = [
-                ...((savedConv.messages_history as any[]) || []),
-                { role: "assistant", content: groupListMsg, timestamp: new Date().toISOString() },
-              ];
-              await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConv.id);
+              // Mode messages NOT saved to messages_history to keep main context clean
             } else {
               // No active groups — proceed to setup_name directly
               await supabase.from("whatsapp_conversations").update({
