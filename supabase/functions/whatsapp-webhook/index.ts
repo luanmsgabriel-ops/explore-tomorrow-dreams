@@ -2745,20 +2745,9 @@ serve(async (req) => {
               await sendWhatsAppMessage(phoneNumber, resultMsg);
             }
 
-            // Save to history
-            const { data: convAfterImg } = await supabase
-              .from("whatsapp_conversations")
-              .select("id, messages_history")
-              .eq("id", convForT.id)
-              .single();
-
-            if (convAfterImg) {
-              const updH = [
-                ...((convAfterImg.messages_history as any[]) || []),
-                { role: "assistant", content: `🌐📸 ${resultMsg}`, timestamp: new Date().toISOString() },
-              ];
-              await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterImg.id);
-            }
+            // Mode messages NOT saved to messages_history to keep main context clean
+            // Reset timer
+            await supabase.from("whatsapp_conversations").update({ collected_data: { ...tData, _mode_activated_at: new Date().toISOString() } }).eq("id", convForT.id);
 
             return new Response(JSON.stringify({ status: "ok", translator_image: true }), {
               status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
