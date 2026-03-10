@@ -5252,21 +5252,16 @@ ${spinsUsed > 0 ? `\nEsta é a ${spinsUsed + 1}ª girada. Escolha um destino DIF
 
             await sendWhatsAppMessage(phoneNumber, roletaResult);
 
-            // Update spin count
+            // Update spin count only — mode messages NOT saved to messages_history
             if (savedConv) {
               const { data: convAfterRoleta } = await supabase
                 .from("whatsapp_conversations")
-                .select("id, messages_history, collected_data")
+                .select("id, collected_data")
                 .eq("id", savedConv.id)
                 .single();
               if (convAfterRoleta) {
                 const cd = (convAfterRoleta.collected_data as Record<string, any>) || {};
-                const updH = [
-                  ...((convAfterRoleta.messages_history as any[]) || []),
-                  { role: "assistant", content: `🎰 ${roletaResult}`, timestamp: new Date().toISOString() },
-                ];
                 await supabase.from("whatsapp_conversations").update({
-                  messages_history: updH,
                   collected_data: { ...cd, _roleta_spins: (cd._roleta_spins || 0) + 1 },
                 }).eq("id", convAfterRoleta.id);
               }
