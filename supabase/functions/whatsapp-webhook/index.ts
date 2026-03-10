@@ -6541,12 +6541,9 @@ REGRAS:
 
               await sendWhatsAppMessage(phoneNumber, chefResponse);
 
-              const updH = [
-                ...((convForModeCheck.messages_history as any[]) || []),
-                { role: "user", content: messageText || "[mídia]", timestamp: new Date().toISOString() },
-                { role: "assistant", content: chefResponse, timestamp: new Date().toISOString() },
-              ];
-              await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convForModeCheck.id);
+              // Mode messages NOT saved to messages_history to keep main context clean
+              // Reset timer
+              await supabase.from("whatsapp_conversations").update({ collected_data: { ...updatedModeData, _mode_activated_at: new Date().toISOString() } }).eq("id", convForModeCheck.id);
 
               return new Response(JSON.stringify({ status: "ok", mode_isolation: "chef_menu_qa" }), {
                 status: 200,
