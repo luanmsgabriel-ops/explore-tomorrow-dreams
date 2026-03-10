@@ -3791,9 +3791,15 @@ REGRAS:
                   await sendWhatsAppMessage(phoneNumber, statusMsg);
                 }
 
-                // Clear group mode
+                // Clear ALL group flags
+                const cleanGData = { ...gData };
+                delete cleanGData._group_mode;
+                delete cleanGData._group_id;
+                delete cleanGData._group_name;
+                delete cleanGData._group_expected;
+                delete cleanGData._active_groups;
                 await supabase.from("whatsapp_conversations").update({
-                  collected_data: { ...gData, _group_mode: null, _active_groups: null },
+                  collected_data: cleanGData,
                 }).eq("id", convForGroup.id);
 
                 return new Response(JSON.stringify({ status: "ok", group_existing_chosen: true }), {
