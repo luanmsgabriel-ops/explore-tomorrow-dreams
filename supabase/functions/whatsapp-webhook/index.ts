@@ -3915,7 +3915,7 @@ REGRAS:
 
               if (isYes) {
                 await supabase.from("whatsapp_conversations").update({
-                  collected_data: { ...gData, _group_mode: "questioning", _group_step: 1 },
+                  collected_data: { ...gData, _group_mode: "questioning", _group_step: 1, _mode_activated_at: new Date().toISOString() },
                 }).eq("id", convForGroup.id);
 
                 await sendWhatsAppMessage(phoneNumber, "🚀 *Vamos lá!* Vou te fazer 12 perguntas rápidas para encontrar o destino perfeito pro grupo!\n\n");
