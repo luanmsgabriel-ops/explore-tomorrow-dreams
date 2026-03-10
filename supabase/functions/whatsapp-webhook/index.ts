@@ -2668,11 +2668,7 @@ serve(async (req) => {
             const activationMsg = "🌐 *Modo Tradutor Universal Ativado!*\n\nAgora você pode mandar:\n📝 *Texto* — traduzo na hora\n🎙️ *Áudio* — transcrevo e traduzo\n📸 *Foto de placa/aviso* — leio o texto e traduzo\n\n🔄 Auto-detecta o idioma:\n🇧🇷 Português → 🇺🇸 Inglês\n🇺🇸🇪🇸🇫🇷🇮🇹🇩🇪🇯🇵 Qualquer idioma → 🇧🇷 Português\n\n💡 Dica: mande *tradutor para japonês* pra definir um idioma alvo específico!\n\nPra sair: *sair tradutor*";
             await sendWhatsAppMessage(phoneNumber, activationMsg);
 
-            const updH = [
-              ...((savedConvT.messages_history as any[]) || []),
-              { role: "assistant", content: activationMsg, timestamp: new Date().toISOString() },
-            ];
-            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConvT.id);
+            // Mode messages NOT saved to messages_history to keep main context clean
           }
           return new Response(JSON.stringify({ status: "ok", translator_activated: true }), {
             status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
