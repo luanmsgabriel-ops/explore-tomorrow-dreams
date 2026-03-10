@@ -4923,21 +4923,7 @@ REGRAS CRÍTICAS:
               }
             }
 
-            // Save to conversation history
-            if (savedConv) {
-              const { data: convAfterSos } = await supabase
-                .from("whatsapp_conversations")
-                .select("id, messages_history")
-                .eq("id", savedConv.id)
-                .single();
-              if (convAfterSos) {
-                const updH = [
-                  ...((convAfterSos.messages_history as any[]) || []),
-                  { role: "assistant", content: `🆘 SOS ${destinationContext || ""}`, timestamp: new Date().toISOString() },
-                ];
-                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterSos.id);
-              }
-            }
+            // One-shot mode — not saved to messages_history to keep main context clean
 
           } catch (err) {
             console.error("[SOS] Error:", err);
