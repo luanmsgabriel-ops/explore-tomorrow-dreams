@@ -2927,11 +2927,7 @@ serve(async (req) => {
             const deactivationMsg = "✅ Modo Chef desativado! Voltei ao modo normal. 😊\n\nSe precisar traduzir outro cardápio, é só mandar *chef*!";
             await sendWhatsAppMessage(phoneNumber, deactivationMsg);
 
-            const updH = [
-              ...((savedConvC.messages_history as any[]) || []),
-              { role: "assistant", content: deactivationMsg, timestamp: new Date().toISOString() },
-            ];
-            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConvC.id);
+            // Mode messages NOT saved to messages_history to keep main context clean
           }
           return new Response(JSON.stringify({ status: "ok", chef_mode_deactivated: true }), {
             status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
