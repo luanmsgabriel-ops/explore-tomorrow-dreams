@@ -5108,21 +5108,7 @@ IMPORTANTE:
               console.error("[PLAYLIST] Memory save error:", memErr);
             }
 
-            // Save to conversation history
-            if (savedConv) {
-              const { data: convAfterPlaylist } = await supabase
-                .from("whatsapp_conversations")
-                .select("id, messages_history")
-                .eq("id", savedConv.id)
-                .single();
-              if (convAfterPlaylist) {
-                const updH = [
-                  ...((convAfterPlaylist.messages_history as any[]) || []),
-                  { role: "assistant", content: `🎵 ${playlistResult}`, timestamp: new Date().toISOString() },
-                ];
-                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterPlaylist.id);
-              }
-            }
+            // One-shot mode — not saved to messages_history to keep main context clean
 
             console.log(`[PLAYLIST] Generated for ${phoneNumber}, destination: ${destinationHint || "universal"}`);
           } catch (err) {
