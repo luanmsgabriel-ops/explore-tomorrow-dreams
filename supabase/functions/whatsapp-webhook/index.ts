@@ -3203,11 +3203,7 @@ REGRAS:
               const askNameMsg = "🎉 *Modo Galera ativado!*\n\nVamos montar o grupo de viagem perfeito! 🌍\n\n📝 *Como quer chamar o grupo?*\n\n(Ex: Viagem da Galera, Férias 2026, Amigos SP...)";
               await sendWhatsAppMessage(phoneNumber, askNameMsg);
 
-              const updH = [
-                ...((savedConv.messages_history as any[]) || []),
-                { role: "assistant", content: askNameMsg, timestamp: new Date().toISOString() },
-              ];
-              await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConv.id);
+              // Mode messages NOT saved to messages_history to keep main context clean
             }
           }
 
