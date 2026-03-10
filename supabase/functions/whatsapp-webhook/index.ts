@@ -6341,6 +6341,74 @@ REGRAS:
           });
         }
       }
+
+      // ========== AUTO-DEACTIVATE MODES AFTER 5 MINUTES OF INACTIVITY ==========
+      {
+        const { data: convForTimeout } = await supabase
+          .from("whatsapp_conversations")
+          .select("id, collected_data")
+          .eq("phone_number", phoneNumber)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (convForTimeout) {
+          const td = (convForTimeout.collected_data as Record<string, any>) || {};
+          const modeActivatedAt = td._mode_activated_at;
+          const FIVE_MINUTES = 5 * 60 * 1000;
+
+          if (modeActivatedAt && (Date.now() - new Date(modeActivatedAt).getTime()) > FIVE_MINUTES) {
+            // Check if any special mode is active (NOT cotacao — cotacao never auto-expires)
+            const hasChef = td._chef_mode === true;
+            const hasTranslator = td._translator_mode === true;
+            const hasGroup = !!td._group_mode;
+            const hasDna = td._dna_mode === "questioning";
+            const hasVidente = td._vidente_waiting_sign === true;
+
+            if (hasChef || hasTranslator || hasGroup || hasDna || hasVidente) {
+              const cleanTd = { ...td };
+
+              if (hasChef) {
+                cleanTd._chef_mode = false;
+                cleanTd._chef_menu_analysis = null;
+              }
+              if (hasTranslator) {
+                cleanTd._translator_mode = false;
+                cleanTd._translator_target_lang = null;
+              }
+              if (hasGroup) {
+                delete cleanTd._group_mode;
+                delete cleanTd._group_id;
+                delete cleanTd._group_step;
+                delete cleanTd._group_name;
+                delete cleanTd._group_expected;
+                delete cleanTd._active_groups;
+              }
+              if (hasDna) {
+                delete cleanTd._dna_mode;
+                delete cleanTd._dna_step;
+                delete cleanTd._dna_answers;
+              }
+              if (hasVidente) {
+                delete cleanTd._vidente_waiting_sign;
+              }
+
+              delete cleanTd._mode_activated_at;
+
+              await supabase.from("whatsapp_conversations")
+                .update({ collected_data: cleanTd })
+                .eq("id", convForTimeout.id);
+
+              const expiredModes = [
+                hasChef && "Chef", hasTranslator && "Tradutor", hasGroup && "Galera",
+                hasDna && "DNA", hasVidente && "Vidente"
+              ].filter(Boolean);
+              console.log(`⏰ Auto-deactivated modes [${expiredModes.join(", ")}] after 5min inactivity for ${phoneNumber}`);
+            }
+          }
+        }
+      }
+
       {
         const { data: convForModeCheck } = await supabase
           .from("whatsapp_conversations")
