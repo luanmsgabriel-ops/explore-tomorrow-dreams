@@ -2644,7 +2644,7 @@ serve(async (req) => {
           if (savedConvT) {
             const existingData = (savedConvT.collected_data as Record<string, any>) || {};
             await supabase.from("whatsapp_conversations").update({
-              collected_data: { ...existingData, _translator_mode: true, _translator_target_lang: targetLang },
+              collected_data: { ...existingData, _translator_mode: true, _translator_target_lang: targetLang, _mode_activated_at: new Date().toISOString() },
             }).eq("id", savedConvT.id);
 
             const activationMsg = `🌐 *Modo Tradutor Universal Ativado!*\n🎯 Idioma alvo: *${targetLang}*\n\nAgora você pode mandar:\n📝 *Texto* — traduzo na hora\n🎙️ *Áudio* — transcrevo e traduzo\n📸 *Foto* — leio placas, avisos e traduzo\n\n💡 Incluo contexto cultural quando relevante!\n\nPra sair: *sair tradutor*\nPra mudar idioma: *tradutor para [idioma]*`;
