@@ -3209,6 +3209,7 @@ REGRAS:
                   ...existingData, 
                   _group_mode: "choose_existing_or_new",
                   _active_groups: activeGroups.map(g => ({ id: g.id, code: g.group_code, name: g.group_name })),
+                  _mode_activated_at: new Date().toISOString(),
                 },
               }).eq("id", savedConv.id);
 
