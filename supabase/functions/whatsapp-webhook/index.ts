@@ -4375,11 +4375,7 @@ REGRAS:
               collected_data: { ...existingData, _dna_mode: "questioning", _dna_step: 1, _dna_answers: [], _mode_activated_at: new Date().toISOString() },
             }).eq("id", savedConv.id);
 
-            const updH = [
-              ...((savedConv.messages_history as any[]) || []),
-              { role: "assistant", content: DNA_QUESTIONS[0], timestamp: new Date().toISOString() },
-            ];
-            await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", savedConv.id);
+            // Mode messages NOT saved to messages_history to keep main context clean
           }
 
           await sendWhatsAppMessage(phoneNumber, DNA_QUESTIONS[0]);
