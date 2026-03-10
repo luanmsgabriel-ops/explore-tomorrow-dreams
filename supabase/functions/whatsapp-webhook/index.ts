@@ -3963,7 +3963,7 @@ REGRAS:
                 if (step < 12) {
                   const nextStep = step + 1;
                   await supabase.from("whatsapp_conversations").update({
-                    collected_data: { ...gData, _group_step: nextStep },
+                    collected_data: { ...gData, _group_step: nextStep, _mode_activated_at: new Date().toISOString() },
                   }).eq("id", convForGroup.id);
 
                   await sendWhatsAppMessage(phoneNumber, GROUP_QUESTIONS[nextStep - 1]);
