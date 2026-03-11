@@ -417,6 +417,124 @@ async function proactiveAlerts() {
   }
 }
 
+// ========== ACTION: CHECKIN ALERTS ==========
+
+function getCheckinLink(iataCode: string): { airline: string; link: string } | null {
+  if (!iataCode) return null;
+  const code = iataCode.trim().substring(0, 2).toUpperCase();
+  const map: Record<string, { airline: string; link: string }> = {
+    "G3": { airline: "GOL", link: "https://www.voegol.com.br/check-in" },
+    "LA": { airline: "LATAM", link: "https://www.latamairlines.com/br/pt/check-in" },
+    "JJ": { airline: "LATAM", link: "https://www.latamairlines.com/br/pt/check-in" },
+    "AD": { airline: "Azul", link: "https://www.voeazul.com.br/check-in" },
+  };
+  return map[code] || null;
+}
+
+async function checkinAlerts() {
+  console.log("[CONCIERGE] Checking for check-in alerts...");
+  const now = new Date();
+  const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+  const today = now.toISOString().split("T")[0];
+  const in2Days = in48h.toISOString().split("T")[0];
+
+  const { data: trips } = await supabase
+    .from("active_trips")
+    .select("*")
+    .eq("concierge_active", true);
+
+  if (!trips?.length) { console.log("No active trips for check-in alerts"); return; }
+
+  for (const trip of trips) {
+    const name = trip.client_name || "Viajante";
+
+    // Check outbound flight
+    if (trip.outbound_flight_date && trip.outbound_flight_iata) {
+      const flightDate = trip.outbound_flight_date;
+      if (flightDate >= today && flightDate <= in2Days) {
+        const alertKey = `checkin_outbound_${trip.id}`;
+        if (await wasAlertSent(trip.id, alertKey)) continue;
+
+        const info = getCheckinLink(trip.outbound_flight_iata);
+        
+        // Try to get locator from client_trips
+        let locator = "";
+        const { data: clientTrip } = await supabase
+          .from("client_trips")
+          .select("flight_locator, flight_number")
+          .ilike("destination_name", `%${trip.destination_city || ""}%`)
+          .not("flight_locator", "is", null)
+          .limit(1)
+          .maybeSingle();
+        
+        if (clientTrip?.flight_locator) locator = clientTrip.flight_locator;
+
+        const linkText = info 
+          ? `\n\n👉 Faça seu check-in aqui: ${info.link}` 
+          : `\n\n👉 Pesquise "check-in online" + nome da companhia aérea para fazer seu check-in.`;
+        
+        const locatorText = locator ? `\n🔑 Seu localizador: *${locator}*` : "";
+        const airlineName = info?.airline || trip.outbound_flight_iata;
+
+        const msg = await generateTeoMessage(
+          `Gere mensagem de check-in disponível para ${name}. Voo ${trip.outbound_flight_iata} para ${trip.destination_city} no dia ${flightDate}. Companhia: ${airlineName}. Informe que o check-in online já está disponível (abre 48h antes). Dicas: ter documento em mãos, escolher assento, salvar cartão de embarque no celular. NÃO inclua links nem localizador (serão adicionados automaticamente). Seja animado mas breve.`
+        );
+
+        const fullMsg = msg + linkText + locatorText;
+        
+        if (await canSendMessage(trip.id, trip.destination_timezone || "America/Sao_Paulo")) {
+          await sendWhatsAppMessage(trip.client_phone, fullMsg);
+          await saveAlert(trip.id, alertKey, fullMsg);
+          await incrementMessageCount(trip.id);
+          console.log(`[CONCIERGE] Check-in alert sent to ${trip.client_phone} for ${trip.destination_city}`);
+        }
+      }
+    }
+
+    // Check return flight
+    if (trip.return_flight_date && trip.return_flight_iata) {
+      const flightDate = trip.return_flight_date;
+      if (flightDate >= today && flightDate <= in2Days) {
+        const alertKey = `checkin_return_${trip.id}`;
+        if (await wasAlertSent(trip.id, alertKey)) continue;
+
+        const info = getCheckinLink(trip.return_flight_iata);
+
+        let locator = "";
+        const { data: clientTrip } = await supabase
+          .from("client_trips")
+          .select("flight_locator")
+          .ilike("destination_name", `%${trip.destination_city || ""}%`)
+          .not("flight_locator", "is", null)
+          .limit(1)
+          .maybeSingle();
+        
+        if (clientTrip?.flight_locator) locator = clientTrip.flight_locator;
+
+        const linkText = info 
+          ? `\n\n👉 Faça seu check-in aqui: ${info.link}` 
+          : `\n\n👉 Pesquise "check-in online" + nome da companhia aérea para fazer seu check-in.`;
+        
+        const locatorText = locator ? `\n🔑 Seu localizador: *${locator}*` : "";
+        const airlineName = info?.airline || trip.return_flight_iata;
+
+        const msg = await generateTeoMessage(
+          `Gere mensagem de check-in disponível para ${name}. Voo de VOLTA ${trip.return_flight_iata} saindo de ${trip.destination_city} no dia ${flightDate}. Companhia: ${airlineName}. Check-in online já disponível. Dicas: documento, assento, cartão de embarque no celular. NÃO inclua links nem localizador. Breve e animado.`
+        );
+
+        const fullMsg = msg + linkText + locatorText;
+        
+        if (await canSendMessage(trip.id, trip.destination_timezone || "America/Sao_Paulo")) {
+          await sendWhatsAppMessage(trip.client_phone, fullMsg);
+          await saveAlert(trip.id, alertKey, fullMsg);
+          await incrementMessageCount(trip.id);
+          console.log(`[CONCIERGE] Return check-in alert sent to ${trip.client_phone}`);
+        }
+      }
+    }
+  }
+}
+
 // ========== ACTION: DAILY STORIES ==========
 
 async function dailyStories() {
