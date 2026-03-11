@@ -1251,6 +1251,9 @@ serve(async (req) => {
       case "golden_hour":
         await goldenHourAlerts();
         break;
+      case "checkin_alerts":
+        await checkinAlerts();
+        break;
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
