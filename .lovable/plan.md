@@ -1,30 +1,51 @@
 
 
+## Plano: Alerta Automático de Check-in via WhatsApp (Opção 2)
 
-# Plano: 5 Features Téo 2030
+O Téo enviará automaticamente o link direto de check-in da companhia aérea com o localizador do cliente, 48h antes do voo, via WhatsApp pelo concierge-engine.
 
-## Features Solicitadas (uma por vez, implementação completa)
-1. ✅ **Téo Grupal** — Viagem em grupo com cruzamento de preferências via WhatsApp
-2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
-3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
-9. ✅ **Téo Roleta** — Destino aleatório filtrado por DNA com animação textual
-10. ✅ **Téo Oráculo** — Previsão personalizada da viagem com signos, DNA e fase lunar
-4. ✅ **Téo DNA** — Perfil genético de viajante
-5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
-6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
-7. ✅ **Téo Compatibilidade** — Match de viagem entre DNAs de viajante
-8. ✅ **Téo SOS** — Assistente de emergência com embaixadas, hospitais e frases úteis
+### Como funciona
 
----
+1. **Detecção automática**: O `proactiveAlerts()` no `concierge-engine` já roda periodicamente. Adicionaremos uma nova checagem: quando faltam **48h ou menos** para o voo de ida (ou volta), enviar o link de check-in.
 
-## Correção: Isolamento de Contexto + Auto-desativação (IMPLEMENTADO ✅)
+2. **Identificação da companhia**: Baseado no código IATA do voo (`outbound_flight_iata` / `return_flight_iata`), identificar a companhia (GOL = G3, LATAM = LA/JJ, Azul = AD) e montar o link correto.
 
-### Problema resolvido
-Mensagens de modos especiais poluíam o `messages_history` principal, causando confusão de contexto quando o cliente voltava ao chat normal.
+3. **Mensagem via Téo**: Usar `generateTeoMessage()` para criar uma mensagem personalizada com:
+   - Link direto do check-in da companhia
+   - Localizador do voo (buscado de `client_trips` via `client_phone`)
+   - Dicas rápidas (documento, assento, bagagem)
 
-### Implementação
-1. **Auto-desativação após 5 minutos**: Check no início do webhook — se `_mode_activated_at` > 5min, limpa todos os flags de modo (exceto cotação)
-2. **Isolamento de histórico**: Mensagens de modos especiais (Chef, Tradutor, DNA, Galera, Vidente, Roleta, Oráculo, Playlist, SOS, Compatibilidade) NÃO são mais salvas no `messages_history` principal
-3. **Reset de timer**: Cada interação dentro de um modo reseta o `_mode_activated_at`
-4. **Modos afetados**: Chef, Tradutor, DNA, Galera, Vidente (todos com `_mode_activated_at`)
-5. **Exceção**: Modo Cotação nunca expira automaticamente
+### Mapeamento de links
+
+| Companhia | Prefixo IATA | Link Check-in |
+|-----------|-------------|---------------|
+| GOL | G3 | https://www.voegol.com.br/check-in |
+| LATAM | LA, JJ | https://www.latamairlines.com/br/pt/check-in |
+| Azul | AD | https://www.voeazul.com.br/check-in |
+| Outras | * | Pesquise "check-in online [companhia]" |
+
+### Alterações
+
+**`supabase/functions/concierge-engine/index.ts`**:
+- Adicionar função `checkinAlerts()` dentro de `proactiveAlerts()` (ou como função separada chamada no handler)
+- Buscar `active_trips` com `outbound_flight_date` ou `return_flight_date` nos próximos 2 dias
+- Para cada trip, buscar dados complementares de `client_trips` (localizador) cruzando por `client_phone` + `destination_city`
+- Identificar companhia pelo prefixo do IATA code
+- Gerar mensagem personalizada com link + localizador
+- Usar `wasAlertSent` para evitar envio duplicado
+- Registrar nova action `"checkinAlert"` no handler principal
+
+### Exemplo de mensagem enviada
+
+> Ei Alex! ✈️ O check-in do seu voo G3 1234 pra Maceió já está disponível!
+>
+> 👉 Faça aqui: https://www.voegol.com.br/check-in
+> 🔑 Seu localizador: **ABC123**
+>
+> Dicas rápidas:
+> • Tenha seu RG/passaporte em mãos
+> • Escolha seu assento favorito
+> • Salve o cartão de embarque no celular
+>
+> Boa viagem! 🌴
+
