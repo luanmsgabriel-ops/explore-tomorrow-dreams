@@ -5855,7 +5855,7 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
             }
 
             // Handle pronunciation exercise (audio message while waiting)
-            if (schoolStep === "waiting_pronunciation" && messageType === "audio" && schoolData._school_target_phrase) {
+            if ((schoolStep === "waiting_pronunciation" || schoolStep === "waiting_response") && messageType === "audio" && schoolData._school_target_phrase) {
               const audioId = messageData?.audio?.id;
               if (audioId) {
                 const audioBuffer = await downloadWhatsAppMedia(audioId);
