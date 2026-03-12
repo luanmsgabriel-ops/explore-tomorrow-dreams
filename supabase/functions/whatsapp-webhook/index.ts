@@ -6093,24 +6093,13 @@ RULES:
                   await sendWhatsAppMessage(phoneNumber, "✏️ Agora é sua vez! Responda o exercício acima, ou grave um áudio praticando. 🎤\nMande *próximo* para pular.");
                 }
 
-                // Advance lesson counter
-                let newLesson = (lesson.next_lesson || schoolLesson + 1);
+                // DO NOT advance lesson counter here — wait for student interaction
+                // Progress is advanced when student responds (in waiting_response/waiting_quiz/waiting_pronunciation handlers)
+                let newLesson = schoolLesson;
                 let newModule = schoolModule;
-                let newLessonsCompleted = (schoolData._school_lessons_completed || 0) + 1;
+                let newLessonsCompleted = (schoolData._school_lessons_completed || 0);
                 let newModulesCompleted = schoolData._school_modules_completed || 0;
                 let newLevel = schoolLevel || "beginner";
-
-                if (newLesson > 5) {
-                  newLesson = 1;
-                  newModule = Math.min(schoolModule + 1, 10);
-                  if (newModule > schoolModule) {
-                    newModulesCompleted++;
-                    // Level up logic
-                    if (newModule >= 4 && newLevel === "beginner") newLevel = "intermediate";
-                    if (newModule >= 7 && newLevel === "intermediate") newLevel = "advanced";
-                    await sendWhatsAppMessage(phoneNumber, `🎉 *Módulo ${schoolModule} completo!*\n\n📖 Avançando para *Módulo ${newModule}: ${MODULE_NAMES[newModule]}*! 🚀`);
-                  }
-                }
 
                 // Sync to school_progress with streak calculation
                 try {
