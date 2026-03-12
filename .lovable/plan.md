@@ -1,26 +1,31 @@
 
 
-## Plano: Enviar áudio com pronúncia correta quando o aluno errar
 
-### Situação Atual
-Quando o aluno envia um áudio com pronúncia incorreta, o Téo responde apenas com texto contendo dicas e representação fonética. O aluno não tem um modelo sonoro para comparar.
+# Plano: 5 Features Téo 2030
 
-### Solução
-Após detectar pronúncia incorreta, gerar um áudio TTS da frase correta (na língua alvo) via ElevenLabs e enviá-lo ao aluno junto com a mensagem de feedback.
+## Features Solicitadas (uma por vez, implementação completa)
+1. ✅ **Téo Grupal** — Viagem em grupo com cruzamento de preferências via WhatsApp
+2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
+3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
+9. ✅ **Téo Roleta** — Destino aleatório filtrado por DNA com animação textual
+10. ✅ **Téo Oráculo** — Previsão personalizada da viagem com signos, DNA e fase lunar
+4. ✅ **Téo DNA** — Perfil genético de viajante
+5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
+6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
+7. ✅ **Téo Compatibilidade** — Match de viagem entre DNAs de viajante
+8. ✅ **Téo SOS** — Assistente de emergência com embaixadas, hospitais e frases úteis
+11. ✅ **Téo School** — Aprendizado de inglês/espanhol para turismo com exercícios de pronúncia por áudio, banco dedicado (school_progress + school_badges), badges por imagem via Gemini, streak tracking, e notificações diárias via concierge-engine (10h BRT)
 
-### Alterações
+---
 
-**`supabase/functions/whatsapp-webhook/index.ts`** (bloco de pronúncia incorreta, ~linha 6054-6058):
+## Correção: Isolamento de Contexto + Auto-desativação (IMPLEMENTADO ✅)
 
-1. Quando `isCorrect === false`, após enviar a mensagem de texto com feedback:
-   - Gerar áudio TTS da `targetPhrase` (a frase original correta) usando `convertTextToAudio`
-   - Fazer upload com `uploadAudioToStorage`
-   - Enviar via `sendWhatsAppAudio`
-   - Adicionar uma mensagem curta antes do áudio: "🔊 Ouça a pronúncia correta:"
+### Problema resolvido
+Mensagens de modos especiais poluíam o `messages_history` principal, causando confusão de contexto quando o cliente voltava ao chat normal.
 
-2. O fluxo fica:
-   - Envia mensagem texto com feedback (✅ já existe)
-   - Se errou: envia "🔊 Ouça a pronúncia correta:" + áudio da frase correta (novo)
-
-O código já tem todas as funções auxiliares necessárias (`convertTextToAudio`, `uploadAudioToStorage`, `sendWhatsAppAudio`), então a mudança é mínima — apenas ~10 linhas adicionais no bloco `else` (pronúncia incorreta).
-
+### Implementação
+1. **Auto-desativação após 5 minutos**: Check no início do webhook — se `_mode_activated_at` > 5min, limpa todos os flags de modo (exceto cotação)
+2. **Isolamento de histórico**: Mensagens de modos especiais (Chef, Tradutor, DNA, Galera, Vidente, Roleta, Oráculo, Playlist, SOS, Compatibilidade) NÃO são mais salvas no `messages_history` principal
+3. **Reset de timer**: Cada interação dentro de um modo reseta o `_mode_activated_at`
+4. **Modos afetados**: Chef, Tradutor, DNA, Galera, Vidente (todos com `_mode_activated_at`)
+5. **Exceção**: Modo Cotação nunca expira automaticamente

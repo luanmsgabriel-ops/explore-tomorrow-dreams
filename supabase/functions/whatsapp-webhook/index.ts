@@ -6057,6 +6057,22 @@ RULES:
 
                         await sendWhatsAppMessage(phoneNumber, responseMsg);
 
+                        // If pronunciation was incorrect, send audio with correct pronunciation
+                        if (!isCorrect && targetPhrase) {
+                          try {
+                            const correctAudio = await convertTextToAudio(targetPhrase);
+                            if (correctAudio) {
+                              const audioUrl = await uploadAudioToStorage(correctAudio, phoneNumber);
+                              if (audioUrl) {
+                                await sendWhatsAppMessage(phoneNumber, "🔊 Ouça a pronúncia correta:");
+                                await sendWhatsAppAudio(phoneNumber, audioUrl);
+                              }
+                            }
+                          } catch (audioErr) {
+                            console.error("[SCHOOL] Correct pronunciation audio error:", audioErr);
+                          }
+                        }
+
                         const updatedSchoolData: Record<string, any> = {
                           ...schoolData,
                           _school_score: newScore,
