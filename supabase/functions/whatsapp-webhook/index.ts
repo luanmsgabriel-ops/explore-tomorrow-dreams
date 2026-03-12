@@ -5951,14 +5951,24 @@ RULES:
             }
 
             // Generate next lesson via AI
+            // Handle "próximo" command — only advance if student already interacted or is in "learning" step
             if (/^(proximo|próximo|next|continuar|proxima|próxima|vamos|bora|1)$/i.test(lowerMsgSchool) || schoolStep === "learning") {
-              // Only auto-advance on "próximo" commands, not random messages
+              // If waiting for pronunciation/response interaction, remind the student
               if (schoolStep === "waiting_pronunciation" && !/^(proximo|próximo|next|pular|skip)$/i.test(lowerMsgSchool)) {
                 await sendWhatsAppMessage(phoneNumber, "🎤 Estou esperando seu áudio! Leia a frase em voz alta e mande um áudio.\nOu mande *próximo* para pular.");
                 await supabase.from("whatsapp_conversations").update({
                   collected_data: { ...schoolData, _mode_activated_at: new Date().toISOString() },
                 }).eq("id", convForSchool.id);
                 return new Response(JSON.stringify({ status: "ok", school_waiting_audio: true }), {
+                  status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+                });
+              }
+              if (schoolStep === "waiting_response" && !/^(proximo|próximo|next|pular|skip)$/i.test(lowerMsgSchool)) {
+                await sendWhatsAppMessage(phoneNumber, "✏️ Responda o exercício primeiro! Ou mande *próximo* para pular.");
+                await supabase.from("whatsapp_conversations").update({
+                  collected_data: { ...schoolData, _mode_activated_at: new Date().toISOString() },
+                }).eq("id", convForSchool.id);
+                return new Response(JSON.stringify({ status: "ok", school_waiting_response: true }), {
                   status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
                 });
               }
