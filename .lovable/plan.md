@@ -1,31 +1,35 @@
 
 
+## Plano: Expandir Diagnóstico do Téo School para 8 Perguntas
 
-# Plano: 5 Features Téo 2030
+### Situação Atual
+O diagnóstico tem apenas **3 perguntas** de múltipla escolha simples (tradução, completar frase, significado). Com só 3 perguntas, a margem de erro é alta — 1 acerto = iniciante, 2 = intermediário, 3 = avançado. Um chute sortudo pode colocar o aluno no nível errado.
 
-## Features Solicitadas (uma por vez, implementação completa)
-1. ✅ **Téo Grupal** — Viagem em grupo com cruzamento de preferências via WhatsApp
-2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
-3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
-9. ✅ **Téo Roleta** — Destino aleatório filtrado por DNA com animação textual
-10. ✅ **Téo Oráculo** — Previsão personalizada da viagem com signos, DNA e fase lunar
-4. ✅ **Téo DNA** — Perfil genético de viajante
-5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
-6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
-7. ✅ **Téo Compatibilidade** — Match de viagem entre DNAs de viajante
-8. ✅ **Téo SOS** — Assistente de emergência com embaixadas, hospitais e frases úteis
-11. ✅ **Téo School** — Aprendizado de inglês/espanhol para turismo com exercícios de pronúncia por áudio, banco dedicado (school_progress + school_badges), badges por imagem via Gemini, streak tracking, e notificações diárias via concierge-engine (10h BRT)
+### Solução
 
----
+Expandir para **8 perguntas** organizadas por dificuldade crescente, cobrindo diferentes habilidades:
 
-## Correção: Isolamento de Contexto + Auto-desativação (IMPLEMENTADO ✅)
+| Pergunta | Habilidade | Dificuldade |
+|----------|-----------|-------------|
+| 1 | Vocabulário básico (saudações) | Fácil |
+| 2 | Tradução simples (frases do dia-a-dia) | Fácil |
+| 3 | Completar frase (hotel) | Fácil-Médio |
+| 4 | Significado (aeroporto) | Médio |
+| 5 | Completar frase (restaurante) | Médio |
+| 6 | Interpretação (situação real) | Médio-Difícil |
+| 7 | Gramática contextual (tempo verbal) | Difícil |
+| 8 | Expressão idiomática/coloquial | Difícil |
 
-### Problema resolvido
-Mensagens de modos especiais poluíam o `messages_history` principal, causando confusão de contexto quando o cliente voltava ao chat normal.
+**Nova escala de classificação:**
+- 0-2 acertos → Iniciante (Módulo 1)
+- 3-5 acertos → Intermediário (Módulo 4)
+- 6-8 acertos → Avançado (Módulo 7)
 
-### Implementação
-1. **Auto-desativação após 5 minutos**: Check no início do webhook — se `_mode_activated_at` > 5min, limpa todos os flags de modo (exceto cotação)
-2. **Isolamento de histórico**: Mensagens de modos especiais (Chef, Tradutor, DNA, Galera, Vidente, Roleta, Oráculo, Playlist, SOS, Compatibilidade) NÃO são mais salvas no `messages_history` principal
-3. **Reset de timer**: Cada interação dentro de um modo reseta o `_mode_activated_at`
-4. **Modos afetados**: Chef, Tradutor, DNA, Galera, Vidente (todos com `_mode_activated_at`)
-5. **Exceção**: Modo Cotação nunca expira automaticamente
+### Alterações
+
+**`supabase/functions/whatsapp-webhook/index.ts`**:
+1. Mensagem inicial muda de "3 perguntinhas" para "8 perguntas rápidas"
+2. Expandir os blocos `diagnostic_1` a `diagnostic_3` para `diagnostic_1` a `diagnostic_8`, cada um com sua pergunta em inglês e espanhol
+3. Ajustar a lógica de nível final no `diagnostic_8` para a nova escala (0-2/3-5/6-8)
+4. Cada step envia feedback (✅/❌) + próxima pergunta, mantendo o padrão atual
+
