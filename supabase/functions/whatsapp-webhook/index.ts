@@ -5827,7 +5827,7 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
           }
 
           // ===== LEARNING MODE =====
-          if (schoolStep === "learning" || schoolStep === "waiting_pronunciation") {
+          if (schoolStep === "learning" || schoolStep === "waiting_pronunciation" || schoolStep === "waiting_response") {
             const lang = schoolLang;
             const langCode = lang === "en" ? "eng" : "spa";
             const langFlag = lang === "en" ? "🇺🇸" : "🇪🇸";
