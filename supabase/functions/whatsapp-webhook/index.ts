@@ -1174,7 +1174,7 @@ async function advanceSchoolLesson(
   };
 }
 
-
+async function checkAndAwardBadges(
   phoneNumber: string,
   progress: SchoolProgress,
   newStreak: number,

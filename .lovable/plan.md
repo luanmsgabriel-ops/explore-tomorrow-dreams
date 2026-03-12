@@ -1,33 +1,31 @@
 
 
-## Limpar dados do Luan para reiniciar o Téo School
 
-Encontrei os dados do Luan (telefone: `5515991825285`). Ele está no estado `waiting_pronunciation`, módulo 4, com 3 lições completas e badges `first_lesson` e `intermediate`.
+# Plano: 5 Features Téo 2030
 
-### O que precisa ser limpo
+## Features Solicitadas (uma por vez, implementação completa)
+1. ✅ **Téo Grupal** — Viagem em grupo com cruzamento de preferências via WhatsApp
+2. ✅ **Téo Lê Mentes** — Perfil emocional por conversa
+3. ✅ **Téo Tradutor Universal** — Tradução universal ao vivo (texto, áudio, fotos)
+9. ✅ **Téo Roleta** — Destino aleatório filtrado por DNA com animação textual
+10. ✅ **Téo Oráculo** — Previsão personalizada da viagem com signos, DNA e fase lunar
+4. ✅ **Téo DNA** — Perfil genético de viajante
+5. ✅ **Playlist da Viagem** — Curadoria IA com links Spotify
+6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
+7. ✅ **Téo Compatibilidade** — Match de viagem entre DNAs de viajante
+8. ✅ **Téo SOS** — Assistente de emergência com embaixadas, hospitais e frases úteis
+11. ✅ **Téo School** — Aprendizado de inglês/espanhol para turismo com exercícios de pronúncia por áudio, banco dedicado (school_progress + school_badges), badges por imagem via Gemini, streak tracking, e notificações diárias via concierge-engine (10h BRT)
 
-1. **Tabela `whatsapp_conversations`** (id: `60da171f-87e5-4e0a-bf33-412a520c3297`):
-   - Resetar `conversation_state` para `greeting`
-   - Limpar `collected_data` removendo todos os campos `_school_*` e `_diag_*`
-   - Limpar `messages_history` (para começar do zero)
+---
 
-2. **Tabela `school_progress`** (id: `8fde2f44-4ec5-41ae-bf15-5044b146a3a7`):
-   - Deletar o registro para que seja recriado do zero quando ele iniciar novamente
+## Correção: Isolamento de Contexto + Auto-desativação (IMPLEMENTADO ✅)
 
-### Execução
+### Problema resolvido
+Mensagens de modos especiais poluíam o `messages_history` principal, causando confusão de contexto quando o cliente voltava ao chat normal.
 
-Dois comandos SQL via ferramenta de dados:
-
-```sql
--- 1. Reset conversa do Luan
-UPDATE whatsapp_conversations 
-SET conversation_state = 'greeting',
-    collected_data = '{}',
-    messages_history = '[]'
-WHERE phone_number = '5515991825285';
-
--- 2. Deletar progresso escolar
-DELETE FROM school_progress 
-WHERE phone_number = '5515991825285';
-```
-
+### Implementação
+1. **Auto-desativação após 5 minutos**: Check no início do webhook — se `_mode_activated_at` > 5min, limpa todos os flags de modo (exceto cotação)
+2. **Isolamento de histórico**: Mensagens de modos especiais (Chef, Tradutor, DNA, Galera, Vidente, Roleta, Oráculo, Playlist, SOS, Compatibilidade) NÃO são mais salvas no `messages_history` principal
+3. **Reset de timer**: Cada interação dentro de um modo reseta o `_mode_activated_at`
+4. **Modos afetados**: Chef, Tradutor, DNA, Galera, Vidente (todos com `_mode_activated_at`)
+5. **Exceção**: Modo Cotação nunca expira automaticamente
