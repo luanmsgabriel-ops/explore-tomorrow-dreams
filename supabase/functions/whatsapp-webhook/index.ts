@@ -806,7 +806,7 @@ async function convertTextToAudio(text: string): Promise<ArrayBuffer | null> {
   }
 }
 
-async function transcribeAudio(audioBuffer: ArrayBuffer): Promise<string | null> {
+async function transcribeAudio(audioBuffer: ArrayBuffer, languageCode: string = "por"): Promise<string | null> {
   if (!ELEVENLABS_API_KEY) {
     console.error("ELEVENLABS_API_KEY not configured for STT");
     return null;
@@ -816,7 +816,7 @@ async function transcribeAudio(audioBuffer: ArrayBuffer): Promise<string | null>
     const formData = new FormData();
     formData.append("file", new Blob([audioBuffer], { type: "audio/ogg" }), "audio.ogg");
     formData.append("model_id", "scribe_v2");
-    formData.append("language_code", "por");
+    formData.append("language_code", languageCode);
 
     const response = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
       method: "POST",
@@ -5516,6 +5516,571 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
         }
       }
 
+      // ========== TÉO SCHOOL: Language Learning for Tourism (EN/ES) ==========
+      {
+        const lowerMsgSchool = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        const schoolActivateRegex = /^(escola|school|teo school|téo school|aprender ingles|aprender espanhol|aprender inglês|learn english|learn spanish|aula de ingles|aula de espanhol|ingles para viagem|espanhol para viagem)$/i;
+
+        // Check if school mode is active first
+        const { data: convForSchool } = await supabase
+          .from("whatsapp_conversations")
+          .select("id, collected_data")
+          .eq("phone_number", phoneNumber)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const schoolData = (convForSchool?.collected_data as Record<string, any>) || {};
+        const isSchoolActive = schoolData._school_mode === true;
+
+        // ===== SCHOOL MODE HANDLER (when active) =====
+        if (isSchoolActive && convForSchool) {
+          await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          const schoolLang = schoolData._school_lang || "en";
+          const schoolLevel = schoolData._school_level || null;
+          const schoolModule = schoolData._school_module || 1;
+          const schoolLesson = schoolData._school_lesson || 1;
+          const schoolStep = schoolData._school_step || "choosing_lang";
+          const schoolScore = schoolData._school_score || 0;
+          const schoolHistory = Array.isArray(schoolData._school_history) ? schoolData._school_history : [];
+
+          // Exit commands
+          const exitRegex = /^(sair escola|sair school|parar aula|exit school|voltar|sair modo)$/i;
+          if (exitRegex.test(lowerMsgSchool)) {
+            const cleanData = { ...schoolData };
+            delete cleanData._school_mode;
+            delete cleanData._school_step;
+            delete cleanData._mode_activated_at;
+            // Keep progress: _school_lang, _school_level, _school_module, _school_lesson, _school_score
+            await supabase.from("whatsapp_conversations").update({ collected_data: cleanData }).eq("id", convForSchool.id);
+            await sendWhatsAppMessage(phoneNumber, "📚 *Téo School desativado!*\n\nSeu progresso foi salvo! Quando quiser retomar, mande *escola* 😊\n\n📊 Pontuação: *" + schoolScore + " pts*");
+            return new Response(JSON.stringify({ status: "ok", school_exit: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          // ===== STEP: Choosing language =====
+          if (schoolStep === "choosing_lang") {
+            const isEnglish = /^(1|ingles|inglês|english|en)$/i.test(lowerMsgSchool);
+            const isSpanish = /^(2|espanhol|spanish|es)$/i.test(lowerMsgSchool);
+
+            if (isEnglish || isSpanish) {
+              const lang = isEnglish ? "en" : "es";
+              const langName = isEnglish ? "Inglês" : "Espanhol";
+              const langFlag = isEnglish ? "🇺🇸" : "🇪🇸";
+
+              // Check if user has previous progress
+              const previousLevel = schoolData._school_level;
+              const previousModule = schoolData._school_module || 1;
+
+              if (previousLevel && schoolData._school_lang === lang) {
+                // Resume from previous progress
+                await supabase.from("whatsapp_conversations").update({
+                  collected_data: { ...schoolData, _school_step: "learning", _mode_activated_at: new Date().toISOString() },
+                }).eq("id", convForSchool.id);
+
+                const MODULE_NAMES = ["", "Aeroporto ✈️", "Hotel 🏨", "Restaurante 🍽️", "Transporte 🚕", "Compras 🛍️", "Emergências 🏥", "Passeios 🎫", "Socialização 🤝", "Problemas ⚠️", "Conversação Avançada 🗣️"];
+                await sendWhatsAppMessage(phoneNumber, `${langFlag} *Retomando ${langName}!*\n\n📊 Nível: *${previousLevel === "beginner" ? "Iniciante 🌱" : previousLevel === "intermediate" ? "Intermediário 🌿" : "Avançado 🌳"}*\n📖 Módulo ${previousModule}: *${MODULE_NAMES[previousModule] || ""}*\n⭐ Pontuação: *${schoolScore} pts*\n\nMande *próximo* para a próxima lição!\nOu *menu* para ver os módulos disponíveis.`);
+              } else {
+                // Start diagnostic
+                await supabase.from("whatsapp_conversations").update({
+                  collected_data: { ...schoolData, _school_lang: lang, _school_step: "diagnostic_1", _mode_activated_at: new Date().toISOString() },
+                }).eq("id", convForSchool.id);
+
+                const q1 = isEnglish
+                  ? "📝 *Diagnóstico Rápido*\n\nComo você diria \"Onde fica o banheiro?\" em inglês?\n\na) Where is the bathroom?\nb) How is the bathroom?\nc) What is the restroom?"
+                  : "📝 *Diagnóstico Rápido*\n\nComo você diria \"Onde fica o banheiro?\" em espanhol?\n\na) ¿Dónde está el baño?\nb) ¿Cómo es el baño?\nc) ¿Qué es el baño?";
+
+                await sendWhatsAppMessage(phoneNumber, `${langFlag} *${langName} selecionado!*\n\nVou fazer 3 perguntinhas rápidas pra entender seu nível... 🎯\n\n${q1}`);
+              }
+            } else {
+              await sendWhatsAppMessage(phoneNumber, "🤔 Escolha o idioma:\n\n1️⃣ Inglês 🇺🇸\n2️⃣ Espanhol 🇪🇸");
+            }
+
+            return new Response(JSON.stringify({ status: "ok", school_lang_choice: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          // ===== DIAGNOSTIC STEPS =====
+          if (schoolStep.startsWith("diagnostic_")) {
+            const diagStep = parseInt(schoolStep.split("_")[1]);
+            const lang = schoolLang;
+            const answer = lowerMsgSchool.replace(/[^a-z0-9]/g, "");
+            let correct = false;
+            let diagScore = schoolData._diag_score || 0;
+
+            // Evaluate answer
+            if (diagStep === 1) {
+              correct = answer === "a";
+              if (correct) diagScore++;
+              
+              const q2 = lang === "en"
+                ? "📝 *Pergunta 2/3*\n\nComplete: \"I would like to _____ a room for two nights.\"\n\na) book\nb) take\nc) make"
+                : "📝 *Pergunta 2/3*\n\nComplete: \"Me gustaría _____ una habitación por dos noches.\"\n\na) reservar\nb) tomar\nc) hacer";
+
+              await supabase.from("whatsapp_conversations").update({
+                collected_data: { ...schoolData, _school_step: "diagnostic_2", _diag_score: diagScore, _mode_activated_at: new Date().toISOString() },
+              }).eq("id", convForSchool.id);
+
+              await sendWhatsAppMessage(phoneNumber, `${correct ? "✅ Correto!" : "❌ A resposta certa era *a*!"}\n\n${q2}`);
+            } else if (diagStep === 2) {
+              correct = answer === "a";
+              if (correct) diagScore++;
+
+              const q3 = lang === "en"
+                ? "📝 *Pergunta 3/3*\n\nO que significa \"boarding pass\"?\n\na) Passaporte\nb) Cartão de embarque\nc) Bilhete de trem"
+                : "📝 *Pergunta 3/3*\n\nO que significa \"tarjeta de embarque\"?\n\na) Cartão de crédito\nb) Cartão de embarque\nc) Cartão de visita";
+
+              await supabase.from("whatsapp_conversations").update({
+                collected_data: { ...schoolData, _school_step: "diagnostic_3", _diag_score: diagScore, _mode_activated_at: new Date().toISOString() },
+              }).eq("id", convForSchool.id);
+
+              await sendWhatsAppMessage(phoneNumber, `${correct ? "✅ Correto!" : "❌ A resposta certa era *a*!"}\n\n${q3}`);
+            } else if (diagStep === 3) {
+              correct = answer === "b";
+              if (correct) diagScore++;
+
+              // Determine level
+              const level = diagScore >= 3 ? "advanced" : diagScore >= 2 ? "intermediate" : "beginner";
+              const levelName = level === "beginner" ? "Iniciante 🌱" : level === "intermediate" ? "Intermediário 🌿" : "Avançado 🌳";
+              const startModule = level === "advanced" ? 7 : level === "intermediate" ? 4 : 1;
+
+              const MODULE_NAMES = ["", "Aeroporto ✈️", "Hotel 🏨", "Restaurante 🍽️", "Transporte 🚕", "Compras 🛍️", "Emergências 🏥", "Passeios 🎫", "Socialização 🤝", "Problemas ⚠️", "Conversação Avançada 🗣️"];
+
+              await supabase.from("whatsapp_conversations").update({
+                collected_data: {
+                  ...schoolData,
+                  _school_step: "learning",
+                  _school_level: level,
+                  _school_module: startModule,
+                  _school_lesson: 1,
+                  _school_score: 0,
+                  _diag_score: undefined,
+                  _mode_activated_at: new Date().toISOString(),
+                },
+              }).eq("id", convForSchool.id);
+
+              await sendWhatsAppMessage(phoneNumber, `${correct ? "✅ Correto!" : "❌ A resposta certa era *b*!"}\n\n🎯 *Resultado: ${levelName}*\n_Acertou ${diagScore}/3 perguntas_\n\n📖 Começando no *Módulo ${startModule}: ${MODULE_NAMES[startModule]}*\n\nMande *próximo* para começar a primeira lição! 🚀\nOu *menu* para ver todos os módulos.`);
+            }
+
+            return new Response(JSON.stringify({ status: "ok", school_diagnostic: diagStep }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          // ===== LEARNING MODE =====
+          if (schoolStep === "learning" || schoolStep === "waiting_pronunciation") {
+            const lang = schoolLang;
+            const langCode = lang === "en" ? "eng" : "spa";
+            const langFlag = lang === "en" ? "🇺🇸" : "🇪🇸";
+            const langName = lang === "en" ? "Inglês" : "Espanhol";
+
+            const MODULE_NAMES = ["", "Aeroporto ✈️", "Hotel 🏨", "Restaurante 🍽️", "Transporte 🚕", "Compras 🛍️", "Emergências 🏥", "Passeios 🎫", "Socialização 🤝", "Problemas ⚠️", "Conversação Avançada 🗣️"];
+
+            // Menu command
+            if (/^(menu|modulos|módulos)$/i.test(lowerMsgSchool)) {
+              let menuMsg = `📚 *Téo School — ${langName} ${langFlag}*\n\n`;
+              for (let m = 1; m <= 10; m++) {
+                const isCurrent = m === schoolModule;
+                const isCompleted = m < schoolModule;
+                menuMsg += `${isCompleted ? "✅" : isCurrent ? "👉" : "🔒"} *Módulo ${m}:* ${MODULE_NAMES[m]}\n`;
+              }
+              menuMsg += `\n📊 Pontuação: *${schoolScore} pts*\nMande *próximo* para continuar a lição atual.`;
+              await sendWhatsAppMessage(phoneNumber, menuMsg);
+              await supabase.from("whatsapp_conversations").update({
+                collected_data: { ...schoolData, _mode_activated_at: new Date().toISOString() },
+              }).eq("id", convForSchool.id);
+
+              return new Response(JSON.stringify({ status: "ok", school_menu: true }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            // Handle pronunciation exercise (audio message while waiting)
+            if (schoolStep === "waiting_pronunciation" && messageType === "audio" && schoolData._school_target_phrase) {
+              const audioId = messageData?.audio?.id;
+              if (audioId) {
+                const audioBuffer = await downloadWhatsAppMedia(audioId);
+                if (audioBuffer) {
+                  await sendWhatsAppMessage(phoneNumber, "🎧 *Analisando sua pronúncia...*");
+                  
+                  const transcription = await transcribeAudio(audioBuffer, langCode);
+                  
+                  if (transcription) {
+                    const targetPhrase = schoolData._school_target_phrase;
+
+                    // Use Gemini to evaluate pronunciation
+                    const evalPrompt = `You are a pronunciation evaluator for ${lang === "en" ? "English" : "Spanish"} language learning.
+
+ORIGINAL PHRASE: "${targetPhrase}"
+STUDENT'S TRANSCRIPTION: "${transcription}"
+
+Compare the student's pronunciation (via STT transcription) with the original phrase.
+
+Return ONLY valid JSON (no markdown):
+{
+  "score": 0-100,
+  "correct": true/false,
+  "feedback_pt": "feedback in Portuguese for the student",
+  "pronunciation_tip": "specific tip in Portuguese about how to improve pronunciation of any wrong words",
+  "phonetic_help": "phonetic pronunciation of difficult words in the phrase"
+}
+
+RULES:
+- Be encouraging even for mistakes
+- If score >= 70, consider it correct
+- Focus on the most important errors, not minor accent differences
+- STT may have minor transcription artifacts — be lenient with articles and small words`;
+
+                    try {
+                      const evalResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                        method: "POST",
+                        headers: {
+                          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          model: "google/gemini-2.5-flash",
+                          messages: [{ role: "user", content: evalPrompt }],
+                          max_tokens: 1000,
+                        }),
+                      });
+
+                      if (evalResponse.ok) {
+                        const evalData = await evalResponse.json();
+                        let evalContent = evalData.choices?.[0]?.message?.content || "";
+                        evalContent = evalContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+                        
+                        const evaluation = JSON.parse(evalContent);
+                        const isCorrect = evaluation.correct || evaluation.score >= 70;
+                        const newScore = schoolScore + (isCorrect ? 10 : 2);
+
+                        let responseMsg = "";
+                        if (isCorrect) {
+                          responseMsg = `🎯 Ouvi: _"${transcription}"_\n✅ *${evaluation.score >= 90 ? "Perfeito" : "Muito bom"}!* 🎉 (+10 pts)\n\n${evaluation.feedback_pt}\n\n⭐ Pontuação: *${newScore} pts*\n\nMande *próximo* para a próxima frase! 🚀`;
+                        } else {
+                          responseMsg = `🎯 Ouvi: _"${transcription}"_\n🔄 *Quase lá!* (+2 pts)\n\n${evaluation.feedback_pt}\n\n💡 *Dica:* ${evaluation.pronunciation_tip || ""}\n🔊 *Pronúncia:* ${evaluation.phonetic_help || ""}\n\n🎤 Tente de novo! Grave outro áudio lendo a frase.\nOu mande *próximo* para pular.`;
+                        }
+
+                        await sendWhatsAppMessage(phoneNumber, responseMsg);
+
+                        const updatedSchoolData = {
+                          ...schoolData,
+                          _school_score: newScore,
+                          _school_step: isCorrect ? "learning" : "waiting_pronunciation",
+                          _mode_activated_at: new Date().toISOString(),
+                        };
+                        if (isCorrect) {
+                          delete updatedSchoolData._school_target_phrase;
+                        }
+                        await supabase.from("whatsapp_conversations").update({
+                          collected_data: updatedSchoolData,
+                        }).eq("id", convForSchool.id);
+                      }
+                    } catch (evalErr) {
+                      console.error("[SCHOOL] Pronunciation evaluation error:", evalErr);
+                      await sendWhatsAppMessage(phoneNumber, "😅 Erro ao avaliar pronúncia. Tente novamente ou mande *próximo*!");
+                    }
+                  } else {
+                    await sendWhatsAppMessage(phoneNumber, "🤔 Não consegui entender o áudio. Tente gravar novamente mais perto do microfone! 🎤");
+                  }
+                }
+              }
+
+              return new Response(JSON.stringify({ status: "ok", school_pronunciation: true }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            // Generate next lesson via AI
+            if (/^(proximo|próximo|next|continuar|proxima|próxima|vamos|bora|1)$/i.test(lowerMsgSchool) || schoolStep === "learning") {
+              // Only auto-advance on "próximo" commands, not random messages
+              if (schoolStep === "waiting_pronunciation" && !/^(proximo|próximo|next|pular|skip)$/i.test(lowerMsgSchool)) {
+                await sendWhatsAppMessage(phoneNumber, "🎤 Estou esperando seu áudio! Leia a frase em voz alta e mande um áudio.\nOu mande *próximo* para pular.");
+                await supabase.from("whatsapp_conversations").update({
+                  collected_data: { ...schoolData, _mode_activated_at: new Date().toISOString() },
+                }).eq("id", convForSchool.id);
+                return new Response(JSON.stringify({ status: "ok", school_waiting_audio: true }), {
+                  status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+                });
+              }
+
+              const lessonPrompt = `You are Téo School, a world-class ${lang === "en" ? "English" : "Spanish"} teacher specialized in travel/tourism for Brazilian Portuguese speakers.
+
+STUDENT PROFILE:
+- Level: ${schoolLevel || "beginner"}
+- Module: ${schoolModule}/10 — "${MODULE_NAMES[schoolModule] || ""}"
+- Lesson: ${schoolLesson}
+- Score: ${schoolScore} pts
+- Language: ${langName}
+
+MODULE TOPICS:
+1. Airport & Check-in, 2. Hotel & Accommodation, 3. Restaurant & Food, 4. Transport & Directions,
+5. Shopping & Negotiation, 6. Emergencies & Health, 7. Tours & Attractions, 8. Socializing & Culture,
+9. Problem Solving, 10. Advanced Conversation
+
+GENERATE A LESSON IN PORTUGUESE with the target language phrases. Return ONLY valid JSON (no markdown):
+{
+  "lesson_title": "title in Portuguese",
+  "exercise_type": "vocabulary|phrases|dialogue|pronunciation|quiz|challenge",
+  "content_pt": "full lesson content formatted for WhatsApp with *bold* and emojis, in Portuguese with ${langName} phrases clearly marked",
+  "target_phrase": "ONE key phrase in ${langName} for pronunciation practice (optional, only for pronunciation type)",
+  "target_phrase_translation": "translation in Portuguese",
+  "quiz_answer": "correct answer letter if quiz type (a/b/c)",
+  "next_lesson": ${schoolLesson + 1}
+}
+
+RULES:
+- Mix exercise types: vocabulary → phrases → pronunciation → quiz → dialogue → challenge
+- For pronunciation: include ONE clear phrase the student should read aloud
+- For quiz: include 3 options (a/b/c) with one correct answer
+- For dialogue: simulate a real situation (you play waiter/clerk/agent, student responds)
+- All explanations in Portuguese, target phrases in ${langName}
+- Be encouraging, fun, use travel-themed examples
+- Keep content under 1500 chars
+- After every 5 lessons, advance to next module (lesson resets to 1)
+- Level up difficulty within the module progressively`;
+
+              try {
+                const lessonResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    model: "google/gemini-2.5-flash",
+                    messages: [
+                      { role: "system", content: lessonPrompt },
+                      ...(schoolHistory.length > 0 ? schoolHistory.slice(-4) : []),
+                      { role: "user", content: lowerMsgSchool === "learning" ? "Start the first lesson" : messageText || "next" },
+                    ],
+                    max_tokens: 2000,
+                  }),
+                });
+
+                if (!lessonResponse.ok) {
+                  console.error("[SCHOOL] AI error:", lessonResponse.status);
+                  await sendWhatsAppMessage(phoneNumber, "😅 Erro ao gerar lição. Tente *próximo* novamente!");
+                  return new Response(JSON.stringify({ status: "ok", school_error: true }), {
+                    status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+                  });
+                }
+
+                const lessonData = await lessonResponse.json();
+                let lessonContent = lessonData.choices?.[0]?.message?.content || "";
+                lessonContent = lessonContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+
+                let lesson: any;
+                try {
+                  lesson = JSON.parse(lessonContent);
+                } catch {
+                  // If not valid JSON, use the content directly
+                  await sendWhatsAppMessage(phoneNumber, lessonContent || "😅 Erro na lição. Mande *próximo*!");
+                  return new Response(JSON.stringify({ status: "ok", school_parse_error: true }), {
+                    status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+                  });
+                }
+
+                // Build message
+                const header = `${langFlag} *Téo School — Módulo ${schoolModule}*\n📖 Lição ${schoolLesson} | ⭐ ${schoolScore} pts\n\n`;
+                let lessonMsg = header + (lesson.content_pt || "Lição vazia");
+
+                // Send lesson message
+                await sendWhatsAppMessage(phoneNumber, lessonMsg);
+
+                // If pronunciation exercise, also send TTS audio of the target phrase
+                let newStep = "learning";
+                const updatedSchoolDataLesson: Record<string, any> = {
+                  ...schoolData,
+                  _mode_activated_at: new Date().toISOString(),
+                };
+
+                if (lesson.target_phrase && lesson.exercise_type === "pronunciation") {
+                  newStep = "waiting_pronunciation";
+                  updatedSchoolDataLesson._school_target_phrase = lesson.target_phrase;
+
+                  // Generate TTS for the target phrase
+                  try {
+                    const audioBuffer = await convertTextToAudio(lesson.target_phrase);
+                    if (audioBuffer) {
+                      const audioUrl = await uploadAudioToStorage(audioBuffer, phoneNumber);
+                      if (audioUrl) {
+                        await sendWhatsAppAudio(phoneNumber, audioUrl);
+                        await sendWhatsAppMessage(phoneNumber, `🎧 Ouça e repita!\n\n🎯 _"${lesson.target_phrase}"_\n🇧🇷 _"${lesson.target_phrase_translation || ""}"_\n\n🎤 Agora é sua vez! Grave um áudio lendo a frase!`);
+                      }
+                    }
+                  } catch (ttsErr) {
+                    console.error("[SCHOOL] TTS error:", ttsErr);
+                    await sendWhatsAppMessage(phoneNumber, `🎯 Leia em voz alta: _"${lesson.target_phrase}"_\n🇧🇷 _"${lesson.target_phrase_translation || ""}"_\n\n🎤 Grave um áudio lendo a frase!`);
+                  }
+                }
+
+                // Advance lesson counter
+                let newLesson = (lesson.next_lesson || schoolLesson + 1);
+                let newModule = schoolModule;
+                if (newLesson > 5) {
+                  newLesson = 1;
+                  newModule = Math.min(schoolModule + 1, 10);
+                  if (newModule > schoolModule) {
+                    await sendWhatsAppMessage(phoneNumber, `🎉 *Módulo ${schoolModule} completo!*\n\n📖 Avançando para *Módulo ${newModule}: ${MODULE_NAMES[newModule]}*! 🚀`);
+                  }
+                }
+
+                // Update school history (isolated)
+                const newHistory = [...schoolHistory, { role: "user", content: messageText || "próximo" }, { role: "assistant", content: lesson.content_pt || "" }];
+                if (newHistory.length > 20) newHistory.splice(0, newHistory.length - 20);
+
+                updatedSchoolDataLesson._school_step = newStep;
+                updatedSchoolDataLesson._school_lesson = newLesson;
+                updatedSchoolDataLesson._school_module = newModule;
+                updatedSchoolDataLesson._school_history = newHistory;
+
+                // If quiz, store expected answer
+                if (lesson.exercise_type === "quiz" && lesson.quiz_answer) {
+                  updatedSchoolDataLesson._school_quiz_answer = lesson.quiz_answer;
+                  updatedSchoolDataLesson._school_step = "waiting_quiz";
+                }
+
+                await supabase.from("whatsapp_conversations").update({
+                  collected_data: updatedSchoolDataLesson,
+                }).eq("id", convForSchool.id);
+
+              } catch (err) {
+                console.error("[SCHOOL] Lesson generation error:", err);
+                await sendWhatsAppMessage(phoneNumber, "😅 Erro ao gerar lição. Tente *próximo* novamente!");
+              }
+
+              return new Response(JSON.stringify({ status: "ok", school_lesson: true }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            // Handle quiz answers
+            if (schoolStep === "waiting_quiz" || (schoolData._school_quiz_answer && /^[a-c]$/i.test(lowerMsgSchool))) {
+              const expectedAnswer = schoolData._school_quiz_answer;
+              const userAnswer = lowerMsgSchool.replace(/[^a-c]/g, "");
+              const isCorrect = userAnswer === expectedAnswer;
+              const newScore = schoolScore + (isCorrect ? 10 : 0);
+
+              const feedbackMsg = isCorrect
+                ? `✅ *Correto!* 🎉 (+10 pts)\n\n⭐ Pontuação: *${newScore} pts*\n\nMande *próximo* para a próxima lição!`
+                : `❌ A resposta certa era *${expectedAnswer}*!\n\n⭐ Pontuação: *${newScore} pts*\n\nMande *próximo* para continuar!`;
+
+              await sendWhatsAppMessage(phoneNumber, feedbackMsg);
+
+              const cleanQuiz = { ...schoolData };
+              delete cleanQuiz._school_quiz_answer;
+              cleanQuiz._school_step = "learning";
+              cleanQuiz._school_score = newScore;
+              cleanQuiz._mode_activated_at = new Date().toISOString();
+              await supabase.from("whatsapp_conversations").update({ collected_data: cleanQuiz }).eq("id", convForSchool.id);
+
+              return new Response(JSON.stringify({ status: "ok", school_quiz: true }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            // Default: treat as dialogue interaction — send to AI for contextual response
+            const dialoguePrompt = `You are Téo School, a ${lang === "en" ? "English" : "Spanish"} teacher for tourism. The student sent a message during a lesson.
+Current module: ${schoolModule} — ${MODULE_NAMES[schoolModule]}
+Level: ${schoolLevel}
+
+Respond in Portuguese, correcting any ${langName} the student attempted. Be encouraging.
+If they seem confused, explain what to do (send *próximo* for next lesson, *menu* for modules, *sair escola* to exit).
+Keep response under 500 chars.`;
+
+            try {
+              const dialogResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  model: "google/gemini-2.5-flash-lite",
+                  messages: [
+                    { role: "system", content: dialoguePrompt },
+                    { role: "user", content: messageText || "" },
+                  ],
+                  max_tokens: 500,
+                }),
+              });
+
+              if (dialogResponse.ok) {
+                const dialogData = await dialogResponse.json();
+                const reply = dialogData.choices?.[0]?.message?.content || "Mande *próximo* para a próxima lição! 📚";
+                await sendWhatsAppMessage(phoneNumber, reply);
+              } else {
+                await sendWhatsAppMessage(phoneNumber, "📚 Mande *próximo* para a próxima lição, *menu* para ver módulos, ou *sair escola* para sair.");
+              }
+            } catch {
+              await sendWhatsAppMessage(phoneNumber, "📚 Mande *próximo* para a próxima lição!");
+            }
+
+            await supabase.from("whatsapp_conversations").update({
+              collected_data: { ...schoolData, _mode_activated_at: new Date().toISOString() },
+            }).eq("id", convForSchool.id);
+
+            return new Response(JSON.stringify({ status: "ok", school_dialogue: true }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+
+        // ===== SCHOOL MODE ACTIVATION =====
+        if (schoolActivateRegex.test(lowerMsgSchool) || /aprender\s+(ingles|inglês|espanhol)/i.test(messageText || "")) {
+          const savedConv = await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
+
+          // Check if message specifies language directly
+          const wantsEnglish = /ingles|inglês|english/i.test(messageText || "");
+          const wantsSpanish = /espanhol|spanish/i.test(messageText || "");
+
+          const existingData = (savedConv?.collected_data as Record<string, any>) || {};
+
+          if (wantsEnglish || wantsSpanish) {
+            // Skip language selection
+            const lang = wantsEnglish ? "en" : "es";
+            const previousLevel = existingData._school_level;
+
+            await supabase.from("whatsapp_conversations").update({
+              collected_data: {
+                ...existingData,
+                _school_mode: true,
+                _school_lang: lang,
+                _school_step: previousLevel && existingData._school_lang === lang ? "learning" : "diagnostic_1",
+                _mode_activated_at: new Date().toISOString(),
+              },
+            }).eq("id", savedConv!.id);
+
+            if (previousLevel && existingData._school_lang === lang) {
+              const MODULE_NAMES_ACT = ["", "Aeroporto ✈️", "Hotel 🏨", "Restaurante 🍽️", "Transporte 🚕", "Compras 🛍️", "Emergências 🏥", "Passeios 🎫", "Socialização 🤝", "Problemas ⚠️", "Conversação Avançada 🗣️"];
+              await sendWhatsAppMessage(phoneNumber, `📚 *Téo School Ativado!*\n\n${wantsEnglish ? "🇺🇸" : "🇪🇸"} Retomando de onde parou!\n📖 Módulo ${existingData._school_module || 1}: *${MODULE_NAMES_ACT[existingData._school_module || 1]}*\n⭐ Pontuação: *${existingData._school_score || 0} pts*\n\nMande *próximo* para continuar!`);
+            } else {
+              const q1 = wantsEnglish
+                ? "📝 *Diagnóstico Rápido*\n\nComo você diria \"Onde fica o banheiro?\" em inglês?\n\na) Where is the bathroom?\nb) How is the bathroom?\nc) What is the restroom?"
+                : "📝 *Diagnóstico Rápido*\n\nComo você diria \"Onde fica o banheiro?\" em espanhol?\n\na) ¿Dónde está el baño?\nb) ¿Cómo es el baño?\nc) ¿Qué es el baño?";
+              await sendWhatsAppMessage(phoneNumber, `📚 *Téo School Ativado!* ${wantsEnglish ? "🇺🇸" : "🇪🇸"}\n\nVou fazer 3 perguntinhas rápidas pra entender seu nível... 🎯\n\n${q1}`);
+            }
+          } else {
+            // Ask language
+            await supabase.from("whatsapp_conversations").update({
+              collected_data: {
+                ...existingData,
+                _school_mode: true,
+                _school_step: "choosing_lang",
+                _mode_activated_at: new Date().toISOString(),
+              },
+            }).eq("id", savedConv!.id);
+
+            await sendWhatsAppMessage(phoneNumber, "📚 *Téo School Ativado!*\n\nQual idioma você quer aprender para viagem?\n\n1️⃣ Inglês 🇺🇸\n2️⃣ Espanhol 🇪🇸");
+          }
+
+          return new Response(JSON.stringify({ status: "ok", school_activated: true }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
       // ========== TÉO CARTEIRA: Expense Tracker during Trip ==========
       {
         const lowerMsgGasto = (messageText || "").toLowerCase().trim();
@@ -6206,7 +6771,9 @@ REGRAS:
             const hasDna = td._dna_mode === "questioning";
             const hasVidente = td._vidente_waiting_sign === true;
 
-            if (hasChef || hasTranslator || hasGroup || hasDna || hasVidente) {
+            const hasSchool = td._school_mode === true;
+
+            if (hasChef || hasTranslator || hasGroup || hasDna || hasVidente || hasSchool) {
               const cleanTd = { ...td };
 
               if (hasChef) {
@@ -6233,6 +6800,13 @@ REGRAS:
               if (hasVidente) {
                 delete cleanTd._vidente_waiting_sign;
               }
+              if (hasSchool) {
+                cleanTd._school_mode = false;
+                delete cleanTd._school_step;
+                delete cleanTd._school_target_phrase;
+                delete cleanTd._school_quiz_answer;
+                // Keep progress: _school_lang, _school_level, _school_module, _school_lesson, _school_score
+              }
 
               delete cleanTd._mode_activated_at;
 
@@ -6242,7 +6816,7 @@ REGRAS:
 
               const expiredModes = [
                 hasChef && "Chef", hasTranslator && "Tradutor", hasGroup && "Galera",
-                hasDna && "DNA", hasVidente && "Vidente"
+                hasDna && "DNA", hasVidente && "Vidente", hasSchool && "School"
               ].filter(Boolean);
               console.log(`⏰ Auto-deactivated modes [${expiredModes.join(", ")}] after 5min inactivity for ${phoneNumber}`);
             }
@@ -6266,7 +6840,7 @@ REGRAS:
             .replace(/[\u0300-\u036f]/g, "")
             .trim();
 
-          const switchIntentSignals = /(?:quero cotar|cotar|cotacao|quanto custa|preco|valor|orcamento|pacote|passagem|reserva|reservar|destino|viagem|modo cotacao|modo concierge|modo normal|sair modo|tradutor|modo tradutor|chef|modo chef|meu dna|dna viajante|roleta|oraculo|vidente|mapa astral|criar grupo|entrar grupo|resultado grupo|meu grupo|sair grupo|datas grupo|minhas datas|votar|cancelar|parar|sair)/i;
+          const switchIntentSignals = /(?:quero cotar|cotar|cotacao|quanto custa|preco|valor|orcamento|pacote|passagem|reserva|reservar|destino|viagem|modo cotacao|modo concierge|modo normal|sair modo|tradutor|modo tradutor|chef|modo chef|meu dna|dna viajante|roleta|oraculo|vidente|mapa astral|criar grupo|entrar grupo|resultado grupo|meu grupo|sair grupo|datas grupo|minhas datas|votar|cancelar|parar|sair|escola|school)/i;
 
           const modeData = (convForModeCheck.collected_data as Record<string, any>) || {};
           const updatedModeData = { ...modeData };
@@ -6298,6 +6872,13 @@ REGRAS:
             if (updatedModeData._vidente_waiting_sign === true) {
               delete updatedModeData._vidente_waiting_sign;
               clearedModes.push("vidente");
+            }
+            if (updatedModeData._school_mode === true) {
+              updatedModeData._school_mode = false;
+              delete updatedModeData._school_step;
+              delete updatedModeData._school_target_phrase;
+              delete updatedModeData._school_quiz_answer;
+              clearedModes.push("school");
             }
 
             if (clearedModes.length > 0) {
