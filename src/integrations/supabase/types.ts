@@ -1102,6 +1102,90 @@ export type Database = {
           },
         ]
       }
+      school_badges: {
+        Row: {
+          badge_description: string | null
+          badge_key: string
+          badge_name: string
+          created_at: string | null
+          id: string
+          image_url: string | null
+        }
+        Insert: {
+          badge_description?: string | null
+          badge_key: string
+          badge_name: string
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+        }
+        Update: {
+          badge_description?: string | null
+          badge_key?: string
+          badge_name?: string
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+        }
+        Relationships: []
+      }
+      school_progress: {
+        Row: {
+          badges: Json | null
+          client_name: string | null
+          created_at: string | null
+          current_lesson: number | null
+          current_module: number | null
+          id: string
+          language: string | null
+          last_study_date: string | null
+          lessons_completed: number | null
+          level: string | null
+          longest_streak: number | null
+          modules_completed: number | null
+          phone_number: string
+          streak_days: number | null
+          total_score: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          badges?: Json | null
+          client_name?: string | null
+          created_at?: string | null
+          current_lesson?: number | null
+          current_module?: number | null
+          id?: string
+          language?: string | null
+          last_study_date?: string | null
+          lessons_completed?: number | null
+          level?: string | null
+          longest_streak?: number | null
+          modules_completed?: number | null
+          phone_number: string
+          streak_days?: number | null
+          total_score?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          badges?: Json | null
+          client_name?: string | null
+          created_at?: string | null
+          current_lesson?: number | null
+          current_module?: number | null
+          id?: string
+          language?: string | null
+          last_study_date?: string | null
+          lessons_completed?: number | null
+          level?: string | null
+          longest_streak?: number | null
+          modules_completed?: number | null
+          phone_number?: string
+          streak_days?: number | null
+          total_score?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       site_settings: {
         Row: {
           key: string

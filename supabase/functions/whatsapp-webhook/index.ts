@@ -1025,6 +1025,148 @@ async function uploadAudioToStorage(audioBuffer: ArrayBuffer, phone: string): Pr
 
   return publicUrlData.publicUrl;
 }
+// ========== School Progress Helpers ==========
+
+interface SchoolProgress {
+  id?: string;
+  phone_number: string;
+  client_name?: string;
+  language: string;
+  level: string;
+  current_module: number;
+  current_lesson: number;
+  total_score: number;
+  streak_days: number;
+  longest_streak: number;
+  last_study_date: string | null;
+  lessons_completed: number;
+  modules_completed: number;
+  badges: string[];
+}
+
+async function loadSchoolProgress(phoneNumber: string): Promise<SchoolProgress | null> {
+  const normalized = phoneNumber.replace(/\D/g, "");
+  const phone = normalized.startsWith("55") ? normalized : `55${normalized}`;
+  
+  const { data } = await supabase
+    .from("school_progress")
+    .select("*")
+    .eq("phone_number", phone)
+    .maybeSingle();
+  
+  if (!data) return null;
+  return {
+    ...data,
+    badges: Array.isArray(data.badges) ? data.badges : [],
+  } as SchoolProgress;
+}
+
+async function saveSchoolProgress(phoneNumber: string, updates: Partial<SchoolProgress>): Promise<void> {
+  const normalized = phoneNumber.replace(/\D/g, "");
+  const phone = normalized.startsWith("55") ? normalized : `55${normalized}`;
+  
+  const { data: existing } = await supabase
+    .from("school_progress")
+    .select("id")
+    .eq("phone_number", phone)
+    .maybeSingle();
+  
+  if (existing) {
+    await supabase.from("school_progress").update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    }).eq("id", existing.id);
+  } else {
+    await supabase.from("school_progress").insert({
+      phone_number: phone,
+      ...updates,
+    });
+  }
+}
+
+function calculateStreak(lastStudyDate: string | null, currentStreak: number): { streak: number; isNewDay: boolean } {
+  const today = new Date().toISOString().split("T")[0];
+  if (!lastStudyDate) return { streak: 1, isNewDay: true };
+  if (lastStudyDate === today) return { streak: currentStreak, isNewDay: false };
+  
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+  if (lastStudyDate === yesterday) return { streak: currentStreak + 1, isNewDay: true };
+  
+  return { streak: 1, isNewDay: true }; // streak broken
+}
+
+async function checkAndSendBadges(
+  phoneNumber: string,
+  progress: SchoolProgress,
+  newStreak: number,
+  newScore: number,
+  newModule: number,
+  newLevel: string,
+  lessonsCompleted: number,
+  modulesCompleted: number,
+): Promise<string[]> {
+  const earnedBadges = [...progress.badges];
+  const newBadges: string[] = [];
+
+  const checks: Array<{ key: string; condition: boolean }> = [
+    { key: "first_lesson", condition: lessonsCompleted >= 1 },
+    { key: "module_complete", condition: modulesCompleted >= 1 },
+    { key: "streak_3", condition: newStreak >= 3 },
+    { key: "streak_7", condition: newStreak >= 7 },
+    { key: "streak_15", condition: newStreak >= 15 },
+    { key: "streak_30", condition: newStreak >= 30 },
+    { key: "intermediate", condition: newLevel === "intermediate" },
+    { key: "advanced", condition: newLevel === "advanced" },
+    { key: "score_100", condition: newScore >= 100 },
+    { key: "graduation", condition: modulesCompleted >= 10 },
+  ];
+
+  for (const check of checks) {
+    if (check.condition && !earnedBadges.includes(check.key)) {
+      earnedBadges.push(check.key);
+      newBadges.push(check.key);
+    }
+  }
+
+  // Send badge images
+  for (const badgeKey of newBadges) {
+    try {
+      const { data: badge } = await supabase
+        .from("school_badges")
+        .select("badge_name, badge_description, image_url")
+        .eq("badge_key", badgeKey)
+        .maybeSingle();
+
+      if (badge) {
+        const caption = `🏅 *BADGE CONQUISTADO!*\n━━━━━━━━━━━━━━━━\n${badge.badge_name}\n${badge.badge_description}\n\n📊 Streak: ${newStreak} dias | Score: ${newScore} pts\n— Téo School | Tomorrow Travel 🌍`;
+        
+        if (badge.image_url) {
+          await sendWhatsAppImage(phoneNumber, badge.image_url, caption);
+        } else {
+          await sendWhatsAppMessage(phoneNumber, caption);
+        }
+      }
+    } catch (e) {
+      console.error(`[SCHOOL] Badge send error for ${badgeKey}:`, e);
+    }
+  }
+
+  return earnedBadges;
+}
+
+function getAdvancementPrediction(currentModule: number, currentLesson: number): string {
+  const lessonsToEndModule = 5 - currentLesson;
+  const modulesLeft = 10 - currentModule;
+  
+  if (lessonsToEndModule > 0) {
+    return `📈 Se estudar 1 lição por dia, em *${lessonsToEndModule} dia${lessonsToEndModule > 1 ? "s" : ""}* você completa o Módulo ${currentModule}! 🚀`;
+  }
+  if (modulesLeft > 0) {
+    const totalLessonsLeft = modulesLeft * 5;
+    return `📈 Faltam *${totalLessonsLeft} lições* (${modulesLeft} módulos) para a formatura! Se estudar todo dia, em *${totalLessonsLeft} dias* você se forma! 🎓`;
+  }
+  return "🎓 Você completou todos os módulos! Parabéns!";
+}
 
 async function sendWhatsAppImage(to: string, imageUrl: string, caption?: string) {
   const response = await fetch(
@@ -5554,7 +5696,21 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
             delete cleanData._mode_activated_at;
             // Keep progress: _school_lang, _school_level, _school_module, _school_lesson, _school_score
             await supabase.from("whatsapp_conversations").update({ collected_data: cleanData }).eq("id", convForSchool.id);
-            await sendWhatsAppMessage(phoneNumber, "📚 *Téo School desativado!*\n\nSeu progresso foi salvo! Quando quiser retomar, mande *escola* 😊\n\n📊 Pontuação: *" + schoolScore + " pts*");
+
+            // Sync to dedicated school_progress table
+            try {
+              await saveSchoolProgress(phoneNumber, {
+                client_name: contactName || schoolData._school_client_name || null,
+                language: schoolLang,
+                level: schoolLevel || "beginner",
+                current_module: schoolModule,
+                current_lesson: schoolLesson,
+                total_score: schoolScore,
+              });
+            } catch (e) { console.error("[SCHOOL] Progress sync error on exit:", e); }
+
+            const prediction = getAdvancementPrediction(schoolModule, schoolLesson);
+            await sendWhatsAppMessage(phoneNumber, `📚 *Téo School desativado!*\n\nSeu progresso foi salvo! Quando quiser retomar, mande *escola* 😊\n\n📊 Pontuação: *${schoolScore} pts*\n\n${prediction}`);
             return new Response(JSON.stringify({ status: "ok", school_exit: true }), {
               status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
@@ -5921,12 +6077,60 @@ RULES:
                 // Advance lesson counter
                 let newLesson = (lesson.next_lesson || schoolLesson + 1);
                 let newModule = schoolModule;
+                let newLessonsCompleted = (schoolData._school_lessons_completed || 0) + 1;
+                let newModulesCompleted = schoolData._school_modules_completed || 0;
+                let newLevel = schoolLevel || "beginner";
+
                 if (newLesson > 5) {
                   newLesson = 1;
                   newModule = Math.min(schoolModule + 1, 10);
                   if (newModule > schoolModule) {
+                    newModulesCompleted++;
+                    // Level up logic
+                    if (newModule >= 4 && newLevel === "beginner") newLevel = "intermediate";
+                    if (newModule >= 7 && newLevel === "intermediate") newLevel = "advanced";
                     await sendWhatsAppMessage(phoneNumber, `🎉 *Módulo ${schoolModule} completo!*\n\n📖 Avançando para *Módulo ${newModule}: ${MODULE_NAMES[newModule]}*! 🚀`);
                   }
+                }
+
+                // Sync to school_progress with streak calculation
+                try {
+                  const existingProgress = await loadSchoolProgress(phoneNumber);
+                  const { streak: newStreak, isNewDay } = calculateStreak(
+                    existingProgress?.last_study_date || null,
+                    existingProgress?.streak_days || 0
+                  );
+                  const longestStreak = Math.max(newStreak, existingProgress?.longest_streak || 0);
+
+                  // Check and send badges
+                  const allBadges = await checkAndSendBadges(
+                    phoneNumber,
+                    existingProgress || { phone_number: phoneNumber, language: schoolLang, level: newLevel, current_module: newModule, current_lesson: newLesson, total_score: schoolScore, streak_days: newStreak, longest_streak: longestStreak, last_study_date: null, lessons_completed: newLessonsCompleted, modules_completed: newModulesCompleted, badges: [] },
+                    newStreak, schoolScore, newModule, newLevel, newLessonsCompleted, newModulesCompleted,
+                  );
+
+                  await saveSchoolProgress(phoneNumber, {
+                    client_name: contactName || null,
+                    language: schoolLang,
+                    level: newLevel,
+                    current_module: newModule,
+                    current_lesson: newLesson,
+                    total_score: schoolScore,
+                    streak_days: newStreak,
+                    longest_streak: longestStreak,
+                    last_study_date: new Date().toISOString().split("T")[0],
+                    lessons_completed: newLessonsCompleted,
+                    modules_completed: newModulesCompleted,
+                    badges: allBadges,
+                  });
+
+                  // Show advancement prediction
+                  const prediction = getAdvancementPrediction(newModule, newLesson);
+                  if (isNewDay && newStreak > 1) {
+                    await sendWhatsAppMessage(phoneNumber, `🔥 *Streak de ${newStreak} dias!* Continue assim!\n\n${prediction}`);
+                  }
+                } catch (progressErr) {
+                  console.error("[SCHOOL] Progress sync error:", progressErr);
                 }
 
                 // Update school history (isolated)
@@ -5936,6 +6140,9 @@ RULES:
                 updatedSchoolDataLesson._school_step = newStep;
                 updatedSchoolDataLesson._school_lesson = newLesson;
                 updatedSchoolDataLesson._school_module = newModule;
+                updatedSchoolDataLesson._school_level = newLevel;
+                updatedSchoolDataLesson._school_lessons_completed = newLessonsCompleted;
+                updatedSchoolDataLesson._school_modules_completed = newModulesCompleted;
                 updatedSchoolDataLesson._school_history = newHistory;
 
                 // If quiz, store expected answer
@@ -6036,6 +6243,23 @@ Keep response under 500 chars.`;
           const wantsSpanish = /espanhol|spanish/i.test(messageText || "");
 
           const existingData = (savedConv?.collected_data as Record<string, any>) || {};
+
+          // Load from dedicated school_progress table first
+          let savedProgress: SchoolProgress | null = null;
+          try {
+            savedProgress = await loadSchoolProgress(phoneNumber);
+          } catch (e) { console.error("[SCHOOL] Load progress error:", e); }
+
+          // Merge saved progress into existingData if available
+          if (savedProgress) {
+            existingData._school_lang = existingData._school_lang || savedProgress.language;
+            existingData._school_level = existingData._school_level || savedProgress.level;
+            existingData._school_module = existingData._school_module || savedProgress.current_module;
+            existingData._school_lesson = existingData._school_lesson || savedProgress.current_lesson;
+            existingData._school_score = existingData._school_score || savedProgress.total_score;
+            existingData._school_lessons_completed = existingData._school_lessons_completed || savedProgress.lessons_completed;
+            existingData._school_modules_completed = existingData._school_modules_completed || savedProgress.modules_completed;
+          }
 
           if (wantsEnglish || wantsSpanish) {
             // Skip language selection
