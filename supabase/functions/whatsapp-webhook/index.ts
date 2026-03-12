@@ -6077,12 +6077,60 @@ RULES:
                 // Advance lesson counter
                 let newLesson = (lesson.next_lesson || schoolLesson + 1);
                 let newModule = schoolModule;
+                let newLessonsCompleted = (schoolData._school_lessons_completed || 0) + 1;
+                let newModulesCompleted = schoolData._school_modules_completed || 0;
+                let newLevel = schoolLevel || "beginner";
+
                 if (newLesson > 5) {
                   newLesson = 1;
                   newModule = Math.min(schoolModule + 1, 10);
                   if (newModule > schoolModule) {
+                    newModulesCompleted++;
+                    // Level up logic
+                    if (newModule >= 4 && newLevel === "beginner") newLevel = "intermediate";
+                    if (newModule >= 7 && newLevel === "intermediate") newLevel = "advanced";
                     await sendWhatsAppMessage(phoneNumber, `🎉 *Módulo ${schoolModule} completo!*\n\n📖 Avançando para *Módulo ${newModule}: ${MODULE_NAMES[newModule]}*! 🚀`);
                   }
+                }
+
+                // Sync to school_progress with streak calculation
+                try {
+                  const existingProgress = await loadSchoolProgress(phoneNumber);
+                  const { streak: newStreak, isNewDay } = calculateStreak(
+                    existingProgress?.last_study_date || null,
+                    existingProgress?.streak_days || 0
+                  );
+                  const longestStreak = Math.max(newStreak, existingProgress?.longest_streak || 0);
+
+                  // Check and send badges
+                  const allBadges = await checkAndSendBadges(
+                    phoneNumber,
+                    existingProgress || { phone_number: phoneNumber, language: schoolLang, level: newLevel, current_module: newModule, current_lesson: newLesson, total_score: schoolScore, streak_days: newStreak, longest_streak: longestStreak, last_study_date: null, lessons_completed: newLessonsCompleted, modules_completed: newModulesCompleted, badges: [] },
+                    newStreak, schoolScore, newModule, newLevel, newLessonsCompleted, newModulesCompleted,
+                  );
+
+                  await saveSchoolProgress(phoneNumber, {
+                    client_name: contactName || null,
+                    language: schoolLang,
+                    level: newLevel,
+                    current_module: newModule,
+                    current_lesson: newLesson,
+                    total_score: schoolScore,
+                    streak_days: newStreak,
+                    longest_streak: longestStreak,
+                    last_study_date: new Date().toISOString().split("T")[0],
+                    lessons_completed: newLessonsCompleted,
+                    modules_completed: newModulesCompleted,
+                    badges: allBadges,
+                  });
+
+                  // Show advancement prediction
+                  const prediction = getAdvancementPrediction(newModule, newLesson);
+                  if (isNewDay && newStreak > 1) {
+                    await sendWhatsAppMessage(phoneNumber, `🔥 *Streak de ${newStreak} dias!* Continue assim!\n\n${prediction}`);
+                  }
+                } catch (progressErr) {
+                  console.error("[SCHOOL] Progress sync error:", progressErr);
                 }
 
                 // Update school history (isolated)
@@ -6092,6 +6140,9 @@ RULES:
                 updatedSchoolDataLesson._school_step = newStep;
                 updatedSchoolDataLesson._school_lesson = newLesson;
                 updatedSchoolDataLesson._school_module = newModule;
+                updatedSchoolDataLesson._school_level = newLevel;
+                updatedSchoolDataLesson._school_lessons_completed = newLessonsCompleted;
+                updatedSchoolDataLesson._school_modules_completed = newModulesCompleted;
                 updatedSchoolDataLesson._school_history = newHistory;
 
                 // If quiz, store expected answer
