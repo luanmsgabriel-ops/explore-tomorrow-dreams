@@ -5824,10 +5824,10 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
                 }).eq("id", convForSchool.id);
 
                 const q1 = isEnglish
-                  ? "📝 *Diagnóstico Rápido*\n\nComo você diria \"Onde fica o banheiro?\" em inglês?\n\na) Where is the bathroom?\nb) How is the bathroom?\nc) What is the restroom?"
-                  : "📝 *Diagnóstico Rápido*\n\nComo você diria \"Onde fica o banheiro?\" em espanhol?\n\na) ¿Dónde está el baño?\nb) ¿Cómo es el baño?\nc) ¿Qué es el baño?";
+                  ? "📝 *Pergunta 1/8 — Vocabulário Básico*\n\nComo se diz \"Olá, tudo bem?\" em inglês?\n\na) Hello, how are you?\nb) Hello, what are you?\nc) Hello, who are you?"
+                  : "📝 *Pergunta 1/8 — Vocabulário Básico*\n\nComo se diz \"Olá, tudo bem?\" em espanhol?\n\na) ¡Hola, ¿cómo estás?\nb) ¡Hola, ¿qué eres?\nc) ¡Hola, ¿quién eres?";
 
-                await sendWhatsAppMessage(phoneNumber, `${langFlag} *${langName} selecionado!*\n\nVou fazer 3 perguntinhas rápidas pra entender seu nível... 🎯\n\n${q1}`);
+                await sendWhatsAppMessage(phoneNumber, `${langFlag} *${langName} selecionado!*\n\nVou fazer 8 perguntas rápidas pra entender seu nível com precisão... 🎯\n\n${q1}`);
               }
             } else {
               await sendWhatsAppMessage(phoneNumber, "🤔 Escolha o idioma:\n\n1️⃣ Inglês 🇺🇸\n2️⃣ Espanhol 🇪🇸");
