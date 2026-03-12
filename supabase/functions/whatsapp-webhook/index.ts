@@ -806,7 +806,7 @@ async function convertTextToAudio(text: string): Promise<ArrayBuffer | null> {
   }
 }
 
-async function transcribeAudio(audioBuffer: ArrayBuffer): Promise<string | null> {
+async function transcribeAudio(audioBuffer: ArrayBuffer, languageCode: string = "por"): Promise<string | null> {
   if (!ELEVENLABS_API_KEY) {
     console.error("ELEVENLABS_API_KEY not configured for STT");
     return null;
@@ -816,7 +816,7 @@ async function transcribeAudio(audioBuffer: ArrayBuffer): Promise<string | null>
     const formData = new FormData();
     formData.append("file", new Blob([audioBuffer], { type: "audio/ogg" }), "audio.ogg");
     formData.append("model_id", "scribe_v2");
-    formData.append("language_code", "por");
+    formData.append("language_code", languageCode);
 
     const response = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
       method: "POST",
