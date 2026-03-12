@@ -6176,9 +6176,13 @@ RULES:
                 }
 
                 // Keep current lesson/module (no advancement until student responds)
-                let newLesson = schoolLesson;
-                let newModule = schoolModule;
-                let newLevel = schoolLevel || "beginner";
+
+                // Update school history (isolated)
+                const newHistory = [...schoolHistory, { role: "user", content: messageText || "próximo" }, { role: "assistant", content: lesson.content_pt || "" }];
+                if (newHistory.length > 20) newHistory.splice(0, newHistory.length - 20);
+
+                updatedSchoolDataLesson._school_step = newStep;
+                updatedSchoolDataLesson._school_history = newHistory;
 
                 // If quiz, store expected answer
                 if (lesson.exercise_type === "quiz" && lesson.quiz_answer) {
