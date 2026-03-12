@@ -6376,9 +6376,9 @@ RULES:
               await sendWhatsAppMessage(phoneNumber, `📚 *Téo School Ativado!*\n\n${wantsEnglish ? "🇺🇸" : "🇪🇸"} Retomando de onde parou!\n📖 Módulo ${existingData._school_module || 1}: *${MODULE_NAMES_ACT[existingData._school_module || 1]}*\n⭐ Pontuação: *${existingData._school_score || 0} pts*\n\nMande *próximo* para continuar!`);
             } else {
               const q1 = wantsEnglish
-                ? "📝 *Diagnóstico Rápido*\n\nComo você diria \"Onde fica o banheiro?\" em inglês?\n\na) Where is the bathroom?\nb) How is the bathroom?\nc) What is the restroom?"
-                : "📝 *Diagnóstico Rápido*\n\nComo você diria \"Onde fica o banheiro?\" em espanhol?\n\na) ¿Dónde está el baño?\nb) ¿Cómo es el baño?\nc) ¿Qué es el baño?";
-              await sendWhatsAppMessage(phoneNumber, `📚 *Téo School Ativado!* ${wantsEnglish ? "🇺🇸" : "🇪🇸"}\n\nVou fazer 3 perguntinhas rápidas pra entender seu nível... 🎯\n\n${q1}`);
+                ? "📝 *Pergunta 1/8 — Vocabulário Básico*\n\nComo se diz \"Olá, tudo bem?\" em inglês?\n\na) Hello, how are you?\nb) Hello, what are you?\nc) Hello, who are you?"
+                : "📝 *Pergunta 1/8 — Vocabulário Básico*\n\nComo se diz \"Olá, tudo bem?\" em espanhol?\n\na) ¡Hola, ¿cómo estás?\nb) ¡Hola, ¿qué eres?\nc) ¡Hola, ¿quién eres?";
+              await sendWhatsAppMessage(phoneNumber, `📚 *Téo School Ativado!* ${wantsEnglish ? "🇺🇸" : "🇪🇸"}\n\nVou fazer 8 perguntas rápidas pra entender seu nível com precisão... 🎯\n\n${q1}`);
             }
           } else {
             // Ask language
