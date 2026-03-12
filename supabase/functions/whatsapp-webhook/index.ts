@@ -1095,7 +1095,86 @@ function calculateStreak(lastStudyDate: string | null, currentStreak: number): {
   return { streak: 1, isNewDay: true }; // streak broken
 }
 
-async function checkAndSendBadges(
+// Helper: advance lesson/module/level and sync to school_progress
+async function advanceSchoolLesson(
+  phoneNumber: string,
+  contactName: string | null,
+  schoolData: Record<string, any>,
+  convId: string,
+  newScore: number,
+): Promise<Record<string, any>> {
+  const MODULE_NAMES_ADV = ["", "Aeroporto ✈️", "Hotel 🏨", "Restaurante 🍽️", "Transporte 🚕", "Compras 🛍️", "Emergências 🏥", "Passeios 🎫", "Socialização 🤝", "Problemas ⚠️", "Conversação Avançada 🗣️"];
+  const schoolModule = schoolData._school_module || 1;
+  const schoolLesson = schoolData._school_lesson || 1;
+  const schoolLang = schoolData._school_language || "en";
+  let schoolLevel = schoolData._school_level || "beginner";
+
+  let newLesson = schoolLesson + 1;
+  let newModule = schoolModule;
+  let newLessonsCompleted = (schoolData._school_lessons_completed || 0) + 1;
+  let newModulesCompleted = schoolData._school_modules_completed || 0;
+  let newLevel = schoolLevel;
+
+  if (newLesson > 5) {
+    newLesson = 1;
+    newModule = Math.min(schoolModule + 1, 10);
+    if (newModule > schoolModule) {
+      newModulesCompleted++;
+      if (newModule >= 4 && newLevel === "beginner") newLevel = "intermediate";
+      if (newModule >= 7 && newLevel === "intermediate") newLevel = "advanced";
+      await sendWhatsAppMessage(phoneNumber, `🎉 *Módulo ${schoolModule} completo!*\n\n📖 Avançando para *Módulo ${newModule}: ${MODULE_NAMES_ADV[newModule]}*! 🚀`);
+    }
+  }
+
+  // Sync to school_progress
+  try {
+    const existingProgress = await loadSchoolProgress(phoneNumber);
+    const { streak: newStreak, isNewDay } = calculateStreak(
+      existingProgress?.last_study_date || null,
+      existingProgress?.streak_days || 0
+    );
+    const longestStreak = Math.max(newStreak, existingProgress?.longest_streak || 0);
+
+    const allBadges = await checkAndSendBadges(
+      phoneNumber,
+      existingProgress || { phone_number: phoneNumber, language: schoolLang, level: newLevel, current_module: newModule, current_lesson: newLesson, total_score: newScore, streak_days: newStreak, longest_streak: longestStreak, last_study_date: null, lessons_completed: newLessonsCompleted, modules_completed: newModulesCompleted, badges: [] },
+      newStreak, newScore, newModule, newLevel, newLessonsCompleted, newModulesCompleted,
+    );
+
+    await saveSchoolProgress(phoneNumber, {
+      client_name: contactName || null,
+      language: schoolLang,
+      level: newLevel,
+      current_module: newModule,
+      current_lesson: newLesson,
+      total_score: newScore,
+      streak_days: newStreak,
+      longest_streak: longestStreak,
+      last_study_date: new Date().toISOString().split("T")[0],
+      lessons_completed: newLessonsCompleted,
+      modules_completed: newModulesCompleted,
+      badges: allBadges,
+    });
+
+    const prediction = getAdvancementPrediction(newModule, newLesson);
+    if (isNewDay && newStreak > 1) {
+      await sendWhatsAppMessage(phoneNumber, `🔥 *Streak de ${newStreak} dias!* Continue assim!\n\n${prediction}`);
+    }
+  } catch (progressErr) {
+    console.error("[SCHOOL] Progress sync error:", progressErr);
+  }
+
+  return {
+    _school_lesson: newLesson,
+    _school_module: newModule,
+    _school_level: newLevel,
+    _school_score: newScore,
+    _school_lessons_completed: newLessonsCompleted,
+    _school_modules_completed: newModulesCompleted,
+  };
+}
+
+
   phoneNumber: string,
   progress: SchoolProgress,
   newStreak: number,
