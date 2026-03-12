@@ -6244,6 +6244,23 @@ Keep response under 500 chars.`;
 
           const existingData = (savedConv?.collected_data as Record<string, any>) || {};
 
+          // Load from dedicated school_progress table first
+          let savedProgress: SchoolProgress | null = null;
+          try {
+            savedProgress = await loadSchoolProgress(phoneNumber);
+          } catch (e) { console.error("[SCHOOL] Load progress error:", e); }
+
+          // Merge saved progress into existingData if available
+          if (savedProgress) {
+            existingData._school_lang = existingData._school_lang || savedProgress.language;
+            existingData._school_level = existingData._school_level || savedProgress.level;
+            existingData._school_module = existingData._school_module || savedProgress.current_module;
+            existingData._school_lesson = existingData._school_lesson || savedProgress.current_lesson;
+            existingData._school_score = existingData._school_score || savedProgress.total_score;
+            existingData._school_lessons_completed = existingData._school_lessons_completed || savedProgress.lessons_completed;
+            existingData._school_modules_completed = existingData._school_modules_completed || savedProgress.modules_completed;
+          }
+
           if (wantsEnglish || wantsSpanish) {
             // Skip language selection
             const lang = wantsEnglish ? "en" : "es";
