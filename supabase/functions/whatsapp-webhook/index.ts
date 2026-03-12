@@ -6800,6 +6800,13 @@ REGRAS:
               if (hasVidente) {
                 delete cleanTd._vidente_waiting_sign;
               }
+              if (hasSchool) {
+                cleanTd._school_mode = false;
+                delete cleanTd._school_step;
+                delete cleanTd._school_target_phrase;
+                delete cleanTd._school_quiz_answer;
+                // Keep progress: _school_lang, _school_level, _school_module, _school_lesson, _school_score
+              }
 
               delete cleanTd._mode_activated_at;
 
@@ -6809,7 +6816,7 @@ REGRAS:
 
               const expiredModes = [
                 hasChef && "Chef", hasTranslator && "Tradutor", hasGroup && "Galera",
-                hasDna && "DNA", hasVidente && "Vidente"
+                hasDna && "DNA", hasVidente && "Vidente", hasSchool && "School"
               ].filter(Boolean);
               console.log(`⏰ Auto-deactivated modes [${expiredModes.join(", ")}] after 5min inactivity for ${phoneNumber}`);
             }
