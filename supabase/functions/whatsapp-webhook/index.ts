@@ -5696,7 +5696,21 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
             delete cleanData._mode_activated_at;
             // Keep progress: _school_lang, _school_level, _school_module, _school_lesson, _school_score
             await supabase.from("whatsapp_conversations").update({ collected_data: cleanData }).eq("id", convForSchool.id);
-            await sendWhatsAppMessage(phoneNumber, "📚 *Téo School desativado!*\n\nSeu progresso foi salvo! Quando quiser retomar, mande *escola* 😊\n\n📊 Pontuação: *" + schoolScore + " pts*");
+
+            // Sync to dedicated school_progress table
+            try {
+              await saveSchoolProgress(phoneNumber, {
+                client_name: contactName || schoolData._school_client_name || null,
+                language: schoolLang,
+                level: schoolLevel || "beginner",
+                current_module: schoolModule,
+                current_lesson: schoolLesson,
+                total_score: schoolScore,
+              });
+            } catch (e) { console.error("[SCHOOL] Progress sync error on exit:", e); }
+
+            const prediction = getAdvancementPrediction(schoolModule, schoolLesson);
+            await sendWhatsAppMessage(phoneNumber, `📚 *Téo School desativado!*\n\nSeu progresso foi salvo! Quando quiser retomar, mande *escola* 😊\n\n📊 Pontuação: *${schoolScore} pts*\n\n${prediction}`);
             return new Response(JSON.stringify({ status: "ok", school_exit: true }), {
               status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
