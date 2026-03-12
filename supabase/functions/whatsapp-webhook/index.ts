@@ -6771,7 +6771,9 @@ REGRAS:
             const hasDna = td._dna_mode === "questioning";
             const hasVidente = td._vidente_waiting_sign === true;
 
-            if (hasChef || hasTranslator || hasGroup || hasDna || hasVidente) {
+            const hasSchool = td._school_mode === true;
+
+            if (hasChef || hasTranslator || hasGroup || hasDna || hasVidente || hasSchool) {
               const cleanTd = { ...td };
 
               if (hasChef) {
