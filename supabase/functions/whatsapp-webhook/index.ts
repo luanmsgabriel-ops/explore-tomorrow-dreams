@@ -1109,7 +1109,7 @@ async function checkAndSendBadges(
   const newBadges: string[] = [];
 
   const checks: Array<{ key: string; condition: boolean }> = [
-    { key: "first_lesson", condition: lessonsCompleted >= 1 },
+    { key: "first_lesson", condition: lessonsCompleted >= 5 },
     { key: "module_complete", condition: modulesCompleted >= 1 },
     { key: "streak_3", condition: newStreak >= 3 },
     { key: "streak_7", condition: newStreak >= 7 },
