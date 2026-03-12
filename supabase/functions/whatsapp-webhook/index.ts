@@ -6058,13 +6058,14 @@ RULES:
                 await sendWhatsAppMessage(phoneNumber, lessonMsg);
 
                 // If pronunciation exercise, also send TTS audio of the target phrase
-                let newStep = "learning";
+                // Determine the waiting step based on exercise type — NEVER auto-advance
+                let newStep = "waiting_response"; // Default: wait for student interaction
                 const updatedSchoolDataLesson: Record<string, any> = {
                   ...schoolData,
                   _mode_activated_at: new Date().toISOString(),
                 };
 
-                if (lesson.target_phrase && lesson.exercise_type === "pronunciation") {
+                if (lesson.exercise_type === "pronunciation" && lesson.target_phrase) {
                   newStep = "waiting_pronunciation";
                   updatedSchoolDataLesson._school_target_phrase = lesson.target_phrase;
 
@@ -6082,6 +6083,14 @@ RULES:
                     console.error("[SCHOOL] TTS error:", ttsErr);
                     await sendWhatsAppMessage(phoneNumber, `🎯 Leia em voz alta: _"${lesson.target_phrase}"_\n🇧🇷 _"${lesson.target_phrase_translation || ""}"_\n\n🎤 Grave um áudio lendo a frase!`);
                   }
+                } else if (lesson.exercise_type === "quiz") {
+                  // Quiz step will be set below
+                } else {
+                  // vocabulary, phrases, dialogue, challenge — prompt interaction
+                  if (lesson.target_phrase) {
+                    updatedSchoolDataLesson._school_target_phrase = lesson.target_phrase;
+                  }
+                  await sendWhatsAppMessage(phoneNumber, "✏️ Agora é sua vez! Responda o exercício acima, ou grave um áudio praticando. 🎤\nMande *próximo* para pular.");
                 }
 
                 // Advance lesson counter
