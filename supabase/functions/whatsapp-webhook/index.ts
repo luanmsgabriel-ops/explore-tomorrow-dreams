@@ -6840,7 +6840,7 @@ REGRAS:
             .replace(/[\u0300-\u036f]/g, "")
             .trim();
 
-          const switchIntentSignals = /(?:quero cotar|cotar|cotacao|quanto custa|preco|valor|orcamento|pacote|passagem|reserva|reservar|destino|viagem|modo cotacao|modo concierge|modo normal|sair modo|tradutor|modo tradutor|chef|modo chef|meu dna|dna viajante|roleta|oraculo|vidente|mapa astral|criar grupo|entrar grupo|resultado grupo|meu grupo|sair grupo|datas grupo|minhas datas|votar|cancelar|parar|sair)/i;
+          const switchIntentSignals = /(?:quero cotar|cotar|cotacao|quanto custa|preco|valor|orcamento|pacote|passagem|reserva|reservar|destino|viagem|modo cotacao|modo concierge|modo normal|sair modo|tradutor|modo tradutor|chef|modo chef|meu dna|dna viajante|roleta|oraculo|vidente|mapa astral|criar grupo|entrar grupo|resultado grupo|meu grupo|sair grupo|datas grupo|minhas datas|votar|cancelar|parar|sair|escola|school)/i;
 
           const modeData = (convForModeCheck.collected_data as Record<string, any>) || {};
           const updatedModeData = { ...modeData };
