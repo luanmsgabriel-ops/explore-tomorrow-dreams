@@ -1025,6 +1025,148 @@ async function uploadAudioToStorage(audioBuffer: ArrayBuffer, phone: string): Pr
 
   return publicUrlData.publicUrl;
 }
+// ========== School Progress Helpers ==========
+
+interface SchoolProgress {
+  id?: string;
+  phone_number: string;
+  client_name?: string;
+  language: string;
+  level: string;
+  current_module: number;
+  current_lesson: number;
+  total_score: number;
+  streak_days: number;
+  longest_streak: number;
+  last_study_date: string | null;
+  lessons_completed: number;
+  modules_completed: number;
+  badges: string[];
+}
+
+async function loadSchoolProgress(phoneNumber: string): Promise<SchoolProgress | null> {
+  const normalized = phoneNumber.replace(/\D/g, "");
+  const phone = normalized.startsWith("55") ? normalized : `55${normalized}`;
+  
+  const { data } = await supabase
+    .from("school_progress")
+    .select("*")
+    .eq("phone_number", phone)
+    .maybeSingle();
+  
+  if (!data) return null;
+  return {
+    ...data,
+    badges: Array.isArray(data.badges) ? data.badges : [],
+  } as SchoolProgress;
+}
+
+async function saveSchoolProgress(phoneNumber: string, updates: Partial<SchoolProgress>): Promise<void> {
+  const normalized = phoneNumber.replace(/\D/g, "");
+  const phone = normalized.startsWith("55") ? normalized : `55${normalized}`;
+  
+  const { data: existing } = await supabase
+    .from("school_progress")
+    .select("id")
+    .eq("phone_number", phone)
+    .maybeSingle();
+  
+  if (existing) {
+    await supabase.from("school_progress").update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    }).eq("id", existing.id);
+  } else {
+    await supabase.from("school_progress").insert({
+      phone_number: phone,
+      ...updates,
+    });
+  }
+}
+
+function calculateStreak(lastStudyDate: string | null, currentStreak: number): { streak: number; isNewDay: boolean } {
+  const today = new Date().toISOString().split("T")[0];
+  if (!lastStudyDate) return { streak: 1, isNewDay: true };
+  if (lastStudyDate === today) return { streak: currentStreak, isNewDay: false };
+  
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+  if (lastStudyDate === yesterday) return { streak: currentStreak + 1, isNewDay: true };
+  
+  return { streak: 1, isNewDay: true }; // streak broken
+}
+
+async function checkAndSendBadges(
+  phoneNumber: string,
+  progress: SchoolProgress,
+  newStreak: number,
+  newScore: number,
+  newModule: number,
+  newLevel: string,
+  lessonsCompleted: number,
+  modulesCompleted: number,
+): Promise<string[]> {
+  const earnedBadges = [...progress.badges];
+  const newBadges: string[] = [];
+
+  const checks: Array<{ key: string; condition: boolean }> = [
+    { key: "first_lesson", condition: lessonsCompleted >= 1 },
+    { key: "module_complete", condition: modulesCompleted >= 1 },
+    { key: "streak_3", condition: newStreak >= 3 },
+    { key: "streak_7", condition: newStreak >= 7 },
+    { key: "streak_15", condition: newStreak >= 15 },
+    { key: "streak_30", condition: newStreak >= 30 },
+    { key: "intermediate", condition: newLevel === "intermediate" },
+    { key: "advanced", condition: newLevel === "advanced" },
+    { key: "score_100", condition: newScore >= 100 },
+    { key: "graduation", condition: modulesCompleted >= 10 },
+  ];
+
+  for (const check of checks) {
+    if (check.condition && !earnedBadges.includes(check.key)) {
+      earnedBadges.push(check.key);
+      newBadges.push(check.key);
+    }
+  }
+
+  // Send badge images
+  for (const badgeKey of newBadges) {
+    try {
+      const { data: badge } = await supabase
+        .from("school_badges")
+        .select("badge_name, badge_description, image_url")
+        .eq("badge_key", badgeKey)
+        .maybeSingle();
+
+      if (badge) {
+        const caption = `🏅 *BADGE CONQUISTADO!*\n━━━━━━━━━━━━━━━━\n${badge.badge_name}\n${badge.badge_description}\n\n📊 Streak: ${newStreak} dias | Score: ${newScore} pts\n— Téo School | Tomorrow Travel 🌍`;
+        
+        if (badge.image_url) {
+          await sendWhatsAppImage(phoneNumber, badge.image_url, caption);
+        } else {
+          await sendWhatsAppMessage(phoneNumber, caption);
+        }
+      }
+    } catch (e) {
+      console.error(`[SCHOOL] Badge send error for ${badgeKey}:`, e);
+    }
+  }
+
+  return earnedBadges;
+}
+
+function getAdvancementPrediction(currentModule: number, currentLesson: number): string {
+  const lessonsToEndModule = 5 - currentLesson;
+  const modulesLeft = 10 - currentModule;
+  
+  if (lessonsToEndModule > 0) {
+    return `📈 Se estudar 1 lição por dia, em *${lessonsToEndModule} dia${lessonsToEndModule > 1 ? "s" : ""}* você completa o Módulo ${currentModule}! 🚀`;
+  }
+  if (modulesLeft > 0) {
+    const totalLessonsLeft = modulesLeft * 5;
+    return `📈 Faltam *${totalLessonsLeft} lições* (${modulesLeft} módulos) para a formatura! Se estudar todo dia, em *${totalLessonsLeft} dias* você se forma! 🎓`;
+  }
+  return "🎓 Você completou todos os módulos! Parabéns!";
+}
 
 async function sendWhatsAppImage(to: string, imageUrl: string, caption?: string) {
   const response = await fetch(
