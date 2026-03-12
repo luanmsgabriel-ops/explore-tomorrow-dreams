@@ -6268,11 +6268,14 @@ RULES:
 
               await sendWhatsAppMessage(phoneNumber, feedbackMsg);
 
-              const cleanQuiz = { ...schoolData };
+              const cleanQuiz: Record<string, any> = { ...schoolData };
               delete cleanQuiz._school_quiz_answer;
               cleanQuiz._school_step = "learning";
               cleanQuiz._school_score = newScore;
               cleanQuiz._mode_activated_at = new Date().toISOString();
+              // Advance lesson progress after quiz answer
+              const quizProgressUpdates = await advanceSchoolLesson(phoneNumber, contactName, cleanQuiz, convForSchool.id, newScore);
+              Object.assign(cleanQuiz, quizProgressUpdates);
               await supabase.from("whatsapp_conversations").update({ collected_data: cleanQuiz }).eq("id", convForSchool.id);
 
               return new Response(JSON.stringify({ status: "ok", school_quiz: true }), {
