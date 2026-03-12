@@ -6873,6 +6873,13 @@ REGRAS:
               delete updatedModeData._vidente_waiting_sign;
               clearedModes.push("vidente");
             }
+            if (updatedModeData._school_mode === true) {
+              updatedModeData._school_mode = false;
+              delete updatedModeData._school_step;
+              delete updatedModeData._school_target_phrase;
+              delete updatedModeData._school_quiz_answer;
+              clearedModes.push("school");
+            }
 
             if (clearedModes.length > 0) {
               await supabase
