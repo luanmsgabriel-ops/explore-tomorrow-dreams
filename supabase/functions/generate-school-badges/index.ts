@@ -102,9 +102,21 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const body = await req.json().catch(() => ({}));
+    const batchStart = body.batch_start || 0;
+    const batchSize = body.batch_size || 2;
+    const batchBadges = BADGES.slice(batchStart, batchStart + batchSize);
+
+    if (batchBadges.length === 0) {
+      return new Response(JSON.stringify({ status: "done", message: "All badges processed" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const results: Array<{ badge_key: string; status: string; image_url?: string }> = [];
 
-    for (const badge of BADGES) {
+    for (const badge of batchBadges) {
       // Check if badge already exists with image
       const { data: existing } = await supabase
         .from("school_badges")
@@ -122,7 +134,6 @@ serve(async (req) => {
       const imageUrl = await generateBadgeImage(badge);
 
       if (imageUrl) {
-        // Upsert into school_badges
         await supabase.from("school_badges").upsert({
           badge_key: badge.badge_key,
           badge_name: badge.badge_name,
@@ -133,7 +144,6 @@ serve(async (req) => {
         results.push({ badge_key: badge.badge_key, status: "generated", image_url: imageUrl });
         console.log(`[BADGES] ✅ ${badge.badge_key} generated: ${imageUrl}`);
       } else {
-        // Insert without image
         await supabase.from("school_badges").upsert({
           badge_key: badge.badge_key,
           badge_name: badge.badge_name,
@@ -143,11 +153,13 @@ serve(async (req) => {
         results.push({ badge_key: badge.badge_key, status: "failed" });
       }
 
-      // Small delay to avoid rate limiting
-      await new Promise((r) => setTimeout(r, 3000));
+      await new Promise((r) => setTimeout(r, 2000));
     }
 
-    return new Response(JSON.stringify({ status: "ok", results }), {
+    const nextBatch = batchStart + batchSize;
+    const hasMore = nextBatch < BADGES.length;
+
+    return new Response(JSON.stringify({ status: "ok", results, next_batch_start: hasMore ? nextBatch : null, total: BADGES.length }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
