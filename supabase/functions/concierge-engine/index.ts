@@ -1212,6 +1212,58 @@ Use emojis de pôr do sol 🌅. Tom: amigo animado avisando para não perder o m
   }
 }
 
+// ========== SCHOOL REMINDERS ==========
+
+async function schoolReminders() {
+  const today = new Date().toISOString().split("T")[0];
+
+  const { data: students } = await supabase
+    .from("school_progress")
+    .select("*")
+    .not("last_study_date", "is", null);
+
+  if (!students?.length) {
+    console.log("[SCHOOL_REMINDERS] No students found");
+    return;
+  }
+
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+  const MODULE_NAMES = ["", "Aeroporto ✈️", "Hotel 🏨", "Restaurante 🍽️", "Transporte 🚕", "Compras 🛍️", "Emergências 🏥", "Passeios 🎫", "Socialização 🤝", "Problemas ⚠️", "Conversação Avançada 🗣️"];
+
+  for (const student of students) {
+    try {
+      // Skip if already studied today
+      if (student.last_study_date === today) continue;
+
+      const streak = student.streak_days || 0;
+      const currentModule = student.current_module || 1;
+      const currentLesson = student.current_lesson || 1;
+      const name = student.client_name || "estudante";
+      const lessonsToModule = 5 - currentLesson;
+      const modulesLeft = 10 - currentModule;
+      const totalLessonsLeft = lessonsToModule + (modulesLeft * 5);
+
+      let message = "";
+
+      if (student.last_study_date === yesterday && streak > 0) {
+        // Had a streak, at risk of losing it
+        message = `🔥 *${name}, sua sequência de ${streak} dias está em risco!*\n\nNão perca seu progresso! Faltam apenas *${lessonsToModule} lições* para completar o Módulo ${currentModule}: ${MODULE_NAMES[currentModule]}.\n\n📊 Score: *${student.total_score || 0} pts*\n\nMande *escola* para continuar! 📚`;
+      } else {
+        // No active streak or already broken
+        message = `📚 *Hora da aula, ${name}!*\n\nSeu progresso no Téo School te espera:\n📖 Módulo ${currentModule}: *${MODULE_NAMES[currentModule]}*\n📊 Score: *${student.total_score || 0} pts*\n\n🎯 Se estudar 1 lição/dia, em *${totalLessonsLeft} dias* você completa todos os módulos!\n\nMande *escola* para começar! 🚀`;
+      }
+
+      await sendWhatsAppMessage(student.phone_number, message);
+      console.log(`[SCHOOL_REMINDERS] ✅ Reminder sent to ${student.phone_number}`);
+
+      // Small delay between messages
+      await new Promise((r) => setTimeout(r, 2000));
+    } catch (err) {
+      console.error(`[SCHOOL_REMINDERS] Error for ${student.phone_number}:`, err);
+    }
+  }
+}
+
 // ========== MAIN SERVER ==========
 
 serve(async (req) => {
@@ -1253,6 +1305,9 @@ serve(async (req) => {
         break;
       case "checkin_alerts":
         await checkinAlerts();
+        break;
+      case "school_reminders":
+        await schoolReminders();
         break;
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });

@@ -14,7 +14,7 @@
 6. ✅ **Téo Vidente** — Roteiro por signos e astrologia
 7. ✅ **Téo Compatibilidade** — Match de viagem entre DNAs de viajante
 8. ✅ **Téo SOS** — Assistente de emergência com embaixadas, hospitais e frases úteis
-11. ✅ **Téo School** — Aprendizado de inglês/espanhol para turismo com exercícios de pronúncia por áudio
+11. ✅ **Téo School** — Aprendizado de inglês/espanhol para turismo com exercícios de pronúncia por áudio, banco dedicado (school_progress + school_badges), badges por imagem via Gemini, streak tracking, e notificações diárias via concierge-engine (10h BRT)
 
 ---
 
