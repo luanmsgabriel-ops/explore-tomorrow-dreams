@@ -1095,7 +1095,86 @@ function calculateStreak(lastStudyDate: string | null, currentStreak: number): {
   return { streak: 1, isNewDay: true }; // streak broken
 }
 
-async function checkAndSendBadges(
+// Helper: advance lesson/module/level and sync to school_progress
+async function advanceSchoolLesson(
+  phoneNumber: string,
+  contactName: string | null,
+  schoolData: Record<string, any>,
+  convId: string,
+  newScore: number,
+): Promise<Record<string, any>> {
+  const MODULE_NAMES_ADV = ["", "Aeroporto ✈️", "Hotel 🏨", "Restaurante 🍽️", "Transporte 🚕", "Compras 🛍️", "Emergências 🏥", "Passeios 🎫", "Socialização 🤝", "Problemas ⚠️", "Conversação Avançada 🗣️"];
+  const schoolModule = schoolData._school_module || 1;
+  const schoolLesson = schoolData._school_lesson || 1;
+  const schoolLang = schoolData._school_language || "en";
+  let schoolLevel = schoolData._school_level || "beginner";
+
+  let newLesson = schoolLesson + 1;
+  let newModule = schoolModule;
+  let newLessonsCompleted = (schoolData._school_lessons_completed || 0) + 1;
+  let newModulesCompleted = schoolData._school_modules_completed || 0;
+  let newLevel = schoolLevel;
+
+  if (newLesson > 5) {
+    newLesson = 1;
+    newModule = Math.min(schoolModule + 1, 10);
+    if (newModule > schoolModule) {
+      newModulesCompleted++;
+      if (newModule >= 4 && newLevel === "beginner") newLevel = "intermediate";
+      if (newModule >= 7 && newLevel === "intermediate") newLevel = "advanced";
+      await sendWhatsAppMessage(phoneNumber, `🎉 *Módulo ${schoolModule} completo!*\n\n📖 Avançando para *Módulo ${newModule}: ${MODULE_NAMES_ADV[newModule]}*! 🚀`);
+    }
+  }
+
+  // Sync to school_progress
+  try {
+    const existingProgress = await loadSchoolProgress(phoneNumber);
+    const { streak: newStreak, isNewDay } = calculateStreak(
+      existingProgress?.last_study_date || null,
+      existingProgress?.streak_days || 0
+    );
+    const longestStreak = Math.max(newStreak, existingProgress?.longest_streak || 0);
+
+    const allBadges = await checkAndSendBadges(
+      phoneNumber,
+      existingProgress || { phone_number: phoneNumber, language: schoolLang, level: newLevel, current_module: newModule, current_lesson: newLesson, total_score: newScore, streak_days: newStreak, longest_streak: longestStreak, last_study_date: null, lessons_completed: newLessonsCompleted, modules_completed: newModulesCompleted, badges: [] },
+      newStreak, newScore, newModule, newLevel, newLessonsCompleted, newModulesCompleted,
+    );
+
+    await saveSchoolProgress(phoneNumber, {
+      client_name: contactName || null,
+      language: schoolLang,
+      level: newLevel,
+      current_module: newModule,
+      current_lesson: newLesson,
+      total_score: newScore,
+      streak_days: newStreak,
+      longest_streak: longestStreak,
+      last_study_date: new Date().toISOString().split("T")[0],
+      lessons_completed: newLessonsCompleted,
+      modules_completed: newModulesCompleted,
+      badges: allBadges,
+    });
+
+    const prediction = getAdvancementPrediction(newModule, newLesson);
+    if (isNewDay && newStreak > 1) {
+      await sendWhatsAppMessage(phoneNumber, `🔥 *Streak de ${newStreak} dias!* Continue assim!\n\n${prediction}`);
+    }
+  } catch (progressErr) {
+    console.error("[SCHOOL] Progress sync error:", progressErr);
+  }
+
+  return {
+    _school_lesson: newLesson,
+    _school_module: newModule,
+    _school_level: newLevel,
+    _school_score: newScore,
+    _school_lessons_completed: newLessonsCompleted,
+    _school_modules_completed: newModulesCompleted,
+  };
+}
+
+
   phoneNumber: string,
   progress: SchoolProgress,
   newStreak: number,
@@ -5827,7 +5906,7 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
           }
 
           // ===== LEARNING MODE =====
-          if (schoolStep === "learning" || schoolStep === "waiting_pronunciation") {
+          if (schoolStep === "learning" || schoolStep === "waiting_pronunciation" || schoolStep === "waiting_response") {
             const lang = schoolLang;
             const langCode = lang === "en" ? "eng" : "spa";
             const langFlag = lang === "en" ? "🇺🇸" : "🇪🇸";
@@ -5855,7 +5934,7 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
             }
 
             // Handle pronunciation exercise (audio message while waiting)
-            if (schoolStep === "waiting_pronunciation" && messageType === "audio" && schoolData._school_target_phrase) {
+            if ((schoolStep === "waiting_pronunciation" || schoolStep === "waiting_response") && messageType === "audio" && schoolData._school_target_phrase) {
               const audioId = messageData?.audio?.id;
               if (audioId) {
                 const audioBuffer = await downloadWhatsAppMedia(audioId);
@@ -5922,7 +6001,7 @@ RULES:
 
                         await sendWhatsAppMessage(phoneNumber, responseMsg);
 
-                        const updatedSchoolData = {
+                        const updatedSchoolData: Record<string, any> = {
                           ...schoolData,
                           _school_score: newScore,
                           _school_step: isCorrect ? "learning" : "waiting_pronunciation",
@@ -5930,6 +6009,9 @@ RULES:
                         };
                         if (isCorrect) {
                           delete updatedSchoolData._school_target_phrase;
+                          // Advance lesson progress on successful pronunciation
+                          const progressUpdates = await advanceSchoolLesson(phoneNumber, contactName, updatedSchoolData, convForSchool.id, newScore);
+                          Object.assign(updatedSchoolData, progressUpdates);
                         }
                         await supabase.from("whatsapp_conversations").update({
                           collected_data: updatedSchoolData,
@@ -5951,14 +6033,24 @@ RULES:
             }
 
             // Generate next lesson via AI
+            // Handle "próximo" command — only advance if student already interacted or is in "learning" step
             if (/^(proximo|próximo|next|continuar|proxima|próxima|vamos|bora|1)$/i.test(lowerMsgSchool) || schoolStep === "learning") {
-              // Only auto-advance on "próximo" commands, not random messages
+              // If waiting for pronunciation/response interaction, remind the student
               if (schoolStep === "waiting_pronunciation" && !/^(proximo|próximo|next|pular|skip)$/i.test(lowerMsgSchool)) {
                 await sendWhatsAppMessage(phoneNumber, "🎤 Estou esperando seu áudio! Leia a frase em voz alta e mande um áudio.\nOu mande *próximo* para pular.");
                 await supabase.from("whatsapp_conversations").update({
                   collected_data: { ...schoolData, _mode_activated_at: new Date().toISOString() },
                 }).eq("id", convForSchool.id);
                 return new Response(JSON.stringify({ status: "ok", school_waiting_audio: true }), {
+                  status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+                });
+              }
+              if (schoolStep === "waiting_response" && !/^(proximo|próximo|next|pular|skip)$/i.test(lowerMsgSchool)) {
+                await sendWhatsAppMessage(phoneNumber, "✏️ Responda o exercício primeiro! Ou mande *próximo* para pular.");
+                await supabase.from("whatsapp_conversations").update({
+                  collected_data: { ...schoolData, _mode_activated_at: new Date().toISOString() },
+                }).eq("id", convForSchool.id);
+                return new Response(JSON.stringify({ status: "ok", school_waiting_response: true }), {
                   status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
                 });
               }
@@ -6048,13 +6140,14 @@ RULES:
                 await sendWhatsAppMessage(phoneNumber, lessonMsg);
 
                 // If pronunciation exercise, also send TTS audio of the target phrase
-                let newStep = "learning";
+                // Determine the waiting step based on exercise type — NEVER auto-advance
+                let newStep = "waiting_response"; // Default: wait for student interaction
                 const updatedSchoolDataLesson: Record<string, any> = {
                   ...schoolData,
                   _mode_activated_at: new Date().toISOString(),
                 };
 
-                if (lesson.target_phrase && lesson.exercise_type === "pronunciation") {
+                if (lesson.exercise_type === "pronunciation" && lesson.target_phrase) {
                   newStep = "waiting_pronunciation";
                   updatedSchoolDataLesson._school_target_phrase = lesson.target_phrase;
 
@@ -6072,77 +6165,23 @@ RULES:
                     console.error("[SCHOOL] TTS error:", ttsErr);
                     await sendWhatsAppMessage(phoneNumber, `🎯 Leia em voz alta: _"${lesson.target_phrase}"_\n🇧🇷 _"${lesson.target_phrase_translation || ""}"_\n\n🎤 Grave um áudio lendo a frase!`);
                   }
-                }
-
-                // Advance lesson counter
-                let newLesson = (lesson.next_lesson || schoolLesson + 1);
-                let newModule = schoolModule;
-                let newLessonsCompleted = (schoolData._school_lessons_completed || 0) + 1;
-                let newModulesCompleted = schoolData._school_modules_completed || 0;
-                let newLevel = schoolLevel || "beginner";
-
-                if (newLesson > 5) {
-                  newLesson = 1;
-                  newModule = Math.min(schoolModule + 1, 10);
-                  if (newModule > schoolModule) {
-                    newModulesCompleted++;
-                    // Level up logic
-                    if (newModule >= 4 && newLevel === "beginner") newLevel = "intermediate";
-                    if (newModule >= 7 && newLevel === "intermediate") newLevel = "advanced";
-                    await sendWhatsAppMessage(phoneNumber, `🎉 *Módulo ${schoolModule} completo!*\n\n📖 Avançando para *Módulo ${newModule}: ${MODULE_NAMES[newModule]}*! 🚀`);
+                } else if (lesson.exercise_type === "quiz") {
+                  // Quiz step will be set below
+                } else {
+                  // vocabulary, phrases, dialogue, challenge — prompt interaction
+                  if (lesson.target_phrase) {
+                    updatedSchoolDataLesson._school_target_phrase = lesson.target_phrase;
                   }
+                  await sendWhatsAppMessage(phoneNumber, "✏️ Agora é sua vez! Responda o exercício acima, ou grave um áudio praticando. 🎤\nMande *próximo* para pular.");
                 }
 
-                // Sync to school_progress with streak calculation
-                try {
-                  const existingProgress = await loadSchoolProgress(phoneNumber);
-                  const { streak: newStreak, isNewDay } = calculateStreak(
-                    existingProgress?.last_study_date || null,
-                    existingProgress?.streak_days || 0
-                  );
-                  const longestStreak = Math.max(newStreak, existingProgress?.longest_streak || 0);
-
-                  // Check and send badges
-                  const allBadges = await checkAndSendBadges(
-                    phoneNumber,
-                    existingProgress || { phone_number: phoneNumber, language: schoolLang, level: newLevel, current_module: newModule, current_lesson: newLesson, total_score: schoolScore, streak_days: newStreak, longest_streak: longestStreak, last_study_date: null, lessons_completed: newLessonsCompleted, modules_completed: newModulesCompleted, badges: [] },
-                    newStreak, schoolScore, newModule, newLevel, newLessonsCompleted, newModulesCompleted,
-                  );
-
-                  await saveSchoolProgress(phoneNumber, {
-                    client_name: contactName || null,
-                    language: schoolLang,
-                    level: newLevel,
-                    current_module: newModule,
-                    current_lesson: newLesson,
-                    total_score: schoolScore,
-                    streak_days: newStreak,
-                    longest_streak: longestStreak,
-                    last_study_date: new Date().toISOString().split("T")[0],
-                    lessons_completed: newLessonsCompleted,
-                    modules_completed: newModulesCompleted,
-                    badges: allBadges,
-                  });
-
-                  // Show advancement prediction
-                  const prediction = getAdvancementPrediction(newModule, newLesson);
-                  if (isNewDay && newStreak > 1) {
-                    await sendWhatsAppMessage(phoneNumber, `🔥 *Streak de ${newStreak} dias!* Continue assim!\n\n${prediction}`);
-                  }
-                } catch (progressErr) {
-                  console.error("[SCHOOL] Progress sync error:", progressErr);
-                }
+                // Keep current lesson/module (no advancement until student responds)
 
                 // Update school history (isolated)
                 const newHistory = [...schoolHistory, { role: "user", content: messageText || "próximo" }, { role: "assistant", content: lesson.content_pt || "" }];
                 if (newHistory.length > 20) newHistory.splice(0, newHistory.length - 20);
 
                 updatedSchoolDataLesson._school_step = newStep;
-                updatedSchoolDataLesson._school_lesson = newLesson;
-                updatedSchoolDataLesson._school_module = newModule;
-                updatedSchoolDataLesson._school_level = newLevel;
-                updatedSchoolDataLesson._school_lessons_completed = newLessonsCompleted;
-                updatedSchoolDataLesson._school_modules_completed = newModulesCompleted;
                 updatedSchoolDataLesson._school_history = newHistory;
 
                 // If quiz, store expected answer
@@ -6178,11 +6217,14 @@ RULES:
 
               await sendWhatsAppMessage(phoneNumber, feedbackMsg);
 
-              const cleanQuiz = { ...schoolData };
+              const cleanQuiz: Record<string, any> = { ...schoolData };
               delete cleanQuiz._school_quiz_answer;
               cleanQuiz._school_step = "learning";
               cleanQuiz._school_score = newScore;
               cleanQuiz._mode_activated_at = new Date().toISOString();
+              // Advance lesson progress after quiz answer
+              const quizProgressUpdates = await advanceSchoolLesson(phoneNumber, contactName, cleanQuiz, convForSchool.id, newScore);
+              Object.assign(cleanQuiz, quizProgressUpdates);
               await supabase.from("whatsapp_conversations").update({ collected_data: cleanQuiz }).eq("id", convForSchool.id);
 
               return new Response(JSON.stringify({ status: "ok", school_quiz: true }), {
@@ -6190,39 +6232,92 @@ RULES:
               });
             }
 
-            // Default: treat as dialogue interaction — send to AI for contextual response
-            const dialoguePrompt = `You are Téo School, a ${lang === "en" ? "English" : "Spanish"} teacher for tourism. The student sent a message during a lesson.
-Current module: ${schoolModule} — ${MODULE_NAMES[schoolModule]}
+            // Handle waiting_response — evaluate student's text/audio response via AI
+            if (schoolStep === "waiting_response") {
+              const responsePrompt = `You are Téo School, a ${lang === "en" ? "English" : "Spanish"} teacher for tourism/travel.
+Module: ${schoolModule} — ${MODULE_NAMES[schoolModule]}
 Level: ${schoolLevel}
 
-Respond in Portuguese, correcting any ${langName} the student attempted. Be encouraging.
-If they seem confused, explain what to do (send *próximo* for next lesson, *menu* for modules, *sair escola* to exit).
-Keep response under 500 chars.`;
+The student responded to an exercise. Evaluate their response.
 
-            try {
-              const dialogResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-                method: "POST",
-                headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  model: "google/gemini-2.5-flash-lite",
-                  messages: [
-                    { role: "system", content: dialoguePrompt },
-                    { role: "user", content: messageText || "" },
-                  ],
-                  max_tokens: 500,
-                }),
-              });
+Return ONLY valid JSON (no markdown):
+{
+  "correct": true/false,
+  "score_bonus": 5-15,
+  "feedback_pt": "encouraging feedback in Portuguese, max 200 chars",
+  "correction": "if wrong, explain the correct answer in Portuguese, max 200 chars"
+}
 
-              if (dialogResponse.ok) {
-                const dialogData = await dialogResponse.json();
-                const reply = dialogData.choices?.[0]?.message?.content || "Mande *próximo* para a próxima lição! 📚";
-                await sendWhatsAppMessage(phoneNumber, reply);
-              } else {
-                await sendWhatsAppMessage(phoneNumber, "📚 Mande *próximo* para a próxima lição, *menu* para ver módulos, ou *sair escola* para sair.");
+RULES:
+- Be lenient and encouraging — even partial attempts get some points
+- If the student clearly tried, give at least 5 points
+- If mostly correct, give 10-15 points
+- All feedback in Portuguese`;
+
+              let responseScore = 5; // minimum for trying
+              let responseFeedback = "Boa tentativa! 💪";
+
+              try {
+                const evalResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                  method: "POST",
+                  headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    model: "google/gemini-2.5-flash-lite",
+                    messages: [
+                      { role: "system", content: responsePrompt },
+                      ...schoolHistory.slice(-2),
+                      { role: "user", content: messageText || "" },
+                    ],
+                    max_tokens: 500,
+                  }),
+                });
+
+                if (evalResponse.ok) {
+                  const evalData = await evalResponse.json();
+                  let evalContent = evalData.choices?.[0]?.message?.content || "";
+                  evalContent = evalContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+                  try {
+                    const evaluation = JSON.parse(evalContent);
+                    responseScore = evaluation.score_bonus || 5;
+                    responseFeedback = evaluation.feedback_pt || "Boa tentativa!";
+                    if (evaluation.correction) {
+                      responseFeedback += `\n\n📝 ${evaluation.correction}`;
+                    }
+                  } catch { /* use defaults */ }
+                }
+              } catch (e) {
+                console.error("[SCHOOL] Response evaluation error:", e);
               }
-            } catch {
-              await sendWhatsAppMessage(phoneNumber, "📚 Mande *próximo* para a próxima lição!");
+
+              const newScore = schoolScore + responseScore;
+              const emoji = responseScore >= 10 ? "🎉" : "💪";
+              await sendWhatsAppMessage(phoneNumber, `${emoji} ${responseFeedback}\n\n⭐ +${responseScore} pts | Total: *${newScore} pts*\n\nMande *próximo* para a próxima lição! 🚀`);
+
+              // Advance progress
+              const updatedData: Record<string, any> = {
+                ...schoolData,
+                _school_score: newScore,
+                _school_step: "learning",
+                _mode_activated_at: new Date().toISOString(),
+              };
+              delete updatedData._school_target_phrase;
+              const progressUpdates = await advanceSchoolLesson(phoneNumber, contactName, updatedData, convForSchool.id, newScore);
+              Object.assign(updatedData, progressUpdates);
+
+              // Update history
+              const updHistory = [...schoolHistory, { role: "user", content: messageText || "" }, { role: "assistant", content: responseFeedback }];
+              if (updHistory.length > 20) updHistory.splice(0, updHistory.length - 20);
+              updatedData._school_history = updHistory;
+
+              await supabase.from("whatsapp_conversations").update({ collected_data: updatedData }).eq("id", convForSchool.id);
+
+              return new Response(JSON.stringify({ status: "ok", school_response_evaluated: true }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
             }
+
+            // Default: fallback for any unhandled message in learning/waiting states
+            await sendWhatsAppMessage(phoneNumber, "📚 Mande *próximo* para a próxima lição, *menu* para ver módulos, ou *sair escola* para sair.");
 
             await supabase.from("whatsapp_conversations").update({
               collected_data: { ...schoolData, _mode_activated_at: new Date().toISOString() },
