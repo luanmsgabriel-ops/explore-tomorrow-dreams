@@ -6001,7 +6001,7 @@ RULES:
 
                         await sendWhatsAppMessage(phoneNumber, responseMsg);
 
-                        const updatedSchoolData = {
+                        const updatedSchoolData: Record<string, any> = {
                           ...schoolData,
                           _school_score: newScore,
                           _school_step: isCorrect ? "learning" : "waiting_pronunciation",
@@ -6009,6 +6009,9 @@ RULES:
                         };
                         if (isCorrect) {
                           delete updatedSchoolData._school_target_phrase;
+                          // Advance lesson progress on successful pronunciation
+                          const progressUpdates = await advanceSchoolLesson(phoneNumber, contactName, updatedSchoolData, convForSchool.id, newScore);
+                          Object.assign(updatedSchoolData, progressUpdates);
                         }
                         await supabase.from("whatsapp_conversations").update({
                           collected_data: updatedSchoolData,
