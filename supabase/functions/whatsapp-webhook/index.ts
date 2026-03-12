@@ -6283,39 +6283,92 @@ RULES:
               });
             }
 
-            // Default: treat as dialogue interaction — send to AI for contextual response
-            const dialoguePrompt = `You are Téo School, a ${lang === "en" ? "English" : "Spanish"} teacher for tourism. The student sent a message during a lesson.
-Current module: ${schoolModule} — ${MODULE_NAMES[schoolModule]}
+            // Handle waiting_response — evaluate student's text/audio response via AI
+            if (schoolStep === "waiting_response") {
+              const responsePrompt = `You are Téo School, a ${lang === "en" ? "English" : "Spanish"} teacher for tourism/travel.
+Module: ${schoolModule} — ${MODULE_NAMES[schoolModule]}
 Level: ${schoolLevel}
 
-Respond in Portuguese, correcting any ${langName} the student attempted. Be encouraging.
-If they seem confused, explain what to do (send *próximo* for next lesson, *menu* for modules, *sair escola* to exit).
-Keep response under 500 chars.`;
+The student responded to an exercise. Evaluate their response.
 
-            try {
-              const dialogResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-                method: "POST",
-                headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  model: "google/gemini-2.5-flash-lite",
-                  messages: [
-                    { role: "system", content: dialoguePrompt },
-                    { role: "user", content: messageText || "" },
-                  ],
-                  max_tokens: 500,
-                }),
-              });
+Return ONLY valid JSON (no markdown):
+{
+  "correct": true/false,
+  "score_bonus": 5-15,
+  "feedback_pt": "encouraging feedback in Portuguese, max 200 chars",
+  "correction": "if wrong, explain the correct answer in Portuguese, max 200 chars"
+}
 
-              if (dialogResponse.ok) {
-                const dialogData = await dialogResponse.json();
-                const reply = dialogData.choices?.[0]?.message?.content || "Mande *próximo* para a próxima lição! 📚";
-                await sendWhatsAppMessage(phoneNumber, reply);
-              } else {
-                await sendWhatsAppMessage(phoneNumber, "📚 Mande *próximo* para a próxima lição, *menu* para ver módulos, ou *sair escola* para sair.");
+RULES:
+- Be lenient and encouraging — even partial attempts get some points
+- If the student clearly tried, give at least 5 points
+- If mostly correct, give 10-15 points
+- All feedback in Portuguese`;
+
+              let responseScore = 5; // minimum for trying
+              let responseFeedback = "Boa tentativa! 💪";
+
+              try {
+                const evalResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                  method: "POST",
+                  headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    model: "google/gemini-2.5-flash-lite",
+                    messages: [
+                      { role: "system", content: responsePrompt },
+                      ...schoolHistory.slice(-2),
+                      { role: "user", content: messageText || "" },
+                    ],
+                    max_tokens: 500,
+                  }),
+                });
+
+                if (evalResponse.ok) {
+                  const evalData = await evalResponse.json();
+                  let evalContent = evalData.choices?.[0]?.message?.content || "";
+                  evalContent = evalContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+                  try {
+                    const evaluation = JSON.parse(evalContent);
+                    responseScore = evaluation.score_bonus || 5;
+                    responseFeedback = evaluation.feedback_pt || "Boa tentativa!";
+                    if (evaluation.correction) {
+                      responseFeedback += `\n\n📝 ${evaluation.correction}`;
+                    }
+                  } catch { /* use defaults */ }
+                }
+              } catch (e) {
+                console.error("[SCHOOL] Response evaluation error:", e);
               }
-            } catch {
-              await sendWhatsAppMessage(phoneNumber, "📚 Mande *próximo* para a próxima lição!");
+
+              const newScore = schoolScore + responseScore;
+              const emoji = responseScore >= 10 ? "🎉" : "💪";
+              await sendWhatsAppMessage(phoneNumber, `${emoji} ${responseFeedback}\n\n⭐ +${responseScore} pts | Total: *${newScore} pts*\n\nMande *próximo* para a próxima lição! 🚀`);
+
+              // Advance progress
+              const updatedData: Record<string, any> = {
+                ...schoolData,
+                _school_score: newScore,
+                _school_step: "learning",
+                _mode_activated_at: new Date().toISOString(),
+              };
+              delete updatedData._school_target_phrase;
+              const progressUpdates = await advanceSchoolLesson(phoneNumber, contactName, updatedData, convForSchool.id, newScore);
+              Object.assign(updatedData, progressUpdates);
+
+              // Update history
+              const updHistory = [...schoolHistory, { role: "user", content: messageText || "" }, { role: "assistant", content: responseFeedback }];
+              if (updHistory.length > 20) updHistory.splice(0, updHistory.length - 20);
+              updatedData._school_history = updHistory;
+
+              await supabase.from("whatsapp_conversations").update({ collected_data: updatedData }).eq("id", convForSchool.id);
+
+              return new Response(JSON.stringify({ status: "ok", school_response_evaluated: true }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
             }
+
+            // Default: fallback for any unhandled message in learning/waiting states
+            await sendWhatsAppMessage(phoneNumber, "📚 Mande *próximo* para a próxima lição, *menu* para ver módulos, ou *sair escola* para sair.");
 
             await supabase.from("whatsapp_conversations").update({
               collected_data: { ...schoolData, _mode_activated_at: new Date().toISOString() },
