@@ -5838,47 +5838,90 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
             });
           }
 
-          // ===== DIAGNOSTIC STEPS =====
+          // ===== DIAGNOSTIC STEPS (8 questions) =====
           if (schoolStep.startsWith("diagnostic_")) {
             const diagStep = parseInt(schoolStep.split("_")[1]);
             const lang = schoolLang;
+            const isEn = lang === "en";
             const answer = lowerMsgSchool.replace(/[^a-z0-9]/g, "");
             let correct = false;
+            let correctAnswer = "a";
             let diagScore = schoolData._diag_score || 0;
+            let nextQuestion = "";
+            let nextStep = "";
 
-            // Evaluate answer
+            // Questions bank (EN / ES) — 8 questions with increasing difficulty
             if (diagStep === 1) {
+              // Q1: Vocabulário básico (saudações) — FÁCIL
               correct = answer === "a";
+              correctAnswer = "a";
               if (correct) diagScore++;
-              
-              const q2 = lang === "en"
-                ? "📝 *Pergunta 2/3*\n\nComplete: \"I would like to _____ a room for two nights.\"\n\na) book\nb) take\nc) make"
-                : "📝 *Pergunta 2/3*\n\nComplete: \"Me gustaría _____ una habitación por dos noches.\"\n\na) reservar\nb) tomar\nc) hacer";
-
-              await supabase.from("whatsapp_conversations").update({
-                collected_data: { ...schoolData, _school_step: "diagnostic_2", _diag_score: diagScore, _mode_activated_at: new Date().toISOString() },
-              }).eq("id", convForSchool.id);
-
-              await sendWhatsAppMessage(phoneNumber, `${correct ? "✅ Correto!" : "❌ A resposta certa era *a*!"}\n\n${q2}`);
+              nextStep = "diagnostic_2";
+              nextQuestion = isEn
+                ? "📝 *Pergunta 2/8 — Tradução Simples*\n\nComo se diz \"Eu preciso de ajuda\" em inglês?\n\na) I need help\nb) I want help\nc) I like help"
+                : "📝 *Pergunta 2/8 — Tradução Simples*\n\nComo se diz \"Eu preciso de ajuda\" em espanhol?\n\na) Necesito ayuda\nb) Quiero ayuda\nc) Me gusta ayuda";
             } else if (diagStep === 2) {
+              // Q2: Tradução simples — FÁCIL
               correct = answer === "a";
+              correctAnswer = "a";
               if (correct) diagScore++;
-
-              const q3 = lang === "en"
-                ? "📝 *Pergunta 3/3*\n\nO que significa \"boarding pass\"?\n\na) Passaporte\nb) Cartão de embarque\nc) Bilhete de trem"
-                : "📝 *Pergunta 3/3*\n\nO que significa \"tarjeta de embarque\"?\n\na) Cartão de crédito\nb) Cartão de embarque\nc) Cartão de visita";
-
-              await supabase.from("whatsapp_conversations").update({
-                collected_data: { ...schoolData, _school_step: "diagnostic_3", _diag_score: diagScore, _mode_activated_at: new Date().toISOString() },
-              }).eq("id", convForSchool.id);
-
-              await sendWhatsAppMessage(phoneNumber, `${correct ? "✅ Correto!" : "❌ A resposta certa era *a*!"}\n\n${q3}`);
+              nextStep = "diagnostic_3";
+              nextQuestion = isEn
+                ? "📝 *Pergunta 3/8 — Completar Frase (Hotel)*\n\nComplete: \"I would like to _____ a room for two nights.\"\n\na) book\nb) take\nc) make"
+                : "📝 *Pergunta 3/8 — Completar Frase (Hotel)*\n\nComplete: \"Me gustaría _____ una habitación por dos noches.\"\n\na) reservar\nb) tomar\nc) hacer";
             } else if (diagStep === 3) {
+              // Q3: Completar frase (hotel) — FÁCIL-MÉDIO
+              correct = answer === "a";
+              correctAnswer = "a";
+              if (correct) diagScore++;
+              nextStep = "diagnostic_4";
+              nextQuestion = isEn
+                ? "📝 *Pergunta 4/8 — Significado (Aeroporto)*\n\nO que significa \"boarding pass\"?\n\na) Passaporte\nb) Cartão de embarque\nc) Bilhete de trem"
+                : "📝 *Pergunta 4/8 — Significado (Aeroporto)*\n\nO que significa \"tarjeta de embarque\"?\n\na) Cartão de crédito\nb) Cartão de embarque\nc) Cartão de visita";
+            } else if (diagStep === 4) {
+              // Q4: Significado (aeroporto) — MÉDIO
               correct = answer === "b";
+              correctAnswer = "b";
+              if (correct) diagScore++;
+              nextStep = "diagnostic_5";
+              nextQuestion = isEn
+                ? "📝 *Pergunta 5/8 — Completar Frase (Restaurante)*\n\nComplete: \"Could I _____ the menu, please?\"\n\na) watch\nb) look\nc) see"
+                : "📝 *Pergunta 5/8 — Completar Frase (Restaurante)*\n\nComplete: \"¿Podría _____ la carta, por favor?\"\n\na) mirar\nb) ver\nc) observar";
+            } else if (diagStep === 5) {
+              // Q5: Completar frase (restaurante) — MÉDIO
+              correct = answer === "c";
+              correctAnswer = "c";
+              if (correct) diagScore++;
+              nextStep = "diagnostic_6";
+              nextQuestion = isEn
+                ? "📝 *Pergunta 6/8 — Interpretação*\n\nVocê está no hotel e a recepcionista diz: \"Your room isn't ready yet. Would you mind waiting in the lobby?\" O que ela quer dizer?\n\na) Seu quarto está pronto\nb) Ela quer que você vá embora\nc) Seu quarto ainda não está pronto e pede para esperar no lobby"
+                : "📝 *Pergunta 6/8 — Interpretação*\n\nVocê está no hotel e a recepcionista diz: \"Su habitación aún no está lista. ¿Le importaría esperar en el vestíbulo?\" O que ela quer dizer?\n\na) O quarto está pronto\nb) Ela quer que você vá embora\nc) O quarto ainda não está pronto e pede para esperar no lobby";
+            } else if (diagStep === 6) {
+              // Q6: Interpretação (situação real) — MÉDIO-DIFÍCIL
+              correct = answer === "c";
+              correctAnswer = "c";
+              if (correct) diagScore++;
+              nextStep = "diagnostic_7";
+              nextQuestion = isEn
+                ? "📝 *Pergunta 7/8 — Gramática*\n\nQual frase está correta?\n\na) I have been waiting since 2 hours\nb) I have been waiting for 2 hours\nc) I am waiting since 2 hours"
+                : "📝 *Pergunta 7/8 — Gramática*\n\nQual frase está correta?\n\na) Yo he estado esperando desde 2 horas\nb) Llevo 2 horas esperando\nc) Yo estoy esperando desde 2 horas";
+            } else if (diagStep === 7) {
+              // Q7: Gramática contextual — DIFÍCIL
+              correct = answer === "b";
+              correctAnswer = "b";
+              if (correct) diagScore++;
+              nextStep = "diagnostic_8";
+              nextQuestion = isEn
+                ? "📝 *Pergunta 8/8 — Expressão Idiomática*\n\nO que significa \"It's a piece of cake\"?\n\na) É um pedaço de bolo\nb) É muito fácil\nc) É uma surpresa"
+                : "📝 *Pergunta 8/8 — Expressão Idiomática*\n\nO que significa \"Pan comido\"?\n\na) Pão que já foi comido\nb) Algo muito fácil\nc) Uma receita famosa";
+            } else if (diagStep === 8) {
+              // Q8: Expressão idiomática — DIFÍCIL (FINAL)
+              correct = answer === "b";
+              correctAnswer = "b";
               if (correct) diagScore++;
 
-              // Determine level
-              const level = diagScore >= 3 ? "advanced" : diagScore >= 2 ? "intermediate" : "beginner";
+              // Determine level with 8-question scale
+              const level = diagScore >= 6 ? "advanced" : diagScore >= 3 ? "intermediate" : "beginner";
               const levelName = level === "beginner" ? "Iniciante 🌱" : level === "intermediate" ? "Intermediário 🌿" : "Avançado 🌳";
               const startModule = level === "advanced" ? 7 : level === "intermediate" ? 4 : 1;
 
@@ -5897,7 +5940,20 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
                 },
               }).eq("id", convForSchool.id);
 
-              await sendWhatsAppMessage(phoneNumber, `${correct ? "✅ Correto!" : "❌ A resposta certa era *b*!"}\n\n🎯 *Resultado: ${levelName}*\n_Acertou ${diagScore}/3 perguntas_\n\n📖 Começando no *Módulo ${startModule}: ${MODULE_NAMES[startModule]}*\n\nMande *próximo* para começar a primeira lição! 🚀\nOu *menu* para ver todos os módulos.`);
+              await sendWhatsAppMessage(phoneNumber, `${correct ? "✅ Correto!" : `❌ A resposta certa era *${correctAnswer}*!`}\n\n🎯 *Resultado: ${levelName}*\n_Acertou ${diagScore}/8 perguntas_\n\n📖 Começando no *Módulo ${startModule}: ${MODULE_NAMES[startModule]}*\n\nMande *próximo* para começar a primeira lição! 🚀\nOu *menu* para ver todos os módulos.`);
+
+              return new Response(JSON.stringify({ status: "ok", school_diagnostic: diagStep }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            // For steps 1-7: save score and send feedback + next question
+            if (diagStep < 8) {
+              await supabase.from("whatsapp_conversations").update({
+                collected_data: { ...schoolData, _school_step: nextStep, _diag_score: diagScore, _mode_activated_at: new Date().toISOString() },
+              }).eq("id", convForSchool.id);
+
+              await sendWhatsAppMessage(phoneNumber, `${correct ? "✅ Correto!" : `❌ A resposta certa era *${correctAnswer}*!`}\n\n${nextQuestion}`);
             }
 
             return new Response(JSON.stringify({ status: "ok", school_diagnostic: diagStep }), {
