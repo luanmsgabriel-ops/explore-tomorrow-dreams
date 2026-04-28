@@ -2720,6 +2720,55 @@ serve(async (req) => {
 
       console.log(`Message from ${phoneNumber} (type: ${messageType}): ${messageText}`);
 
+      // ========== ADMIN: PUBLICAR IMAGEM NO INSTAGRAM (n8n) ==========
+      // Quando o admin envia uma imagem com legenda contendo "postar"/"publicar",
+      // encaminha o media_id e a legenda para o webhook do n8n.
+      try {
+        if (
+          phoneNumber === ADMIN_PHONE_NUMBER &&
+          messageType === "image" &&
+          message.image?.id
+        ) {
+          const rawCaption = (message.image?.caption || "").trim();
+          const triggerMatch = rawCaption.match(/\b(postar|publicar)\b/i);
+          if (triggerMatch) {
+            const mediaId = message.image.id;
+            // Extrai legenda: tudo após a palavra "postar"/"publicar"
+            const idx = rawCaption.toLowerCase().indexOf(triggerMatch[0].toLowerCase());
+            const caption = rawCaption.substring(idx + triggerMatch[0].length).trim();
+
+            console.log(`[N8N-INSTAGRAM] Admin solicitou publicação. media_id=${mediaId}, caption="${caption}"`);
+
+            // ⚠️ Em produção, trocar 'webhook-test' por 'webhook'
+            const N8N_WEBHOOK_URL = "https://luanmsgabriel.app.n8n.cloud/webhook/whatsapp-image";
+
+            try {
+              const n8nResp = await fetch(N8N_WEBHOOK_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  media_id: mediaId,
+                  caption,
+                  phone: phoneNumber,
+                }),
+              });
+              console.log(`[N8N-INSTAGRAM] Webhook status: ${n8nResp.status}`);
+            } catch (n8nErr) {
+              console.error("[N8N-INSTAGRAM] Erro ao chamar webhook n8n:", n8nErr);
+            }
+
+            await sendWhatsAppMessage(phoneNumber, "Imagem recebida! Publicando no Instagram...");
+
+            return new Response(JSON.stringify({ status: "instagram_publish_dispatched" }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+      } catch (publishErr) {
+        console.error("[N8N-INSTAGRAM] Erro no handler de publicação:", publishErr);
+      }
+
       // ========== ALWAYS SAVE MESSAGE TO CONVERSATION ==========
       // Ensure every incoming message is recorded, regardless of routing
       const ensureConversationAndSaveMessage = async (phone: string, name: string, text: string) => {
