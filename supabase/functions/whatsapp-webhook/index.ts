@@ -2750,6 +2750,7 @@ serve(async (req) => {
                   media_id: mediaId,
                   caption,
                   phone: phoneNumber,
+                  token: Deno.env.get("WHATSAPP_ACCESS_TOKEN") ?? "",
                 }),
               });
               console.log(`[N8N-INSTAGRAM] Webhook status: ${n8nResp.status}`);
