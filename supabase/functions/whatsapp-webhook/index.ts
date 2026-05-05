@@ -2994,14 +2994,14 @@ serve(async (req) => {
         const { data: activeTrips } = await supabase
           .from("active_trips")
           .select("id")
-          .eq("client_phone", phoneNumber)
+          .in("client_phone", phoneVariants)
           .eq("concierge_active", true);
         
         // Also check concierge_contacts
         const { data: contactTrips } = await supabase
           .from("concierge_contacts")
           .select("trip_id")
-          .eq("contact_phone", phoneNumber)
+          .in("contact_phone", phoneVariants)
           .eq("is_active", true);
 
         const tripIdsToDeactivate = new Set<string>();
@@ -3010,7 +3010,7 @@ serve(async (req) => {
           for (const ct of contactTrips) {
             tripIdsToDeactivate.add(ct.trip_id);
             // Deactivate this specific contact
-            await supabase.from("concierge_contacts").update({ is_active: false }).eq("contact_phone", phoneNumber).eq("trip_id", ct.trip_id);
+            await supabase.from("concierge_contacts").update({ is_active: false }).in("contact_phone", phoneVariants).eq("trip_id", ct.trip_id);
           }
         }
 
@@ -5218,7 +5218,7 @@ Máximo 2500 chars.`;
               const { data: activeTrip } = await supabase
                 .from("active_trips")
                 .select("destination_city, destination_country")
-                .eq("client_phone", phoneNumber)
+                .in("client_phone", phoneVariants)
                 .eq("concierge_active", true)
                 .order("created_at", { ascending: false })
                 .limit(1)
@@ -5376,7 +5376,7 @@ REGRAS CRÍTICAS:
                 const { data: activeTrip } = await supabase
                   .from("active_trips")
                   .select("destination_city, destination_country")
-                  .eq("client_phone", phoneNumber)
+                  .in("client_phone", phoneVariants)
                   .eq("concierge_active", true)
                   .limit(1)
                   .maybeSingle();
@@ -5750,7 +5750,7 @@ ${spinsUsed > 0 ? `\nEsta é a ${spinsUsed + 1}ª girada. Escolha um destino DIF
             const { data: activeTrip } = await supabase
               .from("active_trips")
               .select("destination_city, destination_country, check_in_date, check_out_date")
-              .eq("client_phone", phoneNumber)
+              .in("client_phone", phoneVariants)
               .eq("concierge_active", true)
               .order("created_at", { ascending: false })
               .limit(1)
@@ -6795,7 +6795,7 @@ RULES:
               const { data: activeTrip } = await supabase
                 .from("active_trips")
                 .select("destination_city, destination_country")
-                .eq("client_phone", phoneNumber)
+                .in("client_phone", phoneVariants)
                 .eq("concierge_active", true)
                 .limit(1)
                 .maybeSingle();
@@ -7854,7 +7854,7 @@ Regras OBRIGATÓRIAS:
         const { data: recentLocSearch } = await supabase
           .from("location_recommendations")
           .select("client_lat, client_lng")
-          .eq("client_phone", phoneNumber)
+          .in("client_phone", phoneVariants)
           .gte("created_at", thirtyMinAgoSearch)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -7897,7 +7897,7 @@ Regras OBRIGATÓRIAS:
           const { data: recentRec } = await supabase
             .from("location_recommendations")
             .select("id")
-            .eq("client_phone", phoneNumber)
+            .in("client_phone", phoneVariants)
             .gte("created_at", thirtyMinAgo)
             .limit(1)
             .maybeSingle();
