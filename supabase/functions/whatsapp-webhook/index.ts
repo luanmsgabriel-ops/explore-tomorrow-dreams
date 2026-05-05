@@ -8439,7 +8439,14 @@ Regras OBRIGATÓRIAS:
                         .createSignedUrl(storagePath, 3600);
 
                       if (signedData?.signedUrl) {
-                        await sendWhatsAppMessage(phoneNumber, `📄 *${doc.document_name}*\n${signedData.signedUrl}`);
+                        // Check if it's a PDF to send as a document file
+                        const isPdf = doc.file_type === 'application/pdf' || doc.file_url.toLowerCase().endsWith('.pdf');
+                        
+                        if (isPdf) {
+                          await sendWhatsAppDocument(phoneNumber, signedData.signedUrl, doc.document_name + ".pdf");
+                        } else {
+                          await sendWhatsAppMessage(phoneNumber, `📄 *${doc.document_name}*\n${signedData.signedUrl}`);
+                        }
                       }
                     } catch (docErr) {
                       console.error("[CONCIERGE] Error sending document:", doc.document_name, docErr);
