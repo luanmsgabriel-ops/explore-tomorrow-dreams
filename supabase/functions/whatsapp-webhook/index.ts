@@ -7584,7 +7584,7 @@ REGRAS:
 
         const { data: directMatch } = await supabase
           .from("active_trips")
-          .select("id, client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name")
+          .select("id, client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name, concierge_special_notes")
           .in("client_phone", phoneVariants)
           .eq("concierge_active", true)
           .limit(1)
@@ -7606,7 +7606,7 @@ REGRAS:
             conciergeContactMatch = contactMatch;
             const { data: tripData } = await supabase
               .from("active_trips")
-              .select("id, client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name")
+              .select("id, client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name, concierge_special_notes")
               .eq("id", contactMatch.trip_id)
               .eq("concierge_active", true)
               .limit(1)
@@ -7711,14 +7711,23 @@ REGRAS:
                 greetingPhaseInstruction = `FASE: DURANTE A VIAGEM. O cliente está viajando agora! Aja como companheiro presente.`;
               }
 
+              const specialNotes = (activeTripForGreeting.concierge_special_notes || "").trim();
+              const contactSpecialNotes = (conciergeContactMatch?.special_notes || "").trim();
+              const specialNotesBlock = specialNotes
+                ? `\n\nINFORMAÇÕES ESPECIAIS GERAIS (LEIA E SIGA ANTES DE ESCREVER — define tom de voz, tratamento, observações específicas sobre essa viajante. NÃO mencione que são notas internas):\n${specialNotes}`
+                : "";
+              const contactNotesBlock = contactSpecialNotes
+                ? `\n\nINFORMAÇÕES ESPECIAIS DESTE CONTATO (${conciergeContactMatch.contact_name}):\n${contactSpecialNotes}`
+                : "";
+
               const greetingPrompt = `Gere uma saudação CURTA e animada do Téo para ${firstName} (gênero inferido: ${gender}).
 A viagem é NOSSA (do Téo também). Destino: ${destino}.${hotel ? ` Hotel: ${hotel}.` : ""}
 DATA ATUAL: ${todayStr}. Check-in: ${checkInDate}. Check-out: ${checkOutDate}.
-${greetingPhaseInstruction}
+${greetingPhaseInstruction}${specialNotesBlock}${contactNotesBlock}
 Regras OBRIGATÓRIAS:
 - ${genderRule}
 - SEMPRE fale "nossa viagem", NUNCA "sua viagem"
-- Tom: companheiro de viagem animado, informal, com emojis
+- Tom: companheiro de viagem animado, informal, com emojis (respeite o tom indicado nas INFORMAÇÕES ESPECIAIS GERAIS, se houver)
 - Se apresente como Téo, companheiro de viagem
 - RESPEITE A FASE DA VIAGEM: ${greetingPhase === "pré-viagem" ? "Fale de preparativos e expectativas, NÃO como se já estivesse no destino" : greetingPhase === "pós-viagem" ? "Pergunte como foi a viagem" : "Aja como companheiro presente no destino"}
 - Inclua estes serviços disponíveis:
@@ -8253,12 +8262,12 @@ Regras OBRIGATÓRIAS:
 
           // Add global special notes for Téo
           if (activeTripForPrompt.concierge_special_notes) {
-            contexto += `\n\nINFORMAÇÕES ESPECIAIS GERAIS (use naturalmente, sem mencionar que são notas do admin):\n${activeTripForPrompt.concierge_special_notes}`;
+            contexto += `\n\n⚠️ INFORMAÇÕES ESPECIAIS GERAIS (LEIA ATENTAMENTE ANTES DE CADA RESPOSTA — define tom de voz, forma de tratamento, observações específicas sobre essa viajante e da viagem. Use naturalmente, NUNCA mencione que são notas internas do admin):\n${activeTripForPrompt.concierge_special_notes}`;
           }
 
           // Add individual contact notes if this is from concierge_contacts
           if (conciergeContactContext?.special_notes) {
-            contexto += `\n\nINFORMAÇÕES ESPECIAIS DESTE CONTATO (${conciergeContactContext.contact_name}):\n${conciergeContactContext.special_notes}`;
+            contexto += `\n\n⚠️ INFORMAÇÕES ESPECIAIS DESTE CONTATO (${conciergeContactContext.contact_name}) — LEIA ANTES DE RESPONDER:\n${conciergeContactContext.special_notes}`;
           }
 
           // Store client trip ID for document retrieval later
