@@ -8385,12 +8385,13 @@ Regras OBRIGATÓRIAS:
 
             if (activeTripRef) {
               const destName = activeTripRef.destination_city || activeTripRef.destination_country || "";
+              
+              // We'll search for a client_trip that has the phone in client_phone OR destination_name + date overlap
               const { data: clientTrips } = await supabase
                 .from("client_trips")
                 .select("id")
-                .eq("destination_name", destName)
-                .gte("return_date", activeTripRef.check_in_date)
-                .lte("departure_date", activeTripRef.check_out_date)
+                .or(`client_phone.in.(${phoneVariants.join(",")}),and(destination_name.ilike.%${destName}%,return_date.gte.${activeTripRef.check_in_date},departure_date.lte.${activeTripRef.check_out_date})`)
+                .order("created_at", { ascending: false })
                 .limit(1)
                 .maybeSingle();
 
@@ -8401,11 +8402,19 @@ Regras OBRIGATÓRIAS:
                   .eq("trip_id", clientTrips.id);
 
                 if (tripDocs && tripDocs.length > 0) {
+                  // If we found docs, maybe the AI didn't explicitly mention them in its text, so we add a preamble if cleanResponse didn't mention them
+                  const responseMentionsDocs = /voucher|documento|pdf|passagem|reserva|aqui está/i.test(cleanResponse);
+                  if (!responseMentionsDocs) {
+                    await sendWhatsAppMessage(phoneNumber, "Aqui estão seus vouchers e documentos da viagem! 📄👇");
+                  }
+
                   for (const doc of tripDocs) {
                     try {
-                      const storagePath = doc.file_url.includes('/storage/v1/object/')
-                        ? (doc.file_url.split('/trip-documents/')[1] || '').split('?')[0]
-                        : doc.file_url;
+                      // Normalize storage path
+                      let storagePath = doc.file_url;
+                      if (doc.file_url.includes('/storage/v1/object/')) {
+                        storagePath = (doc.file_url.split('/trip-documents/')[1] || '').split('?')[0];
+                      }
 
                       if (!storagePath) continue;
 
@@ -8414,15 +8423,17 @@ Regras OBRIGATÓRIAS:
                         .createSignedUrl(storagePath, 3600);
 
                       if (signedData?.signedUrl) {
-                        await sendWhatsAppMessage(phoneNumber, `📄 *${doc.document_name}* (${doc.document_type})\n${signedData.signedUrl}`);
+                        await sendWhatsAppMessage(phoneNumber, `📄 *${doc.document_name}*\n${signedData.signedUrl}`);
                       }
                     } catch (docErr) {
                       console.error("[CONCIERGE] Error sending document:", doc.document_name, docErr);
                     }
                   }
                 } else {
-                  await sendWhatsAppMessage(phoneNumber, "Não encontrei documentos salvos pra nossa viagem ainda. Vou verificar com a equipe! 📋");
+                  await sendWhatsAppMessage(phoneNumber, "Não encontrei os vouchers salvos no sistema ainda. Vou pedir para a equipe verificar agora mesmo! 📋");
                 }
+              } else {
+                await sendWhatsAppMessage(phoneNumber, "Ainda não localizei os vouchers dessa viagem no sistema. Vou verificar com nosso time! 📋");
               }
             }
           } catch (docError) {
