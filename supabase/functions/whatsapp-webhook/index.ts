@@ -8143,7 +8143,7 @@ Regras OBRIGATÓRIAS:
         const { data: directTripMatch } = await supabase
           .from("active_trips")
           .select("client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name, outbound_flight_iata, return_flight_iata, outbound_flight_date, return_flight_date, destination_lat, destination_lng, destination_timezone, concierge_special_notes, id")
-          .eq("client_phone", phoneNumber)
+          .in("client_phone", phoneVariants)
           .eq("concierge_active", true)
           .limit(1)
           .maybeSingle();
@@ -8155,7 +8155,7 @@ Regras OBRIGATÓRIAS:
           const { data: contactMatch } = await supabase
             .from("concierge_contacts")
             .select("trip_id, contact_name, contact_phone, special_notes")
-            .eq("contact_phone", phoneNumber)
+            .in("contact_phone", phoneVariants)
             .eq("is_active", true)
             .limit(1)
             .maybeSingle();
