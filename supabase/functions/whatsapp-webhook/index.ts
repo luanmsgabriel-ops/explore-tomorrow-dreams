@@ -7585,7 +7585,7 @@ REGRAS:
         const { data: directMatch } = await supabase
           .from("active_trips")
           .select("id, client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name")
-          .eq("client_phone", phoneNumber)
+          .in("client_phone", phoneVariants)
           .eq("concierge_active", true)
           .limit(1)
           .maybeSingle();
@@ -7597,7 +7597,7 @@ REGRAS:
           const { data: contactMatch } = await supabase
             .from("concierge_contacts")
             .select("trip_id, contact_name, contact_phone, special_notes")
-            .eq("contact_phone", phoneNumber)
+            .in("contact_phone", phoneVariants)
             .eq("is_active", true)
             .limit(1)
             .maybeSingle();
