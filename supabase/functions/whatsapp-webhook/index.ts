@@ -1563,7 +1563,20 @@ async function sendWhatsAppDocument(to: string, documentUrl: string, fileName: s
 }
 
 async function downloadWhatsAppMedia(mediaId: string): Promise<ArrayBuffer | null> {
-...
+  try {
+    const mediaResponse = await fetch(
+      `https://graph.facebook.com/v21.0/${mediaId}`,
+      { headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` } }
+    );
+    if (!mediaResponse.ok) return null;
+
+    const mediaData = await mediaResponse.json();
+    const audioResponse = await fetch(mediaData.url, {
+      headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
+    });
+    if (!audioResponse.ok) return null;
+
+    return await audioResponse.arrayBuffer();
   } catch (err) {
     console.error("Error downloading WhatsApp media:", err);
     return null;
