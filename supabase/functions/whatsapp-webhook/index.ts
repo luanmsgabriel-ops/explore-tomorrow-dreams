@@ -7606,7 +7606,7 @@ REGRAS:
             conciergeContactMatch = contactMatch;
             const { data: tripData } = await supabase
               .from("active_trips")
-              .select("id, client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name")
+              .select("id, client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name, concierge_special_notes")
               .eq("id", contactMatch.trip_id)
               .eq("concierge_active", true)
               .limit(1)
