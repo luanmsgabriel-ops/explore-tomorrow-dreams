@@ -8347,7 +8347,7 @@ Regras OBRIGATÓRIAS:
             const { data: directRef } = await supabase
               .from("active_trips")
               .select("destination_city, destination_country, check_in_date, check_out_date")
-              .eq("client_phone", phoneNumber)
+              .in("client_phone", phoneVariants)
               .eq("concierge_active", true)
               .limit(1)
               .maybeSingle();
@@ -8358,7 +8358,7 @@ Regras OBRIGATÓRIAS:
               const { data: contactRef } = await supabase
                 .from("concierge_contacts")
                 .select("trip_id")
-                .eq("contact_phone", phoneNumber)
+                .in("contact_phone", phoneVariants)
                 .eq("is_active", true)
                 .limit(1)
                 .maybeSingle();
