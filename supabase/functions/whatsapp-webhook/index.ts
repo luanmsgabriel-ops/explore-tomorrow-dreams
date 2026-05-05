@@ -8262,12 +8262,12 @@ Regras OBRIGATÓRIAS:
 
           // Add global special notes for Téo
           if (activeTripForPrompt.concierge_special_notes) {
-            contexto += `\n\nINFORMAÇÕES ESPECIAIS GERAIS (use naturalmente, sem mencionar que são notas do admin):\n${activeTripForPrompt.concierge_special_notes}`;
+            contexto += `\n\n⚠️ INFORMAÇÕES ESPECIAIS GERAIS (LEIA ATENTAMENTE ANTES DE CADA RESPOSTA — define tom de voz, forma de tratamento, observações específicas sobre essa viajante e da viagem. Use naturalmente, NUNCA mencione que são notas internas do admin):\n${activeTripForPrompt.concierge_special_notes}`;
           }
 
           // Add individual contact notes if this is from concierge_contacts
           if (conciergeContactContext?.special_notes) {
-            contexto += `\n\nINFORMAÇÕES ESPECIAIS DESTE CONTATO (${conciergeContactContext.contact_name}):\n${conciergeContactContext.special_notes}`;
+            contexto += `\n\n⚠️ INFORMAÇÕES ESPECIAIS DESTE CONTATO (${conciergeContactContext.contact_name}) — LEIA ANTES DE RESPONDER:\n${conciergeContactContext.special_notes}`;
           }
 
           // Store client trip ID for document retrieval later
