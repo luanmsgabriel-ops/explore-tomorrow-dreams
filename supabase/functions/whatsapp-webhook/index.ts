@@ -2628,6 +2628,23 @@ serve(async (req) => {
 
       const message = value.messages[0];
       const phoneNumber = message.from;
+      // Variantes do número p/ casar com cadastros (com/sem DDI 55, com/sem 9 extra)
+      const phoneVariants = (() => {
+        const set = new Set<string>();
+        const raw = String(phoneNumber || "").replace(/\D/g, "");
+        set.add(raw);
+        if (raw.startsWith("55") && raw.length >= 12) set.add(raw.slice(2));
+        if (!raw.startsWith("55")) set.add("55" + raw);
+        // remove o "9" extra em celulares BR (55 + DDD + 9XXXXXXXX)
+        if (raw.startsWith("55") && raw.length === 13 && raw[4] === "9") {
+          set.add(raw.slice(0, 4) + raw.slice(5));
+        }
+        // adiciona o "9" extra
+        if (raw.startsWith("55") && raw.length === 12) {
+          set.add(raw.slice(0, 4) + "9" + raw.slice(4));
+        }
+        return Array.from(set).filter(Boolean);
+      })();
       const contactName = value.contacts?.[0]?.profile?.name || "";
       const messageType = message.type;
       let messageText = "";
