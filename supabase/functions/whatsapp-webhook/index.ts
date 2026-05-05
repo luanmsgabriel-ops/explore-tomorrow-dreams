@@ -2628,6 +2628,23 @@ serve(async (req) => {
 
       const message = value.messages[0];
       const phoneNumber = message.from;
+      // Variantes do número p/ casar com cadastros (com/sem DDI 55, com/sem 9 extra)
+      const phoneVariants = (() => {
+        const set = new Set<string>();
+        const raw = String(phoneNumber || "").replace(/\D/g, "");
+        set.add(raw);
+        if (raw.startsWith("55") && raw.length >= 12) set.add(raw.slice(2));
+        if (!raw.startsWith("55")) set.add("55" + raw);
+        // remove o "9" extra em celulares BR (55 + DDD + 9XXXXXXXX)
+        if (raw.startsWith("55") && raw.length === 13 && raw[4] === "9") {
+          set.add(raw.slice(0, 4) + raw.slice(5));
+        }
+        // adiciona o "9" extra
+        if (raw.startsWith("55") && raw.length === 12) {
+          set.add(raw.slice(0, 4) + "9" + raw.slice(4));
+        }
+        return Array.from(set).filter(Boolean);
+      })();
       const contactName = value.contacts?.[0]?.profile?.name || "";
       const messageType = message.type;
       let messageText = "";
@@ -2977,14 +2994,14 @@ serve(async (req) => {
         const { data: activeTrips } = await supabase
           .from("active_trips")
           .select("id")
-          .eq("client_phone", phoneNumber)
+          .in("client_phone", phoneVariants)
           .eq("concierge_active", true);
         
         // Also check concierge_contacts
         const { data: contactTrips } = await supabase
           .from("concierge_contacts")
           .select("trip_id")
-          .eq("contact_phone", phoneNumber)
+          .in("contact_phone", phoneVariants)
           .eq("is_active", true);
 
         const tripIdsToDeactivate = new Set<string>();
@@ -2993,7 +3010,7 @@ serve(async (req) => {
           for (const ct of contactTrips) {
             tripIdsToDeactivate.add(ct.trip_id);
             // Deactivate this specific contact
-            await supabase.from("concierge_contacts").update({ is_active: false }).eq("contact_phone", phoneNumber).eq("trip_id", ct.trip_id);
+            await supabase.from("concierge_contacts").update({ is_active: false }).in("contact_phone", phoneVariants).eq("trip_id", ct.trip_id);
           }
         }
 
@@ -5201,7 +5218,7 @@ Máximo 2500 chars.`;
               const { data: activeTrip } = await supabase
                 .from("active_trips")
                 .select("destination_city, destination_country")
-                .eq("client_phone", phoneNumber)
+                .in("client_phone", phoneVariants)
                 .eq("concierge_active", true)
                 .order("created_at", { ascending: false })
                 .limit(1)
@@ -5359,7 +5376,7 @@ REGRAS CRÍTICAS:
                 const { data: activeTrip } = await supabase
                   .from("active_trips")
                   .select("destination_city, destination_country")
-                  .eq("client_phone", phoneNumber)
+                  .in("client_phone", phoneVariants)
                   .eq("concierge_active", true)
                   .limit(1)
                   .maybeSingle();
@@ -5733,7 +5750,7 @@ ${spinsUsed > 0 ? `\nEsta é a ${spinsUsed + 1}ª girada. Escolha um destino DIF
             const { data: activeTrip } = await supabase
               .from("active_trips")
               .select("destination_city, destination_country, check_in_date, check_out_date")
-              .eq("client_phone", phoneNumber)
+              .in("client_phone", phoneVariants)
               .eq("concierge_active", true)
               .order("created_at", { ascending: false })
               .limit(1)
@@ -6778,7 +6795,7 @@ RULES:
               const { data: activeTrip } = await supabase
                 .from("active_trips")
                 .select("destination_city, destination_country")
-                .eq("client_phone", phoneNumber)
+                .in("client_phone", phoneVariants)
                 .eq("concierge_active", true)
                 .limit(1)
                 .maybeSingle();
@@ -7568,7 +7585,7 @@ REGRAS:
         const { data: directMatch } = await supabase
           .from("active_trips")
           .select("id, client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name")
-          .eq("client_phone", phoneNumber)
+          .in("client_phone", phoneVariants)
           .eq("concierge_active", true)
           .limit(1)
           .maybeSingle();
@@ -7580,7 +7597,7 @@ REGRAS:
           const { data: contactMatch } = await supabase
             .from("concierge_contacts")
             .select("trip_id, contact_name, contact_phone, special_notes")
-            .eq("contact_phone", phoneNumber)
+            .in("contact_phone", phoneVariants)
             .eq("is_active", true)
             .limit(1)
             .maybeSingle();
@@ -7837,7 +7854,7 @@ Regras OBRIGATÓRIAS:
         const { data: recentLocSearch } = await supabase
           .from("location_recommendations")
           .select("client_lat, client_lng")
-          .eq("client_phone", phoneNumber)
+          .in("client_phone", phoneVariants)
           .gte("created_at", thirtyMinAgoSearch)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -7880,7 +7897,7 @@ Regras OBRIGATÓRIAS:
           const { data: recentRec } = await supabase
             .from("location_recommendations")
             .select("id")
-            .eq("client_phone", phoneNumber)
+            .in("client_phone", phoneVariants)
             .gte("created_at", thirtyMinAgo)
             .limit(1)
             .maybeSingle();
@@ -8126,7 +8143,7 @@ Regras OBRIGATÓRIAS:
         const { data: directTripMatch } = await supabase
           .from("active_trips")
           .select("client_name, destination_city, destination_country, check_in_date, check_out_date, hotel_name, outbound_flight_iata, return_flight_iata, outbound_flight_date, return_flight_date, destination_lat, destination_lng, destination_timezone, concierge_special_notes, id")
-          .eq("client_phone", phoneNumber)
+          .in("client_phone", phoneVariants)
           .eq("concierge_active", true)
           .limit(1)
           .maybeSingle();
@@ -8138,7 +8155,7 @@ Regras OBRIGATÓRIAS:
           const { data: contactMatch } = await supabase
             .from("concierge_contacts")
             .select("trip_id, contact_name, contact_phone, special_notes")
-            .eq("contact_phone", phoneNumber)
+            .in("contact_phone", phoneVariants)
             .eq("is_active", true)
             .limit(1)
             .maybeSingle();
@@ -8330,7 +8347,7 @@ Regras OBRIGATÓRIAS:
             const { data: directRef } = await supabase
               .from("active_trips")
               .select("destination_city, destination_country, check_in_date, check_out_date")
-              .eq("client_phone", phoneNumber)
+              .in("client_phone", phoneVariants)
               .eq("concierge_active", true)
               .limit(1)
               .maybeSingle();
@@ -8341,7 +8358,7 @@ Regras OBRIGATÓRIAS:
               const { data: contactRef } = await supabase
                 .from("concierge_contacts")
                 .select("trip_id")
-                .eq("contact_phone", phoneNumber)
+                .in("contact_phone", phoneVariants)
                 .eq("is_active", true)
                 .limit(1)
                 .maybeSingle();
