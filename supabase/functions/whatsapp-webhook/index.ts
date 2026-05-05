@@ -1533,21 +1533,37 @@ async function sendWhatsAppAudio(to: string, audioUrl: string) {
   }
 }
 
+async function sendWhatsAppDocument(to: string, documentUrl: string, fileName: string) {
+  const response = await fetch(
+    `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to,
+        type: "document",
+        document: {
+          link: documentUrl,
+          filename: fileName,
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("WhatsApp Document API error:", errorText);
+    throw new Error(`WhatsApp Document API error: ${response.status}`);
+  }
+}
+
 async function downloadWhatsAppMedia(mediaId: string): Promise<ArrayBuffer | null> {
-  try {
-    const mediaResponse = await fetch(
-      `https://graph.facebook.com/v21.0/${mediaId}`,
-      { headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` } }
-    );
-    if (!mediaResponse.ok) return null;
-
-    const mediaData = await mediaResponse.json();
-    const audioResponse = await fetch(mediaData.url, {
-      headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
-    });
-    if (!audioResponse.ok) return null;
-
-    return await audioResponse.arrayBuffer();
+...
   } catch (err) {
     console.error("Error downloading WhatsApp media:", err);
     return null;
