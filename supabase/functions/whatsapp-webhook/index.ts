@@ -1560,6 +1560,9 @@ async function sendWhatsAppDocument(to: string, documentUrl: string, fileName: s
     console.error("WhatsApp Document API error:", errorText);
     throw new Error(`WhatsApp Document API error: ${response.status}`);
   }
+
+  const result = await response.json();
+  console.log(`[WHATSAPP_DOCUMENT_SENT] to=${to} filename="${fileName}" message_id=${result.messages?.[0]?.id || "unknown"}`);
 }
 
 async function downloadWhatsAppMedia(mediaId: string): Promise<ArrayBuffer | null> {
@@ -1922,6 +1925,9 @@ async function sendWhatsAppMessage(to: string, message: string) {
       console.error("WhatsApp API error:", errorText);
       throw new Error(`WhatsApp API error: ${response.status}`);
     }
+
+    const result = await response.json();
+    console.log(`[WHATSAPP_MESSAGE_SENT] to=${to} message_id=${result.messages?.[0]?.id || "unknown"}`);
   }
 }
 
@@ -8374,7 +8380,7 @@ Regras OBRIGATÓRIAS:
         }
 
         // Check if client asked for vouchers/documents and send them
-        const docKeywords = ["voucher", "documento", "pdf", "passagem", "reserva", "comprovante", "bilhete", "ticket"];
+        const docKeywords = ["voucher", "documento", "pdf", "passagem", "reserva", "comprovante", "bilhete", "ticket", "embarque", "cartão", "cartao"];
         const msgLower = (messageText || "").toLowerCase();
         const askedForDocs = docKeywords.some(kw => msgLower.includes(kw));
 
