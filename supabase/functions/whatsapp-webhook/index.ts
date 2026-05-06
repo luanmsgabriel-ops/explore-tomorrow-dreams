@@ -1560,6 +1560,9 @@ async function sendWhatsAppDocument(to: string, documentUrl: string, fileName: s
     console.error("WhatsApp Document API error:", errorText);
     throw new Error(`WhatsApp Document API error: ${response.status}`);
   }
+
+  const result = await response.json();
+  console.log(`[WHATSAPP_DOCUMENT_SENT] to=${to} filename="${fileName}" message_id=${result.messages?.[0]?.id || "unknown"}`);
 }
 
 async function downloadWhatsAppMedia(mediaId: string): Promise<ArrayBuffer | null> {
@@ -1922,6 +1925,9 @@ async function sendWhatsAppMessage(to: string, message: string) {
       console.error("WhatsApp API error:", errorText);
       throw new Error(`WhatsApp API error: ${response.status}`);
     }
+
+    const result = await response.json();
+    console.log(`[WHATSAPP_MESSAGE_SENT] to=${to} message_id=${result.messages?.[0]?.id || "unknown"}`);
   }
 }
 
@@ -8374,7 +8380,7 @@ Regras OBRIGATÓRIAS:
         }
 
         // Check if client asked for vouchers/documents and send them
-        const docKeywords = ["voucher", "documento", "pdf", "passagem", "reserva", "comprovante", "bilhete", "ticket"];
+        const docKeywords = ["voucher", "documento", "pdf", "passagem", "reserva", "comprovante", "bilhete", "ticket", "embarque", "cartão", "cartao"];
         const msgLower = (messageText || "").toLowerCase();
         const askedForDocs = docKeywords.some(kw => msgLower.includes(kw));
 
@@ -8414,12 +8420,14 @@ Regras OBRIGATÓRIAS:
 
             if (activeTripRef) {
               const destName = activeTripRef.destination_city || activeTripRef.destination_country || "";
-              
-              // We'll search for a client_trip that has the phone in client_phone OR destination_name + date overlap
+
+              // client_trips has no client_phone column; match by the active trip destination/date overlap.
               const { data: clientTrips } = await supabase
                 .from("client_trips")
                 .select("id")
-                .or(`client_phone.in.(${phoneVariants.join(",")}),and(destination_name.ilike.%${destName}%,return_date.gte.${activeTripRef.check_in_date},departure_date.lte.${activeTripRef.check_out_date})`)
+                .ilike("destination_name", `%${destName}%`)
+                .gte("return_date", activeTripRef.check_in_date)
+                .lte("departure_date", activeTripRef.check_out_date)
                 .order("created_at", { ascending: false })
                 .limit(1)
                 .maybeSingle();
