@@ -8414,15 +8414,24 @@ Regras OBRIGATÓRIAS:
 
             if (activeTripRef) {
               const destName = activeTripRef.destination_city || activeTripRef.destination_country || "";
-              
-              // We'll search for a client_trip that has the phone in client_phone OR destination_name + date overlap
-              const { data: clientTrips } = await supabase
-                .from("client_trips")
-                .select("id")
-                .or(`client_phone.in.(${phoneVariants.join(",")}),and(destination_name.ilike.%${destName}%,return_date.gte.${activeTripRef.check_in_date},departure_date.lte.${activeTripRef.check_out_date})`)
-                .order("created_at", { ascending: false })
-                .limit(1)
-                .maybeSingle();
+
+              const clientTripIdFromPrompt = (activeTripForPrompt as any)?._clientTripId || null;
+              let clientTrips: any = clientTripIdFromPrompt ? { id: clientTripIdFromPrompt } : null;
+
+              // client_trips has no client_phone column; match by the active trip already resolved above,
+              // then fall back to destination/date overlap so voucher PDF retrieval does not fail.
+              if (!clientTrips) {
+                const { data: matchedClientTrip } = await supabase
+                  .from("client_trips")
+                  .select("id")
+                  .ilike("destination_name", `%${destName}%`)
+                  .gte("return_date", activeTripRef.check_in_date)
+                  .lte("departure_date", activeTripRef.check_out_date)
+                  .order("created_at", { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+                clientTrips = matchedClientTrip;
+              }
 
               if (clientTrips) {
                 const { data: tripDocs } = await supabase
