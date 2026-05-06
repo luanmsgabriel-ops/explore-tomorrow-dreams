@@ -8421,23 +8421,16 @@ Regras OBRIGATÓRIAS:
             if (activeTripRef) {
               const destName = activeTripRef.destination_city || activeTripRef.destination_country || "";
 
-              const clientTripIdFromPrompt = (activeTripForPrompt as any)?._clientTripId || null;
-              let clientTrips: any = clientTripIdFromPrompt ? { id: clientTripIdFromPrompt } : null;
-
-              // client_trips has no client_phone column; match by the active trip already resolved above,
-              // then fall back to destination/date overlap so voucher PDF retrieval does not fail.
-              if (!clientTrips) {
-                const { data: matchedClientTrip } = await supabase
-                  .from("client_trips")
-                  .select("id")
-                  .ilike("destination_name", `%${destName}%`)
-                  .gte("return_date", activeTripRef.check_in_date)
-                  .lte("departure_date", activeTripRef.check_out_date)
-                  .order("created_at", { ascending: false })
-                  .limit(1)
-                  .maybeSingle();
-                clientTrips = matchedClientTrip;
-              }
+              // client_trips has no client_phone column; match by the active trip destination/date overlap.
+              const { data: clientTrips } = await supabase
+                .from("client_trips")
+                .select("id")
+                .ilike("destination_name", `%${destName}%`)
+                .gte("return_date", activeTripRef.check_in_date)
+                .lte("departure_date", activeTripRef.check_out_date)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
 
               if (clientTrips) {
                 const { data: tripDocs } = await supabase
