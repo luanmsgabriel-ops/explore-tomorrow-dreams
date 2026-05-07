@@ -2998,7 +2998,36 @@ serve(async (req) => {
       if (phoneNumber === ADMIN_PHONE_NUMBER && !isGroupCommand && !isAdminInGroupFlow) {
         // Save admin messages too so they appear in conversations
         await ensureConversationAndSaveMessage(phoneNumber, contactName || "Admin", messageText);
-        
+
+        // ========== OFFER APPROVAL / REJECTION HANDLER ==========
+        // Check if admin is sending APROVAR/REJEITAR command before routing to AI
+        const upperMsg = messageText.trim().toUpperCase();
+        if (upperMsg.match(/^(APROVAR|REJEITAR)\s+[A-Z0-9]{8}$/)) {
+          console.log(`[ADMIN] Offer approval command detected: ${messageText}`);
+          try {
+            const approvalResponse = await fetch(
+              `${SUPABASE_URL}/functions/v1/offer-approval`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                },
+                body: JSON.stringify({ message_text: messageText, phone_number: phoneNumber }),
+              }
+            );
+            const approvalResult = await approvalResponse.json();
+            if (approvalResult.handled) {
+              return new Response(JSON.stringify({ status: "ok", routed_to: "offer_approval" }), {
+                status: 200,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+          } catch (approvalErr) {
+            console.error("[ADMIN] Offer approval error:", approvalErr);
+          }
+        }
+
         console.log(`[ADMIN] Message from admin: ${messageText}`);
         try {
           await handleAdminMessage(phoneNumber, messageText);
