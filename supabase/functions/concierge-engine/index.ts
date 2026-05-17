@@ -1264,7 +1264,32 @@ async function schoolReminders() {
   }
 }
 
-// ========== MAIN SERVER ==========
+// ========== SCHEDULED MESSAGES ==========
+async function processScheduledMessages() {
+  const nowIso = new Date().toISOString();
+  const { data: msgs, error } = await supabase
+    .from("scheduled_messages")
+    .select("*")
+    .eq("status", "pending")
+    .lte("scheduled_for", nowIso)
+    .order("scheduled_for", { ascending: true })
+    .limit(50);
+  if (error) { console.error("[SCHEDULED] query error", error); return; }
+  if (!msgs?.length) { console.log("[SCHEDULED] nothing due"); return; }
+  console.log(`[SCHEDULED] processing ${msgs.length} due message(s)`);
+  for (const m of msgs) {
+    try {
+      await sendWhatsAppMessage(m.phone_number, m.message_text);
+      await supabase.from("scheduled_messages").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", m.id);
+      if (m.trip_id) await incrementMessageCount(m.trip_id);
+      console.log(`[SCHEDULED] ✅ sent ${m.id} (${m.label || ""})`);
+    } catch (e) {
+      console.error(`[SCHEDULED] ❌ ${m.id}:`, e);
+      await supabase.from("scheduled_messages").update({ status: "failed", error: String(e) }).eq("id", m.id);
+    }
+  }
+}
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -1308,6 +1333,9 @@ serve(async (req) => {
         break;
       case "school_reminders":
         await schoolReminders();
+        break;
+      case "scheduled_messages":
+        await processScheduledMessages();
         break;
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });

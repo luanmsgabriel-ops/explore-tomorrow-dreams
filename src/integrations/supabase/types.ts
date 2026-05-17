@@ -1102,6 +1102,53 @@ export type Database = {
           },
         ]
       }
+      scheduled_messages: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          label: string | null
+          message_text: string
+          phone_number: string
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          trip_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          label?: string | null
+          message_text: string
+          phone_number: string
+          scheduled_for: string
+          sent_at?: string | null
+          status?: string
+          trip_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          label?: string | null
+          message_text?: string
+          phone_number?: string
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          trip_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_messages_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "active_trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_badges: {
         Row: {
           badge_description: string | null
