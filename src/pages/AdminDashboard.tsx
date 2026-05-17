@@ -17,6 +17,7 @@ import { WhatsAppManager } from '@/components/admin/WhatsAppManager';
 import { ReviewManager } from '@/components/admin/ReviewManager';
 import { AudioManager } from '@/components/admin/AudioManager';
 import { ConciergeManager } from '@/components/admin/ConciergeManager';
+import { ScheduledMessagesManager } from '@/components/admin/ScheduledMessagesManager';
 import { QuotesFilter, QuotesFilterValues } from '@/components/admin/QuotesFilter';
 import { Volume2, Navigation } from 'lucide-react';
 import { Edit } from 'lucide-react';
