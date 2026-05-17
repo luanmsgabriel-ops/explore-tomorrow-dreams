@@ -17,6 +17,7 @@ import { WhatsAppManager } from '@/components/admin/WhatsAppManager';
 import { ReviewManager } from '@/components/admin/ReviewManager';
 import { AudioManager } from '@/components/admin/AudioManager';
 import { ConciergeManager } from '@/components/admin/ConciergeManager';
+import { ScheduledMessagesManager } from '@/components/admin/ScheduledMessagesManager';
 import { QuotesFilter, QuotesFilterValues } from '@/components/admin/QuotesFilter';
 import { Volume2, Navigation } from 'lucide-react';
 import { Edit } from 'lucide-react';
@@ -53,7 +54,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabType = 'overview' | 'analytics' | 'sales' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'clients' | 'trips' | 'checklist' | 'banner-generator' | 'whatsapp' | 'reviews' | 'audio' | 'concierge';
+type TabType = 'overview' | 'analytics' | 'sales' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'clients' | 'trips' | 'checklist' | 'banner-generator' | 'whatsapp' | 'reviews' | 'audio' | 'concierge' | 'scheduled-messages';
 
 interface QuoteRequest {
   id: string;
@@ -587,6 +588,7 @@ const AdminDashboard = () => {
     { id: 'conversations' as TabType, label: 'Conversas IA', icon: MessageSquare },
     { id: 'whatsapp' as TabType, label: 'WhatsApp', icon: MessageCircle },
     { id: 'concierge' as TabType, label: 'Concierge', icon: Navigation },
+    { id: 'scheduled-messages' as TabType, label: 'Mensagens Agendadas', icon: Clock },
     { id: 'audio' as TabType, label: 'Áudio Teo', icon: Volume2 },
     { id: 'reviews' as TabType, label: 'Avaliações', icon: Heart },
     { id: 'users' as TabType, label: 'Admins', icon: UserPlus },
@@ -1653,6 +1655,10 @@ const AdminDashboard = () => {
 
                   {activeTab === 'concierge' && (
                     <ConciergeManager />
+                  )}
+
+                  {activeTab === 'scheduled-messages' && (
+                    <ScheduledMessagesManager />
                   )}
 
                   {activeTab === 'clients' && (
