@@ -588,6 +588,7 @@ const AdminDashboard = () => {
     { id: 'conversations' as TabType, label: 'Conversas IA', icon: MessageSquare },
     { id: 'whatsapp' as TabType, label: 'WhatsApp', icon: MessageCircle },
     { id: 'concierge' as TabType, label: 'Concierge', icon: Navigation },
+    { id: 'scheduled-messages' as TabType, label: 'Mensagens Agendadas', icon: Clock },
     { id: 'audio' as TabType, label: 'Áudio Teo', icon: Volume2 },
     { id: 'reviews' as TabType, label: 'Avaliações', icon: Heart },
     { id: 'users' as TabType, label: 'Admins', icon: UserPlus },
