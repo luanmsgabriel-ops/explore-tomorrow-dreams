@@ -1657,6 +1657,10 @@ const AdminDashboard = () => {
                     <ConciergeManager />
                   )}
 
+                  {activeTab === 'scheduled-messages' && (
+                    <ScheduledMessagesManager />
+                  )}
+
                   {activeTab === 'clients' && (
                     <ClientsManager />
                   )}
