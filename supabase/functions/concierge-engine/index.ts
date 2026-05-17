@@ -1309,6 +1309,9 @@ serve(async (req) => {
       case "school_reminders":
         await schoolReminders();
         break;
+      case "scheduled_messages":
+        await processScheduledMessages();
+        break;
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
