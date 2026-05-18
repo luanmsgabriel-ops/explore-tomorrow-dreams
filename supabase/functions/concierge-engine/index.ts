@@ -1282,6 +1282,39 @@ async function processScheduledMessages() {
       await sendWhatsAppMessage(m.phone_number, m.message_text);
       await supabase.from("scheduled_messages").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", m.id);
       if (m.trip_id) await incrementMessageCount(m.trip_id);
+
+      // Persist into whatsapp_conversations history so admin inbox shows it
+      try {
+        const { data: conv } = await supabase
+          .from("whatsapp_conversations")
+          .select("id, messages_history")
+          .eq("phone_number", m.phone_number)
+          .maybeSingle();
+        const entry = {
+          role: "assistant",
+          content: m.message_text,
+          timestamp: new Date().toISOString(),
+          source: "scheduled",
+          label: m.label || null,
+        };
+        if (conv) {
+          const updated = [...((conv.messages_history as any[]) || []), entry];
+          await supabase
+            .from("whatsapp_conversations")
+            .update({ messages_history: updated, updated_at: new Date().toISOString() })
+            .eq("id", conv.id);
+        } else {
+          await supabase.from("whatsapp_conversations").insert({
+            phone_number: m.phone_number,
+            conversation_state: "concierge",
+            is_ai_active: false,
+            messages_history: [entry],
+          });
+        }
+      } catch (histErr) {
+        console.error("[SCHEDULED] history save error", histErr);
+      }
+
       console.log(`[SCHEDULED] ✅ sent ${m.id} (${m.label || ""})`);
     } catch (e) {
       console.error(`[SCHEDULED] ❌ ${m.id}:`, e);
