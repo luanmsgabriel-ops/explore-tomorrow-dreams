@@ -2766,6 +2766,33 @@ serve(async (req) => {
         const locLng = message.location?.longitude;
         messageText = `[Localização: ${locLat}, ${locLng}]`;
         console.log(`Location received: ${locLat}, ${locLng}`);
+      } else if (messageType === "reaction") {
+        const emoji = message.reaction?.emoji || "";
+        const reactedTo = message.reaction?.message_id || "";
+        messageText = emoji
+          ? `[Reação ${emoji}${reactedTo ? ` à msg ${reactedTo}` : ""}]`
+          : `[Reação removida]`;
+      } else if (messageType === "sticker") {
+        const stickerId = message.sticker?.id;
+        let stickerUrl: string | null = null;
+        if (stickerId) {
+          try {
+            const stickerBuf = await downloadWhatsAppMedia(stickerId);
+            if (stickerBuf) {
+              const fileName = `stickers/${phoneNumber}/${Date.now()}.webp`;
+              const uploadBlob = new Blob([stickerBuf], { type: "image/webp" });
+              const { data: up } = await supabase.storage
+                .from("destination-images")
+                .upload(fileName, uploadBlob, { contentType: "image/webp", upsert: true });
+              if (up) {
+                stickerUrl = supabase.storage.from("destination-images").getPublicUrl(fileName).data.publicUrl;
+              }
+            }
+          } catch (stErr) {
+            console.error("Error processing sticker:", stErr);
+          }
+        }
+        messageText = stickerUrl ? `[Figurinha] ${stickerUrl}` : `[Figurinha]`;
       } else {
         messageText = `[${messageType}]`;
       }
