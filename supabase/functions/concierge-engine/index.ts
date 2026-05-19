@@ -19,7 +19,11 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // ========== HELPERS ==========
 
-async function sendWhatsAppMessage(to: string, message: string) {
+async function sendWhatsAppMessage(to: string, message: string): Promise<string[]> {
+  const normalizedTo = String(to || "").replace(/\D/g, "");
+  if (!normalizedTo) throw new Error("WhatsApp recipient is empty or invalid");
+  if (!String(message || "").trim()) throw new Error("WhatsApp message body is empty");
+
   const maxLen = 4000;
   const parts = [];
   let remaining = message;
@@ -30,13 +34,25 @@ async function sendWhatsAppMessage(to: string, message: string) {
     parts.push(remaining.substring(0, splitAt));
     remaining = remaining.substring(splitAt).trim();
   }
+  const messageIds: string[] = [];
   for (const part of parts) {
-    await fetch(`https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    const response = await fetch(`https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
       method: "POST",
       headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body: part } }),
+      body: JSON.stringify({ messaging_product: "whatsapp", to: normalizedTo, type: "text", text: { body: part } }),
     });
+    const responseText = await response.text();
+    let result: any = null;
+    try { result = responseText ? JSON.parse(responseText) : null; } catch { /* keep raw response */ }
+    if (!response.ok) {
+      console.error("[WHATSAPP_SEND_ERROR]", { to: normalizedTo, status: response.status, body: responseText });
+      throw new Error(`WhatsApp API error ${response.status}: ${responseText.slice(0, 500)}`);
+    }
+    const messageId = result?.messages?.[0]?.id || "unknown";
+    messageIds.push(messageId);
+    console.log(`[WHATSAPP_MESSAGE_SENT] to=${normalizedTo} message_id=${messageId}`);
   }
+  return messageIds;
 }
 
 async function sendWhatsAppImage(to: string, imageUrl: string, caption?: string) {
@@ -1265,6 +1281,47 @@ async function schoolReminders() {
 }
 
 // ========== SCHEDULED MESSAGES ==========
+async function saveScheduledMessageToHistory(m: any, messageIds: string[]) {
+  const phone = String(m.phone_number || "").replace(/\D/g, "");
+  const timestamp = new Date().toISOString();
+  const entry = {
+    role: "assistant",
+    content: m.message_text,
+    timestamp,
+    source: "scheduled",
+    label: m.label || null,
+    scheduled_message_id: m.id,
+    whatsapp_message_ids: messageIds,
+  };
+
+  const { data: conv, error } = await supabase
+    .from("whatsapp_conversations")
+    .select("id, messages_history, client_name")
+    .eq("phone_number", phone)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (conv) {
+    const history = ((conv.messages_history as any[]) || []).filter((item: any) => item?.scheduled_message_id !== m.id);
+    await supabase
+      .from("whatsapp_conversations")
+      .update({ messages_history: [...history, entry], updated_at: timestamp })
+      .eq("id", conv.id);
+    return;
+  }
+
+  await supabase.from("whatsapp_conversations").insert({
+    phone_number: phone,
+    client_name: null,
+    conversation_state: "concierge",
+    collected_data: {},
+    is_ai_active: true,
+    messages_history: [entry],
+  });
+}
+
 async function processScheduledMessages() {
   const nowIso = new Date().toISOString();
   const { data: msgs, error } = await supabase
@@ -1279,43 +1336,23 @@ async function processScheduledMessages() {
   console.log(`[SCHEDULED] processing ${msgs.length} due message(s)`);
   for (const m of msgs) {
     try {
-      await sendWhatsAppMessage(m.phone_number, m.message_text);
-      await supabase.from("scheduled_messages").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", m.id);
-      if (m.trip_id) await incrementMessageCount(m.trip_id);
+      const normalizedPhone = String(m.phone_number || "").replace(/\D/g, "");
+      const messageIds = await sendWhatsAppMessage(normalizedPhone, m.message_text);
 
-      // Persist into whatsapp_conversations history so admin inbox shows it
       try {
-        const { data: conv } = await supabase
-          .from("whatsapp_conversations")
-          .select("id, messages_history")
-          .eq("phone_number", m.phone_number)
-          .maybeSingle();
-        const entry = {
-          role: "assistant",
-          content: m.message_text,
-          timestamp: new Date().toISOString(),
-          source: "scheduled",
-          label: m.label || null,
-        };
-        if (conv) {
-          const updated = [...((conv.messages_history as any[]) || []), entry];
-          await supabase
-            .from("whatsapp_conversations")
-            .update({ messages_history: updated, updated_at: new Date().toISOString() })
-            .eq("id", conv.id);
-        } else {
-          await supabase.from("whatsapp_conversations").insert({
-            phone_number: m.phone_number,
-            conversation_state: "concierge",
-            is_ai_active: false,
-            messages_history: [entry],
-          });
-        }
+        await saveScheduledMessageToHistory({ ...m, phone_number: normalizedPhone }, messageIds);
       } catch (histErr) {
         console.error("[SCHEDULED] history save error", histErr);
+        throw new Error(`Mensagem enviada, mas não foi salva no histórico: ${String(histErr)}`);
       }
 
-      console.log(`[SCHEDULED] ✅ sent ${m.id} (${m.label || ""})`);
+      await supabase
+        .from("scheduled_messages")
+        .update({ status: "sent", sent_at: new Date().toISOString(), error: null })
+        .eq("id", m.id);
+      if (m.trip_id) await incrementMessageCount(m.trip_id);
+
+      console.log(`[SCHEDULED] ✅ sent ${m.id} (${m.label || ""}) ids=${messageIds.join(",")}`);
     } catch (e) {
       console.error(`[SCHEDULED] ❌ ${m.id}:`, e);
       await supabase.from("scheduled_messages").update({ status: "failed", error: String(e) }).eq("id", m.id);
