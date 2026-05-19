@@ -19,7 +19,11 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // ========== HELPERS ==========
 
-async function sendWhatsAppMessage(to: string, message: string) {
+async function sendWhatsAppMessage(to: string, message: string): Promise<string[]> {
+  const normalizedTo = String(to || "").replace(/\D/g, "");
+  if (!normalizedTo) throw new Error("WhatsApp recipient is empty or invalid");
+  if (!String(message || "").trim()) throw new Error("WhatsApp message body is empty");
+
   const maxLen = 4000;
   const parts = [];
   let remaining = message;
@@ -30,13 +34,25 @@ async function sendWhatsAppMessage(to: string, message: string) {
     parts.push(remaining.substring(0, splitAt));
     remaining = remaining.substring(splitAt).trim();
   }
+  const messageIds: string[] = [];
   for (const part of parts) {
-    await fetch(`https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    const response = await fetch(`https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
       method: "POST",
       headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body: part } }),
+      body: JSON.stringify({ messaging_product: "whatsapp", to: normalizedTo, type: "text", text: { body: part } }),
     });
+    const responseText = await response.text();
+    let result: any = null;
+    try { result = responseText ? JSON.parse(responseText) : null; } catch { /* keep raw response */ }
+    if (!response.ok) {
+      console.error("[WHATSAPP_SEND_ERROR]", { to: normalizedTo, status: response.status, body: responseText });
+      throw new Error(`WhatsApp API error ${response.status}: ${responseText.slice(0, 500)}`);
+    }
+    const messageId = result?.messages?.[0]?.id || "unknown";
+    messageIds.push(messageId);
+    console.log(`[WHATSAPP_MESSAGE_SENT] to=${normalizedTo} message_id=${messageId}`);
   }
+  return messageIds;
 }
 
 async function sendWhatsAppImage(to: string, imageUrl: string, caption?: string) {
