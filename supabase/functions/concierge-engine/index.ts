@@ -1281,6 +1281,47 @@ async function schoolReminders() {
 }
 
 // ========== SCHEDULED MESSAGES ==========
+async function saveScheduledMessageToHistory(m: any, messageIds: string[]) {
+  const phone = String(m.phone_number || "").replace(/\D/g, "");
+  const timestamp = new Date().toISOString();
+  const entry = {
+    role: "assistant",
+    content: m.message_text,
+    timestamp,
+    source: "scheduled",
+    label: m.label || null,
+    scheduled_message_id: m.id,
+    whatsapp_message_ids: messageIds,
+  };
+
+  const { data: conv, error } = await supabase
+    .from("whatsapp_conversations")
+    .select("id, messages_history, client_name")
+    .eq("phone_number", phone)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (conv) {
+    const history = ((conv.messages_history as any[]) || []).filter((item: any) => item?.scheduled_message_id !== m.id);
+    await supabase
+      .from("whatsapp_conversations")
+      .update({ messages_history: [...history, entry], updated_at: timestamp })
+      .eq("id", conv.id);
+    return;
+  }
+
+  await supabase.from("whatsapp_conversations").insert({
+    phone_number: phone,
+    client_name: null,
+    conversation_state: "concierge",
+    collected_data: {},
+    is_ai_active: true,
+    messages_history: [entry],
+  });
+}
+
 async function processScheduledMessages() {
   const nowIso = new Date().toISOString();
   const { data: msgs, error } = await supabase
