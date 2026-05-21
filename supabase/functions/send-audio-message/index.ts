@@ -82,14 +82,14 @@ serve(async (req) => {
     // Save to conversation history
     const { data: conv } = await supabase
       .from("whatsapp_conversations")
-      .select("id, conversation_history")
+      .select("id, messages_history")
       .eq("phone_number", phone)
       .maybeSingle();
     if (conv) {
-      const history = Array.isArray(conv.conversation_history) ? conv.conversation_history : [];
+      const history = Array.isArray(conv.messages_history) ? conv.messages_history : [];
       history.push({ role: "assistant", content: `[ÁUDIO] ${text}`, timestamp: new Date().toISOString() });
       if (textFollowUp) history.push({ role: "assistant", content: textFollowUp, timestamp: new Date().toISOString() });
-      await supabase.from("whatsapp_conversations").update({ conversation_history: history, updated_at: new Date().toISOString() }).eq("id", conv.id);
+      await supabase.from("whatsapp_conversations").update({ messages_history: history, updated_at: new Date().toISOString() }).eq("id", conv.id);
     }
 
     return new Response(JSON.stringify({ success: true, audioUrl, audioSendBody, textSendBody }), {
