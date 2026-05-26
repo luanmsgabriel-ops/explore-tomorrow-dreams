@@ -128,7 +128,7 @@ export const ImmersiveScrollHero = () => {
       className="relative w-full"
       style={{ height: `${total * 100}vh` }}
     >
-      <Header />
+      
       <div
         ref={stageRef}
         className="relative w-full h-screen overflow-hidden bg-background"
