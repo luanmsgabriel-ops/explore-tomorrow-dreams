@@ -8,7 +8,6 @@ import { ItineraryGenerator } from './ItineraryGenerator';
 
 const navItems = [
   { label: 'Início', path: '/' },
-  { label: 'Explorar', path: '/explorar' },
   { label: 'Nacional', path: '/nacional' },
   { label: 'Internacional', path: '/internacional' },
   { label: 'Ofertas', path: '/ofertas' },
