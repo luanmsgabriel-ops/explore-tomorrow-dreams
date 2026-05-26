@@ -9,7 +9,7 @@ import { useDestinations } from '@/hooks/useDestinations';
 import { Compass, Globe, MapPin, Sparkles, Play, MessageCircle, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { DecorativeAirplane } from '@/components/DecorativeAirplane';
-import AnimatedWires from '@/components/AnimatedWires';
+
 
 const Index = () => {
   const { destinations: explorarDestinations, isLoading: loadingExplorar } = useDestinations('explorar');
