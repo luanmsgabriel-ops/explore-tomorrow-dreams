@@ -53,6 +53,7 @@ export default defineConfig(({ mode }) => ({
         lang: "pt-BR"
       },
       workbox: {
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4MB
         skipWaiting: true,
         clientsClaim: true,
         globPatterns: ["**/*.{js,css,html,ico,png,jpg,jpeg,svg,webp}"],
