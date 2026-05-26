@@ -51,19 +51,22 @@ export const ImmersiveScrollHero = () => {
   useLayoutEffect(() => {
     if (loading || slides.length === 0 || !wrapperRef.current) return;
 
+    let lastIdx = -1;
     const ctx = gsap.context(() => {
       const total = slides.length;
-      // Total scroll distance: one viewport per slide transition
       const st = ScrollTrigger.create({
         trigger: wrapperRef.current!,
         start: 'top top',
-        end: () => `+=${(total - 1) * window.innerHeight * 0.55}`,
+        end: () => `+=${(total - 1) * window.innerHeight * SLIDE_VH}`,
         pin: stageRef.current!,
         scrub: 0.5,
         anticipatePin: 1,
         onUpdate: (self) => {
           const idx = Math.min(total - 1, Math.round(self.progress * (total - 1)));
-          setActive(idx);
+          if (idx !== lastIdx) {
+            lastIdx = idx;
+            setActive(idx);
+          }
         },
       });
 
@@ -87,7 +90,7 @@ export const ImmersiveScrollHero = () => {
     if (!wrapperRef.current) return;
     const rect = wrapperRef.current.getBoundingClientRect();
     const top = window.scrollY + rect.top;
-    const perSlide = window.innerHeight;
+    const perSlide = window.innerHeight * SLIDE_VH;
     window.scrollTo({ top: top + idx * perSlide, behavior: 'smooth' });
   };
 
