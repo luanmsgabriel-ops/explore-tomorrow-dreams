@@ -650,7 +650,7 @@ Me conta aí! 👇`
 
   if (!isOpen) {
     return (
-      <div className="fixed bottom-24 right-6 z-50">
+      <div className="fixed bottom-4 right-6 z-50">
         {/* Mascot bubble removed per user request */}
 
         {/* Main button */}
