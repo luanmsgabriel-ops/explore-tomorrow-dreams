@@ -19,6 +19,7 @@ import Install from "./pages/Install";
 import Avaliacao from "./pages/Avaliacao";
 import NotFound from "./pages/NotFound";
 import Blog from "./pages/Blog";
+import Experiencia from "./pages/Experiencia";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { FloatingWhatsApp } from "./components/FloatingWhatsApp";
 import { TravelAdvisorChat } from "./components/TravelAdvisorChat";
@@ -29,7 +30,7 @@ const queryClient = new QueryClient();
 // Floating buttons that hide on client/admin areas
 const FloatingButtons = () => {
   const location = useLocation();
-  const hideOnRoutes = ['/cliente', '/minha-area', '/admin', '/admin/dashboard', '/avaliacao'];
+  const hideOnRoutes = ['/cliente', '/minha-area', '/admin', '/admin/dashboard', '/avaliacao', '/experiencia'];
   const shouldHide = hideOnRoutes.some(route => location.pathname.startsWith(route));
   
   if (shouldHide) return null;
@@ -64,6 +65,7 @@ const App = () => (
           <Route path="/avaliacao/:id" element={<Avaliacao />} />
           <Route path="/install" element={<Install />} />
           <Route path="/blog" element={<Blog />} />
+          <Route path="/experiencia" element={<Experiencia />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <AnalyticsProvider />
