@@ -30,7 +30,7 @@ const queryClient = new QueryClient();
 // Floating buttons that hide on client/admin areas
 const FloatingButtons = () => {
   const location = useLocation();
-  const hideOnRoutes = ['/cliente', '/minha-area', '/admin', '/admin/dashboard', '/avaliacao'];
+  const hideOnRoutes = ['/cliente', '/minha-area', '/admin', '/admin/dashboard', '/avaliacao', '/experiencia'];
   const shouldHide = hideOnRoutes.some(route => location.pathname.startsWith(route));
   
   if (shouldHide) return null;
