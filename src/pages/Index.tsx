@@ -1,5 +1,5 @@
 import { Header } from '@/components/Header';
-import { HeroSection } from '@/components/HeroSection';
+import { ImmersiveScrollHero } from '@/components/ImmersiveScrollHero';
 import { DestinationCarousel } from '@/components/DestinationCarousel';
 import { PromotionalCarousel } from '@/components/PromotionalCarousel';
 import { ActiveOffersCarousel } from '@/components/ActiveOffersCarousel';
