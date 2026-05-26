@@ -25,49 +25,27 @@ export const ImmersiveScrollHero = () => {
   const navigate = useNavigate();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  const [slides, setSlides] = useState<Slide[]>([]);
   const [active, setActive] = useState(0);
-  const [loading, setLoading] = useState(true);
 
-  // Fetch up to 5 featured destinations (fallback to most recent active)
-  useEffect(() => {
-    (async () => {
-      let { data } = await supabase
-        .from('destinations')
-        .select('id, slug, name, location, image_url, category, description')
-        .eq('is_active', true)
-        .eq('is_featured', true)
-        .limit(5);
+  // Reuse the shared destinations cache (no extra Supabase round-trip).
+  const { destinations, isLoading } = useDestinations();
 
-      if (!data || data.length < 3) {
-        const { data: fallback } = await supabase
-          .from('destinations')
-          .select('id, slug, name, location, image_url, category, description')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .limit(5);
-        data = fallback ?? [];
-      }
+  // Prefer featured ones; fall back to first 5 active.
+  const slides: Slide[] = (() => {
+    const featured = destinations.filter((d) => d.isFeatured).slice(0, 5);
+    const pool = featured.length >= 3 ? featured : destinations.slice(0, 5);
+    return pool.map((d) => ({
+      id: d.id,
+      slug: d.slug,
+      name: d.name,
+      location: d.location,
+      image: d.image,
+      category: d.category,
+      description: d.description || '',
+    }));
+  })();
 
-      const mapped: Slide[] = (data || []).map((d: any) => {
-        let cat = d.category;
-        if (typeof cat === 'string' && cat.startsWith('[')) {
-          try { cat = JSON.parse(cat)[0]; } catch { /* ignore */ }
-        }
-        return {
-          id: d.id,
-          slug: d.slug,
-          name: d.name,
-          location: d.location,
-          image: d.image_url || '/placeholder.svg',
-          category: cat || 'Destino',
-          description: d.description || '',
-        };
-      });
-      setSlides(mapped);
-      setLoading(false);
-    })();
-  }, []);
+  const loading = isLoading;
 
   // ScrollTrigger pinned timeline
   useLayoutEffect(() => {
