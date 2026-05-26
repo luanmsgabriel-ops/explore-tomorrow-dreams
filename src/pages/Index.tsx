@@ -28,7 +28,7 @@ const Index = () => {
       <PromotionalCarousel />
       
       {/* Hero */}
-      <HeroSection />
+      <ImmersiveScrollHero />
 
       {/* Active Offers Carousel */}
       <ActiveOffersCarousel />
