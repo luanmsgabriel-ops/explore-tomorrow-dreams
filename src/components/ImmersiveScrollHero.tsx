@@ -75,9 +75,9 @@ export const ImmersiveScrollHero = () => {
       const st = ScrollTrigger.create({
         trigger: wrapperRef.current!,
         start: 'top top',
-        end: () => `+=${(total - 1) * window.innerHeight}`,
+        end: () => `+=${(total - 1) * window.innerHeight * 0.55}`,
         pin: stageRef.current!,
-        scrub: 1,
+        scrub: 0.5,
         anticipatePin: 1,
         onUpdate: (self) => {
           const idx = Math.min(total - 1, Math.round(self.progress * (total - 1)));
@@ -126,7 +126,7 @@ export const ImmersiveScrollHero = () => {
     <div
       ref={wrapperRef}
       className="relative w-full"
-      style={{ height: `${total * 100}vh` }}
+      style={{ height: `${100 + (total - 1) * 55}vh` }}
     >
       
       <div

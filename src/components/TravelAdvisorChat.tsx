@@ -651,23 +651,7 @@ Me conta aí! 👇`
   if (!isOpen) {
     return (
       <div className="fixed bottom-24 right-6 z-50">
-        {/* Téo Mascot Character - Realistic Human */}
-        <div 
-          className={`absolute -top-20 -left-4 transition-all duration-500 ${
-            showMascot 
-              ? 'opacity-100 translate-y-0 scale-100' 
-              : 'opacity-0 translate-y-8 scale-75 pointer-events-none'
-          }`}
-        >
-          {/* Téo Mascot with speech bubble */}
-          <TeoMascot 
-            size="medium" 
-            animated 
-            showSpeechBubble 
-            speechText={currentPhrase}
-            bubblePosition="top"
-          />
-        </div>
+        {/* Mascot bubble removed per user request */}
 
         {/* Main button */}
         <button
