@@ -24,8 +24,14 @@ import { InstallPrompt } from "./components/InstallPrompt";
 import { FloatingWhatsApp } from "./components/FloatingWhatsApp";
 import { TravelAdvisorChat } from "./components/TravelAdvisorChat";
 import { AnalyticsProvider } from "./components/AnalyticsProvider";
+import { useLenis } from "./hooks/useLenis";
 
 const queryClient = new QueryClient();
+
+const SmoothScroll = () => {
+  useLenis();
+  return null;
+};
 
 // Floating buttons that hide on client/admin areas
 const FloatingButtons = () => {
@@ -49,6 +55,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <SmoothScroll />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/explorar" element={<Explorar />} />

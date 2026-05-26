@@ -150,9 +150,9 @@ export const ImmersiveScrollHero = () => {
                   transition: 'transform 6s ease-out',
                 }}
               />
-              {/* Gradient overlays — dark for legibility + gold tint */}
-              <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/40 to-transparent" />
-              <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-background/30" />
+              {/* Subtle gradient only on left for text legibility — keep image sharp */}
+              <div className="absolute inset-0 bg-gradient-to-r from-background/70 via-background/10 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background/60 to-transparent" />
             </div>
           ))}
         </div>
@@ -252,16 +252,6 @@ export const ImmersiveScrollHero = () => {
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
-              <div className="ml-4 flex gap-1.5">
-                {slides.map((_, i) => (
-                  <span
-                    key={i}
-                    className={`h-0.5 transition-all duration-500 ${
-                      i === active ? 'w-10 bg-gold' : 'w-5 bg-white/30'
-                    }`}
-                  />
-                ))}
-              </div>
             </div>
 
             <div className="flex items-center gap-6">
