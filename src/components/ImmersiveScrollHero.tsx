@@ -252,17 +252,6 @@ export const ImmersiveScrollHero = () => {
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
-              <div className="ml-4 flex gap-1.5">
-                {slides.map((_, i) => (
-                  <span
-                    key={i}
-                    className={`h-0.5 transition-all duration-500 ${
-                      i === active ? 'w-10 bg-gold' : 'w-5 bg-white/30'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
 
             <div className="flex items-center gap-6">
               <button
