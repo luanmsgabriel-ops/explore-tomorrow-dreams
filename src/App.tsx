@@ -65,6 +65,7 @@ const App = () => (
           <Route path="/avaliacao/:id" element={<Avaliacao />} />
           <Route path="/install" element={<Install />} />
           <Route path="/blog" element={<Blog />} />
+          <Route path="/experiencia" element={<Experiencia />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <AnalyticsProvider />
