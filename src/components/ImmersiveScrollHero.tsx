@@ -2,10 +2,14 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ChevronLeft, ChevronRight, Heart, MapPin, Sparkles } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { ChevronLeft, ChevronRight, MapPin, Sparkles } from 'lucide-react';
+import { useDestinations } from '@/hooks/useDestinations';
 
 gsap.registerPlugin(ScrollTrigger);
+
+// Per-slide scroll distance as a fraction of the viewport height.
+// Lower = faster slide-to-slide transition while keeping smoothness via Lenis.
+const SLIDE_VH = 0.55;
 
 interface Slide {
   id: string;
