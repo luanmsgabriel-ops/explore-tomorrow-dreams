@@ -252,6 +252,7 @@ export const ImmersiveScrollHero = () => {
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
+            </div>
 
             <div className="flex items-center gap-6">
               <button
