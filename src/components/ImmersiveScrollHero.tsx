@@ -126,7 +126,7 @@ export const ImmersiveScrollHero = () => {
     <div
       ref={wrapperRef}
       className="relative w-full"
-      style={{ height: `${total * 100}vh` }}
+      style={{ height: `${100 + (total - 1) * 55}vh` }}
     >
       
       <div
