@@ -261,12 +261,6 @@ export const ImmersiveScrollHero = () => {
               >
                 <Heart className="w-6 h-6" />
               </button>
-              <div className="flex items-baseline gap-1 font-serif">
-                <span className="text-5xl md:text-6xl font-bold text-gold-embossed leading-none">
-                  {String(active + 1).padStart(2, '0')}
-                </span>
-                <span className="text-xl text-white/50">/ {String(total).padStart(2, '0')}</span>
-              </div>
             </div>
           </div>
         </div>

@@ -43,7 +43,6 @@ const FloatingButtons = () => {
   
   return (
     <>
-      <FloatingWhatsApp />
       <TravelAdvisorChat />
     </>
   );
