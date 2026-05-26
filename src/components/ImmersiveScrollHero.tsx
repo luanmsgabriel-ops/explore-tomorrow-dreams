@@ -254,14 +254,6 @@ export const ImmersiveScrollHero = () => {
               </button>
             </div>
 
-            <div className="flex items-center gap-6">
-              <button
-                className="text-white/70 hover:text-gold transition"
-                aria-label="Favoritar"
-              >
-                <Heart className="w-6 h-6" />
-              </button>
-            </div>
           </div>
         </div>
 
