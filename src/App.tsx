@@ -19,6 +19,7 @@ import Install from "./pages/Install";
 import Avaliacao from "./pages/Avaliacao";
 import NotFound from "./pages/NotFound";
 import Blog from "./pages/Blog";
+import Experiencia from "./pages/Experiencia";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { FloatingWhatsApp } from "./components/FloatingWhatsApp";
 import { TravelAdvisorChat } from "./components/TravelAdvisorChat";
