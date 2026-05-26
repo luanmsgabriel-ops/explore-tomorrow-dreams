@@ -112,6 +112,18 @@ export default defineConfig(({ mode }) => ({
       }
     })
   ].filter(Boolean),
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-pdf': ['pdfjs-dist'],
+          'vendor-charts': ['recharts'],
+          'vendor-ui': ['framer-motion', 'gsap', 'lucide-react'],
+          'vendor-react': ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
+        }
+      }
+    }
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
