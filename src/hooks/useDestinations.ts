@@ -62,40 +62,55 @@ const transformDestination = (record: any): Destination => {
   };
 };
 
+// In-memory cache shared by all useDestinations() calls in the page lifecycle.
+// Prevents the home page from firing 3 parallel "SELECT *" queries against
+// the destinations table (which was causing 57014 statement timeouts).
+let _cachePromise: Promise<Destination[]> | null = null;
+let _cache: Destination[] | null = null;
+
+const fetchAllDestinations = (): Promise<Destination[]> => {
+  if (_cache) return Promise.resolve(_cache);
+  if (_cachePromise) return _cachePromise;
+  _cachePromise = (async () => {
+    const { data, error } = await supabase
+      .from('destinations')
+      .select('id, slug, name, location, image_url, category, type, description, best_time, ideal_duration, for_who, videos, is_featured, best_price_periods')
+      .eq('is_active', true)
+      .order('name')
+      .limit(200);
+    if (error) {
+      _cachePromise = null;
+      throw error;
+    }
+    _cache = (data || []).map(transformDestination);
+    return _cache;
+  })();
+  return _cachePromise;
+};
+
 export const useDestinations = (type?: 'explorar' | 'nacional' | 'internacional') => {
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchDestinations = async () => {
-      setIsLoading(true);
-      try {
-        let query = supabase
-          .from('destinations')
-          .select('*')
-          .eq('is_active', true)
-          .order('name');
-
-        if (type) {
-          query = query.eq('type', type);
-        }
-
-        const { data, error: fetchError } = await query;
-
-        if (fetchError) throw fetchError;
-
-        const transformed = (data || []).map(transformDestination);
-        setDestinations(transformed);
-      } catch (err: any) {
+    let active = true;
+    fetchAllDestinations()
+      .then((all) => {
+        if (!active) return;
+        setDestinations(type ? all.filter((d) => d.type === type) : all);
+      })
+      .catch((err: any) => {
+        if (!active) return;
         console.error('Error fetching destinations:', err);
         setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
     };
-
-    fetchDestinations();
   }, [type]);
 
   return { destinations, isLoading, error };
