@@ -4,7 +4,6 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ChevronLeft, ChevronRight, Heart, MapPin, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Header } from '@/components/Header';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -129,7 +128,7 @@ export const ImmersiveScrollHero = () => {
       className="relative w-full"
       style={{ height: `${total * 100}vh` }}
     >
-      <Header />
+      
       <div
         ref={stageRef}
         className="relative w-full h-screen overflow-hidden bg-background"
