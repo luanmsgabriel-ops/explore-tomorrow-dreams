@@ -150,9 +150,9 @@ export const ImmersiveScrollHero = () => {
                   transition: 'transform 6s ease-out',
                 }}
               />
-              {/* Gradient overlays — dark for legibility + gold tint */}
-              <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/40 to-transparent" />
-              <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-background/30" />
+              {/* Subtle gradient only on left for text legibility — keep image sharp */}
+              <div className="absolute inset-0 bg-gradient-to-r from-background/70 via-background/10 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background/60 to-transparent" />
             </div>
           ))}
         </div>
