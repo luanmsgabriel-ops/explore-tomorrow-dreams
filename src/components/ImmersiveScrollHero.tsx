@@ -2,10 +2,14 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ChevronLeft, ChevronRight, Heart, MapPin, Sparkles } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { ChevronLeft, ChevronRight, MapPin, Sparkles } from 'lucide-react';
+import { useDestinations } from '@/hooks/useDestinations';
 
 gsap.registerPlugin(ScrollTrigger);
+
+// Per-slide scroll distance as a fraction of the viewport height.
+// Lower = faster slide-to-slide transition while keeping smoothness via Lenis.
+const SLIDE_VH = 0.55;
 
 interface Slide {
   id: string;
@@ -21,67 +25,48 @@ export const ImmersiveScrollHero = () => {
   const navigate = useNavigate();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  const [slides, setSlides] = useState<Slide[]>([]);
   const [active, setActive] = useState(0);
-  const [loading, setLoading] = useState(true);
 
-  // Fetch up to 5 featured destinations (fallback to most recent active)
-  useEffect(() => {
-    (async () => {
-      let { data } = await supabase
-        .from('destinations')
-        .select('id, slug, name, location, image_url, category, description')
-        .eq('is_active', true)
-        .eq('is_featured', true)
-        .limit(5);
+  // Reuse the shared destinations cache (no extra Supabase round-trip).
+  const { destinations, isLoading } = useDestinations();
 
-      if (!data || data.length < 3) {
-        const { data: fallback } = await supabase
-          .from('destinations')
-          .select('id, slug, name, location, image_url, category, description')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .limit(5);
-        data = fallback ?? [];
-      }
+  // Prefer featured ones; fall back to first 5 active.
+  const slides: Slide[] = (() => {
+    const featured = destinations.filter((d) => d.isFeatured).slice(0, 5);
+    const pool = featured.length >= 3 ? featured : destinations.slice(0, 5);
+    return pool.map((d) => ({
+      id: d.id,
+      slug: d.slug,
+      name: d.name,
+      location: d.location,
+      image: d.image,
+      category: d.category,
+      description: d.description || '',
+    }));
+  })();
 
-      const mapped: Slide[] = (data || []).map((d: any) => {
-        let cat = d.category;
-        if (typeof cat === 'string' && cat.startsWith('[')) {
-          try { cat = JSON.parse(cat)[0]; } catch { /* ignore */ }
-        }
-        return {
-          id: d.id,
-          slug: d.slug,
-          name: d.name,
-          location: d.location,
-          image: d.image_url || '/placeholder.svg',
-          category: cat || 'Destino',
-          description: d.description || '',
-        };
-      });
-      setSlides(mapped);
-      setLoading(false);
-    })();
-  }, []);
+  const loading = isLoading;
 
   // ScrollTrigger pinned timeline
   useLayoutEffect(() => {
     if (loading || slides.length === 0 || !wrapperRef.current) return;
 
+    let lastIdx = -1;
     const ctx = gsap.context(() => {
       const total = slides.length;
-      // Total scroll distance: one viewport per slide transition
       const st = ScrollTrigger.create({
         trigger: wrapperRef.current!,
         start: 'top top',
-        end: () => `+=${(total - 1) * window.innerHeight * 0.55}`,
+        end: () => `+=${(total - 1) * window.innerHeight * SLIDE_VH}`,
         pin: stageRef.current!,
         scrub: 0.5,
         anticipatePin: 1,
         onUpdate: (self) => {
           const idx = Math.min(total - 1, Math.round(self.progress * (total - 1)));
-          setActive(idx);
+          if (idx !== lastIdx) {
+            lastIdx = idx;
+            setActive(idx);
+          }
         },
       });
 
@@ -105,7 +90,7 @@ export const ImmersiveScrollHero = () => {
     if (!wrapperRef.current) return;
     const rect = wrapperRef.current.getBoundingClientRect();
     const top = window.scrollY + rect.top;
-    const perSlide = window.innerHeight;
+    const perSlide = window.innerHeight * SLIDE_VH;
     window.scrollTo({ top: top + idx * perSlide, behavior: 'smooth' });
   };
 

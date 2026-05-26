@@ -19,7 +19,7 @@ const Index = () => {
   const isLoading = loadingExplorar || loadingNacional || loadingInternacional;
 
   return (
-    <div className="min-h-screen bg-cover bg-center bg-fixed bg-no-repeat" style={{ backgroundImage: "url('/images/hero-worldmap-bg.png')" }}>
+    <div className="min-h-screen bg-cover bg-center bg-no-repeat" style={{ backgroundImage: "url('/images/hero-worldmap-bg.png')" }}>
       
       <Header />
       <TeoWelcomePopup />
