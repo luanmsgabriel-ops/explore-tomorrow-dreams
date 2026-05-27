@@ -450,37 +450,6 @@ Me conta aí! 👇`
     // Mascot logic disabled per user request
     setShowMascot(false);
   }, [isOpen]);
-      mascotTimeoutRef.current = setTimeout(() => {
-        setShowMascot(false);
-      }, 3000);
-    };
-
-    // Show first time after 2 seconds
-    const initialTimeout = setTimeout(() => {
-      if (!isOpen && !hasInteracted) {
-        showMascotWithPhrase();
-      }
-    }, 2000);
-
-    // Then show every 5-10 seconds
-    mascotIntervalRef.current = setInterval(() => {
-      if (!isOpen && !hasInteracted) {
-        showMascotWithPhrase();
-      }
-    }, 5000 + Math.random() * 5000);
-
-    return () => {
-      clearTimeout(initialTimeout);
-      if (mascotIntervalRef.current) {
-        clearInterval(mascotIntervalRef.current);
-        mascotIntervalRef.current = null;
-      }
-      if (mascotTimeoutRef.current) {
-        clearTimeout(mascotTimeoutRef.current);
-        mascotTimeoutRef.current = null;
-      }
-    };
-  }, [isOpen, hasInteracted]);
 
   // Render realistic expression-based eyes
   const renderEyes = () => {
