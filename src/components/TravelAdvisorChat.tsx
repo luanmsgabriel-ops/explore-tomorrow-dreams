@@ -447,40 +447,9 @@ Me conta aí! 👇`
   // Mascot animation effect - appears every 4-8 seconds with random phrases and expressions
   // Only if user hasn't interacted with Téo yet
   useEffect(() => {
-    // Don't show mascot if user has already interacted
-    if (hasInteracted) {
-      setShowMascot(false);
-      return;
-    }
-    
-    // Clear all timers when chat opens
-    if (isOpen) {
-      if (mascotIntervalRef.current) {
-        clearInterval(mascotIntervalRef.current);
-        mascotIntervalRef.current = null;
-      }
-      if (mascotTimeoutRef.current) {
-        clearTimeout(mascotTimeoutRef.current);
-        mascotTimeoutRef.current = null;
-      }
-      setShowMascot(false);
-      return;
-    }
-
-    const showMascotWithPhrase = () => {
-      // Don't show if chat is open or user has interacted
-      if (isOpen || hasInteracted) return;
-      
-      const randomPhrase = TEO_PHRASES[Math.floor(Math.random() * TEO_PHRASES.length)];
-      const randomExpression = expressions[Math.floor(Math.random() * expressions.length)];
-      setCurrentPhrase(randomPhrase);
-      setCurrentExpression(randomExpression);
-      setShowMascot(true);
-      
-      // Hide mascot after 3 seconds
-      if (mascotTimeoutRef.current) {
-        clearTimeout(mascotTimeoutRef.current);
-      }
+    // Mascot logic disabled per user request
+    setShowMascot(false);
+  }, [isOpen]);
       mascotTimeoutRef.current = setTimeout(() => {
         setShowMascot(false);
       }, 3000);
@@ -697,7 +666,7 @@ Me conta aí! 👇`
   }
 
   return (
-    <div className="fixed bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-3rem)] h-[500px] max-h-[calc(100vh-8rem)] rounded-2xl shadow-2xl border border-border bg-background flex flex-col animate-scale-in overflow-hidden">
+    <div className="fixed bottom-4 right-6 z-50 w-[380px] max-w-[calc(100vw-3rem)] h-[500px] max-h-[calc(100vh-8rem)] rounded-2xl shadow-2xl border border-border bg-background flex flex-col animate-scale-in overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-primary/10 to-accent/10 shrink-0">
         <div className="flex items-center gap-3">

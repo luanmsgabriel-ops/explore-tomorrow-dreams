@@ -68,23 +68,29 @@ const transformDestination = (record: any): Destination => {
 let _cachePromise: Promise<Destination[]> | null = null;
 let _cache: Destination[] | null = null;
 
-const fetchAllDestinations = (): Promise<Destination[]> => {
-  if (_cache) return Promise.resolve(_cache);
+const fetchAllDestinations = async (): Promise<Destination[]> => {
+  if (_cache) return _cache;
   if (_cachePromise) return _cachePromise;
+  
   _cachePromise = (async () => {
-    const { data, error } = await supabase
-      .from('destinations')
-      .select('id, slug, name, location, image_url, category, type, description, best_time, ideal_duration, for_who, videos, is_featured, best_price_periods')
-      .eq('is_active', true)
-      .order('name')
-      .limit(200);
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('destinations')
+        .select('id, slug, name, location, image_url, category, type, description, best_time, ideal_duration, for_who, is_featured')
+        .eq('is_active', true)
+        .order('name')
+        .limit(100);
+
+      if (error) throw error;
+      
+      _cache = (data || []).map(transformDestination);
+      return _cache;
+    } catch (err) {
       _cachePromise = null;
-      throw error;
+      throw err;
     }
-    _cache = (data || []).map(transformDestination);
-    return _cache;
   })();
+  
   return _cachePromise;
 };
 
