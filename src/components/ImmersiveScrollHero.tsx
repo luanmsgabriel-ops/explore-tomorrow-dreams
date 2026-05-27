@@ -94,15 +94,11 @@ export const ImmersiveScrollHero = () => {
     window.scrollTo({ top: top + idx * perSlide, behavior: 'smooth' });
   };
 
-  if (loading) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center bg-background">
-        <div className="text-gold-light text-sm">Carregando experiência…</div>
-      </div>
-    );
+  // No full-screen loading state - show the hero immediately if we have slides.
+  // If no slides yet, return a spacer to avoid layout shift.
+  if (slides.length === 0) {
+    return <div className="h-screen w-full" />;
   }
-
-  if (slides.length === 0) return null;
 
   const current = slides[active];
   const total = slides.length;

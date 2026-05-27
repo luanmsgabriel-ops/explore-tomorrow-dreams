@@ -87,8 +87,13 @@ const fetchAllDestinations = async (): Promise<Destination[]> => {
 };
 
 export const useDestinations = (type?: 'explorar' | 'nacional' | 'internacional') => {
-  const [destinations, setDestinations] = useState<Destination[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [destinations, setDestinations] = useState<Destination[]>(() => {
+    if (_cache) {
+      return type ? _cache.filter((d) => d.type === type) : _cache;
+    }
+    return [];
+  });
+  const [isLoading, setIsLoading] = useState(!_cache);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
