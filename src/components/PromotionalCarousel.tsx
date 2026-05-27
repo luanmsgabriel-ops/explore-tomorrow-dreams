@@ -217,10 +217,7 @@ export const PromotionalCarousel = () => {
 
       if (data && data.length > 0) {
         setOffers(data as PromotionalOffer[]);
-        // Delay showing the popup to not block the initial experience
-        setTimeout(() => {
-          setIsVisible(true);
-        }, 5000);
+        setIsVisible(true);
         sessionStorage.setItem('promo-popup-shown', 'true');
       }
     } catch (error) {

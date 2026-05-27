@@ -56,14 +56,14 @@ const DestinationDetail = () => {
   }
 
   return (
-    <div className="cinematic-bg">
+    <div className="min-h-screen bg-background">
       <Header />
 
       {/* Hero Banner */}
-      <section className="relative h-[70vh] min-h-[500px] overflow-hidden">
-        <img src={destination.image} alt={destination.name} className="absolute inset-0 w-full h-full object-cover scale-105" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/40 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-background via-background/60 to-transparent" />
+      <section className="relative h-[70vh] min-h-[500px]">
+        <img src={destination.image} alt={destination.name} className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0" style={{ background: 'var(--gradient-hero-overlay)' }} />
+        <div className="absolute bottom-0 left-0 right-0 h-40" style={{ background: 'var(--gradient-hero-bottom)' }} />
 
         {/* Back button */}
         <button 
@@ -76,18 +76,18 @@ const DestinationDetail = () => {
 
         <div className="relative z-10 h-full flex items-end pb-16">
           <div className="container mx-auto px-4 lg:px-8">
-            <div className="max-w-3xl animate-fade-up bg-black/40 backdrop-blur-md p-8 rounded-2xl border border-gold/20">
-              <span className="inline-block px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-full glass-gold text-gold-light mb-6">
+            <div className="max-w-3xl animate-fade-up">
+              <span className="inline-block px-3 py-1 text-sm font-medium rounded-full bg-primary/20 text-primary mb-4">
                 {destination.category}
               </span>
-              <h1 className="font-serif text-5xl md:text-7xl font-bold mb-4">
-                <span className="text-gold-embossed">{destination.name}</span>
+              <h1 className="font-serif text-5xl md:text-7xl font-bold text-foreground mb-4 text-shadow-lg">
+                {destination.name}
               </h1>
-              <div className="flex items-center gap-2 text-white/80 mb-6">
-                <MapPin className="w-5 h-5 text-gold" />
-                <span className="text-lg font-medium">{destination.location}</span>
+              <div className="flex items-center gap-2 text-muted-foreground mb-6">
+                <MapPin className="w-5 h-5" />
+                <span className="text-lg">{destination.location}</span>
               </div>
-              <p className="text-xl text-white/90 leading-relaxed max-w-2xl">{destination.description}</p>
+              <p className="text-xl text-muted-foreground max-w-2xl">{destination.description}</p>
             </div>
           </div>
         </div>
@@ -97,32 +97,32 @@ const DestinationDetail = () => {
       <section className="py-8 border-b border-border">
         <div className="container mx-auto px-4 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="flex items-center gap-3 p-5 rounded-2xl bg-black/40 backdrop-blur-sm border border-white/5">
-              <Sun className="w-6 h-6 text-gold" />
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/50">
+              <Sun className="w-6 h-6 text-accent" />
               <div>
-                <p className="text-[10px] uppercase tracking-wider text-white/50">Melhor época</p>
-                <p className="text-sm font-bold text-white">{destination.bestTime}</p>
+                <p className="text-xs text-muted-foreground">Melhor época</p>
+                <p className="text-sm font-medium text-foreground">{destination.bestTime}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-5 rounded-2xl bg-black/40 backdrop-blur-sm border border-white/5">
-              <Clock className="w-6 h-6 text-gold" />
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/50">
+              <Clock className="w-6 h-6 text-primary" />
               <div>
-                <p className="text-[10px] uppercase tracking-wider text-white/50">Duração ideal</p>
-                <p className="text-sm font-bold text-white">{destination.idealDuration}</p>
+                <p className="text-xs text-muted-foreground">Duração ideal</p>
+                <p className="text-sm font-medium text-foreground">{destination.idealDuration}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-5 rounded-2xl bg-black/40 backdrop-blur-sm border border-white/5">
-              <Users className="w-6 h-6 text-gold" />
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/50">
+              <Users className="w-6 h-6 text-teal-light" />
               <div>
-                <p className="text-[10px] uppercase tracking-wider text-white/50">Indicado para</p>
-                <p className="text-sm font-bold text-white">{destination.forWho}</p>
+                <p className="text-xs text-muted-foreground">Indicado para</p>
+                <p className="text-sm font-medium text-foreground">{destination.forWho}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-5 rounded-2xl bg-black/40 backdrop-blur-sm border border-white/5">
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/50">
               <MapPin className="w-6 h-6 text-gold" />
               <div>
-                <p className="text-[10px] uppercase tracking-wider text-white/50">Categoria</p>
-                <p className="text-sm font-bold text-white">{destination.category}</p>
+                <p className="text-xs text-muted-foreground">Categoria</p>
+                <p className="text-sm font-medium text-foreground">{destination.category}</p>
               </div>
             </div>
           </div>

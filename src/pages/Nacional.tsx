@@ -8,21 +8,21 @@ const Nacional = () => {
   const { destinations, isLoading } = useDestinations('nacional');
 
   return (
-    <div className="cinematic-bg">
+    <div className="min-h-screen bg-background">
       <Header />
 
       {/* Hero */}
-      <section className="pt-32 pb-16 md:pt-40 md:pb-20 relative">
-        <div className="container mx-auto px-4 lg:px-8 relative z-10">
-          <div className="max-w-3xl bg-black/50 backdrop-blur-md rounded-2xl p-8 border border-gold/20">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-gold mb-6">
-              <MapPin className="w-4 h-4 text-gold-light" />
-              <span className="text-sm font-medium text-gold-light">Brasil</span>
+      <section className="pt-32 pb-16 md:pt-40 md:pb-20">
+        <div className="container mx-auto px-4 lg:px-8">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
+              <MapPin className="w-4 h-4 text-accent" />
+              <span className="text-sm font-medium text-accent">Brasil</span>
             </div>
-            <h1 className="font-serif text-4xl md:text-6xl font-bold mb-4">
-              Destinos <span className="text-gold-embossed">Nacionais</span>
+            <h1 className="font-serif text-4xl md:text-6xl font-bold text-foreground mb-4">
+              Destinos <span className="gradient-text-gold">Nacionais</span>
             </h1>
-            <p className="text-white text-lg md:text-xl max-w-2xl">
+            <p className="text-muted-foreground text-lg md:text-xl max-w-2xl">
               As joias mais preciosas do Brasil. Praias paradisíacas, cachoeiras espetaculares e paisagens que vão te surpreender.
             </p>
           </div>
@@ -30,22 +30,20 @@ const Nacional = () => {
       </section>
 
       {/* Grid */}
-      <section className="pb-20 relative">
-        <div className="container mx-auto px-4 lg:px-8 relative z-10">
+      <section className="pb-20">
+        <div className="container mx-auto px-4 lg:px-8">
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-gold" />
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : destinations.length === 0 ? (
-            <div className="text-center py-20 text-white bg-black/40 backdrop-blur-sm rounded-2xl border border-gold/10">
+            <div className="text-center py-20 text-muted-foreground">
               Nenhum destino encontrado nesta categoria.
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
               {destinations.map((destination) => (
-                <div key={destination.id} className="transition-transform duration-300 hover:scale-[1.02]">
-                  <DestinationCard {...destination} />
-                </div>
+                <DestinationCard key={destination.id} {...destination} />
               ))}
             </div>
           )}

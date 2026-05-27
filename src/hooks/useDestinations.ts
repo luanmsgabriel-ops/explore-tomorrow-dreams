@@ -29,19 +29,23 @@ export interface Destination {
   bestPricePeriods?: BestPricePeriod[];
 }
 
+// Transform database record to frontend format
 const transformDestination = (record: any): Destination => {
+  // Handle category that might be stored as JSON array
   let categoryValue = record.category;
   if (typeof categoryValue === 'string' && categoryValue.startsWith('[')) {
     try {
       const parsed = JSON.parse(categoryValue);
       categoryValue = Array.isArray(parsed) ? parsed[0] : categoryValue;
-    } catch { }
+    } catch {
+      // Keep original if parse fails
+    }
   } else if (Array.isArray(categoryValue)) {
     categoryValue = categoryValue[0];
   }
 
   return {
-    id: record.slug,
+    id: record.slug, // Use slug as ID for URLs
     slug: record.slug,
     name: record.name,
     location: record.location,
@@ -58,70 +62,54 @@ const transformDestination = (record: any): Destination => {
   };
 };
 
+// In-memory cache shared by all useDestinations() calls in the page lifecycle.
+// Prevents the home page from firing 3 parallel "SELECT *" queries against
+// the destinations table (which was causing 57014 statement timeouts).
 let _cachePromise: Promise<Destination[]> | null = null;
 let _cache: Destination[] | null = null;
 
-const fetchAllDestinations = async (): Promise<Destination[]> => {
-  if (_cache) return _cache;
+const fetchAllDestinations = (): Promise<Destination[]> => {
+  if (_cache) return Promise.resolve(_cache);
   if (_cachePromise) return _cachePromise;
-  
   _cachePromise = (async () => {
-    try {
-      const { data, error } = await supabase
-        .from('destinations')
-        .select('id, slug, name, location, image_url, category, type, description, is_featured')
-        .eq('is_active', true)
-        .order('name')
-        .limit(30);
-
-      if (error) throw error;
-      _cache = (data || []).map(transformDestination);
-      return _cache;
-    } catch (err) {
+    const { data, error } = await supabase
+      .from('destinations')
+      .select('id, slug, name, location, image_url, category, type, description, best_time, ideal_duration, for_who, videos, is_featured, best_price_periods')
+      .eq('is_active', true)
+      .order('name')
+      .limit(200);
+    if (error) {
       _cachePromise = null;
-      throw err;
+      throw error;
     }
+    _cache = (data || []).map(transformDestination);
+    return _cache;
   })();
-  
   return _cachePromise;
 };
 
 export const useDestinations = (type?: 'explorar' | 'nacional' | 'internacional') => {
-  const [destinations, setDestinations] = useState<Destination[]>(() => {
-    if (_cache) {
-      return type ? _cache.filter((d) => d.type === type) : _cache;
-    }
-    return [];
-  });
-  const [isLoading, setIsLoading] = useState(!_cache);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    
-    // Safety timeout: if DB doesn't respond in 3s, stop loading
-    const timeoutId = setTimeout(() => {
-      if (active) setIsLoading(false);
-    }, 3000);
-
     fetchAllDestinations()
       .then((all) => {
         if (!active) return;
-        clearTimeout(timeoutId);
         setDestinations(type ? all.filter((d) => d.type === type) : all);
-        setIsLoading(false);
       })
       .catch((err: any) => {
         if (!active) return;
-        clearTimeout(timeoutId);
         console.error('Error fetching destinations:', err);
         setError(err.message);
-        setIsLoading(false);
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
       });
-
     return () => {
       active = false;
-      clearTimeout(timeoutId);
     };
   }, [type]);
 
@@ -139,6 +127,7 @@ export const useDestinationById = (id: string) => {
         setIsLoading(false);
         return;
       }
+
       setIsLoading(true);
       try {
         const { data, error: fetchError } = await supabase
@@ -147,14 +136,22 @@ export const useDestinationById = (id: string) => {
           .eq('slug', id)
           .eq('is_active', true)
           .maybeSingle();
+
         if (fetchError) throw fetchError;
-        setDestination(data ? transformDestination(data) : null);
+
+        if (data) {
+          setDestination(transformDestination(data));
+        } else {
+          setDestination(null);
+        }
       } catch (err: any) {
+        console.error('Error fetching destination:', err);
         setError(err.message);
       } finally {
         setIsLoading(false);
       }
     };
+
     fetchDestination();
   }, [id]);
 
@@ -176,14 +173,22 @@ export const useFeaturedDestination = () => {
           .eq('is_featured', true)
           .eq('is_active', true)
           .maybeSingle();
+
         if (fetchError) throw fetchError;
-        setDestination(data ? transformDestination(data) : null);
+
+        if (data) {
+          setDestination(transformDestination(data));
+        } else {
+          setDestination(null);
+        }
       } catch (err: any) {
+        console.error('Error fetching featured destination:', err);
         setError(err.message);
       } finally {
         setIsLoading(false);
       }
     };
+
     fetchFeaturedDestination();
   }, []);
 

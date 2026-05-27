@@ -12,7 +12,7 @@ export const TeoWelcomePopup = () => {
   useEffect(() => {
     const hasSeen = localStorage.getItem(STORAGE_KEY);
     if (!hasSeen) {
-      const timer = setTimeout(() => setIsOpen(true), 8000);
+      const timer = setTimeout(() => setIsOpen(true), 2000);
       return () => clearTimeout(timer);
     }
   }, []);

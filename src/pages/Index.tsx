@@ -19,7 +19,7 @@ const Index = () => {
   const isLoading = loadingExplorar || loadingNacional || loadingInternacional;
 
   return (
-    <div className="cinematic-bg">
+    <div className="min-h-screen bg-cover bg-center bg-no-repeat" style={{ backgroundImage: "url('/images/hero-worldmap-bg.png')" }}>
       
       <Header />
       <TeoWelcomePopup />
@@ -56,32 +56,38 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Carousels - No spinner, show when loaded */}
-      <div className="min-h-[200px]">
-        {explorarDestinations.length > 0 && (
-          <DestinationCarousel
-            title="Explorar"
-            destinations={explorarDestinations}
-            accentColor="teal"
-          />
-        )}
+      {/* Carousels */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-gold" />
+        </div>
+      ) : (
+        <>
+          {explorarDestinations.length > 0 && (
+            <DestinationCarousel
+              title="Explorar"
+              destinations={explorarDestinations}
+              accentColor="teal"
+            />
+          )}
 
-        {nacionalDestinations.length > 0 && (
-          <DestinationCarousel
-            title="Brasil"
-            destinations={nacionalDestinations}
-            accentColor="gold"
-          />
-        )}
+          {nacionalDestinations.length > 0 && (
+            <DestinationCarousel
+              title="Brasil"
+              destinations={nacionalDestinations}
+              accentColor="gold"
+            />
+          )}
 
-        {internacionalDestinations.length > 0 && (
-          <DestinationCarousel
-            title="Internacional"
-            destinations={internacionalDestinations}
-            accentColor="teal"
-          />
-        )}
-      </div>
+          {internacionalDestinations.length > 0 && (
+            <DestinationCarousel
+              title="Internacional"
+              destinations={internacionalDestinations}
+              accentColor="teal"
+            />
+          )}
+        </>
+      )}
 
       {/* Categories Section */}
       <section className="py-16 md:py-24 world-map-bg">

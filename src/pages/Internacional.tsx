@@ -8,21 +8,21 @@ const Internacional = () => {
   const { destinations, isLoading } = useDestinations('internacional');
 
   return (
-    <div className="cinematic-bg">
+    <div className="min-h-screen bg-background">
       <Header />
 
       {/* Hero */}
-      <section className="pt-32 pb-16 md:pt-40 md:pb-20 relative">
-        <div className="container mx-auto px-4 lg:px-8 relative z-10">
-          <div className="max-w-3xl bg-black/50 backdrop-blur-md rounded-2xl p-8 border border-teal/20">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-gold mb-6">
-              <Globe className="w-4 h-4 text-teal-light" />
-              <span className="text-sm font-medium text-teal-light">Mundo</span>
+      <section className="pt-32 pb-16 md:pt-40 md:pb-20">
+        <div className="container mx-auto px-4 lg:px-8">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
+              <Globe className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-primary">Mundo</span>
             </div>
-            <h1 className="font-serif text-4xl md:text-6xl font-bold mb-4">
+            <h1 className="font-serif text-4xl md:text-6xl font-bold text-foreground mb-4">
               Destinos <span className="gradient-text-teal">Internacionais</span>
             </h1>
-            <p className="text-white text-lg md:text-xl max-w-2xl">
+            <p className="text-muted-foreground text-lg md:text-xl max-w-2xl">
               Os melhores destinos do mundo. Culturas fascinantes, paisagens deslumbrantes e experiências que ultrapassam fronteiras.
             </p>
           </div>
@@ -30,22 +30,20 @@ const Internacional = () => {
       </section>
 
       {/* Grid */}
-      <section className="pb-20 relative">
-        <div className="container mx-auto px-4 lg:px-8 relative z-10">
+      <section className="pb-20">
+        <div className="container mx-auto px-4 lg:px-8">
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-teal" />
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : destinations.length === 0 ? (
-            <div className="text-center py-20 text-white bg-black/40 backdrop-blur-sm rounded-2xl border border-teal/10">
+            <div className="text-center py-20 text-muted-foreground">
               Nenhum destino encontrado nesta categoria.
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
               {destinations.map((destination) => (
-                <div key={destination.id} className="transition-transform duration-300 hover:scale-[1.02]">
-                  <DestinationCard {...destination} />
-                </div>
+                <DestinationCard key={destination.id} {...destination} />
               ))}
             </div>
           )}

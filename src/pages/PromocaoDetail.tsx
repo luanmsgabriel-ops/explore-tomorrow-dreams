@@ -189,7 +189,7 @@ const PromocaoDetail = () => {
   const destination = offer.destinations;
 
   return (
-    <div className="cinematic-bg">
+    <div className="min-h-screen bg-background">
       <Header />
       
       <main>
@@ -204,12 +204,12 @@ const PromocaoDetail = () => {
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-primary to-accent" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
           
           {/* Back button */}
           <Link
             to="/"
-            className="absolute top-24 left-4 md:left-8 flex items-center gap-2 px-4 py-2 rounded-full glass-gold text-gold-light hover:bg-gold/20 transition-colors z-20"
+            className="absolute top-24 left-4 md:left-8 flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Voltar
@@ -218,15 +218,15 @@ const PromocaoDetail = () => {
           {/* Content */}
           <div className="absolute inset-x-0 bottom-0 p-6 md:p-12">
             <div className="container mx-auto max-w-5xl">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-gold text-gold-light text-sm font-bold mb-4 shadow-lg border border-gold/30">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent text-accent-foreground text-sm font-semibold mb-4">
                 Oferta Promocional
               </div>
-              <h1 className="font-serif text-3xl md:text-5xl lg:text-6xl font-bold mb-2">
-                <span className="text-gold-embossed">{offer.title}</span>
+              <h1 className="font-serif text-3xl md:text-5xl font-bold text-white mb-2 drop-shadow-lg">
+                {offer.title}
               </h1>
               {destination && (
-                <div className="flex items-center gap-2 text-white/90 font-medium">
-                  <MapPin className="w-4 h-4 text-gold" />
+                <div className="flex items-center gap-2 text-white/80">
+                  <MapPin className="w-4 h-4" />
                   <span>{destination.name}, {destination.location}</span>
                 </div>
               )}

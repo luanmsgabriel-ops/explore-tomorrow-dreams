@@ -9,7 +9,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 // Per-slide scroll distance as a fraction of the viewport height.
 // Lower = faster slide-to-slide transition while keeping smoothness via Lenis.
-const SLIDE_VH = 0.45;
+const SLIDE_VH = 0.55;
 
 interface Slide {
   id: string;
@@ -94,11 +94,15 @@ export const ImmersiveScrollHero = () => {
     window.scrollTo({ top: top + idx * perSlide, behavior: 'smooth' });
   };
 
-  // No full-screen loading state - show the hero immediately if we have slides.
-  // If no slides yet, return a spacer to avoid layout shift.
-  if (slides.length === 0) {
-    return <div className="h-screen w-full" />;
+  if (loading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-background">
+        <div className="text-gold-light text-sm">Carregando experiência…</div>
+      </div>
+    );
   }
+
+  if (slides.length === 0) return null;
 
   const current = slides[active];
   const total = slides.length;
