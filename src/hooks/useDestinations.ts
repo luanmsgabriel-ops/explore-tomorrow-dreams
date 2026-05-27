@@ -51,7 +51,7 @@ const transformDestination = (record: any): Destination => {
     description: record.description,
     bestTime: record.best_time,
     idealDuration: record.ideal_duration,
-    for_who: record.for_who,
+    forWho: record.for_who,
     videos: Array.isArray(record.videos) ? record.videos : [],
     isFeatured: record.is_featured || false,
     bestPricePeriods: Array.isArray(record.best_price_periods) ? record.best_price_periods : [],
