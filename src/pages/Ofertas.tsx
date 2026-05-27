@@ -98,7 +98,7 @@ const OfferCard = ({ offer }: { offer: PromotionalOffer }) => {
   return (
     <Link 
       to={`/promocao/${offer.id}`}
-      className="group relative bg-card rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+      className="group relative bg-black/50 backdrop-blur-md rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 border border-gold/20 hover:border-gold/40"
     >
       {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden">
@@ -109,14 +109,14 @@ const OfferCard = ({ offer }: { offer: PromotionalOffer }) => {
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary to-accent" />
+          <div className="w-full h-full bg-gradient-to-br from-gold/40 to-teal/40" />
         )}
         
         {/* Overlay gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
 
         {/* Badge */}
-        <div className="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-semibold shadow-lg">
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gold text-ocean-deep text-xs font-bold shadow-lg">
           <Sparkles className="w-3 h-3" />
           Oferta
         </div>
@@ -128,11 +128,11 @@ const OfferCard = ({ offer }: { offer: PromotionalOffer }) => {
 
         {/* Destination name on image */}
         <div className="absolute bottom-3 left-3 right-3">
-          <h3 className="font-serif text-xl font-bold text-white drop-shadow-lg">
+          <h3 className="font-serif text-xl font-bold text-gold-light drop-shadow-lg">
             {offer.destinations?.name}
           </h3>
           <div className="flex items-center gap-1 text-white/80 text-sm">
-            <MapPin className="w-3 h-3" />
+            <MapPin className="w-3 h-3 text-gold" />
             {offer.destinations?.location}
           </div>
         </div>
@@ -140,16 +140,16 @@ const OfferCard = ({ offer }: { offer: PromotionalOffer }) => {
 
       {/* Content */}
       <div className="p-4 space-y-3">
-        <h4 className="font-semibold text-foreground line-clamp-1">{offer.title}</h4>
+        <h4 className="font-semibold text-white line-clamp-1">{offer.title}</h4>
         
         {offer.tagline && (
-          <p className="text-sm text-muted-foreground line-clamp-2">{offer.tagline}</p>
+          <p className="text-sm text-white/60 line-clamp-2">{offer.tagline}</p>
         )}
 
         {/* Travel dates */}
         {(offer.departure_date || offer.return_date) && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="w-4 h-4 text-primary" />
+          <div className="flex items-center gap-2 text-sm text-white/60">
+            <Calendar className="w-4 h-4 text-gold" />
             <span>
               {offer.departure_date && new Date(offer.departure_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
               {offer.departure_date && offer.return_date && ' - '}
@@ -164,13 +164,13 @@ const OfferCard = ({ offer }: { offer: PromotionalOffer }) => {
             {offer.inclusions.slice(0, 3).map((inclusion, idx) => (
               <span 
                 key={idx}
-                className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs"
+                className="px-2 py-0.5 rounded-full bg-gold/10 text-gold-light text-[10px] border border-gold/20"
               >
                 {inclusion}
               </span>
             ))}
             {offer.inclusions.length > 3 && (
-              <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs">
+              <span className="px-2 py-0.5 rounded-full bg-white/5 text-white/60 text-[10px]">
                 +{offer.inclusions.length - 3}
               </span>
             )}
@@ -178,17 +178,17 @@ const OfferCard = ({ offer }: { offer: PromotionalOffer }) => {
         )}
 
         {/* Price */}
-        <div className="pt-2 border-t border-border">
+        <div className="pt-2 border-t border-gold/10">
           <div className="flex items-end justify-between">
             <div>
-              <span className="text-xs text-muted-foreground">A partir de</span>
-              <div className="text-2xl font-bold text-primary">
+              <span className="text-[10px] text-white/60 uppercase tracking-wider">A partir de</span>
+              <div className="text-2xl font-bold text-gold-embossed">
                 R$ {offer.total_price.toLocaleString('pt-BR')}
               </div>
             </div>
             {offer.installments && offer.installment_value && (
-              <div className="text-right text-sm text-muted-foreground">
-                ou {offer.installments}x de R$ {offer.installment_value.toLocaleString('pt-BR')}
+              <div className="text-right text-xs text-white/60">
+                ou {offer.installments}x de <span className="text-white font-medium">R$ {offer.installment_value.toLocaleString('pt-BR')}</span>
               </div>
             )}
           </div>
@@ -315,12 +315,12 @@ const Ofertas = () => {
     <div className="space-y-6">
       {/* Destination filter */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Destino</label>
+        <label className="text-sm font-medium text-gold-light">Destino</label>
         <Select value={selectedDestination} onValueChange={setSelectedDestination}>
-          <SelectTrigger>
+          <SelectTrigger className="bg-black/40 border-gold/20 text-white">
             <SelectValue placeholder="Todos os destinos" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-ocean-deep border-gold/20 text-white">
             <SelectItem value="all">Todos os destinos</SelectItem>
             {destinations.map(dest => (
               <SelectItem key={dest.id} value={dest.id}>{dest.name}</SelectItem>
@@ -331,7 +331,7 @@ const Ofertas = () => {
 
       {/* Price range filter */}
       <div className="space-y-4">
-        <label className="text-sm font-medium text-foreground">Faixa de Preço</label>
+        <label className="text-sm font-medium text-gold-light">Faixa de Preço</label>
         <div className="px-2">
           <Slider
             value={priceRange}
@@ -341,7 +341,7 @@ const Ofertas = () => {
             className="w-full"
           />
         </div>
-        <div className="flex justify-between text-sm text-muted-foreground">
+        <div className="flex justify-between text-sm text-gold-light/60">
           <span>R$ {priceRange[0].toLocaleString('pt-BR')}</span>
           <span>R$ {priceRange[1].toLocaleString('pt-BR')}</span>
         </div>
@@ -349,12 +349,12 @@ const Ofertas = () => {
 
       {/* Sort */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Ordenar por</label>
+        <label className="text-sm font-medium text-gold-light">Ordenar por</label>
         <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger>
+          <SelectTrigger className="bg-black/40 border-gold/20 text-white">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-ocean-deep border-gold/20 text-white">
             <SelectItem value="newest">Mais recentes</SelectItem>
             <SelectItem value="price-asc">Menor preço</SelectItem>
             <SelectItem value="price-desc">Maior preço</SelectItem>
@@ -367,7 +367,7 @@ const Ofertas = () => {
       {hasActiveFilters && (
         <Button 
           variant="outline" 
-          className="w-full"
+          className="w-full border-gold/30 text-gold-light hover:bg-gold/10"
           onClick={clearFilters}
         >
           <X className="w-4 h-4 mr-2" />
