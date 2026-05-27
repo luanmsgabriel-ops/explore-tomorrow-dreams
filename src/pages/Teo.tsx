@@ -7,14 +7,14 @@ import { TeoMascot } from "@/components/TeoMascot";
 
 const Teo = () => {
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="cinematic-bg flex flex-col">
       <Header />
       
       <main className="flex-1 container mx-auto px-4 py-6 md:py-10">
         {/* Breadcrumb */}
         <Link 
           to="/" 
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
+          className="inline-flex items-center gap-2 text-gold-light/60 hover:text-gold transition-colors mb-6 mt-20"
         >
           <ArrowLeft className="w-4 h-4" />
           Voltar para o início
@@ -26,8 +26,8 @@ const Teo = () => {
             <div className="flex justify-center mb-4">
               <TeoMascot size="large" animated />
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
-              Conheça o Téo 🌍
+            <h1 className="font-serif text-3xl md:text-5xl font-bold mb-4">
+              <span className="text-gold-embossed">Conheça o Téo</span> 🌍
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Seu consultor de viagens pessoal com inteligência artificial. 
@@ -37,24 +37,24 @@ const Teo = () => {
 
           {/* Features */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="bg-card border rounded-xl p-4 text-center">
-              <div className="text-3xl mb-2">🎯</div>
-              <h3 className="font-semibold text-foreground mb-1">Recomendações Personalizadas</h3>
-              <p className="text-sm text-muted-foreground">
+            <div className="bg-black/50 backdrop-blur-md border border-gold/20 rounded-xl p-6 text-center shadow-lg">
+              <div className="text-3xl mb-3">🎯</div>
+              <h3 className="font-serif text-xl font-bold text-gold-embossed mb-2">Recomendações Personalizadas</h3>
+              <p className="text-sm text-white/70">
                 Baseadas no seu perfil e preferências
               </p>
             </div>
-            <div className="bg-card border rounded-xl p-4 text-center">
-              <div className="text-3xl mb-2">💬</div>
-              <h3 className="font-semibold text-foreground mb-1">Conversa Natural</h3>
-              <p className="text-sm text-muted-foreground">
+            <div className="bg-black/50 backdrop-blur-md border border-gold/20 rounded-xl p-6 text-center shadow-lg">
+              <div className="text-3xl mb-3">💬</div>
+              <h3 className="font-serif text-xl font-bold text-gold-embossed mb-2">Conversa Natural</h3>
+              <p className="text-sm text-white/70">
                 Como se estivesse falando com um amigo
               </p>
             </div>
-            <div className="bg-card border rounded-xl p-4 text-center">
-              <div className="text-3xl mb-2">⚡</div>
-              <h3 className="font-semibold text-foreground mb-1">Respostas Instantâneas</h3>
-              <p className="text-sm text-muted-foreground">
+            <div className="bg-black/50 backdrop-blur-md border border-gold/20 rounded-xl p-6 text-center shadow-lg">
+              <div className="text-3xl mb-3">⚡</div>
+              <h3 className="font-serif text-xl font-bold text-gold-embossed mb-2">Respostas Instantâneas</h3>
+              <p className="text-sm text-white/70">
                 Disponível 24 horas por dia
               </p>
             </div>
