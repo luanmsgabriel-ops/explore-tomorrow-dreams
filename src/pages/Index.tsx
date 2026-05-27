@@ -56,38 +56,32 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Carousels */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-gold" />
-        </div>
-      ) : (
-        <>
-          {explorarDestinations.length > 0 && (
-            <DestinationCarousel
-              title="Explorar"
-              destinations={explorarDestinations}
-              accentColor="teal"
-            />
-          )}
+      {/* Carousels - No spinner, show when loaded */}
+      <div className="min-h-[200px]">
+        {explorarDestinations.length > 0 && (
+          <DestinationCarousel
+            title="Explorar"
+            destinations={explorarDestinations}
+            accentColor="teal"
+          />
+        )}
 
-          {nacionalDestinations.length > 0 && (
-            <DestinationCarousel
-              title="Brasil"
-              destinations={nacionalDestinations}
-              accentColor="gold"
-            />
-          )}
+        {nacionalDestinations.length > 0 && (
+          <DestinationCarousel
+            title="Brasil"
+            destinations={nacionalDestinations}
+            accentColor="gold"
+          />
+        )}
 
-          {internacionalDestinations.length > 0 && (
-            <DestinationCarousel
-              title="Internacional"
-              destinations={internacionalDestinations}
-              accentColor="teal"
-            />
-          )}
-        </>
-      )}
+        {internacionalDestinations.length > 0 && (
+          <DestinationCarousel
+            title="Internacional"
+            destinations={internacionalDestinations}
+            accentColor="teal"
+          />
+        )}
+      </div>
 
       {/* Categories Section */}
       <section className="py-16 md:py-24 world-map-bg">
