@@ -94,12 +94,10 @@ export const useDestinations = (type?: 'explorar' | 'nacional' | 'internacional'
   useEffect(() => {
     let active = true;
     
-    // Safety timeout to prevent infinite loading on DB timeout
+    // Safety timeout: if DB doesn't respond in 3s, stop loading
     const timeoutId = setTimeout(() => {
-      if (active && destinations.length === 0) {
-        setIsLoading(false);
-      }
-    }, 5000);
+      if (active) setIsLoading(false);
+    }, 3000);
 
     fetchAllDestinations()
       .then((all) => {
@@ -110,6 +108,7 @@ export const useDestinations = (type?: 'explorar' | 'nacional' | 'internacional'
       })
       .catch((err: any) => {
         if (!active) return;
+        clearTimeout(timeoutId);
         console.error('Error fetching destinations:', err);
         setError(err.message);
         setIsLoading(false);
@@ -119,7 +118,7 @@ export const useDestinations = (type?: 'explorar' | 'nacional' | 'internacional'
       active = false;
       clearTimeout(timeoutId);
     };
-  }, [type, destinations.length]);
+  }, [type]);
 
   return { destinations, isLoading, error };
 };
