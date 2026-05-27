@@ -9,7 +9,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 // Per-slide scroll distance as a fraction of the viewport height.
 // Lower = faster slide-to-slide transition while keeping smoothness via Lenis.
-const SLIDE_VH = 0.55;
+const SLIDE_VH = 0.45;
 
 interface Slide {
   id: string;

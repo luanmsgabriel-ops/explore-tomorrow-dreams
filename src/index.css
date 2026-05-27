@@ -1,82 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap');
-
 @layer base {
   :root {
-    /* Tomorrow Travel Brand Colors - Ocean Teal Premium Theme */
-    --background: 192 65% 12%;
-    --foreground: 45 20% 95%;
+    --background: 195 45% 4%;
+    --foreground: 0 0% 100%;
 
-    --card: 192 60% 15%;
-    --card-foreground: 45 20% 95%;
+    --card: 195 45% 6%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 192 60% 15%;
-    --popover-foreground: 45 20% 95%;
+    --popover: 195 45% 6%;
+    --popover-foreground: 0 0% 100%;
 
-    /* Primary: Ocean Teal */
-    --primary: 185 65% 35%;
-    --primary-foreground: 45 20% 95%;
+    --primary: 187 100% 42%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary: Darker ocean */
-    --secondary: 192 55% 18%;
-    --secondary-foreground: 45 20% 95%;
+    --secondary: 195 45% 12%;
+    --secondary-foreground: 0 0% 100%;
 
-    /* Muted surfaces */
-    --muted: 192 50% 22%;
-    --muted-foreground: 0 0% 100%;
+    --muted: 195 45% 15%;
+    --muted-foreground: 195 10% 70%;
 
-    /* Accent: Metallic Gold */
-    --accent: 40 75% 50%;
-    --accent-foreground: 192 65% 12%;
+    --accent: 43 100% 50%;
+    --accent-foreground: 195 45% 4%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 45 20% 95%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 192 40% 25%;
-    --input: 192 40% 25%;
-    --ring: 40 75% 50%;
+    --border: 195 45% 15%;
+    --input: 195 45% 15%;
+    --ring: 187 100% 42%;
 
-    --radius: 0.75rem;
-
-    /* Ocean Premium Colors */
-    --ocean-deep: 192 65% 12%;
-    --ocean-mid: 190 60% 20%;
-    --ocean-light: 185 55% 30%;
-    --gold-metallic: 40 70% 50%;
-    --gold-light: 45 80% 60%;
-    --gold-dark: 35 65% 40%;
-    --bronze: 30 55% 35%;
-
-    /* Custom gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(185 65% 35%), hsl(185 65% 25%));
-    --gradient-gold: linear-gradient(180deg, hsl(45 80% 60%) 0%, hsl(40 70% 50%) 50%, hsl(35 65% 40%) 100%);
-    --gradient-ocean: linear-gradient(180deg, hsl(192 65% 15%) 0%, hsl(192 65% 10%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(192 60% 18%) 0%, hsl(192 60% 12%) 100%);
-    --gradient-hero-overlay: linear-gradient(90deg, hsl(192 65% 12% / 0.95) 0%, hsl(192 65% 12% / 0.7) 50%, hsl(192 65% 12% / 0.4) 100%);
-    --gradient-hero-bottom: linear-gradient(0deg, hsl(192 65% 12%) 0%, transparent 100%);
-
-    /* Shadows */
-    --shadow-glow-primary: 0 0 30px hsl(185 65% 35% / 0.3);
-    --shadow-glow-gold: 0 0 40px hsl(40 75% 50% / 0.4);
-    --shadow-card: 0 10px 40px hsl(192 65% 5% / 0.5);
-    --shadow-card-hover: 0 20px 60px hsl(192 65% 5% / 0.7);
-
-    /* Sidebar */
-    --sidebar-background: 192 65% 10%;
-    --sidebar-foreground: 45 20% 95%;
-    --sidebar-primary: 185 65% 35%;
-    --sidebar-primary-foreground: 192 65% 12%;
-    --sidebar-accent: 192 55% 20%;
-    --sidebar-accent-foreground: 45 20% 95%;
-    --sidebar-border: 192 40% 25%;
-    --sidebar-ring: 40 75% 50%;
-  }
-
-  .dark {
-    /* Same as root - always dark ocean theme */
+    --radius: 1rem;
   }
 }
 
@@ -84,361 +42,108 @@
   * {
     @apply border-border;
   }
-
-  html {
-    scroll-behavior: smooth;
-  }
-
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Montserrat', sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
-
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', serif;
+    @apply font-serif;
   }
 }
 
 @layer components {
-  /* Gold Embossed Text Effect - Premium 3D Look with Metallic Shine */
-  .text-gold-embossed {
-    background: linear-gradient(180deg, 
-      hsl(45 85% 85%) 0%, 
-      hsl(40 80% 70%) 20%, 
-      hsl(45 90% 80%) 40%, 
-      hsl(35 75% 60%) 60%, 
-      hsl(40 80% 70%) 80%, 
-      hsl(45 85% 82%) 100%
-    ),
-    linear-gradient(90deg, 
-      transparent 0%, 
-      hsl(0 0% 100% / 0.4) 45%, 
-      hsl(0 0% 100% / 0.8) 50%, 
-      hsl(0 0% 100% / 0.4) 55%, 
-      transparent 100%
-    );
-    background-size: 100% 100%, 200% 100%;
-    background-blend-mode: normal, overlay;
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 2px 4px hsl(0 0% 0% / 0.4)) drop-shadow(0 0 15px hsl(45 80% 60% / 0.3));
-    text-shadow: none;
-    animation: metallic-shine 4s ease-in-out infinite;
+  .glass-card {
+    @apply bg-background/40 backdrop-blur-xl border border-white/10 shadow-xl;
   }
-
-  .text-gold-gradient {
-    background: linear-gradient(135deg, hsl(45 80% 65%), hsl(35 70% 45%));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  /* World Map Background Pattern */
-  .world-map-bg {
-    position: relative;
-    background: linear-gradient(180deg, 
-      hsl(192 65% 14%) 0%, 
-      hsl(192 65% 10%) 50%, 
-      hsl(192 65% 8%) 100%
-    );
-  }
-
-  .world-map-bg::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 500'%3E%3Cpath fill='%23b8860b' fill-opacity='0.08' d='M150,100 Q200,80 250,90 T350,85 Q400,75 450,95 T550,90 Q600,85 650,100 L650,150 Q600,145 550,155 T450,160 Q400,150 350,165 T250,160 Q200,155 150,170 Z'/%3E%3Cpath fill='%23b8860b' fill-opacity='0.06' d='M700,80 Q750,70 800,85 T900,75 L900,130 Q850,125 800,140 T700,135 Z'/%3E%3Cpath fill='%23b8860b' fill-opacity='0.07' d='M100,200 Q150,190 200,210 T300,205 Q350,200 400,220 T500,215 Q550,210 600,230 L600,320 Q550,310 500,330 T400,325 Q350,320 300,340 T200,335 Q150,330 100,350 Z'/%3E%3Cpath fill='%23b8860b' fill-opacity='0.05' d='M650,220 Q700,210 750,225 T850,220 L850,310 Q800,305 750,320 T650,315 Z'/%3E%3Cpath fill='%23b8860b' fill-opacity='0.06' d='M200,380 Q250,370 300,385 T400,380 Q450,375 500,395 L500,450 Q450,445 400,455 T300,450 Q250,445 200,460 Z'/%3E%3C/svg%3E");
-    background-size: cover;
-    background-position: center;
-    pointer-events: none;
-    opacity: 0.8;
-  }
-
-  /* Sparkle animation */
-  @keyframes sparkle {
-    0%, 100% { opacity: 0.3; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.2); }
-  }
-
-  @keyframes float {
-    0%, 100% { transform: translateY(0px) rotate(0deg); }
-    50% { transform: translateY(-10px) rotate(2deg); }
-  }
-
-  @keyframes light-trail {
-    0% { opacity: 0; transform: translateX(-100%); }
-    50% { opacity: 1; }
-    100% { opacity: 0; transform: translateX(100%); }
-  }
-
-  @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 20px hsl(40 75% 50% / 0.3); }
-    50% { box-shadow: 0 0 40px hsl(40 75% 50% / 0.6); }
-  }
-
-  .animate-sparkle {
-    animation: sparkle 2s ease-in-out infinite;
-  }
-
-  .animate-float {
-    animation: float 4s ease-in-out infinite;
-  }
-
-  .animate-light-trail {
-    animation: light-trail 3s ease-in-out infinite;
-  }
-
-  .animate-pulse-glow {
-    animation: pulse-glow 2s ease-in-out infinite;
-  }
-
-  /* Animated wires */
-  @keyframes wire-flow {
-    from { stroke-dashoffset: 0; }
-    to { stroke-dashoffset: -900; }
-  }
-
-  @keyframes wire-glow-pulse {
-    0%, 100% { opacity: 0.3; r: 2.5; }
-    50% { opacity: 1; r: 6; }
-  }
-
-  @keyframes airplane-glow-pulse {
-    0%, 100% { filter: drop-shadow(0 0 6px hsl(45 80% 60% / 0.6)); }
-    50% { filter: drop-shadow(0 0 14px hsl(45 80% 60% / 1)); }
-  }
-
-  .animate-airplane-glow {
-    animation: airplane-glow-pulse 2s ease-in-out infinite;
-  }
-
-  .animate-wire-flow {
-    animation: wire-flow 10s linear infinite;
-  }
-
-  .animate-wire-glow-pulse {
-    animation: wire-glow-pulse 3s ease-in-out infinite;
-  }
-
-  /* Glass effect with ocean theme */
-  .glass {
-    @apply backdrop-blur-xl;
-    background: hsl(192 60% 15% / 0.85);
-    border: 1px solid hsl(40 70% 50% / 0.2);
-  }
-
+  
   .glass-gold {
-    @apply backdrop-blur-xl;
-    background: hsl(192 60% 15% / 0.9);
-    border: 1px solid hsl(40 70% 50% / 0.4);
-    box-shadow: 0 0 30px hsl(40 75% 50% / 0.15);
+    @apply bg-background/60 backdrop-blur-xl border border-gold/20 shadow-xl shadow-gold/5;
   }
-
-  /* Netflix-style card hover effect */
-  .destination-card {
-    @apply relative overflow-hidden rounded-lg transition-all duration-500 ease-out cursor-pointer;
-    transform-origin: center center;
-    border: 1px solid hsl(40 70% 50% / 0.15);
+  
+  .btn-gold {
+    @apply relative overflow-hidden bg-gradient-to-br from-gold via-gold-light to-gold-dark text-ocean-deep font-bold transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-gold/20;
   }
-
-  .destination-card:hover {
-    @apply z-10;
-    transform: scale(1.08);
-    box-shadow: var(--shadow-card-hover), 0 0 30px hsl(40 75% 50% / 0.2);
-    border-color: hsl(40 70% 50% / 0.4);
+  
+  .btn-primary {
+    @apply bg-primary hover:bg-primary/90 text-white font-bold transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-primary/20;
   }
-
-  .destination-card::after {
-    content: '';
-    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
-    background: linear-gradient(0deg, hsl(192 65% 8% / 0.9) 0%, transparent 60%);
+  
+  .btn-outline {
+    @apply border-2 border-gold/50 text-gold hover:bg-gold/10 transition-all duration-300;
   }
-
-  .destination-card:hover::after {
-    @apply opacity-100;
+  
+  .text-gold-embossed {
+    @apply bg-gradient-to-b from-gold-light via-gold to-gold-dark bg-clip-text text-transparent drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)];
   }
-
-  /* Carousel scrollbar hide */
-  .carousel-scroll {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-
-  .carousel-scroll::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* Gradient text */
+  
   .gradient-text-teal {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(185 65% 65%), hsl(185 60% 50%));
-    filter: drop-shadow(0 0 12px hsl(185 60% 50% / 0.4));
-    animation: metallic-shine-teal 5s ease-in-out infinite;
+    @apply bg-gradient-to-r from-teal-light via-teal to-teal-dark bg-clip-text text-transparent;
   }
 
   .gradient-text-gold {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(180deg, hsl(45 80% 65%) 0%, hsl(40 70% 50%) 50%, hsl(35 65% 40%) 100%);
+    @apply bg-gradient-to-r from-gold-light via-gold to-gold-dark bg-clip-text text-transparent;
   }
 
-  /* Button variants */
-  .btn-primary {
-    @apply font-semibold px-6 py-3 rounded-lg;
-    @apply transition-all duration-300 ease-out;
-    background: linear-gradient(135deg, hsl(185 65% 35%), hsl(185 65% 28%));
-    color: hsl(45 20% 95%);
-    border: 1px solid hsl(40 70% 50% / 0.3);
-    box-shadow: var(--shadow-glow-primary);
-  }
-
-  .btn-primary:hover {
-    @apply scale-105;
-    box-shadow: var(--shadow-glow-primary), 0 10px 30px hsl(185 65% 35% / 0.4);
-    border-color: hsl(40 70% 50% / 0.5);
-  }
-
-  .btn-gold {
-    @apply font-semibold px-6 py-3 rounded-lg;
-    @apply transition-all duration-300 ease-out;
-    background: linear-gradient(180deg, hsl(45 80% 60%) 0%, hsl(40 70% 48%) 50%, hsl(35 65% 40%) 100%);
-    color: hsl(192 65% 10%);
-    border: 1px solid hsl(45 80% 65% / 0.5);
-  }
-
-  .btn-gold:hover {
-    @apply scale-105;
-    box-shadow: var(--shadow-glow-gold), 0 0 30px hsl(40 75% 50% / 0.5);
-  }
-
-  .btn-outline {
-    @apply font-semibold px-6 py-3 rounded-lg;
-    @apply transition-all duration-300 ease-out bg-transparent;
-    border: 2px solid hsl(40 70% 50% / 0.5);
-    color: hsl(45 80% 65%);
-  }
-
-  .btn-outline:hover {
-    background: hsl(40 70% 50% / 0.15);
-    border-color: hsl(40 70% 50% / 0.8);
-    @apply scale-105;
-    box-shadow: 0 0 20px hsl(40 75% 50% / 0.3);
-  }
-
-  /* Navigation active state */
   .nav-link {
-    @apply relative transition-colors duration-300;
-    color: hsl(185 30% 70%);
+    @apply relative text-white/80 transition-colors hover:text-gold;
+  }
+  
+  .nav-link::after {
+    @apply content-[''] absolute -bottom-1 left-0 w-0 h-0.5 bg-gold transition-all duration-300;
+  }
+  
+  .nav-link:hover::after, .nav-link.active::after {
+    @apply w-full;
   }
 
-  .nav-link:hover,
-  .nav-link.active {
-    color: hsl(45 80% 65%);
+  .world-map-bg {
+    @apply relative;
   }
 
-  .nav-link.active::after {
-    content: '';
-    @apply absolute -bottom-1 left-0 right-0 h-0.5 rounded-full;
-    background: linear-gradient(90deg, hsl(45 80% 60%), hsl(40 70% 50%));
+  .world-map-bg::before {
+    @apply content-[''] absolute inset-0 bg-[url('/images/hero-worldmap-bg.png')] bg-scroll bg-center bg-no-repeat bg-cover opacity-10 pointer-events-none;
   }
 
-  /* Golden border card */
-  .card-gold-border {
-    @apply rounded-2xl;
-    background: linear-gradient(180deg, hsl(192 60% 18%) 0%, hsl(192 60% 12%) 100%);
-    border: 1px solid hsl(40 70% 50% / 0.25);
-    box-shadow: 0 0 20px hsl(40 75% 50% / 0.1);
-  }
-
-  .card-gold-border:hover {
-    border-color: hsl(40 70% 50% / 0.5);
-    box-shadow: 0 0 30px hsl(40 75% 50% / 0.2);
-  }
-
-  /* Decorative line with gold */
   .line-gold {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, hsl(40 70% 50% / 0.5), transparent);
+    @apply w-full h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent;
+  }
+
+  .card-gold-border {
+    @apply relative border border-gold/20 rounded-2xl overflow-hidden transition-all duration-300 hover:border-gold/50;
+  }
+
+  .destination-card {
+    @apply relative overflow-hidden rounded-2xl border border-gold/10 transition-all duration-500 hover:border-gold/40 hover:shadow-2xl hover:shadow-gold/10;
   }
 }
 
-@layer utilities {
-  .text-shadow-lg {
-    text-shadow: 0 4px 20px hsl(0 0% 0% / 0.8);
-  }
-
-  .text-shadow-gold {
-    text-shadow: 0 2px 10px hsl(40 75% 50% / 0.5);
-  }
-
-  .animate-fade-up {
-    animation: fadeUp 0.8s ease-out forwards;
-  }
-
-  .animate-fade-in {
-    animation: fadeIn 0.6s ease-out forwards;
-  }
-
-  @keyframes fadeUp {
-    from {
-      opacity: 0;
-      transform: translateY(30px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  .line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-
-  @keyframes metallic-shine {
-    0%, 100% {
-      background-position: 100% 100%, 200% center;
-    }
-    50% {
-      background-position: 100% 100%, -200% center;
-    }
-  }
-
-  @keyframes metallic-shine-teal {
-    0%, 100% {
-      filter: drop-shadow(0 0 12px hsl(185 60% 50% / 0.4));
-      background-image: linear-gradient(135deg, hsl(185 65% 65%), hsl(185 60% 50%));
-    }
-    50% {
-      filter: drop-shadow(0 0 20px hsl(185 65% 60% / 0.6));
-      background-image: linear-gradient(135deg, hsl(185 70% 75%), hsl(185 65% 60%));
-    }
-  }
+.carousel-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-/* Soro Blog - force white text */
-.soro-blog-container,
-.soro-blog-container *,
-.soro-blog-container a,
-.soro-blog-container a *,
-.soro-blog-container h1,
-.soro-blog-container h2,
-.soro-blog-container h3,
-.soro-blog-container h4,
-.soro-blog-container p,
-.soro-blog-container span,
-.soro-blog-container div {
-  color: hsl(0 0% 100%) !important;
+.carousel-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* Custom scrollbar for webkit */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-background;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gold/20 rounded-full hover:bg-gold/40 transition-colors;
 }
