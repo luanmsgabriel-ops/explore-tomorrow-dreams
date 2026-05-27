@@ -26,7 +26,7 @@ const Blog = () => {
   }, [searchParams]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="cinematic-bg flex flex-col">
       <Header />
       <main className="container mx-auto px-4 pt-28 pb-16">
         <div id="soro-blog" ref={containerRef} className="soro-blog-container" />
