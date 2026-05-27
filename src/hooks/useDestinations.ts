@@ -29,23 +29,19 @@ export interface Destination {
   bestPricePeriods?: BestPricePeriod[];
 }
 
-// Transform database record to frontend format
 const transformDestination = (record: any): Destination => {
-  // Handle category that might be stored as JSON array
   let categoryValue = record.category;
   if (typeof categoryValue === 'string' && categoryValue.startsWith('[')) {
     try {
       const parsed = JSON.parse(categoryValue);
       categoryValue = Array.isArray(parsed) ? parsed[0] : categoryValue;
-    } catch {
-      // Keep original if parse fails
-    }
+    } catch { }
   } else if (Array.isArray(categoryValue)) {
     categoryValue = categoryValue[0];
   }
 
   return {
-    id: record.slug, // Use slug as ID for URLs
+    id: record.slug,
     slug: record.slug,
     name: record.name,
     location: record.location,
@@ -55,16 +51,13 @@ const transformDestination = (record: any): Destination => {
     description: record.description,
     bestTime: record.best_time,
     idealDuration: record.ideal_duration,
-    forWho: record.for_who,
+    for_who: record.for_who,
     videos: Array.isArray(record.videos) ? record.videos : [],
     isFeatured: record.is_featured || false,
     bestPricePeriods: Array.isArray(record.best_price_periods) ? record.best_price_periods : [],
   };
 };
 
-// In-memory cache shared by all useDestinations() calls in the page lifecycle.
-// Prevents the home page from firing 3 parallel "SELECT *" queries against
-// the destinations table (which was causing 57014 statement timeouts).
 let _cachePromise: Promise<Destination[]> | null = null;
 let _cache: Destination[] | null = null;
 
@@ -76,22 +69,13 @@ const fetchAllDestinations = async (): Promise<Destination[]> => {
     try {
       const { data, error } = await supabase
         .from('destinations')
-        .select('id, slug, name, location, image_url, category, type, is_featured')
+        .select('id, slug, name, location, image_url, category, type, description, is_featured')
         .eq('is_active', true)
         .order('name')
         .limit(30);
 
       if (error) throw error;
-      
-      if (!data || data.length === 0) {
-        // Fallback for demo if DB is slow or empty
-        _cache = [
-          { id: '1', slug: 'arraial-do-cabo', name: 'Arraial do Cabo', location: 'Rio de Janeiro', image: '/assets/dest-lencois.jpg', category: 'Praia', type: 'nacional', description: 'Porta de entrada para o paraíso.', isFeatured: true },
-          { id: '2', slug: 'bariloche', name: 'Bariloche', location: 'Argentina', image: '/assets/dest-santorini.jpg', category: 'Neve', type: 'internacional', description: 'O melhor chocolate artesanal do mundo.', isFeatured: true }
-        ] as Destination[];
-      } else {
-        _cache = (data || []).map(transformDestination);
-      }
+      _cache = (data || []).map(transformDestination);
       return _cache;
     } catch (err) {
       _cachePromise = null;
@@ -109,34 +93,33 @@ export const useDestinations = (type?: 'explorar' | 'nacional' | 'internacional'
 
   useEffect(() => {
     let active = true;
+    
+    // Safety timeout to prevent infinite loading on DB timeout
     const timeoutId = setTimeout(() => {
       if (active && destinations.length === 0) {
-        setDestinations([
-          { id: '1', slug: 'arraial-do-cabo', name: 'Arraial do Cabo', location: 'Rio de Janeiro', image: 'https://wimdgvdpefkmjzzsklnt.supabase.co/storage/v1/object/public/destination-images/destinations/1768921301425-arraial-do-cabo.png', category: 'Praia', type: 'nacional', description: 'Porta de entrada para o paraíso.', isFeatured: true },
-          { id: '2', slug: 'bariloche', name: 'Bariloche', location: 'Argentina', image: 'https://wimdgvdpefkmjzzsklnt.supabase.co/storage/v1/object/public/destination-images/destinations/1768915320721-bariloche.png', category: 'Neve', type: 'internacional', description: 'O melhor chocolate artesanal do mundo.', isFeatured: true }
-        ] as Destination[]);
         setIsLoading(false);
       }
-    }, 4000);
+    }, 5000);
 
     fetchAllDestinations()
       .then((all) => {
         if (!active) return;
         clearTimeout(timeoutId);
         setDestinations(type ? all.filter((d) => d.type === type) : all);
+        setIsLoading(false);
       })
       .catch((err: any) => {
         if (!active) return;
         console.error('Error fetching destinations:', err);
         setError(err.message);
-      })
-      .finally(() => {
-        if (active) setIsLoading(false);
+        setIsLoading(false);
       });
+
     return () => {
       active = false;
+      clearTimeout(timeoutId);
     };
-  }, [type]);
+  }, [type, destinations.length]);
 
   return { destinations, isLoading, error };
 };
@@ -152,7 +135,6 @@ export const useDestinationById = (id: string) => {
         setIsLoading(false);
         return;
       }
-
       setIsLoading(true);
       try {
         const { data, error: fetchError } = await supabase
@@ -161,22 +143,14 @@ export const useDestinationById = (id: string) => {
           .eq('slug', id)
           .eq('is_active', true)
           .maybeSingle();
-
         if (fetchError) throw fetchError;
-
-        if (data) {
-          setDestination(transformDestination(data));
-        } else {
-          setDestination(null);
-        }
+        setDestination(data ? transformDestination(data) : null);
       } catch (err: any) {
-        console.error('Error fetching destination:', err);
         setError(err.message);
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchDestination();
   }, [id]);
 
@@ -198,22 +172,14 @@ export const useFeaturedDestination = () => {
           .eq('is_featured', true)
           .eq('is_active', true)
           .maybeSingle();
-
         if (fetchError) throw fetchError;
-
-        if (data) {
-          setDestination(transformDestination(data));
-        } else {
-          setDestination(null);
-        }
+        setDestination(data ? transformDestination(data) : null);
       } catch (err: any) {
-        console.error('Error fetching featured destination:', err);
         setError(err.message);
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchFeaturedDestination();
   }, []);
 
