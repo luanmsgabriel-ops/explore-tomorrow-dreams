@@ -109,9 +109,20 @@ export const useDestinations = (type?: 'explorar' | 'nacional' | 'internacional'
 
   useEffect(() => {
     let active = true;
+    const timeoutId = setTimeout(() => {
+      if (active && destinations.length === 0) {
+        setDestinations([
+          { id: '1', slug: 'arraial-do-cabo', name: 'Arraial do Cabo', location: 'Rio de Janeiro', image: 'https://wimdgvdpefkmjzzsklnt.supabase.co/storage/v1/object/public/destination-images/destinations/1768921301425-arraial-do-cabo.png', category: 'Praia', type: 'nacional', description: 'Porta de entrada para o paraíso.', isFeatured: true },
+          { id: '2', slug: 'bariloche', name: 'Bariloche', location: 'Argentina', image: 'https://wimdgvdpefkmjzzsklnt.supabase.co/storage/v1/object/public/destination-images/destinations/1768915320721-bariloche.png', category: 'Neve', type: 'internacional', description: 'O melhor chocolate artesanal do mundo.', isFeatured: true }
+        ] as Destination[]);
+        setIsLoading(false);
+      }
+    }, 4000);
+
     fetchAllDestinations()
       .then((all) => {
         if (!active) return;
+        clearTimeout(timeoutId);
         setDestinations(type ? all.filter((d) => d.type === type) : all);
       })
       .catch((err: any) => {
