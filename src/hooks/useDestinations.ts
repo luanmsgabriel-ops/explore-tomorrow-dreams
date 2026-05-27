@@ -79,7 +79,7 @@ const fetchAllDestinations = async (): Promise<Destination[]> => {
         .select('id, slug, name, location, image_url, category, type, is_featured')
         .eq('is_active', true)
         .order('name')
-        .limit(100);
+        .limit(30);
 
       if (error) throw error;
       
