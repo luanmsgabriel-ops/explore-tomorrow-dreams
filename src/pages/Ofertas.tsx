@@ -378,47 +378,49 @@ const Ofertas = () => {
   );
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-cover bg-center bg-no-repeat bg-fixed" style={{ backgroundImage: "url('/images/hero-worldmap-bg.png')" }}>
       <Header />
       
-      <main className="flex-1">
+      <main className="flex-1 relative">
         {/* Hero section */}
-        <section className="relative py-16 sm:py-24 bg-gradient-to-br from-primary/10 via-background to-accent/10">
-          <div className="container mx-auto px-4 text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/20 text-accent mb-6">
-              <Sparkles className="w-4 h-4" />
-              <span className="text-sm font-medium">Ofertas Exclusivas</span>
+        <section className="relative py-16 sm:py-24">
+          <div className="container mx-auto px-4 text-center relative z-10">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-gold mb-6">
+              <Sparkles className="w-4 h-4 text-gold-light" />
+              <span className="text-sm font-medium text-gold-light">Ofertas Exclusivas</span>
             </div>
-            <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold text-foreground mb-4">
-              Ofertas Imperdíveis
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Descubra pacotes promocionais incríveis para os destinos mais desejados. 
-              Ofertas por tempo limitado!
-            </p>
+            <div className="max-w-3xl mx-auto bg-black/50 backdrop-blur-md rounded-2xl p-8 border border-gold/20">
+              <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold mb-4">
+                <span className="text-gold-embossed">Ofertas</span> Imperdíveis
+              </h1>
+              <p className="text-lg text-white max-w-2xl mx-auto">
+                Descubra pacotes promocionais incríveis para os destinos mais desejados. 
+                Ofertas por tempo limitado!
+              </p>
+            </div>
           </div>
         </section>
 
         {/* Filters and offers grid */}
-        <section className="py-12">
+        <section className="py-12 relative z-10">
           <div className="container mx-auto px-4">
             {/* Mobile filter button */}
             <div className="lg:hidden mb-6">
               <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" className="w-full">
+                  <Button variant="outline" className="w-full bg-black/60 backdrop-blur-md border-gold/30 text-gold-light">
                     <SlidersHorizontal className="w-4 h-4 mr-2" />
                     Filtros
                     {hasActiveFilters && (
-                      <span className="ml-2 px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-xs">
+                      <span className="ml-2 px-2 py-0.5 rounded-full bg-gold text-ocean-deep text-xs font-bold">
                         Ativos
                       </span>
                     )}
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-80">
+                <SheetContent side="left" className="w-80 bg-ocean-deep border-gold/20">
                   <SheetHeader>
-                    <SheetTitle>Filtros</SheetTitle>
+                    <SheetTitle className="text-gold">Filtros</SheetTitle>
                   </SheetHeader>
                   <div className="mt-6">
                     <FilterContent />
@@ -430,10 +432,10 @@ const Ofertas = () => {
             <div className="flex gap-8">
               {/* Desktop filters sidebar */}
               <aside className="hidden lg:block w-72 flex-shrink-0">
-                <div className="sticky top-24 bg-card rounded-xl p-6 shadow-sm border border-border">
+                <div className="sticky top-24 bg-black/60 backdrop-blur-md rounded-xl p-6 shadow-xl border border-gold/20">
                   <div className="flex items-center gap-2 mb-6">
-                    <Filter className="w-5 h-5 text-primary" />
-                    <h2 className="font-semibold text-foreground">Filtros</h2>
+                    <Filter className="w-5 h-5 text-gold-light" />
+                    <h2 className="font-semibold text-gold-light">Filtros</h2>
                   </div>
                   <FilterContent />
                 </div>
@@ -442,8 +444,8 @@ const Ofertas = () => {
               {/* Offers grid */}
               <div className="flex-1">
                 {/* Results count */}
-                <div className="flex items-center justify-between mb-6">
-                  <p className="text-muted-foreground">
+                <div className="flex items-center justify-between mb-6 bg-black/40 backdrop-blur-sm px-4 py-2 rounded-lg border border-gold/10 inline-block">
+                  <p className="text-gold-light/80 text-sm">
                     {filteredOffers.length} {filteredOffers.length === 1 ? 'oferta encontrada' : 'ofertas encontradas'}
                   </p>
                 </div>
@@ -451,27 +453,27 @@ const Ofertas = () => {
                 {loading ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     {[1, 2, 3, 4, 5, 6].map(i => (
-                      <div key={i} className="animate-pulse">
-                        <div className="aspect-[4/3] bg-muted rounded-t-2xl" />
-                        <div className="p-4 bg-card rounded-b-2xl space-y-3">
-                          <div className="h-5 bg-muted rounded w-3/4" />
-                          <div className="h-4 bg-muted rounded w-full" />
-                          <div className="h-8 bg-muted rounded w-1/2" />
+                      <div key={i} className="animate-pulse card-gold-border bg-black/40">
+                        <div className="aspect-[4/3] bg-gold/10 rounded-t-2xl" />
+                        <div className="p-4 space-y-3">
+                          <div className="h-5 bg-gold/10 rounded w-3/4" />
+                          <div className="h-4 bg-gold/10 rounded w-full" />
+                          <div className="h-8 bg-gold/10 rounded w-1/2" />
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : filteredOffers.length === 0 ? (
-                  <div className="text-center py-16">
-                    <Sparkles className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-foreground mb-2">
+                  <div className="text-center py-16 bg-black/40 backdrop-blur-sm rounded-2xl border border-gold/10">
+                    <Sparkles className="w-16 h-16 text-gold/30 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-white mb-2">
                       Nenhuma oferta encontrada
                     </h3>
-                    <p className="text-muted-foreground mb-6">
+                    <p className="text-white/60 mb-6">
                       Tente ajustar os filtros para encontrar ofertas
                     </p>
                     {hasActiveFilters && (
-                      <Button variant="outline" onClick={clearFilters}>
+                      <Button variant="outline" onClick={clearFilters} className="border-gold/50 text-gold-light hover:bg-gold/10">
                         Limpar filtros
                       </Button>
                     )}
@@ -479,7 +481,9 @@ const Ofertas = () => {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     {filteredOffers.map(offer => (
-                      <OfferCard key={offer.id} offer={offer} />
+                      <div key={offer.id} className="transition-transform duration-300 hover:scale-[1.02]">
+                        <OfferCard offer={offer} />
+                      </div>
                     ))}
                   </div>
                 )}
