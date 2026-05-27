@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, User, Phone, UserCircle, X, Sparkles, MessageCircle, ExternalLink } from 'lucide-react';
+import { Send, User, Phone, UserCircle, X, Sparkles, MessageSquare, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { chatMessageSchema, generateSecureSessionId, sanitizeText, phoneSchema, nameSchema } from '@/lib/validations';
 import { supabase } from '@/integrations/supabase/client';
@@ -605,7 +605,7 @@ Me conta aí! 👇`
         >
           <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
           <span className="font-medium text-sm whitespace-nowrap">Qual seu destino ideal?</span>
-          <MessageCircle className="w-5 h-5" />
+          <MessageSquare className="w-5 h-5" />
           
           {/* Pulse animation */}
           <span className="absolute inset-0 rounded-full bg-gradient-to-r from-primary to-accent animate-ping opacity-20" />
