@@ -83,7 +83,15 @@ const fetchAllDestinations = async (): Promise<Destination[]> => {
 
       if (error) throw error;
       
-      _cache = (data || []).map(transformDestination);
+      if (!data || data.length === 0) {
+        // Fallback for demo if DB is slow or empty
+        _cache = [
+          { id: '1', slug: 'arraial-do-cabo', name: 'Arraial do Cabo', location: 'Rio de Janeiro', image: '/assets/dest-lencois.jpg', category: 'Praia', type: 'nacional', description: 'Porta de entrada para o paraíso.', isFeatured: true },
+          { id: '2', slug: 'bariloche', name: 'Bariloche', location: 'Argentina', image: '/assets/dest-santorini.jpg', category: 'Neve', type: 'internacional', description: 'O melhor chocolate artesanal do mundo.', isFeatured: true }
+        ] as Destination[];
+      } else {
+        _cache = (data || []).map(transformDestination);
+      }
       return _cache;
     } catch (err) {
       _cachePromise = null;
