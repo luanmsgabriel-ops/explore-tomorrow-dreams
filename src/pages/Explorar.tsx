@@ -8,7 +8,7 @@ const Explorar = () => {
   const { destinations, isLoading } = useDestinations('explorar');
 
   return (
-    <div className="min-h-screen bg-cover bg-center bg-no-repeat bg-fixed" style={{ backgroundImage: "url('/images/hero-worldmap-bg.png')" }}>
+    <div className="cinematic-bg">
       <Header />
 
       {/* Hero */}

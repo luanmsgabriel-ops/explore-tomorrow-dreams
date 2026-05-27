@@ -189,7 +189,7 @@ const PromocaoDetail = () => {
   const destination = offer.destinations;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="cinematic-bg">
       <Header />
       
       <main>
