@@ -76,7 +76,7 @@ const fetchAllDestinations = async (): Promise<Destination[]> => {
     try {
       const { data, error } = await supabase
         .from('destinations')
-        .select('id, slug, name, location, image_url, category, type, description, best_time, ideal_duration, for_who, is_featured')
+        .select('id, slug, name, location, image_url, category, type, is_featured')
         .eq('is_active', true)
         .order('name')
         .limit(100);
