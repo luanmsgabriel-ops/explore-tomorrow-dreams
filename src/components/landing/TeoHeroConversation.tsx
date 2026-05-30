@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { MessageCircle, ArrowRight } from 'lucide-react';
 import { TeoMascot } from '@/components/TeoMascot';
+import { HeroBackgroundVideo } from './HeroBackgroundVideo';
 
 const TEO_LINES = [
   'Pra onde a gente vai dessa vez?',
@@ -22,6 +23,9 @@ export const TeoHeroConversation = () => {
 
   return (
     <section className="relative overflow-hidden pt-28 pb-16 md:pt-36 md:pb-24">
+      {/* Cinematic destination video (desktop only, lazy) */}
+      <HeroBackgroundVideo />
+
       {/* Ambient gradient aura */}
       <div
         className="absolute inset-0 -z-10 opacity-70"
