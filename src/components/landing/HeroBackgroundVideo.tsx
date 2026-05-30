@@ -19,6 +19,10 @@ export const HeroBackgroundVideo = () => {
     return () => window.clearTimeout(id);
   }, [isMobile]);
 
+  useEffect(() => {
+    videoRef.current?.play().catch(() => {});
+  }, []);
+
   if (isMobile || !shouldLoad) return null;
 
   return (
