@@ -17,7 +17,7 @@ export const Footer = () => {
               </div>
             </Link>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Viagens acessíveis para todos, com tecnologia de IA que facilita cada etapa da sua jornada.
+              O primeiro agente de viagem com IA do Brasil. Téo conversa, consultor humano cuida.
             </p>
           </div>
 
