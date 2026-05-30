@@ -1,61 +1,69 @@
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, MapPin, Clock, Calendar } from 'lucide-react';
+import { ArrowUpRight, MapPin, Clock, Calendar, MessageSquare } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { destinations, type Destination } from '@/data/destinations';
 import { EditorialHeading } from './EditorialHeading';
 
 const nacionais = destinations.filter((d) => d.type === 'nacional');
 const internacionais = destinations.filter((d) => d.type === 'internacional');
 
-const DestinationCard = ({ d }: { d: Destination }) => (
-  <Link
-    to={`/teo?q=Quero saber mais sobre ${d.name}`}
-    className="group relative shrink-0 w-[78vw] sm:w-[340px] lg:w-[380px] snap-start overflow-hidden rounded-2xl border border-gold/15 bg-ocean-surface/40 transition-all duration-500 hover:border-gold/40 hover:-translate-y-1"
+const DestinationCard = ({ d, index }: { d: Destination; index: number }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ delay: (index % 4) * 0.1 }}
+    className="group relative shrink-0 w-[85vw] sm:w-[320px] lg:w-[360px] snap-start"
   >
-    <div className="relative aspect-[3/4] overflow-hidden">
+    <Link
+      to={`/teo?q=Quero saber mais sobre ${d.name}`}
+      className="block relative aspect-[4/5] overflow-hidden rounded-3xl bg-zinc-900 border border-white/5 transition-all duration-700 group-hover:border-gold/30 shadow-2xl"
+    >
       <img
         src={d.image}
         alt={d.name}
         loading="lazy"
-        className="absolute inset-0 w-full h-full object-cover transition-transform duration-[1200ms] group-hover:scale-110"
+        className="absolute inset-0 w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-110 opacity-70 group-hover:opacity-90"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-ocean-deep via-ocean-deep/40 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
 
       {/* Category badge */}
-      <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full glass-gold text-[10px] font-semibold tracking-wider uppercase text-foreground">
+      <div className="absolute top-5 left-5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-[10px] font-bold tracking-[0.2em] uppercase text-white border border-white/10">
         {d.category}
       </div>
 
       {/* Content */}
-      <div className="absolute bottom-0 left-0 right-0 p-5">
-        <div className="flex items-center gap-1 text-[10px] uppercase tracking-[0.2em] text-gold-light/80 mb-2">
-          <MapPin className="w-3 h-3" />
+      <div className="absolute bottom-0 left-0 right-0 p-8">
+        <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-gold-light mb-3">
+          <MapPin className="w-3.5 h-3.5" />
           {d.location}
         </div>
-        <h3 className="font-editorial text-3xl text-foreground mb-2 leading-tight">
+        <h3 className="font-editorial text-4xl text-white mb-3 leading-tight group-hover:translate-x-2 transition-transform duration-500">
           {d.name}
         </h3>
-        <p className="text-xs text-foreground/75 leading-snug mb-4 line-clamp-2">
-          {d.description}
-        </p>
-
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-foreground/70 mb-4">
-          <span className="inline-flex items-center gap-1">
-            <Calendar className="w-3 h-3 text-gold-light" />
+        
+        <div className="flex gap-4 text-[10px] text-white/50 uppercase tracking-widest mb-6 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+          <span className="flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-gold/60" />
             {d.bestTime}
           </span>
-          <span className="inline-flex items-center gap-1">
-            <Clock className="w-3 h-3 text-gold-light" />
+          <span className="flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-gold/60" />
             {d.idealDuration}
           </span>
         </div>
 
-        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gold-light group-hover:text-gold transition-colors">
-          Falar com o Téo sobre {d.name}
-          <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-        </span>
+        <div className="flex items-center justify-between pt-4 border-t border-white/10">
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40 group-hover:text-gold transition-colors duration-500">
+            Consultar Téo
+          </span>
+          <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-gold group-hover:border-gold group-hover:text-black transition-all duration-500">
+            <MessageSquare className="w-4 h-4" />
+          </div>
+        </div>
       </div>
-    </div>
-  </Link>
+    </Link>
+  </motion.div>
 );
 
 const Carousel = ({
@@ -71,33 +79,43 @@ const Carousel = ({
   items: Destination[];
   viewAllHref: string;
 }) => (
-  <div className="mb-16 last:mb-0">
-    <div className="container mx-auto px-4 lg:px-8 mb-8">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <EditorialHeading eyebrow={eyebrow} size="md">
-          {title}{' '}
-          <span className="font-editorial-italic gradient-text-teal">
-            {italicWord}
-          </span>
-          .
-        </EditorialHeading>
+  <div className="mb-24 last:mb-0">
+    <div className="container mx-auto px-4 lg:px-8 mb-12">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+        <div className="max-w-2xl">
+          <motion.span 
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="text-gold tracking-[0.5em] text-[10px] md:text-xs uppercase mb-4 block font-bold"
+          >
+            {eyebrow}
+          </motion.span>
+          <EditorialHeading size="lg">
+            {title}{' '}
+            <span className="font-editorial-italic gradient-text-teal italic">
+              {italicWord}
+            </span>
+          </EditorialHeading>
+        </div>
         <Link
           to={viewAllHref}
-          className="inline-flex items-center gap-2 text-sm text-gold-light hover:text-gold transition-colors group whitespace-nowrap"
+          className="group inline-flex items-center gap-3 text-xs font-bold uppercase tracking-[0.3em] text-white/40 hover:text-gold transition-all duration-500"
         >
-          Ver todos
-          <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          Explorar catálogo
+          <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center group-hover:border-gold transition-all duration-500">
+            <ArrowUpRight className="w-5 h-5 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+          </div>
         </Link>
       </div>
     </div>
 
     <div className="relative">
-      <div className="flex gap-5 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 lg:px-8 pb-4">
-        {items.map((d) => (
-          <DestinationCard key={d.id} d={d} />
+      <div className="flex gap-8 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 lg:px-8 pb-12">
+        {items.map((d, i) => (
+          <DestinationCard key={d.id} d={d} index={i} />
         ))}
-        {/* trailing spacer for snap */}
-        <div className="shrink-0 w-2" aria-hidden="true" />
+        <div className="shrink-0 w-8" aria-hidden="true" />
       </div>
     </div>
   </div>
@@ -105,18 +123,21 @@ const Carousel = ({
 
 export const DestinationsCarousels = () => {
   return (
-    <section className="relative py-20 md:py-28 border-t border-gold/10">
+    <section className="relative py-24 md:py-40 bg-[#020607] border-t border-white/5">
+      <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-black to-transparent -z-10" />
+      
       <Carousel
-        eyebrow="Brasil"
-        title="Nosso país"
-        italicWord="encanta"
+        eyebrow="Brasil Premium"
+        title="O melhor do nosso"
+        italicWord="território"
         items={nacionais}
         viewAllHref="/nacional"
       />
+      
       <Carousel
-        eyebrow="Mundo"
-        title="O planeta"
-        italicWord="espera"
+        eyebrow="Mundo Editorial"
+        title="As capitais do"
+        italicWord="desejo"
         items={internacionais}
         viewAllHref="/internacional"
       />
