@@ -85,6 +85,7 @@ export default {
       fontFamily: {
         sans: ['Montserrat', 'sans-serif'],
         serif: ['Playfair Display', 'serif'],
+        editorial: ['Instrument Serif', 'Playfair Display', 'serif'],
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -133,6 +134,22 @@ export default {
           "0%, 100%": { boxShadow: "0 0 20px hsl(40 75% 50% / 0.3)" },
           "50%": { boxShadow: "0 0 40px hsl(40 75% 50% / 0.6)" },
         },
+        "text-reveal": {
+          from: { opacity: "0", transform: "translateY(120%)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "teo-bounce": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-6px)" },
+        },
+        "parallax-float": {
+          "0%, 100%": { transform: "translate3d(0,0,0)" },
+          "50%": { transform: "translate3d(0,-14px,0)" },
+        },
+        "gold-shimmer": {
+          "0%": { backgroundPosition: "-150% 0" },
+          "100%": { backgroundPosition: "250% 0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -145,6 +162,10 @@ export default {
         float: "float 4s ease-in-out infinite",
         "light-trail": "light-trail 3s ease-in-out infinite",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+        "text-reveal": "text-reveal 1.1s cubic-bezier(0.16,1,0.3,1) both",
+        "teo-bounce": "teo-bounce 3s cubic-bezier(0.22,0.61,0.36,1) infinite",
+        "parallax-float": "parallax-float 9s ease-in-out infinite",
+        "gold-shimmer": "gold-shimmer 3.5s linear infinite",
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
