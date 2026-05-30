@@ -3,7 +3,7 @@ import { Footer } from '@/components/Footer';
 import { TeoHeroConversation } from '@/components/landing/TeoHeroConversation';
 import { SocialProofStrip } from '@/components/landing/SocialProofStrip';
 import { TeoLiveDemo } from '@/components/landing/TeoLiveDemo';
-import { RealItinerariesShowcase } from '@/components/landing/RealItinerariesShowcase';
+import { DestinationsCarousels } from '@/components/landing/DestinationsCarousels';
 import { HowItWorksTimeline } from '@/components/landing/HowItWorksTimeline';
 import { ComparisonTable } from '@/components/landing/ComparisonTable';
 import { TestimonialsWall } from '@/components/landing/TestimonialsWall';
@@ -26,8 +26,8 @@ const Index = () => {
         {/* 3 — Live Téo demo */}
         <TeoLiveDemo />
 
-        {/* 4 — Real itineraries */}
-        <RealItinerariesShowcase />
+        {/* 4 — Destinos nacionais e internacionais (carrosséis horizontais) */}
+        <DestinationsCarousels />
 
         {/* 5 — How it works */}
         <HowItWorksTimeline />
