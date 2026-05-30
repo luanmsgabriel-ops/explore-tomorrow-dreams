@@ -10,6 +10,8 @@ import { TestimonialsWall } from '@/components/landing/TestimonialsWall';
 import { ClosingCTA } from '@/components/landing/ClosingCTA';
 import { FloatingTeoButton } from '@/components/landing/FloatingTeoButton';
 import { ActiveOffersCarousel } from '@/components/ActiveOffersCarousel';
+import { RealItinerariesShowcase } from '@/components/landing/RealItinerariesShowcase';
+import { HeroBackgroundVideo } from '@/components/landing/HeroBackgroundVideo';
 
 const Index = () => {
   return (
@@ -20,28 +22,50 @@ const Index = () => {
         {/* 1 — Hero: Téo as protagonist */}
         <TeoHeroConversation />
 
-        {/* 2 — Social proof strip */}
-        <SocialProofStrip />
+        {/* 2 — Cinematic Video Section (Desktop) */}
+        <section className="relative h-[60vh] md:h-[80vh] overflow-hidden hidden md:block border-y border-gold/10">
+          <HeroBackgroundVideo />
+          <div className="absolute inset-0 flex items-center justify-center text-center px-4">
+            <div className="max-w-4xl">
+              <h2 className="font-editorial text-5xl md:text-7xl text-foreground mb-6 drop-shadow-2xl">
+                O mundo como você <br/>
+                <span className="font-editorial-italic gradient-text-teal">nunca viu</span>.
+              </h2>
+              <p className="text-lg md:text-xl text-foreground/90 max-w-2xl mx-auto font-medium drop-shadow-lg">
+                Destinos curados com o olhar de quem entende que viajar é colecionar memórias inesquecíveis.
+              </p>
+            </div>
+          </div>
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce opacity-50">
+            <div className="w-px h-12 bg-gold-light" />
+          </div>
+        </section>
 
         {/* 3 — Live Téo demo */}
         <TeoLiveDemo />
 
-        {/* 4 — Destinos nacionais e internacionais (carrosséis horizontais) */}
+        {/* 4 — Real Itineraries Showcase */}
+        <RealItinerariesShowcase />
+
+        {/* 5 — Destinos nacionais e internacionais (carrosséis horizontais) */}
         <DestinationsCarousels />
 
-        {/* 5 — How it works */}
+        {/* 6 — How it works */}
         <HowItWorksTimeline />
 
-        {/* 6 — Comparison */}
+        {/* 7 — Social proof strip */}
+        <SocialProofStrip />
+
+        {/* 8 — Comparison */}
         <ComparisonTable />
 
-        {/* 7 — Conditional offers (only renders if there are active offers) */}
+        {/* 9 — Conditional offers (only renders if there are active offers) */}
         <ActiveOffersCarousel />
 
-        {/* 8 — Testimonials */}
+        {/* 10 — Testimonials */}
         <TestimonialsWall />
 
-        {/* 9 — Closing CTA */}
+        {/* 11 — Closing CTA */}
         <ClosingCTA />
       </main>
 

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { MessageCircle, ArrowRight } from 'lucide-react';
+import { MessageCircle, ArrowRight, Star } from 'lucide-react';
 import { TeoMascot } from '@/components/TeoMascot';
 import { HeroBackgroundVideo } from './HeroBackgroundVideo';
 
@@ -9,6 +9,13 @@ const TEO_LINES = [
   'Conta pra mim: lua de mel, família ou aventura?',
   'Tenho um roteiro de Maldivas que vai te derrubar 🌊',
   'Em 2 minutos te mando a cotação completa.',
+];
+
+const avatars = [
+  'https://i.pravatar.cc/64?img=12',
+  'https://i.pravatar.cc/64?img=32',
+  'https://i.pravatar.cc/64?img=47',
+  'https://i.pravatar.cc/64?img=68',
 ];
 
 export const TeoHeroConversation = () => {
@@ -46,7 +53,7 @@ export const TeoHeroConversation = () => {
               Agente de viagem com IA
             </span>
 
-            <h1 className="font-editorial text-foreground text-5xl md:text-7xl lg:text-[5.5rem] leading-[0.95] mb-6">
+            <h1 className="font-editorial text-5xl md:text-7xl lg:text-[5.5rem] leading-[0.95] mb-6">
               Sua próxima viagem
               <br />
               começa numa{' '}
@@ -68,19 +75,36 @@ export const TeoHeroConversation = () => {
                 Conversar com o Téo
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </Link>
-              <a
-                href="https://wa.me/5515991833448"
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                to="/explorar"
                 className="btn-outline flex items-center justify-center gap-2 text-base md:text-lg px-7 py-4"
               >
-                Falar com um humano
-              </a>
+                Ver roteiros reais
+              </Link>
             </div>
 
-            <p className="text-xs text-foreground/50">
-              Resposta em segundos · Sem formulário · Sem espera
-            </p>
+            {/* Social Proof below CTAs */}
+            <div className="flex items-center gap-4 animate-fade-in" style={{ animationDelay: '0.5s' }}>
+              <div className="flex -space-x-3">
+                {avatars.map((src, i) => (
+                  <img
+                    key={i}
+                    src={src}
+                    alt=""
+                    className="w-8 h-8 rounded-full ring-2 ring-background object-cover"
+                  />
+                ))}
+              </div>
+              <div className="text-xs text-foreground/60">
+                <div className="flex items-center gap-1 text-gold-light mb-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-3 h-3 fill-current" />
+                  ))}
+                  <span className="ml-1 text-foreground/80 font-semibold">4.9/5</span>
+                </div>
+                <span>+1.200 viajantes satisfeitos</span>
+              </div>
+            </div>
           </div>
 
           {/* Right — Téo + conversation bubble */}

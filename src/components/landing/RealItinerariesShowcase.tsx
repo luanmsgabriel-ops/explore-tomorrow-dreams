@@ -13,6 +13,15 @@ interface Itinerary {
 
 const ITINERARIES: Itinerary[] = [
   {
+    destination: 'Santorini',
+    country: 'Grécia',
+    days: 7,
+    travelers: 'Casal · Romântico',
+    highlight: 'Pôr do sol em Oia + Jantar privativo',
+    image:
+      'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?auto=format&fit=crop&w=800&q=70',
+  },
+  {
     destination: 'Maldivas',
     country: 'Atol de Malé',
     days: 8,
@@ -22,31 +31,22 @@ const ITINERARIES: Itinerary[] = [
       'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?auto=format&fit=crop&w=1200&q=70',
   },
   {
-    destination: 'Patagônia',
-    country: 'Argentina / Chile',
-    days: 12,
-    travelers: 'Família · 4 pessoas',
-    highlight: 'Torres del Paine + Perito Moreno',
-    image:
-      'https://images.unsplash.com/photo-1531168556467-80aace0d0144?auto=format&fit=crop&w=1200&q=70',
-  },
-  {
-    destination: 'Quioto',
-    country: 'Japão',
-    days: 10,
-    travelers: 'Solo · Cultural',
-    highlight: 'Sakura + ryokan tradicional',
-    image:
-      'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1200&q=70',
-  },
-  {
-    destination: 'Fernando de Noronha',
+    destination: 'Noronha',
     country: 'Brasil',
     days: 6,
     travelers: 'Casal · Aventura',
     highlight: 'Mergulho com golfinhos + Baía do Sancho',
     image:
       'https://images.unsplash.com/photo-1544550581-5f7ceaf7f992?auto=format&fit=crop&w=1200&q=70',
+  },
+  {
+    destination: 'Paris',
+    country: 'França',
+    days: 5,
+    travelers: 'Solo · Cultural',
+    highlight: 'Louvre VIP + Piquenique no Sena',
+    image:
+      'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=70',
   },
 ];
 
@@ -65,18 +65,19 @@ export const RealItinerariesShowcase = () => {
           </EditorialHeading>
 
           <Link
-            to="/explorar"
+            to="/teo"
             className="inline-flex items-center gap-2 text-sm text-gold-light hover:text-gold transition-colors group whitespace-nowrap"
           >
-            Ver todos os destinos
+            Conversar com o Téo
             <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </Link>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {ITINERARIES.map((it) => (
-            <article
+            <Link
               key={it.destination}
+              to={`/teo?q=Quero um roteiro como este de ${it.destination}`}
               className="group relative overflow-hidden rounded-2xl border border-gold/15 bg-ocean-surface/40 transition-all duration-500 hover:border-gold/40 hover:-translate-y-1"
             >
               <div className="relative aspect-[3/4] overflow-hidden">
@@ -109,7 +110,7 @@ export const RealItinerariesShowcase = () => {
                   </p>
                 </div>
               </div>
-            </article>
+            </Link>
           ))}
         </div>
       </div>

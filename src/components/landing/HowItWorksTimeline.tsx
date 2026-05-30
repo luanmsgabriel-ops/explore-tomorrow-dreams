@@ -1,4 +1,4 @@
-import { MessageCircle, FileText, Plane } from 'lucide-react';
+import { MessageCircle, FileText, Plane, ReceiptText } from 'lucide-react';
 import { EditorialHeading } from './EditorialHeading';
 
 const STEPS = [
@@ -13,14 +13,21 @@ const STEPS = [
     n: '02',
     icon: FileText,
     title: 'Roteiro',
-    desc: 'O Téo monta o roteiro e a cotação. Um consultor humano revisa cada detalhe.',
-    time: '~24h',
+    desc: 'O Téo monta o roteiro ideal baseado no seu perfil e desejos.',
+    time: '~10 seg',
   },
   {
     n: '03',
+    icon: ReceiptText,
+    title: 'Cotação',
+    desc: 'Um consultor humano revisa o roteiro e envia a cotação final.',
+    time: '~24h',
+  },
+  {
+    n: '04',
     icon: Plane,
-    title: 'Viagem',
-    desc: 'Você embarca tranquilo. Concierge 24/7 no WhatsApp do início ao fim.',
+    title: 'Concierge',
+    desc: 'Suporte total durante a viagem. Concierge 24/7 no WhatsApp.',
     time: 'sempre',
   },
 ];
@@ -35,14 +42,14 @@ export const HowItWorksTimeline = () => {
           align="center"
           className="mb-16 mx-auto max-w-2xl"
         >
-          Três passos.
+          Do chat ao embarque.
           <br />
-          <span className="font-editorial-italic gradient-text-teal">Zero burocracia.</span>
+          <span className="font-editorial-italic gradient-text-teal">Simples assim.</span>
         </EditorialHeading>
 
-        <div className="relative grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6">
+        <div className="relative grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 md:gap-6">
           {/* Connecting line (desktop) */}
-          <div className="hidden md:block absolute top-12 left-[16.66%] right-[16.66%] h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
+          <div className="hidden md:block absolute top-12 left-[12.5%] right-[12.5%] h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
 
           {STEPS.map((s) => {
             const Icon = s.icon;
