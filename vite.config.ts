@@ -55,6 +55,7 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         globPatterns: ["**/*.{js,css,html,ico,png,jpg,jpeg,svg,webp}"],
         navigateFallbackDenylist: [/^\/rest\//, /supabase/],
         runtimeCaching: [
