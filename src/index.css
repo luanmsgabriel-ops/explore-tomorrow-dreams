@@ -513,3 +513,11 @@
 .soro-blog-container div {
   color: hsl(0 0% 100%) !important;
 }
+/* Hide native scrollbar on horizontal carousels */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
