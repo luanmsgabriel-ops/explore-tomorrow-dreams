@@ -25,7 +25,7 @@ const DESTINATIONS: Destination[] = [
     tag: 'Exclusivo',
     tagColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
     description: 'Um santuário ecológico onde o azul do mar desafia a realidade.',
-    video: 'https://videos.pexels.com/video-files/1739011/1739011-uhd_2560_1440_25fps.mp4',
+    video: 'https://videos.pexels.com/video-files/1739011/1739011-hd_1280_720_25fps.mp4',
     poster: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=70',
     size: 'wide',
   },
@@ -35,7 +35,7 @@ const DESTINATIONS: Destination[] = [
     tag: 'Romântico',
     tagColor: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
     description: 'Onde o pôr do sol encontra as cúpulas azuis do Egeu.',
-    video: 'https://videos.pexels.com/video-files/3571264/3571264-uhd_2560_1440_30fps.mp4',
+    video: 'https://videos.pexels.com/video-files/3571264/3571264-hd_1280_720_30fps.mp4',
     poster: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?auto=format&fit=crop&w=900&q=70',
     size: 'normal',
   },
@@ -45,7 +45,7 @@ const DESTINATIONS: Destination[] = [
     tag: 'Luxe',
     tagColor: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
     description: 'Bangalôs sobre águas cristalinas e o luxo da desconexão.',
-    video: 'https://videos.pexels.com/video-files/1093662/1093662-uhd_2560_1440_30fps.mp4',
+    video: 'https://videos.pexels.com/video-files/1093662/1093662-hd_1280_720_30fps.mp4',
     poster: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?auto=format&fit=crop&w=900&q=70',
     size: 'normal',
   },
@@ -55,7 +55,7 @@ const DESTINATIONS: Destination[] = [
     tag: 'Cultural',
     tagColor: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
     description: 'A tradição milenar sob as cerejeiras em flor.',
-    video: 'https://videos.pexels.com/video-files/3129671/3129671-uhd_2560_1440_25fps.mp4',
+    video: 'https://videos.pexels.com/video-files/3129671/3129671-hd_1280_720_25fps.mp4',
     poster: 'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?auto=format&fit=crop&w=900&q=70',
     size: 'normal',
   },
@@ -65,7 +65,7 @@ const DESTINATIONS: Destination[] = [
     tag: 'Aventura',
     tagColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
     description: 'Glaciares milenares e picos que cortam o fim do mundo.',
-    video: 'https://videos.pexels.com/video-files/857251/857251-hd_1920_1080_30fps.mp4',
+    video: 'https://videos.pexels.com/video-files/857251/857251-hd_1280_720_30fps.mp4',
     poster: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=900&q=70',
     size: 'normal',
   },
@@ -75,7 +75,7 @@ const DESTINATIONS: Destination[] = [
     tag: 'Premium',
     tagColor: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
     description: 'O futuro construído no deserto: excesso, arte e silêncio dourado.',
-    video: 'https://videos.pexels.com/video-files/3121459/3121459-uhd_2560_1440_25fps.mp4',
+    video: 'https://videos.pexels.com/video-files/3121459/3121459-hd_1280_720_25fps.mp4',
     poster: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=70',
     size: 'wide',
   },
@@ -89,6 +89,7 @@ function useLazyVideo(threshold = 0.25) {
   const ref = useRef<HTMLVideoElement | null>(null);
   const [isInView, setIsInView] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   // Step 1 — detect entry into viewport
   useEffect(() => {
@@ -116,41 +117,46 @@ function useLazyVideo(threshold = 0.25) {
 
     el.load();
 
-    const onCanPlay = () => {
-      setIsLoaded(true);
-      el.play().catch(() => {
-        // Autoplay blocked by browser — poster stays visible
-      });
-    };
-
     const tryPlay = () => {
       setIsLoaded(true);
       el.play().catch(() => {});
     };
 
+    const onError = () => setHasError(true);
+
     el.addEventListener('canplay', tryPlay, { once: true });
+    el.addEventListener('error', onError, { once: true });
+
+    let progressHandler: (() => void) | null = null;
 
     const fallback = window.setTimeout(() => {
       if (el.readyState >= 2) {
         tryPlay();
       } else {
-        const onProgress = () => {
+        progressHandler = () => {
           if (el.readyState >= 2) {
             tryPlay();
-            el.removeEventListener('progress', onProgress);
+            if (progressHandler) {
+              el.removeEventListener('progress', progressHandler);
+              progressHandler = null;
+            }
           }
         };
-        el.addEventListener('progress', onProgress);
+        el.addEventListener('progress', progressHandler);
       }
-    }, 5000);
+    }, 3000);
 
     return () => {
       el.removeEventListener('canplay', tryPlay);
+      el.removeEventListener('error', onError);
+      if (progressHandler) {
+        el.removeEventListener('progress', progressHandler);
+      }
       window.clearTimeout(fallback);
     };
   }, [isInView]);
 
-  return { ref, isInView, isLoaded };
+  return { ref, isInView, isLoaded, hasError };
 }
 
 // ---------------------------------------------------------------------------
@@ -158,7 +164,7 @@ function useLazyVideo(threshold = 0.25) {
 // ---------------------------------------------------------------------------
 
 const DestinationCard = ({ destination, index }: { destination: Destination; index: number }) => {
-  const { ref: videoRef, isInView, isLoaded } = useLazyVideo(0.2);
+  const { ref: videoRef, isInView, isLoaded, hasError } = useLazyVideo(0.2);
   const isWide = destination.size === 'wide';
 
   return (
@@ -199,7 +205,7 @@ const DestinationCard = ({ destination, index }: { destination: Destination; ind
       </video>
 
       {/* Buffering indicator */}
-      {isInView && !isLoaded && (
+      {isInView && !isLoaded && !hasError && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center animate-pulse">
             <Play className="w-5 h-5 text-white ml-0.5" />
