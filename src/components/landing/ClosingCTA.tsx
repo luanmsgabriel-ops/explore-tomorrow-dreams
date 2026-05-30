@@ -1,61 +1,108 @@
 import { Link } from 'react-router-dom';
-import { MessageCircle, ArrowRight } from 'lucide-react';
+import { MessageCircle, ArrowRight, Sparkles, ShieldCheck, Heart, Star } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { TeoMascot } from '@/components/TeoMascot';
+import { fadeUp, staggerContainer, scaleUp } from '@/lib/animations';
 
 export const ClosingCTA = () => {
   return (
-    <section className="relative py-24 md:py-36 overflow-hidden border-t border-gold/10">
-      {/* Ambient gradient */}
+    <section className="relative py-32 md:py-48 overflow-hidden bg-black">
+      {/* Cinematic Background Gradient */}
       <div
-        className="absolute inset-0 -z-10 opacity-80"
-        style={{ background: 'var(--gradient-teo-aura)' }}
+        className="absolute inset-0 -z-10 opacity-40"
+        style={{ 
+          background: 'radial-gradient(circle at center, rgba(0,255,200,0.15) 0%, transparent 70%)' 
+        }}
       />
-
-      <div className="container mx-auto px-4 lg:px-8">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="flex justify-center mb-8">
+      
+      <div className="container mx-auto px-4 lg:px-8 relative z-10">
+        <motion.div 
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className="max-w-4xl mx-auto text-center"
+        >
+          <motion.div variants={scaleUp} className="flex justify-center mb-12">
             <div className="relative">
-              <div className="absolute inset-0 -m-6 rounded-full bg-gold-light/20 blur-2xl animate-pulse-glow" />
-              <div className="relative">
+              <motion.div 
+                animate={{ 
+                  scale: [1, 1.3, 1],
+                  opacity: [0.3, 0.6, 0.3]
+                }}
+                transition={{ duration: 4, repeat: Infinity }}
+                className="absolute inset-0 -m-10 rounded-full bg-teal/20 blur-3xl" 
+              />
+              <div className="relative z-10">
                 <TeoMascot size="large" animated />
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <h2 className="font-editorial text-4xl md:text-6xl lg:text-7xl text-foreground leading-[1] mb-6">
-            E então?
-            <br />
-            <span className="font-editorial-italic gradient-text-teal">Pra onde a gente vai?</span>
-          </h2>
+          <motion.div variants={fadeUp}>
+            <h2 className="font-editorial text-5xl md:text-8xl lg:text-9xl text-white leading-[0.9] mb-8">
+              Sua história <br />
+              <span className="font-editorial-italic gradient-text-teal italic">começa aqui.</span>
+            </h2>
+          </motion.div>
 
-          <p className="text-base md:text-lg text-foreground/75 max-w-xl mx-auto mb-10">
-            O Téo tá online, pronto pra conversar. Sem formulário, sem pressa, sem
-            compromisso.
-          </p>
+          <motion.p variants={fadeUp} className="text-lg md:text-2xl text-white/60 max-w-2xl mx-auto mb-14 leading-relaxed font-light">
+            O Téo está online agora, esperando para transformar seus desejos em um roteiro inesquecível. Sem formulários, apenas uma conversa inspiradora.
+          </motion.p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
             <Link
               to="/teo"
-              className="btn-gold flex items-center justify-center gap-3 text-base md:text-lg px-8 py-4 group"
+              className="btn-gold flex items-center justify-center gap-4 text-xl px-12 py-6 group relative overflow-hidden"
             >
-              <MessageCircle className="w-5 h-5" />
-              Começar a conversa
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              <div className="absolute inset-0 bg-white/10 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+              <MessageCircle className="w-6 h-6" />
+              <span className="relative z-10 font-bold">Conversar com o Téo</span>
+              <ArrowRight className="w-5 h-5 relative z-10 transition-transform group-hover:translate-x-2" />
             </Link>
+            
             <a
               href="https://wa.me/5515991833448"
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-outline flex items-center justify-center gap-2 text-base md:text-lg px-8 py-4"
+              className="group flex items-center gap-3 text-white/50 hover:text-white transition-colors py-4 px-6"
             >
-              WhatsApp direto
+              <span className="text-lg font-medium">Falar via WhatsApp</span>
+              <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center group-hover:border-white/40 transition-all">
+                <ArrowRight className="w-4 h-4" />
+              </div>
             </a>
-          </div>
+          </motion.div>
 
-          <p className="mt-8 text-xs text-foreground/50">
-            Tomorrow Travel · Agente de viagem com IA · Consultoria humana inclusa
-          </p>
-        </div>
+          {/* Emotional Close & Trust */}
+          <motion.div 
+            variants={fadeUp}
+            className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-16 border-t border-white/5"
+          >
+            <div className="flex flex-col items-center gap-3">
+              <Sparkles className="w-6 h-6 text-gold/60" />
+              <p className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-bold">IA de Próxima Geração</p>
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <Heart className="w-6 h-6 text-gold/60" />
+              <p className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-bold">Consultoria com Alma</p>
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <ShieldCheck className="w-6 h-6 text-gold/60" />
+              <p className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-bold">Segurança Tomorrow</p>
+            </div>
+          </motion.div>
+
+          <motion.div variants={fadeUp} className="mt-16 flex flex-col items-center gap-2">
+            <p className="text-[10px] uppercase tracking-[0.4em] text-white/20">Tomorrow Travel · 2026</p>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1">
+                {[...Array(5)].map((_, i) => <Star key={i} className="w-2.5 h-2.5 fill-gold/40 text-transparent" />)}
+              </div>
+              <span className="text-[9px] text-white/30 uppercase tracking-widest font-medium">Excelência Comprovada</span>
+            </div>
+          </motion.div>
+        </motion.div>
       </div>
     </section>
   );

@@ -13,6 +13,7 @@ import { ActiveOffersCarousel } from '@/components/ActiveOffersCarousel';
 import { RealItinerariesShowcase } from '@/components/landing/RealItinerariesShowcase';
 import { HeroBackgroundVideo } from '@/components/landing/HeroBackgroundVideo';
 import { CinematicDestinations } from '@/components/landing/CinematicDestinations';
+import { LandingFAQ } from '@/components/landing/LandingFAQ';
 
 const Index = () => {
   return (
@@ -67,7 +68,10 @@ const Index = () => {
         {/* 10 — Testimonials */}
         <TestimonialsWall />
 
-        {/* 11 — Closing CTA */}
+        {/* 11 — FAQ */}
+        <LandingFAQ />
+
+        {/* 12 — Closing CTA */}
         <ClosingCTA />
       </main>
 
