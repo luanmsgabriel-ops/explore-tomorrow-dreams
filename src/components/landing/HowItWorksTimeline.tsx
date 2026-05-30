@@ -1,5 +1,7 @@
 import { MessageCircle, FileText, Plane, ReceiptText } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { EditorialHeading } from './EditorialHeading';
+import { fadeUp, staggerContainer, lineDrawX, popIn } from '@/lib/animations';
 
 const STEPS = [
   {
@@ -34,47 +36,90 @@ const STEPS = [
 
 export const HowItWorksTimeline = () => {
   return (
-    <section className="relative py-20 md:py-28 border-t border-gold/10">
+    <section className="relative py-20 md:py-28 border-t border-gold/10 overflow-hidden">
       <div className="container mx-auto px-4 lg:px-8">
-        <EditorialHeading
-          eyebrow="Como funciona"
-          size="md"
-          align="center"
-          className="mb-16 mx-auto max-w-2xl"
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          variants={staggerContainer}
         >
-          Do chat ao embarque.
-          <br />
-          <span className="font-editorial-italic gradient-text-teal">Simples assim.</span>
-        </EditorialHeading>
+          <motion.div variants={fadeUp}>
+            <EditorialHeading
+              eyebrow="Como funciona"
+              size="md"
+              align="center"
+              className="mb-20 mx-auto max-w-2xl"
+            >
+              Do chat ao embarque.
+              <br />
+              <span className="font-editorial-italic gradient-text-teal">Simples assim.</span>
+            </EditorialHeading>
+          </motion.div>
 
-        <div className="relative grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 md:gap-6">
-          {/* Connecting line (desktop) */}
-          <div className="hidden md:block absolute top-12 left-[12.5%] right-[12.5%] h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
+          <div className="relative grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12 md:gap-6">
+            {/* Connecting line (desktop) */}
+            <motion.div 
+              variants={lineDrawX}
+              className="hidden md:block absolute top-12 left-[12.5%] right-[12.5%] h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent origin-left z-0" 
+            />
 
-          {STEPS.map((s) => {
-            const Icon = s.icon;
-            return (
-              <div key={s.n} className="relative flex flex-col items-center text-center">
-                <div className="relative mb-6">
-                  <div className="absolute inset-0 -m-2 rounded-full bg-gold-light/10 blur-xl" />
-                  <div className="relative w-24 h-24 rounded-full glass-gold flex items-center justify-center">
-                    <Icon className="w-9 h-9 text-gold-light" />
+            {STEPS.map((s, i) => {
+              const Icon = s.icon;
+              return (
+                <motion.div 
+                  key={s.n} 
+                  variants={fadeUp}
+                  className="relative flex flex-col items-center text-center group z-10"
+                >
+                  <div className="relative mb-8">
+                    {/* Animated Glow on Hover */}
+                    <motion.div 
+                      className="absolute inset-0 -m-4 rounded-full bg-gold-light/5 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" 
+                    />
+                    
+                    <motion.div 
+                      variants={popIn}
+                      whileHover={{ scale: 1.1, rotate: [0, -5, 5, 0] }}
+                      transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                      className="relative w-24 h-24 rounded-full glass-gold flex items-center justify-center shadow-xl border border-white/10"
+                    >
+                      <Icon className="w-9 h-9 text-gold-light group-hover:text-gold transition-colors duration-300" />
+                    </motion.div>
+                    
+                    <motion.span 
+                      variants={popIn}
+                      className="absolute -top-1 -right-1 font-editorial text-2xl text-gold-light/60 bg-black/40 backdrop-blur-md rounded-full w-10 h-10 flex items-center justify-center border border-white/5"
+                    >
+                      {s.n}
+                    </motion.span>
                   </div>
-                  <span className="absolute -top-1 -right-1 font-editorial text-2xl text-gold-light/60">
-                    {s.n}
-                  </span>
-                </div>
-                <h3 className="font-editorial text-3xl text-foreground mb-2">{s.title}</h3>
-                <p className="text-sm text-foreground/70 max-w-xs leading-relaxed mb-3">
-                  {s.desc}
-                </p>
-                <span className="text-[10px] uppercase tracking-[0.25em] text-gold-light/80">
-                  {s.time}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+                  
+                  <motion.h3 
+                    variants={fadeUp}
+                    className="font-editorial text-3xl text-foreground mb-3 group-hover:text-gold-light transition-colors duration-300"
+                  >
+                    {s.title}
+                  </motion.h3>
+                  
+                  <motion.p 
+                    variants={fadeUp}
+                    className="text-sm text-foreground/70 max-w-xs leading-relaxed mb-4"
+                  >
+                    {s.desc}
+                  </motion.p>
+                  
+                  <motion.span 
+                    variants={fadeUp}
+                    className="text-[10px] uppercase tracking-[0.3em] text-gold-light/60 font-bold"
+                  >
+                    {s.time}
+                  </motion.span>
+                </motion.div>
+              );
+            })}
+          </div>
+        </motion.div>
       </div>
     </section>
   );
