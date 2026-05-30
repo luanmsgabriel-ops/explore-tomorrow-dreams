@@ -8,7 +8,7 @@ const internacionais = destinations.filter((d) => d.type === 'internacional');
 
 const DestinationCard = ({ d }: { d: Destination }) => (
   <Link
-    to={`/destino/${d.id}`}
+    to={`/teo?q=Quero saber mais sobre ${d.name}`}
     className="group relative shrink-0 w-[78vw] sm:w-[340px] lg:w-[380px] snap-start overflow-hidden rounded-2xl border border-gold/15 bg-ocean-surface/40 transition-all duration-500 hover:border-gold/40 hover:-translate-y-1"
   >
     <div className="relative aspect-[3/4] overflow-hidden">
@@ -50,7 +50,7 @@ const DestinationCard = ({ d }: { d: Destination }) => (
         </div>
 
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gold-light group-hover:text-gold transition-colors">
-          Ver destino e roteiros
+          Falar com o Téo sobre {d.name}
           <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </span>
       </div>
