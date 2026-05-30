@@ -89,7 +89,6 @@ const DestinationCard = ({ destination, index }: { destination: typeof DESTINATI
         muted
         loop
         playsInline
-        loading="lazy"
         className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity duration-1000 scale-105 group-hover:scale-100 transition-transform duration-1000"
       >
         <source src={destination.video} type="video/mp4" />
