@@ -12,6 +12,7 @@ import { FloatingTeoButton } from '@/components/landing/FloatingTeoButton';
 import { ActiveOffersCarousel } from '@/components/ActiveOffersCarousel';
 import { RealItinerariesShowcase } from '@/components/landing/RealItinerariesShowcase';
 import { HeroBackgroundVideo } from '@/components/landing/HeroBackgroundVideo';
+import { CinematicDestinations } from '@/components/landing/CinematicDestinations';
 
 const Index = () => {
   return (
@@ -22,7 +23,8 @@ const Index = () => {
         {/* 1 — Hero: Téo as protagonist */}
         <TeoHeroConversation />
 
-        {/* 2 — Cinematic Video Section (Desktop) */}
+        {/* 2 — Cinematic Destinations Section */}
+        <CinematicDestinations />
         <section className="relative h-[60vh] md:h-[80vh] overflow-hidden hidden md:block border-y border-gold/10">
           <HeroBackgroundVideo />
           <div className="absolute inset-0 flex items-center justify-center text-center px-4">
