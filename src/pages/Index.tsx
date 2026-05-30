@@ -26,7 +26,7 @@ const Index = () => {
 
         {/* 2 — Cinematic Destinations Section */}
         <CinematicDestinations />
-        <section className="relative h-[60vh] md:h-[80vh] overflow-hidden hidden md:block border-y border-gold/10">
+        <section className="relative isolate h-[60vh] md:h-[80vh] overflow-hidden hidden md:block border-y border-gold/10">
           <HeroBackgroundVideo />
           <div className="absolute inset-0 flex items-center justify-center text-center px-4">
             <div className="max-w-4xl">

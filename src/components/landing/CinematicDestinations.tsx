@@ -123,8 +123,31 @@ function useLazyVideo(threshold = 0.25) {
       });
     };
 
-    el.addEventListener('canplaythrough', onCanPlay, { once: true });
-    return () => el.removeEventListener('canplaythrough', onCanPlay);
+    const tryPlay = () => {
+      setIsLoaded(true);
+      el.play().catch(() => {});
+    };
+
+    el.addEventListener('canplay', tryPlay, { once: true });
+
+    const fallback = window.setTimeout(() => {
+      if (el.readyState >= 2) {
+        tryPlay();
+      } else {
+        const onProgress = () => {
+          if (el.readyState >= 2) {
+            tryPlay();
+            el.removeEventListener('progress', onProgress);
+          }
+        };
+        el.addEventListener('progress', onProgress);
+      }
+    }, 5000);
+
+    return () => {
+      el.removeEventListener('canplay', tryPlay);
+      window.clearTimeout(fallback);
+    };
   }, [isInView]);
 
   return { ref, isInView, isLoaded };
