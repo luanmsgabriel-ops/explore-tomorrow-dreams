@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
 
 @layer base {
   :root {
@@ -63,6 +63,16 @@
     --shadow-glow-gold: 0 0 40px hsl(40 75% 50% / 0.4);
     --shadow-card: 0 10px 40px hsl(192 65% 5% / 0.5);
     --shadow-card-hover: 0 20px 60px hsl(192 65% 5% / 0.7);
+    --shadow-editorial: 0 30px 80px -20px hsl(192 65% 4% / 0.8);
+    --shadow-teo-glow: 0 0 60px hsl(185 65% 45% / 0.35);
+
+    /* Editorial gradients */
+    --gradient-teo-aura: radial-gradient(circle at center, hsl(185 65% 45% / 0.25) 0%, transparent 70%);
+    --gradient-section-fade: linear-gradient(180deg, transparent 0%, hsl(192 65% 10% / 0.6) 100%);
+
+    /* Cinematic easing */
+    --ease-editorial: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
 
     /* Sidebar */
     --sidebar-background: 192 65% 10%;
@@ -406,6 +416,67 @@
     overflow: hidden;
   }
 
+  /* Editorial serif heading */
+  .font-editorial {
+    font-family: 'Instrument Serif', 'Playfair Display', serif;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 0.95;
+  }
+
+  .font-editorial-italic {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    letter-spacing: -0.01em;
+  }
+
+  /* Text reveal — line by line */
+  @keyframes text-reveal {
+    from { opacity: 0; transform: translateY(120%); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-text-reveal {
+    display: inline-block;
+    animation: text-reveal 1.1s var(--ease-editorial) both;
+  }
+
+  /* Téo bounce — gentle conversational presence */
+  @keyframes teo-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  .animate-teo-bounce {
+    animation: teo-bounce 3s var(--ease-soft) infinite;
+  }
+
+  /* Subtle parallax float for ambient layers */
+  @keyframes parallax-float {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50% { transform: translate3d(0, -14px, 0); }
+  }
+  .animate-parallax-float {
+    animation: parallax-float 9s ease-in-out infinite;
+  }
+
+  /* Gold shimmer sweep for editorial accents */
+  @keyframes gold-shimmer {
+    0% { background-position: -150% 0; }
+    100% { background-position: 250% 0; }
+  }
+  .animate-gold-shimmer {
+    background: linear-gradient(90deg, transparent 20%, hsl(45 80% 65% / 0.4) 50%, transparent 80%);
+    background-size: 200% 100%;
+    animation: gold-shimmer 3.5s linear infinite;
+  }
+
+  /* Typing dots — Téo composing message */
+  @keyframes typing-dot {
+    0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+    30% { opacity: 1; transform: translateY(-3px); }
+  }
+  .typing-dot {
+    animation: typing-dot 1.3s ease-in-out infinite;
+  }
 
   @keyframes metallic-shine {
     0%, 100% {
