@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MessageCircle, ArrowRight, Sparkles, ShieldCheck, Heart } from 'lucide-react';
+import { MessageCircle, ArrowRight, Sparkles, ShieldCheck, Heart, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { TeoMascot } from '@/components/TeoMascot';
 import { fadeUp, staggerContainer, scaleUp } from '@/lib/animations';
