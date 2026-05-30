@@ -273,5 +273,6 @@ export const CinematicDestinations = () => {
           ))}
         </div>
       </div>
-    </section> Section;
+    </section>
+  );
 };
