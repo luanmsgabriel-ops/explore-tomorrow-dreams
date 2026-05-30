@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import heroVideo from '@/assets/hero-destinations-cinematic.mp4.asset.json';
 
@@ -10,8 +10,6 @@ import heroVideo from '@/assets/hero-destinations-cinematic.mp4.asset.json';
 export const HeroBackgroundVideo = () => {
   const isMobile = useIsMobile();
   const [shouldLoad, setShouldLoad] = useState(false);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-
   useEffect(() => {
     if (isMobile) return;
     // Defer past first paint so it doesn't compete with hero LCP
@@ -19,16 +17,11 @@ export const HeroBackgroundVideo = () => {
     return () => window.clearTimeout(id);
   }, [isMobile]);
 
-  useEffect(() => {
-    videoRef.current?.play().catch(() => {});
-  }, []);
-
   if (isMobile || !shouldLoad) return null;
 
   return (
     <div className="absolute inset-0 -z-20 overflow-hidden pointer-events-none">
       <video
-        ref={videoRef}
         autoPlay
         muted
         loop
