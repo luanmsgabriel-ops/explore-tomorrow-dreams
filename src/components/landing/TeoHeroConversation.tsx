@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { MessageCircle, ArrowRight, Star } from 'lucide-react';
-import { TeoMascot } from '@/components/TeoMascot';
+import { MessageCircle, ArrowRight, Star, MousePointer2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { HeroBackgroundVideo } from './HeroBackgroundVideo';
+import teoCharacter from '@/assets/teo-character.png';
 
 const TEO_LINES = [
   'Pra onde a gente vai dessa vez?',
@@ -24,146 +25,223 @@ export const TeoHeroConversation = () => {
   useEffect(() => {
     const id = setInterval(() => {
       setLineIdx((i) => (i + 1) % TEO_LINES.length);
-    }, 3800);
+    }, 4500);
     return () => clearInterval(id);
   }, []);
 
   return (
-    <section className="relative overflow-hidden pt-28 pb-16 md:pt-36 md:pb-24">
-      {/* Cinematic destination video (desktop only, lazy) */}
+    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden pt-20 pb-12">
+      {/* Cinematic Background */}
       <HeroBackgroundVideo />
-
-      {/* Ambient gradient aura */}
-      <div
-        className="absolute inset-0 -z-10 opacity-70"
-        style={{ background: 'var(--gradient-teo-aura)' }}
-      />
-      <div className="absolute top-1/3 -left-32 w-96 h-96 rounded-full bg-teal/20 blur-3xl animate-parallax-float" />
-      <div
-        className="absolute bottom-0 -right-32 w-96 h-96 rounded-full bg-gold/15 blur-3xl animate-parallax-float"
-        style={{ animationDelay: '2s' }}
+      
+      {/* Dark Overlay & Gradients */}
+      <div className="absolute inset-0 bg-black/40 -z-10" />
+      <div 
+        className="absolute inset-0 -z-10"
+        style={{ 
+          background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.8) 100%)' 
+        }}
       />
 
-      <div className="container mx-auto px-4 lg:px-8">
-        <div className="grid lg:grid-cols-12 gap-10 lg:gap-16 items-center">
-          {/* Left — editorial copy */}
-          <div className="lg:col-span-7">
-            <span className="inline-flex items-center gap-2 text-[10px] md:text-xs uppercase tracking-[0.3em] text-gold-light/80 mb-6">
-              <span className="h-px w-8 bg-gold-light/60" />
-              Agente de viagem com IA
-            </span>
+      {/* Ambient Light Orbs */}
+      <motion.div 
+        animate={{ 
+          scale: [1, 1.2, 1],
+          opacity: [0.1, 0.2, 0.1],
+        }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-1/4 -left-1/4 w-[500px] h-[500px] rounded-full bg-teal/20 blur-[120px] -z-10" 
+      />
+      <motion.div 
+        animate={{ 
+          scale: [1.2, 1, 1.2],
+          opacity: [0.1, 0.15, 0.1],
+        }}
+        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute bottom-1/4 -right-1/4 w-[500px] h-[500px] rounded-full bg-gold/15 blur-[120px] -z-10" 
+      />
 
-            <h1 className="font-editorial text-5xl md:text-7xl lg:text-[5.5rem] leading-[0.95] mb-6">
-              Sua próxima viagem
-              <br />
-              começa numa{' '}
-              <span className="font-editorial-italic gradient-text-teal">conversa</span>.
-            </h1>
+      <div className="container mx-auto px-4 relative z-10 flex flex-col items-center">
+        {/* Eyebrow */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="flex items-center gap-3 mb-8"
+        >
+          <span className="h-px w-6 bg-gold/60" />
+          <span className="text-[10px] md:text-xs uppercase tracking-[0.4em] text-gold-light/90 font-medium">
+            Inteligência Artificial + Consultoria Humana
+          </span>
+          <span className="h-px w-6 bg-gold/60" />
+        </motion.div>
 
-            <p className="text-base md:text-lg text-foreground/80 max-w-xl leading-relaxed mb-10">
-              Converse com o <strong className="text-foreground">Téo</strong>, o primeiro agente
-              de viagem com IA do Brasil. Ele entende o que você quer, monta o roteiro e um
-              consultor humano cuida de cada detalhe.
-            </p>
+        {/* Headline */}
+        <div className="text-center mb-12">
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="font-editorial text-5xl md:text-8xl lg:text-9xl leading-[0.9] text-white"
+          >
+            <span className="block mb-2">Não procure a viagem</span>
+            <span className="font-editorial-italic gradient-text-teal italic block mb-2">perfeita.</span>
+            <span className="block opacity-90 text-4xl md:text-7xl lg:text-8xl">Converse com o Téo.</span>
+          </motion.h1>
+        </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 mb-8">
-              <Link
-                to="/teo"
-                className="btn-gold flex items-center justify-center gap-3 text-base md:text-lg px-7 py-4 group"
-              >
-                <MessageCircle className="w-5 h-5" />
-                Conversar com o Téo
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-              </Link>
-              <Link
-                to="/explorar"
-                className="btn-outline flex items-center justify-center gap-2 text-base md:text-lg px-7 py-4"
-              >
-                Ver roteiros reais
-              </Link>
-            </div>
-
-            {/* Social Proof below CTAs */}
-            <div className="flex items-center gap-4 animate-fade-in" style={{ animationDelay: '0.5s' }}>
-              <div className="flex -space-x-3">
-                {avatars.map((src, i) => (
-                  <img
-                    key={i}
-                    src={src}
-                    alt=""
-                    className="w-8 h-8 rounded-full ring-2 ring-background object-cover"
-                  />
-                ))}
-              </div>
-              <div className="text-xs text-foreground/60">
-                <div className="flex items-center gap-1 text-gold-light mb-0.5">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-3 h-3 fill-current" />
-                  ))}
-                  <span className="ml-1 text-foreground/80 font-semibold">4.9/5</span>
-                </div>
-                <span>+1.200 viajantes satisfeitos</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Right — Téo + conversation bubble */}
-          <div className="lg:col-span-5 relative flex items-center justify-center">
-            <div className="relative">
-              {/* Téo aura */}
-              <div
-                className="absolute inset-0 -m-16 rounded-full blur-3xl"
-                style={{ background: 'var(--gradient-teo-aura)' }}
+        {/* Téo Protagonist Center */}
+        <div className="relative mb-16 flex items-center justify-center">
+          {/* Téo Aura/Glow */}
+          <motion.div
+            animate={{ 
+              scale: [1, 1.1, 1],
+              opacity: [0.3, 0.5, 0.3]
+            }}
+            transition={{ duration: 4, repeat: Infinity }}
+            className="absolute inset-0 bg-teal/30 rounded-full blur-[80px] -z-10 scale-150"
+          />
+          
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1, delay: 0.4 }}
+            className="relative"
+          >
+            {/* Mascot Image */}
+            <motion.div
+              animate={{ y: [0, -12, 0] }}
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+              className="relative z-20"
+            >
+              <img 
+                src={teoCharacter} 
+                alt="Téo" 
+                className="w-[200px] md:w-[280px] lg:w-[320px] h-auto drop-shadow-[0_20px_50px_rgba(0,180,180,0.4)]"
               />
+            </motion.div>
 
-              <div className="relative">
-                <TeoMascot size="large" animated />
-              </div>
-
-              {/* Live conversation bubble */}
-              <div className="absolute -top-6 -right-4 md:-right-12 max-w-[240px]">
-                <div className="glass-gold rounded-2xl rounded-bl-sm px-4 py-3 shadow-2xl">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] uppercase tracking-wider text-gold-light/80 font-semibold">
-                      Téo
-                    </span>
-                    <span className="flex gap-0.5">
-                      <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-                      <span className="text-[9px] text-emerald-400/80">online</span>
+            {/* Bubble - Right */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={lineIdx}
+                initial={{ opacity: 0, x: 20, y: 10, scale: 0.8 }}
+                animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="absolute -top-4 -right-24 md:-right-32 lg:-right-48 z-30 w-[200px] md:w-[280px]"
+              >
+                <div className="glass-gold rounded-2xl rounded-bl-none px-5 py-4 shadow-[0_15px_30px_rgba(0,0,0,0.3)] border border-gold/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] uppercase tracking-widest text-gold-light font-bold">Téo</span>
+                    <span className="flex gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     </span>
                   </div>
-                  <p
-                    key={lineIdx}
-                    className="text-sm text-foreground leading-snug animate-fade-in"
-                  >
+                  <p className="text-sm md:text-base text-white/90 leading-tight">
                     {TEO_LINES[lineIdx]}
                   </p>
                 </div>
-                {/* Tail */}
-                <div className="w-3 h-3 -mt-1 ml-4 rotate-45 glass-gold" />
-              </div>
+              </motion.div>
+            </AnimatePresence>
 
-              {/* Typing indicator bubble (left, smaller) */}
-              <div className="absolute -bottom-2 -left-4 md:-left-10 glass rounded-2xl rounded-br-sm px-3 py-2 shadow-xl">
-                <div className="flex items-center gap-1">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full bg-foreground/60 typing-dot"
-                    style={{ animationDelay: '0s' }}
+            {/* Typing Indicator - Left */}
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 1 }}
+              className="absolute bottom-10 -left-12 md:-left-20 glass rounded-full px-4 py-2 shadow-xl border border-white/10"
+            >
+              <div className="flex items-center gap-1.5">
+                {[0, 0.2, 0.4].map((delay) => (
+                  <motion.span
+                    key={delay}
+                    animate={{ y: [0, -4, 0] }}
+                    transition={{ duration: 0.6, repeat: Infinity, delay }}
+                    className="w-1.5 h-1.5 rounded-full bg-teal"
                   />
-                  <span
-                    className="w-1.5 h-1.5 rounded-full bg-foreground/60 typing-dot"
-                    style={{ animationDelay: '0.2s' }}
-                  />
-                  <span
-                    className="w-1.5 h-1.5 rounded-full bg-foreground/60 typing-dot"
-                    style={{ animationDelay: '0.4s' }}
-                  />
-                </div>
+                ))}
               </div>
+            </motion.div>
+          </motion.div>
+        </div>
+
+        {/* Subheadline & CTAs */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.6 }}
+          className="flex flex-col items-center"
+        >
+          <p className="text-lg md:text-xl text-white/70 max-w-2xl text-center leading-relaxed mb-10">
+            Esqueça as buscas infinitas. O Téo entende seu estilo e planeja cada detalhe da sua 
+            próxima experiência inesquecível em segundos.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-5 mb-12">
+            <Link
+              to="/teo"
+              className="btn-gold flex items-center justify-center gap-4 text-lg px-10 py-5 group relative overflow-hidden"
+            >
+              <motion.div
+                className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-700"
+              />
+              <MessageCircle className="w-6 h-6" />
+              <span className="relative z-10 font-semibold">Conversar com o Téo</span>
+              <ArrowRight className="w-5 h-5 relative z-10 transition-transform group-hover:translate-x-2" />
+            </Link>
+            
+            <Link
+              to="/explorar"
+              className="btn-outline border-white/20 bg-white/5 backdrop-blur-sm text-white hover:bg-white/10 flex items-center justify-center gap-2 text-lg px-10 py-5"
+            >
+              Ver roteiros reais
+            </Link>
+          </div>
+
+          {/* Social Proof */}
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex -space-x-3">
+              {avatars.map((src, i) => (
+                <motion.img
+                  key={i}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.8 + (i * 0.1) }}
+                  src={src}
+                  alt=""
+                  className="w-10 h-10 rounded-full ring-2 ring-black/40 object-cover"
+                />
+              ))}
+            </div>
+            <div className="flex flex-col items-center text-center">
+              <div className="flex items-center gap-1.5 text-gold-light mb-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-current" />
+                ))}
+                <span className="ml-1 text-white font-bold">4.9/5</span>
+              </div>
+              <span className="text-xs uppercase tracking-[0.2em] text-white/50">Confiança de +1.200 viajantes premium</span>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
+
+      {/* Scroll Indicator */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.5, duration: 1 }}
+        className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3"
+      >
+        <span className="text-[10px] uppercase tracking-[0.4em] text-white/40">Rolar</span>
+        <div className="w-px h-16 bg-gradient-to-b from-gold/80 to-transparent relative overflow-hidden">
+          <motion.div 
+            animate={{ y: [0, 64] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="absolute top-0 left-0 w-full h-1/2 bg-white/40"
+          />
+        </div>
+      </motion.div>
     </section>
   );
 };
