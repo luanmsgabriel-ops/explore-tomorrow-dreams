@@ -186,14 +186,6 @@ export const Header = () => {
                   <User className="w-5 h-5" />
                   <span className="text-base font-medium">Área do Cliente</span>
                 </Link>
-                <Link
-                  to="/admin"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 text-muted-foreground hover:text-gold-light"
-                >
-                  <User className="w-5 h-5" />
-                  <span className="text-base font-medium">Admin</span>
-                </Link>
               </div>
             </nav>
           </div>
