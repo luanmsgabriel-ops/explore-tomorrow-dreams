@@ -241,7 +241,7 @@ export const destinations: Destination[] = [
     id: 'morro-sao-paulo',
     name: 'Morro de São Paulo',
     location: 'Bahia, Brasil',
-    image: 'https://images.unsplash.com/photo-1591375275624-c63e7c9b0e7d?auto=format&fit=crop&w=800&q=80',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/a/a5/Morro_de_S%C3%A3o_Paulo_Mirante.JPG',
     category: 'Praia',
     type: 'nacional',
     description: 'Ilha sem carros com praias paradisíacas numeradas e vida noturna animada.',
