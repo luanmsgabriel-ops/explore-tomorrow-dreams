@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, MapPin, Clock, Calendar, MessageSquare } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { useRef } from 'react';
 import { destinations, type Destination } from '@/data/destinations';
 import { EditorialHeading } from './EditorialHeading';
 
@@ -72,58 +73,73 @@ const Carousel = ({
   eyebrow,
   items,
   viewAllHref,
+  scrollOffset = -300,
 }: {
   title: string;
   italicWord: string;
   eyebrow: string;
   items: Destination[];
   viewAllHref: string;
-}) => (
-  <div className="mb-24 last:mb-0">
-    <div className="container mx-auto px-4 lg:px-8 mb-12">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-        <div className="max-w-2xl">
-          <motion.span 
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            className="text-gold tracking-[0.5em] text-[10px] md:text-xs uppercase mb-4 block font-bold"
-          >
-            {eyebrow}
-          </motion.span>
-          <EditorialHeading size="lg">
-            {title}{' '}
-            <span className="font-editorial-italic gradient-text-teal italic">
-              {italicWord}
-            </span>
-          </EditorialHeading>
-        </div>
-        <Link
-          to={viewAllHref}
-          className="group inline-flex items-center gap-3 text-xs font-bold uppercase tracking-[0.3em] text-white/40 hover:text-gold transition-all duration-500"
-        >
-          Explorar catálogo
-          <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center group-hover:border-gold transition-all duration-500">
-            <ArrowUpRight className="w-5 h-5 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
-          </div>
-        </Link>
-      </div>
-    </div>
+  scrollOffset?: number;
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "end start"]
+  });
 
-    <div className="relative">
-      <div className="flex gap-8 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 lg:px-8 pb-12">
-        {items.map((d, i) => (
-          <DestinationCard key={d.id} d={d} index={i} />
-        ))}
-        <div className="shrink-0 w-8" aria-hidden="true" />
+  const x = useTransform(scrollYProgress, [0, 1], [0, scrollOffset]);
+
+  return (
+    <div ref={containerRef} className="mb-24 last:mb-0">
+      <div className="container mx-auto px-4 lg:px-8 mb-12">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+          <div className="max-w-2xl">
+            <motion.span 
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="text-gold tracking-[0.5em] text-[10px] md:text-xs uppercase mb-4 block font-bold"
+            >
+              {eyebrow}
+            </motion.span>
+            <EditorialHeading size="lg">
+              {title}{' '}
+              <span className="font-editorial-italic gradient-text-teal italic">
+                {italicWord}
+              </span>
+            </EditorialHeading>
+          </div>
+          <Link
+            to={viewAllHref}
+            className="group inline-flex items-center gap-3 text-xs font-bold uppercase tracking-[0.3em] text-white/40 hover:text-gold transition-all duration-500"
+          >
+            Explorar catálogo
+            <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center group-hover:border-gold transition-all duration-500">
+              <ArrowUpRight className="w-5 h-5 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+            </div>
+          </Link>
+        </div>
+      </div>
+
+      <div className="relative overflow-hidden">
+        <motion.div 
+          style={{ x }}
+          className="flex gap-8 px-4 lg:px-8 pb-12 w-max"
+        >
+          {items.map((d, i) => (
+            <DestinationCard key={d.id} d={d} index={i} />
+          ))}
+          <div className="shrink-0 w-8" aria-hidden="true" />
+        </motion.div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export const DestinationsCarousels = () => {
   return (
-    <section className="relative py-24 md:py-40 bg-[#020607] border-t border-white/5">
+    <section className="relative py-24 md:py-40 bg-[#020607] border-t border-white/5 overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-black to-transparent -z-10" />
       
       <Carousel
@@ -132,6 +148,7 @@ export const DestinationsCarousels = () => {
         italicWord="território"
         items={nacionais}
         viewAllHref="/nacional"
+        scrollOffset={window.innerWidth < 768 ? -80 : window.innerWidth < 1024 ? -180 : -300}
       />
       
       <Carousel
@@ -140,6 +157,7 @@ export const DestinationsCarousels = () => {
         italicWord="desejo"
         items={internacionais}
         viewAllHref="/internacional"
+        scrollOffset={window.innerWidth < 768 ? -80 : window.innerWidth < 1024 ? -180 : -300}
       />
     </section>
   );
