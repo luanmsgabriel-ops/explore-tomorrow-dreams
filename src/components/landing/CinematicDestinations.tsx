@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { MessageCircle, Play } from 'lucide-react';
