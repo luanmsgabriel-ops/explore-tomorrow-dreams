@@ -36,46 +36,58 @@ const Index = () => {
         {/* 1 — Hero: Téo as protagonist */}
         <TeoHeroConversation />
 
-        {/* 2 — Live Téo demo */}
+        {/* 2 — Trust Bar */}
+        <TrustBar />
+
+        {/* 3 — Live Téo demo */}
         <TeoLiveDemo />
 
         <JourneyConnector />
 
-        {/* 3 — Social proof strip (Replaced avatars with silhuetas premium in component) */}
+        {/* 4 — Social proof strip */}
         <SocialProofStrip />
+
+        {/* 5 — Real Stories (Trust Building) */}
+        <RealStories />
+        
+        {/* 6 — Real Metrics */}
+        <MetricsStrip />
 
         <JourneyConnector />
 
-        {/* 4 — How it works */}
+        {/* 7 — How it works */}
         <HowItWorksTimeline />
 
         <JourneyConnector />
 
-        {/* 5 — Cinematic Destinations Section */}
+        {/* 8 — Cinematic Destinations Section */}
         <CinematicDestinations />
 
         <JourneyConnector />
 
-        {/* 6 — Real Itineraries Showcase */}
+        {/* 9 — Real Itineraries Showcase */}
         <RealItinerariesShowcase />
+
+        {/* 10 — Post Travel Care (Emotional) */}
+        <PostTravelCare />
 
         <JourneyConnector />
 
-        {/* 7 — Comparison */}
+        {/* 11 — Comparison */}
         <ComparisonTable />
 
-        {/* 8 — Conditional offers (Mantido por ser conversão direta) */}
+        {/* 12 — Conditional offers */}
         <ActiveOffersCarousel />
 
-        {/* 9 — Testimonials */}
-        <TestimonialsWall />
+        {/* 13 — Google Reviews */}
+        <GoogleReviews />
 
-        {/* 10 — FAQ */}
+        {/* 14 — FAQ */}
         <LandingFAQ />
         
         <JourneyConnector />
 
-        {/* 11 — Closing CTA */}
+        {/* 15 — Closing CTA */}
         <ClosingCTA />
       </main>
 
