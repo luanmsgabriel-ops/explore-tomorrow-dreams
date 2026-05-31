@@ -190,7 +190,7 @@ const DestinationCard = ({
   index: number;
   onRatioUpdate: (name: string, ratio: number) => void;
 }) => {
-  const { ref: videoRef, isInView, isLoaded, hasError } = useLazyVideo(0.2);
+  const { ref: videoRef, isInView, isLoaded, hasError, shouldLoadVideo } = useLazyVideo(0.2);
   const cardRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
