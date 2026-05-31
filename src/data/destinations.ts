@@ -280,7 +280,7 @@ export const destinations: Destination[] = [
     id: 'alter-chao',
     name: 'Alter do Chão',
     location: 'Pará, Brasil',
-    image: 'https://images.unsplash.com/photo-1583101072126-0e2e6b9d8b80?auto=format&fit=crop&w=800&q=80',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/Alter_do_Ch%C3%A3o_486a.jpg/1920px-Alter_do_Ch%C3%A3o_486a.jpg',
     category: 'Amazônia',
     type: 'nacional',
     description: 'O Caribe Amazônico, com praias de rio de areia branca e águas verdes.',
