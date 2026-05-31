@@ -14,7 +14,7 @@ const DestinationCard = ({ d, index }: { d: Destination; index: number }) => (
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true }}
     transition={{ delay: (index % 4) * 0.1 }}
-    className="group relative shrink-0 w-[85vw] sm:w-[320px] lg:w-[360px] snap-start"
+    className="group relative shrink-0 w-[85vw] sm:w-[320px] lg:w-[360px] snap-center md:snap-start"
   >
     <Link
       to={`/teo?q=Quero saber mais sobre ${d.name}`}
@@ -122,15 +122,18 @@ const Carousel = ({
         </div>
       </div>
 
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-x-auto snap-x snap-mandatory scrollbar-hide">
         <motion.div 
           style={{ x }}
-          className="flex gap-8 px-4 lg:px-8 pb-12 w-max"
+          drag="x"
+          dragConstraints={{ left: -1000, right: 0 }}
+          dragElastic={0.2}
+          className="flex gap-8 px-4 lg:px-8 pb-12 w-max cursor-grab active:cursor-grabbing"
         >
           {items.map((d, i) => (
             <DestinationCard key={d.id} d={d} index={i} />
           ))}
-          <div className="shrink-0 w-8" aria-hidden="true" />
+          <div className="shrink-0 w-8 md:w-32" aria-hidden="true" />
         </motion.div>
       </div>
     </div>
