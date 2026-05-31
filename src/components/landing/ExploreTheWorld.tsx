@@ -31,7 +31,11 @@ const FEATURED_DESTINATIONS = [
   }
 ];
 
-export const ExploreTheWorld = () => {
+export const ExploreTheWorld = ({ 
+  onStateChange 
+}: { 
+  onStateChange?: (state: { destination: string; direction: string; angle: number }) => void 
+}) => {
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
@@ -46,6 +50,13 @@ export const ExploreTheWorld = () => {
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
+          if (onStateChange) {
+            onStateChange({
+              destination: 'Grandeza do Mundo',
+              direction: 'Inspiração infinita',
+              angle: 320
+            });
+          }
           // Main entrance animation
           anime.timeline({
             easing: 'easeOutExpo',

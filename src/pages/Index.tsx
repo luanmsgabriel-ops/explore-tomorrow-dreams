@@ -111,7 +111,7 @@ const Index = () => {
         <JourneyConnector />
         
         {/* 11.5 — Explore the World Cinematic Experience */}
-        <ExploreTheWorld />
+        <ExploreTheWorld onStateChange={(state) => setNavState(prev => ({ ...prev, ...state }))} />
 
         {/* 12 — Closing CTA */}
         <ClosingCTA />
