@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useRef, useState, useMemo } from 'react';
+import { motion, useInView } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { MessageCircle, Play } from 'lucide-react';
+import { CompassBar } from './CompassBar';
+
 
 // ---------------------------------------------------------------------------
 // Data
@@ -163,12 +165,31 @@ function useLazyVideo(threshold = 0.25) {
 // Card
 // ---------------------------------------------------------------------------
 
-const DestinationCard = ({ destination, index }: { destination: Destination; index: number }) => {
+const DestinationCard = ({ 
+  destination, 
+  index, 
+  onActive 
+}: { 
+  destination: Destination; 
+  index: number;
+  onActive: (name: string) => void;
+}) => {
   const { ref: videoRef, isInView, isLoaded, hasError } = useLazyVideo(0.2);
+  const cardRef = useRef(null);
+  const isCurrentlyInView = useInView(cardRef, { margin: "-45% 0px -45% 0px" });
+
+  useEffect(() => {
+    if (isCurrentlyInView) {
+      onActive(destination.name);
+    }
+  }, [isCurrentlyInView, destination.name, onActive]);
+
   const isWide = destination.size === 'wide';
 
   return (
     <motion.div
+      ref={cardRef}
+
       initial={{ opacity: 0, y: 48 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-80px' }}
@@ -264,8 +285,24 @@ const DestinationCard = ({ destination, index }: { destination: Destination; ind
 // ---------------------------------------------------------------------------
 
 export const CinematicDestinations = () => {
+  const [activeDestination, setActiveDestination] = useState(DESTINATIONS[0].name);
+
+  const destinationMap: Record<string, { angle: number; direction: string }> = {
+    'Fernando de Noronha': { angle: 45, direction: 'Nordeste do Brasil' },
+    'Lençóis Maranhenses': { angle: 0, direction: 'Maranhão, Brasil' },
+    'Jericoacoara': { angle: 35, direction: 'Ceará, Brasil' },
+    'Rio de Janeiro': { angle: 135, direction: 'Sudeste do Brasil' },
+    'Santorini': { angle: 90, direction: 'Ilhas Cíclades, Grécia' },
+    'Maldivas': { angle: 110, direction: 'Oceano Índico' },
+  };
+
+  const currentData = useMemo(() => 
+    destinationMap[activeDestination] || { angle: 0, direction: 'Explorando...' },
+    [activeDestination]
+  );
+
   return (
-    <section className="bg-black py-24 md:py-40">
+    <section id="cinematic-destinations" className="bg-black py-24 md:py-40 relative">
       <div className="container mx-auto px-4 lg:px-8 mb-16 text-center">
         <motion.span
           initial={{ opacity: 0, y: 16 }}
@@ -299,10 +336,21 @@ export const CinematicDestinations = () => {
         </motion.p>
       </div>
 
-      <div className="container mx-auto px-4 lg:px-8">
+      <CompassBar 
+        destination={activeDestination} 
+        direction={currentData.direction} 
+        angle={currentData.angle} 
+      />
+
+      <div className="container mx-auto px-4 lg:px-8 mt-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {DESTINATIONS.map((dest, idx) => (
-            <DestinationCard key={dest.name} destination={dest} index={idx} />
+            <DestinationCard 
+              key={dest.name} 
+              destination={dest} 
+              index={idx} 
+              onActive={setActiveDestination}
+            />
           ))}
         </div>
       </div>
