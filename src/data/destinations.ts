@@ -163,7 +163,7 @@ export const destinations: Destination[] = [
     id: 'maceio',
     name: 'Maceió',
     location: 'Alagoas, Brasil',
-    image: 'https://images.unsplash.com/photo-1613945415309-906d907f183c?auto=format&fit=crop&w=800&q=80',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Ponta_Verde_Lighthouse_landscape_-_Macei%C3%B3%2C_Brazil_%28edited%29.jpg/1920px-Ponta_Verde_Lighthouse_landscape_-_Macei%C3%B3%2C_Brazil_%28edited%29.jpg',
     category: 'Praia',
     type: 'nacional',
     description: 'Mar de cor azul-esverdeada inesquecível e piscinas naturais acessíveis.',
