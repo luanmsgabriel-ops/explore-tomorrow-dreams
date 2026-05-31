@@ -189,7 +189,7 @@ export const destinations: Destination[] = [
     id: 'salvador',
     name: 'Salvador',
     location: 'Bahia, Brasil',
-    image: 'https://images.unsplash.com/photo-1583248369069-9d91f1640fe6?auto=format&fit=crop&w=800&q=80',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/c/c0/Salvador_BA_%28cropped%29_2.jpg',
     category: 'Cultural',
     type: 'nacional',
     description: 'Primeira capital do Brasil, com o Pelourinho histórico, axé e culinária afro-baiana.',
