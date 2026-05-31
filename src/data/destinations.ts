@@ -85,7 +85,7 @@ export const destinations: Destination[] = [
     id: 'porto-galinhas',
     name: 'Porto de Galinhas',
     location: 'Pernambuco, Brasil',
-    image: 'https://images.unsplash.com/photo-1589410173204-6f9a03b6038a?auto=format&fit=crop&w=800&q=80',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/4/41/Porto_de_Galinhas-003.jpg',
     category: 'Praia',
     type: 'nacional',
     description: 'Piscinas naturais de águas claras repletas de peixes coloridos e praias deslumbrantes.',
