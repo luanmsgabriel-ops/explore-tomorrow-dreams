@@ -93,8 +93,23 @@ function useLazyVideo(threshold = 0.25) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
 
+  // Detecta condições para NÃO carregar vídeo (mobile, save-data, conexão lenta, reduced-motion)
+  const shouldLoadVideo = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    // Mobile/tablet pequeno: nunca carrega vídeo (causa travamento)
+    if (window.matchMedia('(max-width: 1024px)').matches) return false;
+    // Usuário pediu menos movimento
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+    // Save-data ou conexão lenta
+    const conn = (navigator as any).connection;
+    if (conn?.saveData) return false;
+    if (conn?.effectiveType && /2g|slow-2g/.test(conn.effectiveType)) return false;
+    return true;
+  }, []);
+
   // Step 1 — detect entry into viewport
   useEffect(() => {
+    if (!shouldLoadVideo) return;
     const el = ref.current;
     if (!el) return;
 
@@ -110,7 +125,7 @@ function useLazyVideo(threshold = 0.25) {
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [threshold]);
+  }, [threshold, shouldLoadVideo]);
 
   // Step 2 — load & play only after entering viewport
   useEffect(() => {
@@ -158,8 +173,9 @@ function useLazyVideo(threshold = 0.25) {
     };
   }, [isInView]);
 
-  return { ref, isInView, isLoaded, hasError };
+  return { ref, isInView, isLoaded, hasError, shouldLoadVideo };
 }
+
 
 // ---------------------------------------------------------------------------
 // Card
@@ -174,7 +190,7 @@ const DestinationCard = ({
   index: number;
   onRatioUpdate: (name: string, ratio: number) => void;
 }) => {
-  const { ref: videoRef, isInView, isLoaded, hasError } = useLazyVideo(0.2);
+  const { ref: videoRef, isInView, isLoaded, hasError, shouldLoadVideo } = useLazyVideo(0.2);
   const cardRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -274,7 +290,7 @@ const DestinationCard = ({
         isWide ? 'md:col-span-2 aspect-[4/5] md:aspect-[16/9]' : 'aspect-[4/5] md:aspect-[3/4]'
       }`}
     >
-      {/* Poster — fades out once video is playing */}
+      {/* Poster — sempre visível em mobile; fade out em desktop quando vídeo toca */}
       <img
         src={destination.poster}
         alt={destination.name}
@@ -283,36 +299,39 @@ const DestinationCard = ({
         className={`absolute inset-0 w-full h-full object-cover ${
           isWide ? 'object-[center_40%]' : 'object-center'
         } transition-opacity duration-1000 ${
-          isLoaded ? 'opacity-0' : 'opacity-60'
+          !shouldLoadVideo ? 'opacity-100' : isLoaded ? 'opacity-0' : 'opacity-60'
         }`}
         aria-hidden="true"
       />
 
-      {/* Video — <source> injected only after IntersectionObserver fires */}
-      <video
-        ref={videoRef}
-        muted
-        loop
-        playsInline
-        preload="none"
-        className={`absolute inset-0 w-full h-full object-cover ${
-          isWide ? 'object-[center_40%]' : 'object-center'
-        } transition-all duration-1000 ${
-          isLoaded ? 'opacity-65 group-hover:opacity-85' : 'opacity-0'
-        }`}
-        aria-hidden="true"
-      >
-        {isInView && <source src={destination.video} type="video/mp4" />}
-      </video>
+      {/* Video — só monta em desktop com boa conexão */}
+      {shouldLoadVideo && (
+        <video
+          ref={videoRef}
+          muted
+          loop
+          playsInline
+          preload="none"
+          className={`absolute inset-0 w-full h-full object-cover ${
+            isWide ? 'object-[center_40%]' : 'object-center'
+          } transition-all duration-1000 ${
+            isLoaded ? 'opacity-65 group-hover:opacity-85' : 'opacity-0'
+          }`}
+          aria-hidden="true"
+        >
+          {isInView && <source src={destination.video} type="video/mp4" />}
+        </video>
+      )}
 
       {/* Buffering indicator */}
-      {isInView && !isLoaded && !hasError && (
+      {shouldLoadVideo && isInView && !isLoaded && !hasError && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center animate-pulse">
             <Play className="w-5 h-5 text-white ml-0.5" />
           </div>
         </div>
       )}
+
 
       {/* Cinematic overlays */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
