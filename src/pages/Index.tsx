@@ -27,23 +27,6 @@ const Index = () => {
 
         {/* 2 — Cinematic Destinations Section */}
         <CinematicDestinations />
-        <section className="relative isolate h-[60vh] md:h-[80vh] overflow-hidden hidden md:block border-y border-gold/10">
-          <HeroBackgroundVideo />
-          <div className="absolute inset-0 flex items-center justify-center text-center px-4">
-            <div className="max-w-4xl">
-              <h2 className="font-editorial text-5xl md:text-7xl text-foreground mb-6 drop-shadow-2xl">
-                O mundo como você <br/>
-                <span className="font-editorial-italic gradient-text-teal">nunca viu</span>.
-              </h2>
-              <p className="text-lg md:text-xl text-foreground/90 max-w-2xl mx-auto font-medium drop-shadow-lg">
-                Destinos curados com o olhar de quem entende que viajar é colecionar memórias inesquecíveis.
-              </p>
-            </div>
-          </div>
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce opacity-60">
-            <GoldenCompass size="sm" className="[&_svg]:animate-spin [animation-duration:8s]" />
-          </div>
-        </section>
 
         {/* 3 — Live Téo demo */}
         <TeoLiveDemo />
