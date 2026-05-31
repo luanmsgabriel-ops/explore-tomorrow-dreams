@@ -91,7 +91,7 @@ export const TeoHeroConversation = () => {
         </div>
 
         {/* Téo Protagonist Center */}
-        <div className="relative mb-16 flex items-center justify-center">
+        <div className="relative mb-8 md:mb-12 flex items-center justify-center">
           {/* Téo Aura/Glow */}
           <motion.div
             animate={{ 
@@ -172,12 +172,12 @@ export const TeoHeroConversation = () => {
           transition={{ duration: 0.8, delay: 0.6 }}
           className="flex flex-col items-center"
         >
-          <p className="text-lg md:text-xl text-white/70 max-w-2xl text-center leading-relaxed mb-10">
+          <p className="text-lg md:text-xl text-white/70 max-w-2xl text-center leading-relaxed mb-6 md:mb-8">
             Esqueça as buscas infinitas. O Téo entende seu estilo e planeja cada detalhe da sua 
             próxima experiência inesquecível em segundos.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-5 mb-12">
+          <div className="flex flex-col sm:flex-row gap-5 mb-8 md:mb-10">
             <Link
               to="/teo"
               className="btn-gold flex items-center justify-center gap-4 text-lg px-10 py-5 group relative overflow-hidden"

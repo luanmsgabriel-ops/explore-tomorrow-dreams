@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { MessageCircle, Play } from 'lucide-react';
@@ -298,35 +298,39 @@ const DestinationCard = ({
 export const CinematicDestinations = () => {
   const [activeDestination, setActiveDestination] = useState(DESTINATIONS[0].name);
   const [ratios, setRatios] = useState<Record<string, number>>({});
-  const timeoutRef = useRef<number | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const updateActiveDestination = (name: string, ratio: number) => {
+  const updateActiveDestination = useCallback((name: string, ratio: number) => {
     setRatios(prev => {
-      const newRatios = { ...prev, [name]: ratio };
-      
-      // Find winner with highest ratio
-      let winner = activeDestination;
-      let maxRatio = 0;
-
-      Object.entries(newRatios).forEach(([destName, destRatio]) => {
-        if (destRatio > maxRatio) {
-          maxRatio = destRatio;
-          winner = destName;
-        }
-      });
-
-      // Threshold check (60%) and Debounce (300ms)
-      if (maxRatio >= 0.6 && winner !== activeDestination) {
-        if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
-        
-        timeoutRef.current = window.setTimeout(() => {
-          setActiveDestination(winner);
-        }, 300) as unknown as number;
-      }
-
-      return newRatios;
+      if (prev[name] === ratio) return prev;
+      return { ...prev, [name]: ratio };
     });
-  };
+  }, []);
+
+  useEffect(() => {
+    let winner = activeDestination;
+    let maxRatio = 0;
+
+    Object.entries(ratios).forEach(([destName, destRatio]) => {
+      if (destRatio > maxRatio) {
+        maxRatio = destRatio;
+        winner = destName;
+      }
+    });
+
+    // Clear winner threshold (60%) and stability check
+    if (maxRatio >= 0.6 && winner !== activeDestination) {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      
+      timeoutRef.current = setTimeout(() => {
+        setActiveDestination(winner);
+      }, 300);
+    }
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [ratios, activeDestination]);
 
   const destinationMap: Record<string, { angle: number; direction: string }> = {
     'Fernando de Noronha': { angle: 45, direction: 'Nordeste do Brasil' },
