@@ -2,17 +2,33 @@ import { Link } from 'react-router-dom';
 import { MessageCircle, ArrowRight, Sparkles, ShieldCheck, Heart, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { TeoMascot } from '@/components/TeoMascot';
-import { GoldenCompass } from '@/components/GoldenCompass';
 import { fadeUp, staggerContainer, scaleUp } from '@/lib/animations';
 
 export const ClosingCTA = () => {
   return (
     <section className="relative py-32 md:py-48 overflow-hidden bg-black">
-      {/* Cinematic Background Gradient */}
+      {/* Cinematic Video Background — Swiss Alps / Turquoise Lakes */}
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover opacity-30 -z-20"
+      >
+        <source
+          src="https://player.vimeo.com/external/494248530.hd.mp4?s=e84e5904005b63b2f814457e4e11e05d9c22268a&profile_id=175"
+          type="video/mp4"
+        />
+      </video>
+
+      {/* Dark overlay to keep text legible */}
+      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black via-black/70 to-black/50" />
+
+      {/* Teal accent glow */}
       <div
-        className="absolute inset-0 -z-10 opacity-40"
-        style={{ 
-          background: 'radial-gradient(circle at center, rgba(0,255,200,0.15) 0%, transparent 70%)' 
+        className="absolute inset-0 -z-10 opacity-20"
+        style={{
+          background: 'radial-gradient(circle at center, rgba(0,255,200,0.15) 0%, transparent 70%)'
         }}
       />
       
@@ -26,18 +42,13 @@ export const ClosingCTA = () => {
         >
           <motion.div variants={scaleUp} className="flex justify-center mb-12">
             <div className="relative">
-              {/* Decorative GoldenCompass gigante atrás do Téo */}
-              <GoldenCompass
-                size="lg"
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 scale-[0.5] opacity-[0.03] pointer-events-none"
-              />
-              <motion.div 
-                animate={{ 
+              <motion.div
+                animate={{
                   scale: [1, 1.3, 1],
                   opacity: [0.3, 0.6, 0.3]
                 }}
                 transition={{ duration: 4, repeat: Infinity }}
-                className="absolute inset-0 -m-10 rounded-full bg-teal/20 blur-3xl" 
+                className="absolute inset-0 -m-10 rounded-full bg-teal/20 blur-3xl"
               />
               <div className="relative z-10">
                 <TeoMascot size="large" animated />
