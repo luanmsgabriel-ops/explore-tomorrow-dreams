@@ -202,7 +202,7 @@ export const destinations: Destination[] = [
     id: 'foz-iguacu',
     name: 'Foz do Iguaçu',
     location: 'Paraná, Brasil',
-    image: 'https://images.unsplash.com/photo-1558235222-6b95493202e2?auto=format&fit=crop&w=800&q=80',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Iguazu_Cataratas2.jpg/1920px-Iguazu_Cataratas2.jpg',
     category: 'Natureza',
     type: 'nacional',
     description: 'As majestosas Cataratas do Iguaçu, uma das sete maravilhas naturais do mundo.',
