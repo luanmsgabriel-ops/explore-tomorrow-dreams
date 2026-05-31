@@ -1,17 +1,33 @@
+import { motion } from 'framer-motion';
+
 interface GoldenCompassProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg';
+  angle?: number;
+  animated?: boolean;
 }
 
-export const GoldenCompass = ({ className = '', size = 'md' }: GoldenCompassProps) => {
+export const GoldenCompass = ({ 
+  className = '', 
+  size = 'md',
+  angle = 0,
+  animated = true
+}: GoldenCompassProps) => {
   const sizeClasses = {
     sm: 'w-24 h-24',
     md: 'w-40 h-40',
     lg: 'w-64 h-64',
   };
 
+  const springConfig = {
+    stiffness: 80,
+    damping: 12,
+    restDelta: 0.001
+  };
+
   return (
     <div className={`relative ${sizeClasses[size]} ${className}`}>
+
       <svg
         viewBox="0 0 200 200"
         className="w-full h-full animate-float drop-shadow-2xl"
@@ -106,20 +122,45 @@ export const GoldenCompass = ({ className = '', size = 'md' }: GoldenCompassProp
           filter="url(#compassShadow)"
         />
         
-        {/* Compass needle - North (gold) */}
-        <polygon
-          points="100,40 95,100 100,85 105,100"
-          fill="url(#goldMetallic)"
-          filter="url(#compassGlow)"
-        />
+        {/* Compass needle - rotating part */}
+        <motion.g
+          initial={false}
+          animate={{ rotate: angle }}
+          transition={animated ? {
+            type: "spring",
+            ...springConfig
+          } : { duration: 0 }}
+          style={{ originX: "100px", originY: "100px" }}
+        >
+          {/* North (gold) */}
+          <polygon
+            points="100,40 95,100 100,85 105,100"
+            fill="url(#goldMetallic)"
+            filter="url(#compassGlow)"
+            className="transition-all duration-700"
+          />
+          
+          {/* South (teal) */}
+          <polygon
+            points="100,160 95,100 100,115 105,100"
+            fill="url(#tealCenter)"
+          />
+
+          {/* Glow dourado ao travar (active indicator) */}
+          {angle !== 0 && (
+            <circle
+              cx="100"
+              cy="100"
+              r="12"
+              fill="none"
+              stroke="url(#goldMetallic)"
+              strokeWidth="1"
+              className="animate-pulse"
+            />
+          )}
+        </motion.g>
         
-        {/* Compass needle - South (teal) */}
-        <polygon
-          points="100,160 95,100 100,115 105,100"
-          fill="url(#tealCenter)"
-        />
-        
-        {/* Center pin */}
+        {/* Center pin (static) */}
         <circle
           cx="100"
           cy="100"
@@ -133,6 +174,7 @@ export const GoldenCompass = ({ className = '', size = 'md' }: GoldenCompassProp
           r="4"
           fill="hsl(45 80% 70%)"
         />
+
       </svg>
       
       {/* Glow effect behind */}
