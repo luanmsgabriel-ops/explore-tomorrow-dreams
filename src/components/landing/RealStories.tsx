@@ -7,21 +7,25 @@ const STORIES = [
     destination: "CABO FRIO • RJ",
     quote: "O atendimento foi personalizado, muito rápido e nos acompanhou do início ao fim.",
     author: "Alex Vieira",
-    image: "https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&w=800&q=80",
+    // Praia do Forte / Cabo Frio — RJ
+    image: "https://images.unsplash.com/photo-1583416750470-965b2707b355?auto=format&fit=crop&w=800&q=80",
   },
   {
     destination: "BOMBINHAS + BETO CARRERO",
     quote: "Achei maravilhosa.",
     author: "Mylena Cavalheiro",
-    image: "https://images.unsplash.com/photo-1544735032-6a71fd64446b?auto=format&fit=crop&w=800&q=80",
+    // Praia de Bombinhas — SC
+    image: "https://images.unsplash.com/photo-1535470850581-95288969cdb3?auto=format&fit=crop&w=800&q=80",
   },
   {
     destination: "MARAGOGI",
     quote: "Obrigada por essa experiência.",
     author: "Cliente Tomorrow Travel",
-    image: "https://images.unsplash.com/photo-1589909202802-8f4aadce1849?auto=format&fit=crop&w=800&q=80",
+    // Piscinas naturais de Maragogi — AL
+    image: "https://images.unsplash.com/photo-1621789098261-9c79a056af9d?auto=format&fit=crop&w=800&q=80",
   }
 ];
+
 
 export const RealStories = () => {
   return (
