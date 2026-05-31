@@ -176,7 +176,7 @@ export const destinations: Destination[] = [
     id: 'florianopolis',
     name: 'Florianópolis',
     location: 'Santa Catarina, Brasil',
-    image: 'https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?auto=format&fit=crop&w=800&q=80',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Morro_da_Cruz%2C_Florian%C3%B3polis_-_SC%2C_Brazil_-_panoramio_%28cropped%29.jpg/1920px-Morro_da_Cruz%2C_Florian%C3%B3polis_-_SC%2C_Brazil_-_panoramio_%28cropped%29.jpg',
     category: 'Ilha',
     type: 'nacional',
     description: 'A Ilha da Magia com 42 praias, trilhas e vida noturna agitada.',
