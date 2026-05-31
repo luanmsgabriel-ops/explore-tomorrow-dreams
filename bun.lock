@@ -35,7 +35,7 @@
         "@radix-ui/react-tooltip": "^1.2.7",
         "@supabase/supabase-js": "^2.90.1",
         "@tanstack/react-query": "^5.83.0",
-        "animejs": "^4.4.1",
+        "animejs": "^3.2.2",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "cmdk": "^1.1.1",
@@ -69,7 +69,7 @@
         "@tailwindcss/typography": "^0.5.16",
         "@testing-library/jest-dom": "^6.6.0",
         "@testing-library/react": "^16.0.0",
-        "@types/animejs": "^3.1.13",
+        "@types/animejs": "^3.1.12",
         "@types/node": "^22.16.5",
         "@types/react": "^18.3.23",
         "@types/react-dom": "^18.3.7",
@@ -729,7 +729,7 @@
 
     "ajv": ["ajv@6.12.6", "", { "dependencies": { "fast-deep-equal": "^3.1.1", "fast-json-stable-stringify": "^2.0.0", "json-schema-traverse": "^0.4.1", "uri-js": "^4.2.2" } }, "sha512-j3fVLgvTo527anyYyJOGTYJbG+vnnQYvE0m5mmkc1TK+nxAppkCLMIL0aZ4dblVCNoGShhm+kzE4ZUykBoMg4g=="],
 
-    "animejs": ["animejs@4.4.1", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/animejs/-/animejs-4.4.1.tgz", {}, "sha512-XimhJw4vPb6tAd6Zaoa6BaspJ8UteQMKvL7Pvrt6MW/6u2UvJs0TB/LLqR1sigaiYvpVPC3Tokr9emcCMhWFhw=="],
+    "animejs": ["animejs@3.2.2", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/animejs/-/animejs-3.2.2.tgz", {}, "sha512-Ao95qWLpDPXXM+WrmwcKbl6uNlC5tjnowlaRYtuVDHHoygjtIPfDUoK9NthrlZsQSKjZXlmji2TrBUAVbiH0LQ=="],
 
     "ansi-regex": ["ansi-regex@6.1.0", "", {}, "sha512-7HSX4QQb4CspciLpVFwyRe79O3xsIZDDLER21kERQ71oaPodF8jL725AgJMFAYbooIqolJoRLuM81SpeUkpkvA=="],
 
