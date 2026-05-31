@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, MapPin, Clock, Calendar, MessageSquare } from 'lucide-react';
-import { motion, useScroll, useTransform } from 'framer-motion';
-import { useRef } from 'react';
+import { motion } from 'framer-motion';
 import { destinations, type Destination } from '@/data/destinations';
 import { EditorialHeading } from './EditorialHeading';
 
@@ -25,6 +24,12 @@ const DestinationCard = ({ d, index }: { d: Destination; index: number }) => (
         alt={d.name}
         loading="lazy"
         className="absolute inset-0 w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-110 opacity-70 group-hover:opacity-90"
+        onError={(e) => {
+          const img = e.currentTarget;
+          img.onerror = null;
+          img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='1000' viewBox='0 0 800 1000'%3E%3Crect width='800' height='1000' fill='%23111827'/%3E%3C/svg%3E";
+          img.style.opacity = '1';
+        }}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
 
@@ -80,22 +85,12 @@ const Carousel = ({
   items: Destination[];
   viewAllHref: string;
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
-
-  // Calculate the total scrollable width to ensure the transform reaches the end
-  const x = useTransform(scrollYProgress, [0, 1], ["0%", "-50%"]);
-
   return (
-    <div ref={containerRef} className="mb-24 last:mb-0">
+    <div className="mb-24 last:mb-0">
       <div className="container mx-auto px-4 lg:px-8 mb-12">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div className="max-w-2xl">
-            <motion.span 
+            <motion.span
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
@@ -122,19 +117,13 @@ const Carousel = ({
         </div>
       </div>
 
-      <div className="relative overflow-x-auto snap-x snap-mandatory scrollbar-hide md:overflow-visible">
-        <motion.div 
-          style={{ x }}
-          drag="x"
-          dragConstraints={{ left: -2000, right: 0 }}
-          dragElastic={0.1}
-          className="flex gap-8 px-4 lg:px-8 pb-12 w-max cursor-grab active:cursor-grabbing"
-        >
+      <div className="relative overflow-x-auto snap-x snap-mandatory scrollbar-hide">
+        <div className="flex gap-8 px-4 lg:px-8 pb-12 w-max">
           {items.map((d, i) => (
             <DestinationCard key={d.id} d={d} index={i} />
           ))}
           <div className="shrink-0 w-8 md:w-32" aria-hidden="true" />
-        </motion.div>
+        </div>
       </div>
     </div>
   );

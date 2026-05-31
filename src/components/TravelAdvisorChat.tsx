@@ -650,7 +650,7 @@ Me conta aí! 👇`
 
   if (!isOpen) {
     return (
-      <div className="fixed bottom-4 right-6 z-50">
+      <div className="fixed bottom-8 right-4 z-50">
         {/* Mascot bubble removed per user request */}
 
         {/* Main button */}
@@ -697,7 +697,7 @@ Me conta aí! 👇`
   }
 
   return (
-    <div className="fixed bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-3rem)] h-[500px] max-h-[calc(100vh-8rem)] rounded-2xl shadow-2xl border border-border bg-background flex flex-col animate-scale-in overflow-hidden">
+    <div className="fixed bottom-24 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[500px] max-h-[calc(100vh-8rem)] rounded-2xl shadow-2xl border border-border bg-background flex flex-col animate-scale-in overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-primary/10 to-accent/10 shrink-0">
         <div className="flex items-center gap-3">
