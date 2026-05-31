@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import { motion, useInView } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { MessageCircle, Play } from 'lucide-react';
+import anime from 'animejs';
 import { CompassBar } from './CompassBar';
 
 
@@ -176,6 +176,8 @@ const DestinationCard = ({
 }) => {
   const { ref: videoRef, isInView, isLoaded, hasError } = useLazyVideo(0.2);
   const cardRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = cardRef.current;
@@ -184,6 +186,30 @@ const DestinationCard = ({
     const observer = new IntersectionObserver(
       ([entry]) => {
         onRatioUpdate(destination.name, entry.intersectionRatio);
+        
+        if (entry.isIntersecting) {
+          // Entry animation with anime.js
+          anime({
+            targets: el,
+            opacity: [0, 1],
+            translateY: [48, 0],
+            duration: 1200,
+            delay: (index % 3) * 150,
+            easing: 'easeOutExpo'
+          });
+
+          // Stagger title letters/entrance
+          if (titleRef.current) {
+            anime({
+              targets: titleRef.current,
+              translateX: [20, 0],
+              opacity: [0, 1],
+              duration: 1000,
+              delay: (index % 3) * 150 + 400,
+              easing: 'easeOutExpo'
+            });
+          }
+        }
       },
       { 
         threshold: Array.from({ length: 11 }, (_, i) => i * 0.1),
@@ -193,19 +219,58 @@ const DestinationCard = ({
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [destination.name, onRatioUpdate]);
+  }, [destination.name, onRatioUpdate, index]);
+
+  const handleMouseEnter = () => {
+    if (!cardRef.current) return;
+    
+    // Zoom image
+    anime({
+      targets: videoRef.current,
+      scale: 1.05,
+      duration: 800,
+      easing: 'easeOutQuad'
+    });
+
+    // Fade in text
+    if (contentRef.current) {
+      anime({
+        targets: contentRef.current.querySelector('p'),
+        opacity: [0, 1],
+        translateY: [10, 0],
+        duration: 500,
+        easing: 'easeOutQuad'
+      });
+    }
+  };
+
+  const handleMouseLeave = () => {
+    anime({
+      targets: videoRef.current,
+      scale: 1,
+      duration: 800,
+      easing: 'easeOutQuad'
+    });
+
+    if (contentRef.current) {
+      anime({
+        targets: contentRef.current.querySelector('p'),
+        opacity: 0,
+        translateY: 10,
+        duration: 400,
+        easing: 'easeOutQuad'
+      });
+    }
+  };
 
   const isWide = destination.size === 'wide';
 
   return (
-    <motion.div
+    <div
       ref={cardRef}
-
-      initial={{ opacity: 0, y: 48 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-80px' }}
-      transition={{ duration: 0.85, delay: (index % 3) * 0.12, ease: [0.22, 1, 0.36, 1] }}
-      className={`group relative overflow-hidden rounded-2xl bg-zinc-900 ${
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className={`group relative overflow-hidden rounded-2xl bg-zinc-900 opacity-0 ${
         isWide ? 'md:col-span-2 aspect-[4/5] md:aspect-[16/9]' : 'aspect-[4/5] md:aspect-[3/4]'
       }`}
     >
@@ -232,7 +297,7 @@ const DestinationCard = ({
         preload="none"
         className={`absolute inset-0 w-full h-full object-cover ${
           isWide ? 'object-[center_40%]' : 'object-center'
-        } scale-100 group-hover:scale-[1.03] transition-all duration-[1200ms] ease-out ${
+        } transition-all duration-1000 ${
           isLoaded ? 'opacity-65 group-hover:opacity-85' : 'opacity-0'
         }`}
         aria-hidden="true"
@@ -254,7 +319,10 @@ const DestinationCard = ({
       <div className="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent" />
 
       {/* Content */}
-      <div className={`absolute inset-0 flex flex-col justify-end p-7 md:p-10 ${isWide ? 'md:p-14' : ''}`}>
+      <div 
+        ref={contentRef}
+        className={`absolute inset-0 flex flex-col justify-end p-7 md:p-10 ${isWide ? 'md:p-14' : ''}`}
+      >
         <div className="flex items-center gap-3 mb-4">
           <span className={`px-3 py-1 rounded-full text-[10px] uppercase tracking-widest border backdrop-blur-md font-semibold ${destination.tagColor}`}>
             {destination.tag}
@@ -264,13 +332,16 @@ const DestinationCard = ({
           </span>
         </div>
 
-        <h3 className={`font-editorial text-white mb-3 leading-none group-hover:translate-x-2 transition-transform duration-500 ${
-          isWide ? 'text-4xl md:text-6xl' : 'text-3xl md:text-4xl'
-        }`}>
+        <h3 
+          ref={titleRef}
+          className={`font-editorial text-white mb-3 leading-none opacity-0 ${
+            isWide ? 'text-4xl md:text-6xl' : 'text-3xl md:text-4xl'
+          }`}
+        >
           {destination.name}
         </h3>
 
-        <p className="text-white/55 text-sm md:text-base max-w-lg mb-7 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500">
+        <p className="text-white/55 text-sm md:text-base max-w-lg mb-7 opacity-0 translate-y-2">
           {destination.description}
         </p>
 
@@ -287,7 +358,7 @@ const DestinationCard = ({
           </div>
         </Link>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
@@ -305,6 +376,34 @@ export const CinematicDestinations = () => {
       if (prev[name] === ratio) return prev;
       return { ...prev, [name]: ratio };
     });
+  }, []);
+
+  useEffect(() => {
+    // Section entrance animation
+    const section = document.getElementById('cinematic-destinations');
+    if (section) {
+      const observer = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting) {
+          const targets = [
+            section.querySelector('[data-anime-eyebrow]'),
+            section.querySelector('[data-anime-title]'),
+            section.querySelector('[data-anime-desc]')
+          ].filter(Boolean);
+
+          anime({
+            targets,
+            opacity: [0, 1],
+            translateY: [20, 0],
+            delay: anime.stagger(150),
+            duration: 1000,
+            easing: 'easeOutExpo'
+          });
+          observer.disconnect();
+        }
+      }, { threshold: 0.1 });
+      observer.observe(section);
+      return () => observer.disconnect();
+    }
   }, []);
 
   useEffect(() => {
