@@ -119,6 +119,18 @@ export const HowItWorksTimeline = () => {
               );
             })}
           </div>
+          <motion.div 
+            variants={fadeUp}
+            className="mt-16 flex justify-center"
+          >
+            <a
+              href="/teo"
+              className="btn-gold flex items-center gap-3 px-8 py-4 group"
+            >
+              <MessageCircle className="w-5 h-5" />
+              <span className="font-semibold">Começar agora com o Téo</span>
+            </a>
+          </motion.div>
         </motion.div>
       </div>
     </section>

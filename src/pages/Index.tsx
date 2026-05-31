@@ -1,6 +1,4 @@
-import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
-import { GoldenCompass } from '@/components/GoldenCompass';
 import { Footer } from '@/components/Footer';
 import { TeoHeroConversation } from '@/components/landing/TeoHeroConversation';
 import { SocialProofStrip } from '@/components/landing/SocialProofStrip';
@@ -13,11 +11,9 @@ import { ClosingCTA } from '@/components/landing/ClosingCTA';
 import { FloatingTeoButton } from '@/components/landing/FloatingTeoButton';
 import { ActiveOffersCarousel } from '@/components/ActiveOffersCarousel';
 import { RealItinerariesShowcase } from '@/components/landing/RealItinerariesShowcase';
-import { HeroBackgroundVideo } from '@/components/landing/HeroBackgroundVideo';
 import { CinematicDestinations } from '@/components/landing/CinematicDestinations';
 import { LandingFAQ } from '@/components/landing/LandingFAQ';
 import { ExploreTheWorld } from '@/components/landing/ExploreTheWorld';
-import { CompassBar } from '@/components/landing/CompassBar';
 
 const JourneyConnector = () => (
   <div className="h-32 w-full flex justify-center items-center pointer-events-none relative overflow-hidden">
@@ -28,67 +24,31 @@ const JourneyConnector = () => (
 );
 
 const Index = () => {
-  const [navState, setNavState] = useState({
-    destination: 'Explorando',
-    direction: 'Comece sua jornada',
-    angle: 0,
-    visible: false
-  });
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollPos = window.scrollY;
-      const heroHeight = window.innerHeight;
-      
-      if (scrollPos > heroHeight * 0.5) {
-        setNavState(prev => ({ ...prev, visible: true }));
-      } else {
-        setNavState(prev => ({ ...prev, visible: false }));
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
   return (
     <div className="min-h-screen bg-background relative selection:bg-gold/30">
       <Header />
       
-      {/* Global Navigator - The Journey Guide */}
-      <div 
-        className={`fixed top-0 left-0 right-0 z-[60] pointer-events-none transition-all duration-700 transform ${
-          navState.visible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
-        }`}
-      >
-        <CompassBar 
-          destination={navState.destination} 
-          direction={navState.direction} 
-          angle={navState.angle} 
-        />
-      </div>
-
       <main>
         {/* 1 — Hero: Téo as protagonist */}
         <TeoHeroConversation />
 
-        {/* 2 — Cinematic Destinations Section */}
-        <CinematicDestinations onStateChange={(state) => setNavState(prev => ({ ...prev, ...state }))} />
+        {/* 2 — Live Téo demo (Mover para posição 2 para antecipar conversão) */}
+        <TeoLiveDemo />
 
         <JourneyConnector />
 
-        {/* 3 — Live Téo demo */}
-        <TeoLiveDemo />
+        {/* 3 — Cinematic Destinations Section */}
+        <CinematicDestinations />
+
+        <JourneyConnector />
 
         {/* 4 — Real Itineraries Showcase */}
         <RealItinerariesShowcase />
 
         <JourneyConnector />
 
-        {/* 5 — Destinos nacionais e internacionais (carrosséis horizontais) */}
-        <DestinationsCarousels 
-          onStateChange={(state) => setNavState(prev => ({ ...prev, ...state }))} 
-        />
+        {/* 5 — Destinos nacionais e internacionais */}
+        <DestinationsCarousels />
 
         {/* 6 — How it works */}
         <HowItWorksTimeline />
@@ -99,7 +59,7 @@ const Index = () => {
         {/* 8 — Comparison */}
         <ComparisonTable />
 
-        {/* 9 — Conditional offers (only renders if there are active offers) */}
+        {/* 9 — Conditional offers */}
         <ActiveOffersCarousel />
 
         {/* 10 — Testimonials */}
@@ -111,7 +71,7 @@ const Index = () => {
         <JourneyConnector />
         
         {/* 11.5 — Explore the World Cinematic Experience */}
-        <ExploreTheWorld onStateChange={(state) => setNavState(prev => ({ ...prev, ...state }))} />
+        <ExploreTheWorld />
 
         {/* 12 — Closing CTA */}
         <ClosingCTA />
@@ -119,7 +79,7 @@ const Index = () => {
 
       <Footer />
 
-      {/* Floating Téo (replaces generic WhatsApp on home) */}
+      {/* Floating Téo */}
       <FloatingTeoButton />
     </div>
   );
