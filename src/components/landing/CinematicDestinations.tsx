@@ -448,36 +448,28 @@ export const CinematicDestinations = () => {
   return (
     <section id="cinematic-destinations" className="bg-black py-24 md:py-40 relative">
       <div className="container mx-auto px-4 lg:px-8 mb-16 text-center">
-        <motion.span
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-gold tracking-[0.4em] text-xs uppercase mb-4 block"
+        <span
+          data-anime-eyebrow
+          className="text-gold tracking-[0.4em] text-xs uppercase mb-4 block opacity-0"
         >
           Curadoria Tomorrow
-        </motion.span>
+        </span>
 
-        <motion.h2
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.15 }}
-          className="font-editorial text-4xl md:text-7xl text-white"
+        <h2
+          data-anime-title
+          className="font-editorial text-4xl md:text-7xl text-white opacity-0"
         >
           Destinos que{' '}
           <span className="font-editorial-italic gradient-text-teal italic">respiram</span>{' '}
           arte.
-        </motion.h2>
+        </h2>
 
-        <motion.p
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.3 }}
-          className="text-white/40 mt-6 max-w-2xl mx-auto text-sm md:text-lg"
+        <p
+          data-anime-desc
+          className="text-white/40 mt-6 max-w-2xl mx-auto text-sm md:text-lg opacity-0"
         >
           A curadoria definitiva para quem busca não apenas viajar, mas viver uma experiência estética transcendental.
-        </motion.p>
+        </p>
       </div>
 
       <div className="sticky top-0 z-50 pointer-events-none">
