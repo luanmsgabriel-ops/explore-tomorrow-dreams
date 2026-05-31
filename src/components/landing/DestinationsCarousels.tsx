@@ -188,9 +188,36 @@ const Carousel = ({
   );
 };
 
-export const DestinationsCarousels = () => {
+export const DestinationsCarousels = ({ 
+  onStateChange 
+}: { 
+  onStateChange?: (state: { destination: string; direction: string; angle: number }) => void 
+}) => {
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el || !onStateChange) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        onStateChange({
+          destination: 'Catálogo Editorial',
+          direction: 'Brasil & Mundo',
+          angle: 180
+        });
+      }
+    }, { threshold: 0.2 });
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [onStateChange]);
+
   return (
-    <section className="relative py-24 md:py-40 bg-[#020607] border-t border-white/5 overflow-hidden">
+    <section 
+      ref={sectionRef}
+      className="relative py-24 md:py-40 bg-[#020607] border-t border-white/5 overflow-hidden"
+    >
       <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-black to-transparent -z-10" />
       
       <Carousel
