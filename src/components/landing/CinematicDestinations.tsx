@@ -174,7 +174,7 @@ const DestinationCard = ({ destination, index }: { destination: Destination; ind
       viewport={{ once: true, margin: '-80px' }}
       transition={{ duration: 0.85, delay: (index % 3) * 0.12, ease: [0.22, 1, 0.36, 1] }}
       className={`group relative overflow-hidden rounded-2xl bg-zinc-900 ${
-        isWide ? 'md:col-span-2 aspect-[16/9]' : 'aspect-[4/5] md:aspect-[3/4]'
+        isWide ? 'md:col-span-2 aspect-[4/5] md:aspect-[16/9]' : 'aspect-[4/5] md:aspect-[3/4]'
       }`}
     >
       {/* Poster — fades out once video is playing */}
@@ -183,7 +183,9 @@ const DestinationCard = ({ destination, index }: { destination: Destination; ind
         alt={destination.name}
         loading="lazy"
         decoding="async"
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+        className={`absolute inset-0 w-full h-full object-cover ${
+          isWide ? 'object-[center_40%]' : 'object-center'
+        } transition-opacity duration-1000 ${
           isLoaded ? 'opacity-0' : 'opacity-60'
         }`}
         aria-hidden="true"
@@ -196,8 +198,10 @@ const DestinationCard = ({ destination, index }: { destination: Destination; ind
         loop
         playsInline
         preload="none"
-        className={`absolute inset-0 w-full h-full object-cover object-center scale-105 group-hover:scale-100 transition-all duration-[1200ms] ease-out ${
-          isLoaded ? 'opacity-60 group-hover:opacity-80' : 'opacity-0'
+        className={`absolute inset-0 w-full h-full object-cover ${
+          isWide ? 'object-[center_40%]' : 'object-center'
+        } scale-100 group-hover:scale-[1.03] transition-all duration-[1200ms] ease-out ${
+          isLoaded ? 'opacity-65 group-hover:opacity-85' : 'opacity-0'
         }`}
         aria-hidden="true"
       >
