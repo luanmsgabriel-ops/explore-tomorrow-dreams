@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, MapPin, Clock, Calendar, MessageSquare } from 'lucide-react';
-import anime from 'animejs';
+import * as anime_module from 'animejs';
+const anime = (anime_module as any).default || anime_module;
 import { destinations, type Destination } from '@/data/destinations';
 import { EditorialHeading } from './EditorialHeading';
 
