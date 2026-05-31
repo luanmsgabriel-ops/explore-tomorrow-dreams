@@ -98,7 +98,7 @@ export const destinations: Destination[] = [
     id: 'gramado',
     name: 'Gramado',
     location: 'Rio Grande do Sul, Brasil',
-    image: 'https://images.unsplash.com/photo-1516939884455-1445c8652f83?auto=format&fit=crop&w=800&q=80',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Panorama_of_Centro_de_Gramado_at_night_%2824884860720%29.jpg/1920px-Panorama_of_Centro_de_Gramado_at_night_%2824884860720%29.jpg',
     category: 'Charme',
     type: 'nacional',
     description: 'Arquitetura europeia, gastronomia refinada e clima de montanha na Serra Gaúcha.',
