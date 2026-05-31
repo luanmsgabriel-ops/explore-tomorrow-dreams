@@ -26,6 +26,11 @@ export const ClosingCTA = () => {
         >
           <motion.div variants={scaleUp} className="flex justify-center mb-12">
             <div className="relative">
+              {/* Decorative GoldenCompass gigante atrás do Téo */}
+              <GoldenCompass
+                size="lg"
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 scale-[3] opacity-5 pointer-events-none"
+              />
               <motion.div 
                 animate={{ 
                   scale: [1, 1.3, 1],
