@@ -6,7 +6,6 @@ import { TeoLiveDemo } from '@/components/landing/TeoLiveDemo';
 import { DestinationsCarousels } from '@/components/landing/DestinationsCarousels';
 import { HowItWorksTimeline } from '@/components/landing/HowItWorksTimeline';
 import { ComparisonTable } from '@/components/landing/ComparisonTable';
-import { TestimonialsWall } from '@/components/landing/TestimonialsWall';
 import { ClosingCTA } from '@/components/landing/ClosingCTA';
 import { FloatingTeoButton } from '@/components/landing/FloatingTeoButton';
 import { ActiveOffersCarousel } from '@/components/ActiveOffersCarousel';
@@ -14,6 +13,11 @@ import { RealItinerariesShowcase } from '@/components/landing/RealItinerariesSho
 import { CinematicDestinations } from '@/components/landing/CinematicDestinations';
 import { LandingFAQ } from '@/components/landing/LandingFAQ';
 import { ExploreTheWorld } from '@/components/landing/ExploreTheWorld';
+import { TrustBar } from '@/components/landing/TrustBar';
+import { RealStories } from '@/components/landing/RealStories';
+import { PostTravelCare } from '@/components/landing/PostTravelCare';
+import { GoogleReviews } from '@/components/landing/GoogleReviews';
+import { MetricsStrip } from '@/components/landing/MetricsStrip';
 
 const JourneyConnector = () => (
   <div className="h-32 w-full flex justify-center items-center pointer-events-none relative overflow-hidden">
