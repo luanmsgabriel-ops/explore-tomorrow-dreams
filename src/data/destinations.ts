@@ -111,7 +111,7 @@ export const destinations: Destination[] = [
     id: 'bonito',
     name: 'Bonito',
     location: 'Mato Grosso do Sul, Brasil',
-    image: 'https://images.unsplash.com/photo-1601366533287-5ee4c763ae4e?auto=format&fit=crop&w=800&q=80',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Gruta_do_Lago_Azul_%28Bonito%29.jpg/1280px-Gruta_do_Lago_Azul_%28Bonito%29.jpg',
     category: 'Eco',
     type: 'nacional',
     description: 'Capital do ecoturismo, com rios de águas cristalinas, cavernas e cachoeiras.',
