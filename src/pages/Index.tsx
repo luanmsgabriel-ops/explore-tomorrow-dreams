@@ -19,6 +19,14 @@ import { LandingFAQ } from '@/components/landing/LandingFAQ';
 import { ExploreTheWorld } from '@/components/landing/ExploreTheWorld';
 import { CompassBar } from '@/components/landing/CompassBar';
 
+const JourneyConnector = () => (
+  <div className="h-32 w-full flex justify-center items-center pointer-events-none relative overflow-hidden">
+    <div className="w-px h-full bg-gradient-to-b from-transparent via-gold/40 to-transparent relative">
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-gold rounded-full blur-[2px] animate-pulse" />
+    </div>
+  </div>
+);
+
 const Index = () => {
   const [navState, setNavState] = useState({
     destination: 'Explorando',
@@ -67,14 +75,20 @@ const Index = () => {
         {/* 2 — Cinematic Destinations Section */}
         <CinematicDestinations onStateChange={(state) => setNavState(prev => ({ ...prev, ...state }))} />
 
+        <JourneyConnector />
+
         {/* 3 — Live Téo demo */}
         <TeoLiveDemo />
 
         {/* 4 — Real Itineraries Showcase */}
         <RealItinerariesShowcase />
 
+        <JourneyConnector />
+
         {/* 5 — Destinos nacionais e internacionais (carrosséis horizontais) */}
-        <DestinationsCarousels />
+        <DestinationsCarousels 
+          onStateChange={(state) => setNavState(prev => ({ ...prev, ...state }))} 
+        />
 
         {/* 6 — How it works */}
         <HowItWorksTimeline />
@@ -93,6 +107,8 @@ const Index = () => {
 
         {/* 11 — FAQ */}
         <LandingFAQ />
+        
+        <JourneyConnector />
         
         {/* 11.5 — Explore the World Cinematic Experience */}
         <ExploreTheWorld />
