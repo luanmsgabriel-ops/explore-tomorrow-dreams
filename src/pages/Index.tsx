@@ -32,48 +32,46 @@ const Index = () => {
         {/* 1 — Hero: Téo as protagonist */}
         <TeoHeroConversation />
 
-        {/* 2 — Live Téo demo (Mover para posição 2 para antecipar conversão) */}
+        {/* 2 — Live Téo demo */}
         <TeoLiveDemo />
 
         <JourneyConnector />
 
-        {/* 3 — Cinematic Destinations Section */}
+        {/* 3 — Social proof strip (Replaced avatars with silhuetas premium in component) */}
+        <SocialProofStrip />
+
+        <JourneyConnector />
+
+        {/* 4 — How it works */}
+        <HowItWorksTimeline />
+
+        <JourneyConnector />
+
+        {/* 5 — Cinematic Destinations Section */}
         <CinematicDestinations />
 
         <JourneyConnector />
 
-        {/* 4 — Real Itineraries Showcase */}
+        {/* 6 — Real Itineraries Showcase */}
         <RealItinerariesShowcase />
 
         <JourneyConnector />
 
-        {/* 5 — Destinos nacionais e internacionais */}
-        <DestinationsCarousels />
-
-        {/* 6 — How it works */}
-        <HowItWorksTimeline />
-
-        {/* 7 — Social proof strip */}
-        <SocialProofStrip />
-
-        {/* 8 — Comparison */}
+        {/* 7 — Comparison */}
         <ComparisonTable />
 
-        {/* 9 — Conditional offers */}
+        {/* 8 — Conditional offers (Mantido por ser conversão direta) */}
         <ActiveOffersCarousel />
 
-        {/* 10 — Testimonials */}
+        {/* 9 — Testimonials */}
         <TestimonialsWall />
 
-        {/* 11 — FAQ */}
+        {/* 10 — FAQ */}
         <LandingFAQ />
         
         <JourneyConnector />
-        
-        {/* 11.5 — Explore the World Cinematic Experience */}
-        <ExploreTheWorld />
 
-        {/* 12 — Closing CTA */}
+        {/* 11 — Closing CTA */}
         <ClosingCTA />
       </main>
 

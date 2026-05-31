@@ -3,20 +3,20 @@ import { motion } from 'framer-motion';
 import { fadeUp, staggerContainer } from '@/lib/animations';
 
 const avatars = [
-  'https://i.pravatar.cc/64?img=12',
-  'https://i.pravatar.cc/64?img=32',
-  'https://i.pravatar.cc/64?img=47',
-  'https://i.pravatar.cc/64?img=68',
-  'https://i.pravatar.cc/64?img=5',
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=64&h=64&q=80',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=64&h=64&q=80',
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=64&h=64&q=80',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=64&h=64&q=80',
+  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=64&h=64&q=80',
 ];
 
 const partners = [
-  { name: 'LATAM', logo: '✈️' },
-  { name: 'Emirates', logo: '🇦🇪' },
-  { name: 'Marriott', logo: '🏨' },
-  { name: 'Four Seasons', logo: '🌳' },
-  { name: 'Aman', logo: '🏯' },
-  { name: 'Belmond', logo: '🚂' }
+  { name: 'LATAM', logo: 'https://upload.wikimedia.org/wikipedia/commons/d/d0/Latam-logo-2016.svg' },
+  { name: 'Emirates', logo: 'https://upload.wikimedia.org/wikipedia/commons/d/d0/Emirates_logo.svg' },
+  { name: 'Marriott', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/03/Marriott_International_Logo.svg' },
+  { name: 'Four Seasons', logo: 'https://upload.wikimedia.org/wikipedia/commons/6/69/Four_Seasons_Hotels_Logo.svg' },
+  { name: 'Aman', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Aman_Resorts_logo.svg/1280px-Aman_Resorts_logo.svg.png' },
+  { name: 'Belmond', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Belmond_logo.svg/1200px-Belmond_logo.svg.png' }
 ];
 
 export const SocialProofStrip = () => {
@@ -64,13 +64,14 @@ export const SocialProofStrip = () => {
              <span className="text-[10px] uppercase tracking-[0.4em] text-white/30 mb-6 font-bold">
               Rede Global de Parceiros
             </span>
-            <div className="flex flex-wrap justify-center gap-x-10 gap-y-4">
+            <div className="flex flex-wrap justify-center gap-x-12 gap-y-6">
               {partners.map((p) => (
-                <div key={p.name} className="flex items-center gap-2 group">
-                  <span className="text-xl grayscale group-hover:grayscale-0 transition-all duration-500">{p.logo}</span>
-                  <span className="font-editorial text-lg text-white/40 group-hover:text-gold transition-colors duration-500 tracking-wide">
-                    {p.name}
-                  </span>
+                <div key={p.name} className="flex items-center gap-3 group opacity-40 hover:opacity-100 transition-opacity duration-500">
+                  <img 
+                    src={p.logo} 
+                    alt={p.name} 
+                    className="h-6 md:h-8 w-auto grayscale group-hover:grayscale-0 transition-all duration-500 object-contain"
+                  />
                 </div>
               ))}
             </div>

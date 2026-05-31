@@ -16,42 +16,42 @@ const TESTIMONIALS: Testimonial[] = [
     name: 'Camila R.',
     trip: 'Lua de mel · Maldivas',
     text: 'Conversei com o Téo num domingo à noite. Segunda de manhã já tinha a cotação completa. Achei que era robô, mas parecia papo de amiga. Incrível!',
-    avatar: 'https://i.pravatar.cc/120?img=47',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80',
     rating: 5
   },
   {
     name: 'Rafael e Júlia',
     trip: 'Família · Patagônia',
     text: 'Levamos as crianças pro fim do mundo sem stress nenhum. O concierge no WhatsApp salvou a gente quando o voo atrasou no Chile.',
-    avatar: 'https://i.pravatar.cc/120?img=12',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80',
     rating: 5
   },
   {
     name: 'Marina P.',
     trip: 'Solo · Japão',
     text: 'O roteiro tinha coisas que eu nunca acharia sozinha. Curadoria real. E o melhor: nenhum formulário gigante. Foi tudo no chat em minutos.',
-    avatar: 'https://i.pravatar.cc/120?img=32',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&h=120&q=80',
     rating: 5
   },
   {
     name: 'Bruno T.',
     trip: 'Aventura · Noronha',
     text: 'Pedi “6 dias, mergulho e pouco turistão”. Voltou um roteiro absurdamente certeiro. O Téo realmente entende o que a gente quer.',
-    avatar: 'https://i.pravatar.cc/120?img=68',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&h=120&q=80',
     rating: 5
   },
   {
     name: 'Fernanda L.',
     trip: 'Casal · Caribe',
     text: 'A cotação chegou em horas, não em dias. A agilidade da IA com o cuidado humano da Tomorrow é a combinação perfeita.',
-    avatar: 'https://i.pravatar.cc/120?img=5',
+    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&h=120&q=80',
     rating: 5
   },
   {
     name: 'Gustavo M.',
     trip: 'Business · Londres',
     text: 'Precisava de um hotel específico perto da City. O Téo resolveu em segundos e o consultor ainda conseguiu um upgrade no check-in.',
-    avatar: 'https://i.pravatar.cc/120?img=11',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&h=120&q=80',
     rating: 5
   }
 ];

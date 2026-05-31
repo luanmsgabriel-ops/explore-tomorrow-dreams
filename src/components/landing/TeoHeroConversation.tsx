@@ -13,10 +13,10 @@ const TEO_LINES = [
 ];
 
 const avatars = [
-  'https://i.pravatar.cc/64?img=12',
-  'https://i.pravatar.cc/64?img=32',
-  'https://i.pravatar.cc/64?img=47',
-  'https://i.pravatar.cc/64?img=68',
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=64&h=64&q=80',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=64&h=64&q=80',
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=64&h=64&q=80',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=64&h=64&q=80',
 ];
 
 export const TeoHeroConversation = () => {
@@ -172,9 +172,15 @@ export const TeoHeroConversation = () => {
           transition={{ duration: 0.8, delay: 0.6 }}
           className="flex flex-col items-center"
         >
+          <div className="flex flex-wrap justify-center gap-3 mb-6">
+            <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-bold tracking-[0.2em] text-white uppercase">100% Grátis</span>
+            <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-bold tracking-[0.2em] text-white uppercase">Roteiro em 10s</span>
+            <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-bold tracking-[0.2em] text-white uppercase">IA + Consultor Humano</span>
+          </div>
+          
           <p className="text-lg md:text-xl text-white/70 max-w-2xl text-center leading-relaxed mb-6 md:mb-8">
             Fale como fala com um amigo. O Téo cria seu roteiro personalizado em minutos — 
-            e um consultor humano transforma em realidade. Grátis em 10 segundos.
+            e um consultor humano transforma em realidade.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-5 mb-8 md:mb-10">
