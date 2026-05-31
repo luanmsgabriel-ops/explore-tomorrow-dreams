@@ -2,20 +2,12 @@ import { Star, Shield, Users, Award, Headphones } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { fadeUp, staggerContainer } from '@/lib/animations';
 
-const avatars = [
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=64&h=64&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=64&h=64&q=80',
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=64&h=64&q=80',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=64&h=64&q=80',
-  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=64&h=64&q=80',
-];
-
 const partners = [
-  { name: 'LATAM', logo: 'https://upload.wikimedia.org/wikipedia/commons/d/d0/Latam-logo-2016.svg' },
+  { name: 'LATAM', logo: 'https://cdn.worldvectorlogo.com/logos/latam-airlines-1.svg' },
   { name: 'Emirates', logo: 'https://upload.wikimedia.org/wikipedia/commons/d/d0/Emirates_logo.svg' },
-  { name: 'Marriott', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/03/Marriott_International_Logo.svg' },
-  { name: 'Four Seasons', logo: 'https://upload.wikimedia.org/wikipedia/commons/6/69/Four_Seasons_Hotels_Logo.svg' },
-  { name: 'Aman', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Aman_Resorts_logo.svg/1280px-Aman_Resorts_logo.svg.png' },
+  { name: 'Marriott', logo: 'https://cdn.worldvectorlogo.com/logos/marriott-international-1.svg' },
+  { name: 'Four Seasons', logo: 'https://cdn.worldvectorlogo.com/logos/four-seasons-hotels-and-resorts.svg' },
+  { name: 'Aman', logo: 'https://www.aman.com/themes/custom/aman/logo.svg' },
   { name: 'Belmond', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Belmond_logo.svg/1200px-Belmond_logo.svg.png' }
 ];
 
