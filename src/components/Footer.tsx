@@ -111,11 +111,33 @@ export const Footer = () => {
         </div>
 
         {/* Bottom */}
-        <div className="border-t border-gold/20 mt-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-muted-foreground text-sm">
+        <div className="border-t border-gold/20 mt-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="flex flex-col gap-2">
+            <p className="text-muted-foreground text-sm uppercase tracking-widest font-bold">
+              TOMORROW TRAVEL
+            </p>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-[10px] text-muted-foreground/60 uppercase tracking-widest">
+              <span>CNPJ: 64.369.269/0001-22</span>
+              <span>Razão Social: Luan Gabriel de Medeiros Santos</span>
+              <span>Itapetininga • São Paulo</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="px-4 py-2 border border-gold/20 rounded-full flex items-center gap-3">
+              <div className="w-2 h-2 bg-teal rounded-full animate-pulse" />
+              <span className="text-[10px] uppercase tracking-widest text-gold-light font-bold">
+                Empresa registrada no Brasil
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-4 border-t border-white/5 pt-8">
+          <p className="text-muted-foreground/40 text-[10px] uppercase tracking-widest">
             © 2026 Tomorrow Travel. Todos os direitos reservados.
           </p>
-          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+          <div className="flex items-center gap-6 text-[10px] uppercase tracking-widest text-muted-foreground/40 font-bold">
             <a href="#" className="hover:text-gold-light transition-colors">Termos de Uso</a>
             <a href="#" className="hover:text-gold-light transition-colors">Privacidade</a>
           </div>
