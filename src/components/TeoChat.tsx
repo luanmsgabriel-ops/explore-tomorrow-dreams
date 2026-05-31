@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, User, Phone, UserCircle, ExternalLink } from 'lucide-react';
+import { GoldenCompass } from '@/components/GoldenCompass';
 import { toast } from 'sonner';
 import { chatMessageSchema, generateSecureSessionId, sanitizeText, phoneSchema, nameSchema } from '@/lib/validations';
 import { supabase } from '@/integrations/supabase/client';
