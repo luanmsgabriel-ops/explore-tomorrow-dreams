@@ -215,7 +215,7 @@ export const destinations: Destination[] = [
     id: 'pantanal',
     name: 'Pantanal',
     location: 'Mato Grosso, Brasil',
-    image: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=800&q=80',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Jaguar_%28Panthera_onca_palustris%29_female_Piquiri_River_2.JPG/1280px-Jaguar_%28Panthera_onca_palustris%29_female_Piquiri_River_2.JPG',
     category: 'Eco',
     type: 'nacional',
     description: 'Maior planície alagada do mundo, com vida selvagem abundante e safáris fotográficos.',
