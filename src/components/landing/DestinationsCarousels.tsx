@@ -117,8 +117,8 @@ const Carousel = ({
         </div>
       </div>
 
-      <div className="relative overflow-x-auto snap-x snap-mandatory scrollbar-hide">
-        <div className="flex gap-8 px-4 lg:px-8 pb-12 w-max">
+      <div className="relative overflow-x-auto snap-x snap-mandatory scrollbar-hide overscroll-x-contain">
+        <div className="flex gap-8 px-4 lg:px-8 pb-12 w-max min-w-full">
           {items.map((d, i) => (
             <DestinationCard key={d.id} d={d} index={i} />
           ))}
