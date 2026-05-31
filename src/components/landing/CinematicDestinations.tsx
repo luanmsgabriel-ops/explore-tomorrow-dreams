@@ -30,6 +30,36 @@ const DESTINATIONS: Destination[] = [
     size: 'wide',
   },
   {
+    name: 'Lençóis Maranhenses',
+    country: 'Brasil',
+    tag: 'Único',
+    tagColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+    description: 'Dunas brancas e lagoas de água doce num deserto que não existe no mapa.',
+    video: 'https://videos.pexels.com/video-files/4763824/4763824-hd_1280_720_30fps.mp4',
+    poster: 'https://images.unsplash.com/photo-1599413985389-fe8e2e7beb88?auto=format&fit=crop&w=900&q=70',
+    size: 'normal',
+  },
+  {
+    name: 'Jericoacoara',
+    country: 'Brasil',
+    tag: 'Aventura',
+    tagColor: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
+    description: 'Ventos, dunas e o pôr do sol mais bonito do Nordeste.',
+    video: 'https://videos.pexels.com/video-files/2169307/2169307-hd_1280_720_30fps.mp4',
+    poster: 'https://images.unsplash.com/photo-1596522354195-e84ae3c98731?auto=format&fit=crop&w=900&q=70',
+    size: 'normal',
+  },
+  {
+    name: 'Rio de Janeiro',
+    country: 'Brasil',
+    tag: 'Icônico',
+    tagColor: 'bg-green-500/20 text-green-300 border-green-500/30',
+    description: 'A cidade maravilhosa onde a natureza e a cultura se fundem em beleza.',
+    video: 'https://videos.pexels.com/video-files/1448735/1448735-hd_1280_720_30fps.mp4',
+    poster: 'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?auto=format&fit=crop&w=900&q=70',
+    size: 'normal',
+  },
+  {
     name: 'Santorini',
     country: 'Grécia',
     tag: 'Romântico',
@@ -48,36 +78,6 @@ const DESTINATIONS: Destination[] = [
     video: 'https://videos.pexels.com/video-files/1093662/1093662-hd_1280_720_30fps.mp4',
     poster: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?auto=format&fit=crop&w=900&q=70',
     size: 'normal',
-  },
-  {
-    name: 'Kyoto',
-    country: 'Japão',
-    tag: 'Cultural',
-    tagColor: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
-    description: 'A tradição milenar sob as cerejeiras em flor.',
-    video: 'https://videos.pexels.com/video-files/3129671/3129671-hd_1280_720_25fps.mp4',
-    poster: 'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?auto=format&fit=crop&w=900&q=70',
-    size: 'normal',
-  },
-  {
-    name: 'Patagônia',
-    country: 'Argentina · Chile',
-    tag: 'Aventura',
-    tagColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-    description: 'Glaciares milenares e picos que cortam o fim do mundo.',
-    video: 'https://videos.pexels.com/video-files/857251/857251-hd_1280_720_30fps.mp4',
-    poster: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=900&q=70',
-    size: 'normal',
-  },
-  {
-    name: 'Dubai',
-    country: 'Emirados Árabes',
-    tag: 'Premium',
-    tagColor: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
-    description: 'O futuro construído no deserto: excesso, arte e silêncio dourado.',
-    video: 'https://videos.pexels.com/video-files/3121459/3121459-hd_1280_720_25fps.mp4',
-    poster: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=70',
-    size: 'wide',
   },
 ];
 
@@ -174,7 +174,7 @@ const DestinationCard = ({ destination, index }: { destination: Destination; ind
       viewport={{ once: true, margin: '-80px' }}
       transition={{ duration: 0.85, delay: (index % 3) * 0.12, ease: [0.22, 1, 0.36, 1] }}
       className={`group relative overflow-hidden rounded-2xl bg-zinc-900 ${
-        isWide ? 'md:col-span-2 aspect-[21/9]' : 'aspect-[4/5] md:aspect-[3/4]'
+        isWide ? 'md:col-span-2 aspect-[16/9]' : 'aspect-[4/5] md:aspect-[3/4]'
       }`}
     >
       {/* Poster — fades out once video is playing */}
@@ -196,7 +196,7 @@ const DestinationCard = ({ destination, index }: { destination: Destination; ind
         loop
         playsInline
         preload="none"
-        className={`absolute inset-0 w-full h-full object-cover scale-105 group-hover:scale-100 transition-all duration-[1200ms] ease-out ${
+        className={`absolute inset-0 w-full h-full object-cover object-center scale-105 group-hover:scale-100 transition-all duration-[1200ms] ease-out ${
           isLoaded ? 'opacity-60 group-hover:opacity-80' : 'opacity-0'
         }`}
         aria-hidden="true"
