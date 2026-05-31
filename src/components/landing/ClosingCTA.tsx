@@ -29,7 +29,7 @@ export const ClosingCTA = () => {
               {/* Decorative GoldenCompass gigante atrás do Téo */}
               <GoldenCompass
                 size="lg"
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 scale-[3] opacity-5 pointer-events-none"
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 scale-[0.5] opacity-[0.03] pointer-events-none"
               />
               <motion.div 
                 animate={{ 

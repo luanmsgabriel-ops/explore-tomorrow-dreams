@@ -128,7 +128,7 @@ export const TeoHeroConversation = () => {
                 initial={{ opacity: 0, x: 20, y: 10, scale: 0.8 }}
                 animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                className="absolute -top-4 -right-24 md:-right-32 lg:-right-48 z-30 w-[200px] md:w-[280px]"
+                className="absolute -top-[90px] left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:-top-4 md:-right-32 lg:-right-48 z-30 w-[200px] md:w-[280px]"
               >
                 <div className="glass-gold rounded-2xl rounded-bl-none px-5 py-4 shadow-[0_15px_30px_rgba(0,0,0,0.3)] border border-gold/20">
                   <div className="flex items-center gap-2 mb-2">
