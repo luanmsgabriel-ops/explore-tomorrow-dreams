@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { GoldenCompass } from '@/components/GoldenCompass';
 import { Footer } from '@/components/Footer';
@@ -16,18 +17,55 @@ import { HeroBackgroundVideo } from '@/components/landing/HeroBackgroundVideo';
 import { CinematicDestinations } from '@/components/landing/CinematicDestinations';
 import { LandingFAQ } from '@/components/landing/LandingFAQ';
 import { ExploreTheWorld } from '@/components/landing/ExploreTheWorld';
+import { CompassBar } from '@/components/landing/CompassBar';
 
 const Index = () => {
+  const [navState, setNavState] = useState({
+    destination: 'Explorando',
+    direction: 'Comece sua jornada',
+    angle: 0,
+    visible: false
+  });
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPos = window.scrollY;
+      const heroHeight = window.innerHeight;
+      
+      if (scrollPos > heroHeight * 0.5) {
+        setNavState(prev => ({ ...prev, visible: true }));
+      } else {
+        setNavState(prev => ({ ...prev, visible: false }));
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-screen bg-background relative selection:bg-gold/30">
       <Header />
+      
+      {/* Global Navigator - The Journey Guide */}
+      <div 
+        className={`fixed top-0 left-0 right-0 z-[60] pointer-events-none transition-all duration-700 transform ${
+          navState.visible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
+        }`}
+      >
+        <CompassBar 
+          destination={navState.destination} 
+          direction={navState.direction} 
+          angle={navState.angle} 
+        />
+      </div>
 
       <main>
         {/* 1 — Hero: Téo as protagonist */}
         <TeoHeroConversation />
 
         {/* 2 — Cinematic Destinations Section */}
-        <CinematicDestinations />
+        <CinematicDestinations onStateChange={(state) => setNavState(prev => ({ ...prev, ...state }))} />
 
         {/* 3 — Live Téo demo */}
         <TeoLiveDemo />
