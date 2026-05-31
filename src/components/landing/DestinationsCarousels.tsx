@@ -73,22 +73,23 @@ const Carousel = ({
   eyebrow,
   items,
   viewAllHref,
-  scrollOffset = -300,
 }: {
   title: string;
   italicWord: string;
   eyebrow: string;
   items: Destination[];
   viewAllHref: string;
-  scrollOffset?: number;
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start end", "end start"]
   });
 
-  const x = useTransform(scrollYProgress, [0, 1], [0, scrollOffset]);
+  // Calculate the total scrollable width to ensure the transform reaches the end
+  const x = useTransform(scrollYProgress, [0, 1], ["0%", "-50%"]);
 
   return (
     <div ref={containerRef} className="mb-24 last:mb-0">
