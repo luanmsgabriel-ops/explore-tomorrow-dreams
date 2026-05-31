@@ -1,4 +1,5 @@
 import { Header } from '@/components/Header';
+import { GoldenCompass } from '@/components/GoldenCompass';
 import { Footer } from '@/components/Footer';
 import { TeoHeroConversation } from '@/components/landing/TeoHeroConversation';
 import { SocialProofStrip } from '@/components/landing/SocialProofStrip';
