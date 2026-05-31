@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { GoldenCompass } from '../GoldenCompass';
 
 interface CompassBarProps {
@@ -9,51 +9,31 @@ interface CompassBarProps {
 
 export const CompassBar = ({ destination, direction, angle }: CompassBarProps) => {
   return (
-    <div className="sticky top-20 z-40 w-full bg-black/60 backdrop-blur-xl border-y border-gold/10 py-6 transition-all duration-500">
-      <div className="container mx-auto px-4 lg:px-8 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <div className="relative">
-            <GoldenCompass size="sm" angle={angle} className="scale-75 md:scale-100" />
-            <div className="absolute inset-0 bg-gold/5 blur-xl rounded-full -z-10" />
-          </div>
-          
-          <div className="flex flex-col">
-            <motion.span 
-              key={destination}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="text-gold tracking-[0.2em] text-[10px] md:text-xs uppercase font-semibold"
-            >
-              Destino Detectado
-            </motion.span>
-            <motion.h3 
-              key={destination + '-name'}
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="font-editorial text-xl md:text-3xl text-white leading-tight"
-            >
-              {destination}
-            </motion.h3>
-          </div>
+    <div className="absolute top-6 left-6 md:top-10 md:left-10 z-50 pointer-events-none">
+      <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
+        <div className="relative">
+          <GoldenCompass size="sm" angle={angle} className="scale-90 md:scale-110 drop-shadow-[0_0_20px_rgba(212,175,55,0.4)]" />
+          {/* Animated Golden Glow */}
+          <div className="absolute inset-0 bg-gold/10 blur-3xl rounded-full -z-10 animate-pulse" />
         </div>
-
-        <div className="text-right hidden sm:block">
-          <motion.span 
-            key={direction}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-white/40 text-[10px] md:text-xs uppercase tracking-[0.3em] block mb-1"
-          >
-            Direção Encontrada
-          </motion.span>
-          <motion.p 
-            key={direction + '-val'}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-gold-light font-editorial-italic italic text-lg md:text-2xl"
-          >
-            {direction}
-          </motion.p>
+        
+        <div className="flex flex-col">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={destination}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+            >
+              <h3 className="font-editorial text-2xl md:text-5xl text-white leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                {destination}
+              </h3>
+              <p className="text-gold-light font-editorial-italic italic text-sm md:text-2xl mt-1 md:mt-2 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                {direction}
+              </p>
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
     </div>

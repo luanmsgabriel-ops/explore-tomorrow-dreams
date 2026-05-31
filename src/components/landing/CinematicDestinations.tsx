@@ -336,11 +336,13 @@ export const CinematicDestinations = () => {
         </motion.p>
       </div>
 
-      <CompassBar 
-        destination={activeDestination} 
-        direction={currentData.direction} 
-        angle={currentData.angle} 
-      />
+      <div className="sticky top-0 z-50 pointer-events-none">
+        <CompassBar 
+          destination={activeDestination} 
+          direction={currentData.direction} 
+          angle={currentData.angle} 
+        />
+      </div>
 
       <div className="container mx-auto px-4 lg:px-8 mt-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
