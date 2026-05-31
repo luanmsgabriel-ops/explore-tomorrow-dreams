@@ -174,7 +174,7 @@ const DestinationCard = ({ destination, index }: { destination: Destination; ind
       viewport={{ once: true, margin: '-80px' }}
       transition={{ duration: 0.85, delay: (index % 3) * 0.12, ease: [0.22, 1, 0.36, 1] }}
       className={`group relative overflow-hidden rounded-2xl bg-zinc-900 ${
-        isWide ? 'md:col-span-2 aspect-[21/9]' : 'aspect-[4/5] md:aspect-[3/4]'
+        isWide ? 'md:col-span-2 aspect-[16/9]' : 'aspect-[4/5] md:aspect-[3/4]'
       }`}
     >
       {/* Poster — fades out once video is playing */}
