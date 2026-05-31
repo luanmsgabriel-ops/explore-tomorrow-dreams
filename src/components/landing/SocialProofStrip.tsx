@@ -2,20 +2,12 @@ import { Star, Shield, Users, Award, Headphones } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { fadeUp, staggerContainer } from '@/lib/animations';
 
-const avatars = [
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=64&h=64&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=64&h=64&q=80',
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=64&h=64&q=80',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=64&h=64&q=80',
-  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=64&h=64&q=80',
-];
-
 const partners = [
-  { name: 'LATAM', logo: 'https://upload.wikimedia.org/wikipedia/commons/d/d0/Latam-logo-2016.svg' },
+  { name: 'LATAM', logo: 'https://cdn.worldvectorlogo.com/logos/latam-airlines-1.svg' },
   { name: 'Emirates', logo: 'https://upload.wikimedia.org/wikipedia/commons/d/d0/Emirates_logo.svg' },
-  { name: 'Marriott', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/03/Marriott_International_Logo.svg' },
-  { name: 'Four Seasons', logo: 'https://upload.wikimedia.org/wikipedia/commons/6/69/Four_Seasons_Hotels_Logo.svg' },
-  { name: 'Aman', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Aman_Resorts_logo.svg/1280px-Aman_Resorts_logo.svg.png' },
+  { name: 'Marriott', logo: 'https://cdn.worldvectorlogo.com/logos/marriott-international-1.svg' },
+  { name: 'Four Seasons', logo: 'https://cdn.worldvectorlogo.com/logos/four-seasons-hotels-and-resorts.svg' },
+  { name: 'Aman', logo: 'https://www.aman.com/themes/custom/aman/logo.svg' },
   { name: 'Belmond', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Belmond_logo.svg/1200px-Belmond_logo.svg.png' }
 ];
 
@@ -32,29 +24,16 @@ export const SocialProofStrip = () => {
         >
           {/* Trust Metrics */}
           <motion.div variants={fadeUp} className="flex items-center gap-6">
-            <div className="flex -space-x-4">
-              {avatars.map((src, i) => (
-                <motion.img
-                  key={i}
-                  src={src}
-                  alt=""
-                  whileHover={{ y: -5, zIndex: 10 }}
-                  className="w-12 h-12 rounded-full ring-4 ring-black object-cover cursor-pointer"
-                />
-              ))}
-              <div className="w-12 h-12 rounded-full ring-4 ring-black bg-gold/10 flex items-center justify-center text-[10px] font-bold text-gold-light backdrop-blur-sm">
-                +1.2k
-              </div>
+            <div className="flex items-center justify-center w-14 h-14 rounded-full bg-gold/10 border border-gold/20">
+              <Star className="w-6 h-6 text-gold fill-gold" />
             </div>
             <div>
               <div className="flex items-center gap-1 text-gold mb-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-3.5 h-3.5 fill-current" />
-                ))}
-                <span className="ml-2 text-white font-bold text-lg">4.9/5</span>
+                <span className="text-white font-bold text-lg">5.0 / 5</span>
+                <span className="ml-2 text-white/40 text-[10px] font-medium tracking-widest uppercase">Avaliações</span>
               </div>
               <p className="text-[10px] uppercase tracking-[0.2em] text-white/40 leading-none">
-                Satisfação real de viajantes premium
+                Confiança real de viajantes premium
               </p>
             </div>
           </motion.div>
