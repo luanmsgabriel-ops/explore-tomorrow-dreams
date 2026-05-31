@@ -124,7 +124,7 @@ export const destinations: Destination[] = [
     id: 'jalapao',
     name: 'Jalapão',
     location: 'Tocantins, Brasil',
-    image: 'https://images.unsplash.com/photo-1658406169992-06990422dfce?auto=format&fit=crop&w=800&q=80',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Fervedouro_Jalap%C3%A3o.jpg/1280px-Fervedouro_Jalap%C3%A3o.jpg',
     category: 'Aventura',
     type: 'nacional',
     description: 'Oásis no cerrado com fervedouros, dunas douradas e cachoeiras selvagens.',
