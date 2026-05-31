@@ -40,8 +40,8 @@ const Index = () => {
               </p>
             </div>
           </div>
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce opacity-50">
-            <div className="w-px h-12 bg-gold-light" />
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce opacity-60">
+            <GoldenCompass size="sm" className="[&_svg]:animate-spin [animation-duration:8s]" />
           </div>
         </section>
 
