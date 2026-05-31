@@ -150,7 +150,7 @@ export const destinations: Destination[] = [
     id: 'rio-janeiro',
     name: 'Rio de Janeiro',
     location: 'Rio de Janeiro, Brasil',
-    image: 'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?auto=format&fit=crop&w=800&q=80',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/9/98/Cidade_Maravilhosa.jpg',
     category: 'Urbano',
     type: 'nacional',
     description: 'A Cidade Maravilhosa, unindo praias icônicas, montanhas e cultura vibrante.',
