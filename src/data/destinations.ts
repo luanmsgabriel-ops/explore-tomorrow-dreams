@@ -59,7 +59,7 @@ export const destinations: Destination[] = [
     id: 'jericoacoara',
     name: 'Jericoacoara',
     location: 'Ceará, Brasil',
-    image: 'https://images.unsplash.com/photo-1589111306351-7871b65059da?auto=format&fit=crop&w=800&q=80',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Pedra_Furada_de_Jericoacoara_-_Cear%C3%A1.jpg/1280px-Pedra_Furada_de_Jericoacoara_-_Cear%C3%A1.jpg',
     category: 'Praia',
     type: 'nacional',
     description: 'Vila de pescadores com dunas móveis, lagoas relaxantes e um pôr do sol inesquecível.',
