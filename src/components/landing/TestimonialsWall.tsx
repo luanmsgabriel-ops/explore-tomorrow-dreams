@@ -121,6 +121,18 @@ export const TestimonialsWall = () => {
               </motion.figure>
             ))}
           </div>
+          <motion.div 
+            variants={fadeUp}
+            className="mt-16 flex justify-center"
+          >
+            <a
+              href="/teo"
+              className="btn-gold flex items-center gap-3 px-8 py-4 group"
+            >
+              <Star className="w-5 h-5" />
+              <span className="font-semibold">Quero minha viagem assim</span>
+            </a>
+          </motion.div>
         </motion.div>
       </div>
     </section>

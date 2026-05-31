@@ -173,8 +173,8 @@ export const TeoHeroConversation = () => {
           className="flex flex-col items-center"
         >
           <p className="text-lg md:text-xl text-white/70 max-w-2xl text-center leading-relaxed mb-6 md:mb-8">
-            Esqueça as buscas infinitas. O Téo entende seu estilo e planeja cada detalhe da sua 
-            próxima experiência inesquecível em segundos.
+            Fale como fala com um amigo. O Téo cria seu roteiro personalizado em minutos — 
+            e um consultor humano transforma em realidade. Grátis em 10 segundos.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-5 mb-8 md:mb-10">

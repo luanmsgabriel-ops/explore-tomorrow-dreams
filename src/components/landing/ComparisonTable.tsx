@@ -115,6 +115,18 @@ export const ComparisonTable = () => {
               ))}
             </div>
           </motion.div>
+          <motion.div 
+            variants={fadeUp}
+            className="mt-12 flex justify-center"
+          >
+            <a
+              href="/teo"
+              className="btn-gold flex items-center gap-3 px-8 py-4 group"
+            >
+              <Check className="w-5 h-5" />
+              <span className="font-semibold">Experimentar grátis com o Téo</span>
+            </a>
+          </motion.div>
         </motion.div>
       </div>
     </section>
