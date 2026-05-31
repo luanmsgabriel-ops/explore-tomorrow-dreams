@@ -93,8 +93,23 @@ function useLazyVideo(threshold = 0.25) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
 
+  // Detecta condições para NÃO carregar vídeo (mobile, save-data, conexão lenta, reduced-motion)
+  const shouldLoadVideo = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    // Mobile/tablet pequeno: nunca carrega vídeo (causa travamento)
+    if (window.matchMedia('(max-width: 1024px)').matches) return false;
+    // Usuário pediu menos movimento
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+    // Save-data ou conexão lenta
+    const conn = (navigator as any).connection;
+    if (conn?.saveData) return false;
+    if (conn?.effectiveType && /2g|slow-2g/.test(conn.effectiveType)) return false;
+    return true;
+  }, []);
+
   // Step 1 — detect entry into viewport
   useEffect(() => {
+    if (!shouldLoadVideo) return;
     const el = ref.current;
     if (!el) return;
 
@@ -110,7 +125,7 @@ function useLazyVideo(threshold = 0.25) {
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [threshold]);
+  }, [threshold, shouldLoadVideo]);
 
   // Step 2 — load & play only after entering viewport
   useEffect(() => {
@@ -158,8 +173,9 @@ function useLazyVideo(threshold = 0.25) {
     };
   }, [isInView]);
 
-  return { ref, isInView, isLoaded, hasError };
+  return { ref, isInView, isLoaded, hasError, shouldLoadVideo };
 }
+
 
 // ---------------------------------------------------------------------------
 // Card
