@@ -367,7 +367,11 @@ const DestinationCard = ({
 // Section
 // ---------------------------------------------------------------------------
 
-export const CinematicDestinations = () => {
+export const CinematicDestinations = ({ 
+  onStateChange 
+}: { 
+  onStateChange?: (state: { destination: string; direction: string; angle: number }) => void 
+}) => {
   const [activeDestination, setActiveDestination] = useState(DESTINATIONS[0].name);
   const [ratios, setRatios] = useState<Record<string, number>>({});
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -480,6 +484,16 @@ export const CinematicDestinations = () => {
     [activeDestination]
   );
 
+  useEffect(() => {
+    if (onStateChange) {
+      onStateChange({
+        destination: activeDestination,
+        direction: currentData.direction,
+        angle: currentData.angle
+      });
+    }
+  }, [activeDestination, currentData, onStateChange]);
+
   return (
     <section id="cinematic-destinations" className="bg-black py-24 md:py-40 relative">
       <div className="container mx-auto px-4 lg:px-8 mb-16 text-center">
@@ -505,14 +519,6 @@ export const CinematicDestinations = () => {
         >
           A curadoria definitiva para quem busca não apenas viajar, mas viver uma experiência estética transcendental.
         </p>
-      </div>
-
-      <div className="sticky top-0 z-50 pointer-events-none">
-        <CompassBar 
-          destination={activeDestination} 
-          direction={currentData.direction} 
-          angle={currentData.angle} 
-        />
       </div>
 
       <div className="container mx-auto px-4 lg:px-8 mt-16 relative">
