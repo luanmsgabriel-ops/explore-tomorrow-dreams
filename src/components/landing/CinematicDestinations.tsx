@@ -432,17 +432,51 @@ export const CinematicDestinations = () => {
     };
   }, [ratios, activeDestination]);
 
-  const destinationMap: Record<string, { angle: number; direction: string }> = {
-    'Fernando de Noronha': { angle: 45, direction: 'Nordeste do Brasil' },
-    'Lençóis Maranhenses': { angle: 0, direction: 'Maranhão, Brasil' },
-    'Jericoacoara': { angle: 35, direction: 'Ceará, Brasil' },
-    'Rio de Janeiro': { angle: 135, direction: 'Sudeste do Brasil' },
-    'Santorini': { angle: 90, direction: 'Ilhas Cíclades, Grécia' },
-    'Maldivas': { angle: 110, direction: 'Oceano Índico' },
+  const destinationMap: Record<string, { angle: number; direction: string; x: number; y: number }> = {
+    'Fernando de Noronha': { angle: 45, direction: 'Nordeste do Brasil', x: 85, y: 20 },
+    'Lençóis Maranhenses': { angle: 0, direction: 'Maranhão, Brasil', x: 75, y: 15 },
+    'Jericoacoara': { angle: 35, direction: 'Ceará, Brasil', x: 80, y: 25 },
+    'Rio de Janeiro': { angle: 135, direction: 'Sudeste do Brasil', x: 65, y: 70 },
+    'Santorini': { angle: 90, direction: 'Ilhas Cíclades, Grécia', x: 15, y: 30 },
+    'Maldivas': { angle: 110, direction: 'Oceano Índico', x: 25, y: 55 },
   };
 
+  const [prevDestination, setPrevDestination] = useState(DESTINATIONS[0].name);
+  const pathRef = useRef<SVGPathElement>(null);
+
+  useEffect(() => {
+    if (activeDestination !== prevDestination) {
+      const start = destinationMap[prevDestination];
+      const end = destinationMap[activeDestination];
+      
+      if (start && end && pathRef.current) {
+        // Draw flight path
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const midX = (start.x + end.x) / 2 + (dy * 0.2);
+        const midY = (start.y + end.y) / 2 - (dx * 0.2);
+        
+        const d = `M ${start.x} ${start.y} Q ${midX} ${midY} ${end.x} ${end.y}`;
+        pathRef.current.setAttribute('d', d);
+        
+        const length = pathRef.current.getTotalLength();
+        pathRef.current.style.strokeDasharray = length.toString();
+        pathRef.current.style.strokeDashoffset = length.toString();
+        
+        anime({
+          targets: pathRef.current,
+          strokeDashoffset: [length, 0],
+          opacity: [0, 1, 1, 0],
+          duration: 1500,
+          easing: 'easeInOutQuad'
+        });
+      }
+      setPrevDestination(activeDestination);
+    }
+  }, [activeDestination, prevDestination]);
+
   const currentData = useMemo(() => 
-    destinationMap[activeDestination] || { angle: 0, direction: 'Explorando...' },
+    destinationMap[activeDestination] || { angle: 0, direction: 'Explorando...', x: 50, y: 50 },
     [activeDestination]
   );
 
@@ -481,7 +515,49 @@ export const CinematicDestinations = () => {
         />
       </div>
 
-      <div className="container mx-auto px-4 lg:px-8 mt-16">
+      <div className="container mx-auto px-4 lg:px-8 mt-16 relative">
+        {/* SVG Overlay for Flight Paths */}
+        <svg 
+          className="absolute inset-0 w-full h-full pointer-events-none z-10 opacity-40 overflow-visible"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <linearGradient id="flight-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="transparent" />
+              <stop offset="50%" stopColor="#D4AF37" />
+              <stop offset="100%" stopColor="transparent" />
+            </linearGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+          <path
+            ref={pathRef}
+            fill="none"
+            stroke="url(#flight-gradient)"
+            strokeWidth="0.5"
+            strokeLinecap="round"
+            filter="url(#glow)"
+            className="drop-shadow-[0_0_8px_rgba(212,175,55,0.6)]"
+          />
+          {/* Active points */}
+          {Object.entries(destinationMap).map(([name, pos]) => (
+            <circle
+              key={name}
+              cx={pos.x}
+              cy={pos.y}
+              r={activeDestination === name ? "0.8" : "0.3"}
+              fill={activeDestination === name ? "#D4AF37" : "rgba(255,255,255,0.1)"}
+              className="transition-all duration-700"
+            />
+          ))}
+        </svg>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {DESTINATIONS.map((dest, idx) => (
             <DestinationCard 
