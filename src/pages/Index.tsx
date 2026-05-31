@@ -15,6 +15,7 @@ import { RealItinerariesShowcase } from '@/components/landing/RealItinerariesSho
 import { HeroBackgroundVideo } from '@/components/landing/HeroBackgroundVideo';
 import { CinematicDestinations } from '@/components/landing/CinematicDestinations';
 import { LandingFAQ } from '@/components/landing/LandingFAQ';
+import { ExploreTheWorld } from '@/components/landing/ExploreTheWorld';
 
 const Index = () => {
   return (
@@ -54,6 +55,9 @@ const Index = () => {
 
         {/* 11 — FAQ */}
         <LandingFAQ />
+        
+        {/* 11.5 — Explore the World Cinematic Experience */}
+        <ExploreTheWorld />
 
         {/* 12 — Closing CTA */}
         <ClosingCTA />
