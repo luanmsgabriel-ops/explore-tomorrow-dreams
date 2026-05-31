@@ -228,7 +228,7 @@ export const destinations: Destination[] = [
     id: 'arraial-cabo',
     name: 'Arraial do Cabo',
     location: 'Rio de Janeiro, Brasil',
-    image: 'https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?auto=format&fit=crop&w=800&q=80',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/2/2e/Cidade_de_Arraial_do_Cabo.jpg',
     category: 'Praia',
     type: 'nacional',
     description: 'O Caribe Brasileiro fluminense com águas cristalinas e praias de areia branca.',
