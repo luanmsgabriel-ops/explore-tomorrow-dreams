@@ -254,7 +254,7 @@ export const destinations: Destination[] = [
     id: 'campos-jordao',
     name: 'Campos do Jordão',
     location: 'São Paulo, Brasil',
-    image: 'https://images.unsplash.com/photo-1632734181058-293673c6838a?auto=format&fit=crop&w=800&q=80',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Vista_%C3%A1rea_da_Vila_Capivari%2C_Campos_do_Jord%C3%A3o_%28cropped%29.jpg/1920px-Vista_%C3%A1rea_da_Vila_Capivari%2C_Campos_do_Jord%C3%A3o_%28cropped%29.jpg',
     category: 'Charme',
     type: 'nacional',
     description: 'A Suíça Brasileira, com clima de montanha, chocolate e arquitetura europeia.',
