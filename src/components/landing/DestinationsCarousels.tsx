@@ -81,7 +81,6 @@ const Carousel = ({
   viewAllHref: string;
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
   
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -123,12 +122,12 @@ const Carousel = ({
         </div>
       </div>
 
-      <div className="relative overflow-x-auto snap-x snap-mandatory scrollbar-hide">
+      <div className="relative overflow-x-auto snap-x snap-mandatory scrollbar-hide md:overflow-visible">
         <motion.div 
           style={{ x }}
           drag="x"
-          dragConstraints={{ left: -1000, right: 0 }}
-          dragElastic={0.2}
+          dragConstraints={{ left: -2000, right: 0 }}
+          dragElastic={0.1}
           className="flex gap-8 px-4 lg:px-8 pb-12 w-max cursor-grab active:cursor-grabbing"
         >
           {items.map((d, i) => (
@@ -152,7 +151,6 @@ export const DestinationsCarousels = () => {
         italicWord="território"
         items={nacionais}
         viewAllHref="/nacional"
-        scrollOffset={window.innerWidth < 768 ? -80 : window.innerWidth < 1024 ? -180 : -300}
       />
       
       <Carousel
@@ -161,7 +159,6 @@ export const DestinationsCarousels = () => {
         italicWord="desejo"
         items={internacionais}
         viewAllHref="/internacional"
-        scrollOffset={window.innerWidth < 768 ? -80 : window.innerWidth < 1024 ? -180 : -300}
       />
     </section>
   );
