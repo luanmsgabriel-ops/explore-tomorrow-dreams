@@ -549,8 +549,11 @@ Me conta aí! 👇`
             <div className="w-8 h-8 flex-shrink-0">
               <TeoMascot size="small" animated />
             </div>
-            <div className="bg-muted p-3 rounded-2xl rounded-bl-md">
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            <div className="bg-muted px-4 py-3 rounded-2xl rounded-bl-md flex items-center gap-3">
+              <GoldenCompass size="sm" className="w-8 h-8 animate-spin [animation-duration:3s]" />
+              <span className="text-xs text-muted-foreground italic">
+                Téo está traçando seu roteiro...
+              </span>
             </div>
           </div>
         )}
