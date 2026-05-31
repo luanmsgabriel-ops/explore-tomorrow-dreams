@@ -267,7 +267,7 @@ export const destinations: Destination[] = [
     id: 'ilha-grande',
     name: 'Ilha Grande',
     location: 'Rio de Janeiro, Brasil',
-    image: 'https://images.unsplash.com/photo-1619468129361-605ebea04b44?auto=format&fit=crop&w=800&q=80',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Praia_de_Lopes_Mendes_-_Ilha_Grande_-_RJ.jpg/1280px-Praia_de_Lopes_Mendes_-_Ilha_Grande_-_RJ.jpg',
     category: 'Ilha',
     type: 'nacional',
     description: 'Paraíso preservado da Costa Verde com Lopes Mendes e trilhas pela Mata Atlântica.',
