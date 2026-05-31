@@ -72,7 +72,7 @@ export const destinations: Destination[] = [
     id: 'maragogi',
     name: 'Maragogi',
     location: 'Alagoas, Brasil',
-    image: 'https://images.unsplash.com/photo-1590447158019-883d8d5f8bc7?auto=format&fit=crop&w=800&q=80',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/1/1d/Maragogi_Alagoas_Brasil.jpg',
     category: 'Praia',
     type: 'nacional',
     description: 'O Caribe Brasileiro, famoso pelas galés (piscinas naturais) de águas mornas e transparentes.',
