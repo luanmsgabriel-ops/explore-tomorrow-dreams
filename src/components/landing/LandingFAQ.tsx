@@ -87,6 +87,18 @@ export const LandingFAQ = () => {
               </div>
             ))}
           </motion.div>
+          <motion.div 
+            variants={fadeUp}
+            className="lg:col-span-12 flex justify-center mt-12"
+          >
+            <a
+              href="/teo"
+              className="btn-gold flex items-center gap-3 px-10 py-5 group"
+            >
+              <HelpCircle className="w-6 h-6" />
+              <span className="font-bold">Ainda tenho dúvidas, Téo</span>
+            </a>
+          </motion.div>
         </motion.div>
       </div>
     </section>
