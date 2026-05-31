@@ -168,21 +168,32 @@ function useLazyVideo(threshold = 0.25) {
 const DestinationCard = ({ 
   destination, 
   index, 
-  onActive 
+  onRatioUpdate 
 }: { 
   destination: Destination; 
   index: number;
-  onActive: (name: string) => void;
+  onRatioUpdate: (name: string, ratio: number) => void;
 }) => {
   const { ref: videoRef, isInView, isLoaded, hasError } = useLazyVideo(0.2);
-  const cardRef = useRef(null);
-  const isCurrentlyInView = useInView(cardRef, { margin: "-45% 0px -45% 0px" });
+  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isCurrentlyInView) {
-      onActive(destination.name);
-    }
-  }, [isCurrentlyInView, destination.name, onActive]);
+    const el = cardRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        onRatioUpdate(destination.name, entry.intersectionRatio);
+      },
+      { 
+        threshold: Array.from({ length: 11 }, (_, i) => i * 0.1),
+        rootMargin: "-10% 0px -10% 0px"
+      }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [destination.name, onRatioUpdate]);
 
   const isWide = destination.size === 'wide';
 
@@ -286,6 +297,36 @@ const DestinationCard = ({
 
 export const CinematicDestinations = () => {
   const [activeDestination, setActiveDestination] = useState(DESTINATIONS[0].name);
+  const [ratios, setRatios] = useState<Record<string, number>>({});
+  const timeoutRef = useRef<number | null>(null);
+
+  const updateActiveDestination = (name: string, ratio: number) => {
+    setRatios(prev => {
+      const newRatios = { ...prev, [name]: ratio };
+      
+      // Find winner with highest ratio
+      let winner = activeDestination;
+      let maxRatio = 0;
+
+      Object.entries(newRatios).forEach(([destName, destRatio]) => {
+        if (destRatio > maxRatio) {
+          maxRatio = destRatio;
+          winner = destName;
+        }
+      });
+
+      // Threshold check (60%) and Debounce (300ms)
+      if (maxRatio >= 0.6 && winner !== activeDestination) {
+        if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+        
+        timeoutRef.current = window.setTimeout(() => {
+          setActiveDestination(winner);
+        }, 300) as unknown as number;
+      }
+
+      return newRatios;
+    });
+  };
 
   const destinationMap: Record<string, { angle: number; direction: string }> = {
     'Fernando de Noronha': { angle: 45, direction: 'Nordeste do Brasil' },
@@ -351,7 +392,7 @@ export const CinematicDestinations = () => {
               key={dest.name} 
               destination={dest} 
               index={idx} 
-              onActive={setActiveDestination}
+              onRatioUpdate={updateActiveDestination}
             />
           ))}
         </div>
