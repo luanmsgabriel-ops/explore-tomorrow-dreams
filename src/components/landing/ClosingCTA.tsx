@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { MessageCircle, ArrowRight, Sparkles, ShieldCheck, Heart, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { TeoMascot } from '@/components/TeoMascot';
+import { GoldenCompass } from '@/components/GoldenCompass';
 import { fadeUp, staggerContainer, scaleUp } from '@/lib/animations';
 
 export const ClosingCTA = () => {
