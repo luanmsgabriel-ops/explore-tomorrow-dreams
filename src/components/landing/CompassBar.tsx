@@ -9,7 +9,7 @@ interface CompassBarProps {
 
 export const CompassBar = ({ destination, direction, angle }: CompassBarProps) => {
   return (
-    <div className="absolute top-8 left-8 md:top-12 md:left-12 z-50 pointer-events-none">
+    <div className="absolute top-6 left-6 md:top-10 md:left-10 z-50 pointer-events-none">
       <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
         <div className="relative">
           <GoldenCompass size="sm" angle={angle} className="scale-90 md:scale-110 drop-shadow-[0_0_20px_rgba(212,175,55,0.4)]" />
