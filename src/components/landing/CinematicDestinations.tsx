@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, Play } from 'lucide-react';
-import * as anime_module from 'animejs';
-const anime = (anime_module as any).default || anime_module;
+import anime from 'animejs';
 import { CompassBar } from './CompassBar';
 
 
