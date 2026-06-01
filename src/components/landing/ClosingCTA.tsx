@@ -16,7 +16,7 @@ export const ClosingCTA = () => {
       />
 
       {/* Dark overlay to keep text legible */}
-      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
+      <div className="absolute inset-0 z-[1] bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
 
 
       {/* Teal accent glow */}
@@ -37,9 +37,9 @@ export const ClosingCTA = () => {
         >
 
           <motion.div variants={fadeUp}>
-            <h2 className="font-editorial text-5xl md:text-8xl lg:text-9xl text-white leading-[0.9] mb-8 text-center">
-              <span className="block">Sua história</span>
-              <span className="block font-editorial-italic gradient-text-teal italic pr-[0.15em]">começa aqui.</span>
+            <h2 className="font-editorial text-5xl md:text-8xl lg:text-9xl text-white leading-[0.9] mb-8 text-center [text-shadow:_0_4px_24px_rgba(0,0,0,0.6)]">
+              <span className="block drop-shadow-lg">Sua história</span>
+              <span className="block font-editorial-italic gradient-text-teal italic pr-[0.15em] drop-shadow-lg">começa aqui.</span>
             </h2>
 
           </motion.div>
