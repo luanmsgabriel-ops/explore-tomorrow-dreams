@@ -159,13 +159,14 @@ export const TeoHeroConversation = () => {
           <div className="flex flex-col sm:flex-row gap-5 mb-7 md:mb-8">
             <Link
               to="/teo"
-              className="btn-gold flex items-center justify-center gap-4 text-lg px-10 py-5 group relative overflow-hidden"
+              className="btn-gold relative z-20 isolate flex min-w-[320px] items-center justify-center gap-4 overflow-hidden rounded-lg border border-gold-light/60 px-10 py-5 text-lg font-semibold text-accent-foreground opacity-100 shadow-[var(--shadow-glow-gold)] group"
+              style={{ background: 'var(--gradient-gold)' }}
             >
               <motion.div
-                className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-700"
+                className="pointer-events-none absolute inset-0 z-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-700"
               />
-              <MessageCircle className="w-6 h-6" />
-              <span className="relative z-10 font-semibold">Conversar com o Téo</span>
+              <MessageCircle className="relative z-10 w-6 h-6" />
+              <span className="relative z-10 whitespace-nowrap font-semibold">Conversar com o Téo</span>
               <ArrowRight className="w-5 h-5 relative z-10 transition-transform group-hover:translate-x-2" />
             </Link>
             
