@@ -79,15 +79,15 @@ export const ClosingCTA = () => {
           >
             <div className="flex flex-col items-center gap-3">
               <Sparkles className="w-6 h-6 text-gold/60" />
-              <p className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-bold">IA de Próxima Geração</p>
+              <p className="text-[10px] uppercase tracking-[0.3em] text-white font-bold drop-shadow-md">IA de Próxima Geração</p>
             </div>
             <div className="flex flex-col items-center gap-3">
               <Heart className="w-6 h-6 text-gold/60" />
-              <p className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-bold">Consultoria com Alma</p>
+              <p className="text-[10px] uppercase tracking-[0.3em] text-white font-bold drop-shadow-md">Consultoria com Alma</p>
             </div>
             <div className="flex flex-col items-center gap-3">
               <ShieldCheck className="w-6 h-6 text-gold/60" />
-              <p className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-bold">Segurança Tomorrow</p>
+              <p className="text-[10px] uppercase tracking-[0.3em] text-white font-bold drop-shadow-md">Segurança Tomorrow</p>
             </div>
           </motion.div>
 
