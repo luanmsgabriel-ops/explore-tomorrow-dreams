@@ -81,7 +81,26 @@ const DESTINATIONS: Destination[] = [
     poster: '/images/posters/maldivas.jpg',
     size: 'normal',
   },
-];
+  {
+    name: 'Bali',
+    country: 'Indonésia',
+    tag: 'Paraíso',
+    tagColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+    description: 'Terraços de arroz, templos milenares e praias de tirar o fôlego.',
+    video: '/videos/destinations/bali.mp4',
+    poster: '/images/posters/bali.jpg',
+    size: 'normal',
+  },
+  {
+    name: 'Dubai',
+    country: 'Emirados Árabes',
+    tag: 'Moderno',
+    tagColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+    description: 'Onde o deserto encontra o futuro em arranha-céus deslumbrantes.',
+    video: '/videos/destinations/dubai.mp4',
+    poster: '/images/posters/dubai.jpg',
+    size: 'normal',
+  },
 
 // ---------------------------------------------------------------------------
 // Lazy video hook
