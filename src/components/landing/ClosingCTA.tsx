@@ -12,11 +12,12 @@ export const ClosingCTA = () => {
       <img
         src={swissVillage}
         alt="Vila suíça com lago azul e montanhas"
-        className="absolute inset-0 w-full h-full object-cover opacity-60 z-0"
+        className="absolute inset-0 w-full h-full object-cover opacity-90 z-0"
       />
 
       {/* Dark overlay to keep text legible */}
-      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black via-black/60 to-black/30" />
+      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
+
 
       {/* Teal accent glow */}
       <div
@@ -36,10 +37,11 @@ export const ClosingCTA = () => {
         >
 
           <motion.div variants={fadeUp}>
-            <h2 className="font-editorial text-5xl md:text-8xl lg:text-9xl text-white leading-[0.9] mb-8">
-              Sua história <br />
-              <span className="font-editorial-italic gradient-text-teal italic">começa aqui.</span>
+            <h2 className="font-editorial text-5xl md:text-8xl lg:text-9xl text-white leading-[0.9] mb-8 text-center">
+              <span className="block">Sua história</span>
+              <span className="block font-editorial-italic gradient-text-teal italic pr-[0.15em]">começa aqui.</span>
             </h2>
+
           </motion.div>
 
           <motion.p variants={fadeUp} className="text-lg md:text-2xl text-white/60 max-w-2xl mx-auto mb-14 leading-relaxed font-light">
