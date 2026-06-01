@@ -4,6 +4,7 @@ import { MessageCircle, ArrowRight, Star, Building2, Headphones } from 'lucide-r
 import { motion, AnimatePresence } from 'framer-motion';
 import { HeroBackgroundVideo } from './HeroBackgroundVideo';
 import teoCharacter from '@/assets/teo-character.png';
+import heroMountainBg from '@/assets/hero-mountain-bg.jpg';
 
 const TEO_LINES = [
   'Pra onde a gente vai dessa vez?',
@@ -30,15 +31,23 @@ export const TeoHeroConversation = () => {
 
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden pt-20 pb-10">
-      {/* Cinematic Background */}
+      {/* Cinematic Mountain Background */}
+      <img
+        src={heroMountainBg}
+        alt=""
+        aria-hidden="true"
+        fetchPriority="high"
+        decoding="async"
+        className="absolute inset-0 w-full h-full object-cover -z-20"
+      />
       <HeroBackgroundVideo />
-      
+
       {/* Dark Overlay & Gradients */}
-      <div className="absolute inset-0 bg-black/40 -z-10" />
-      <div 
+      <div className="absolute inset-0 bg-black/55 -z-10" />
+      <div
         className="absolute inset-0 -z-10"
-        style={{ 
-          background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.8) 100%)' 
+        style={{
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.85) 100%)'
         }}
       />
 
