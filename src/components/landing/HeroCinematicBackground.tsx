@@ -34,13 +34,13 @@ export const HeroCinematicBackground = () => {
           playsInline
           autoPlay={i === 0}
           preload="auto"
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 blur-sm scale-105 ${
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 scale-105 ${
             i === index ? 'opacity-100' : 'opacity-0'
           }`}
         />
       ))}
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60" />
+      <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/30" />
     </div>
   );
 };
