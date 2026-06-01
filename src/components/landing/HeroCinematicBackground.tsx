@@ -36,33 +36,33 @@ export const HeroCinematicBackground = () => {
         src={heroMountainBg}
         alt=""
         aria-hidden="true"
-        fetchPriority="high"
         decoding="async"
-        className="absolute inset-0 w-full h-full object-cover -z-10"
+        className="absolute inset-0 w-full h-full object-cover z-0"
       />
     );
   }
 
   return (
-    <div className="absolute inset-0 -z-10 overflow-hidden bg-ocean-deep">
+    <div className="absolute inset-0 z-0 overflow-hidden bg-ocean-deep">
       {/* Poster while first clip loads */}
-      {!loaded && (
-        <img
-          src={heroMountainBg}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-      )}
+      <img
+        src={heroMountainBg}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
+        style={{ opacity: loaded ? 0 : 1 }}
+      />
       {CLIPS.map((src, i) => (
         <video
           key={src}
           ref={videoRefs[i]}
           src={src}
           muted
+          autoPlay={i === 0}
           playsInline
           preload="auto"
           onLoadedData={() => i === 0 && setLoaded(true)}
+          onCanPlay={() => i === 0 && setLoaded(true)}
           className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
           style={{ opacity: active === i ? 1 : 0 }}
           aria-hidden="true"
