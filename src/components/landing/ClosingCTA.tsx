@@ -3,6 +3,7 @@ import { MessageCircle, ArrowRight, Sparkles, ShieldCheck, Heart, Star } from 'l
 import { motion } from 'framer-motion';
 import { TeoMascot } from '@/components/TeoMascot';
 import { fadeUp, staggerContainer, scaleUp } from '@/lib/animations';
+import swissVillage from '@/assets/hero-swiss-village.jpg';
 
 export const ClosingCTA = () => {
   return (
