@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { MessageCircle, ArrowRight, Star, MousePointer2 } from 'lucide-react';
+import { MessageCircle, ArrowRight, Star, ShieldCheck, Building2, Headphones } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HeroBackgroundVideo } from './HeroBackgroundVideo';
 import teoCharacter from '@/assets/teo-character.png';
@@ -12,11 +12,10 @@ const TEO_LINES = [
   'Em 2 minutos te mando a cotação completa.',
 ];
 
-const avatars = [
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=64&h=64&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=64&h=64&q=80',
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=64&h=64&q=80',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=64&h=64&q=80',
+const proofItems = [
+  { icon: Star, label: '5.0 no Google', detail: '4 avaliações públicas' },
+  { icon: Building2, label: 'CNPJ ativo', detail: '64.369.269/0001-22' },
+  { icon: Headphones, label: 'Acompanhamento real', detail: 'antes, durante e depois' },
 ];
 
 export const TeoHeroConversation = () => {
@@ -30,7 +29,7 @@ export const TeoHeroConversation = () => {
   }, []);
 
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden pt-20 pb-12">
+    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden pt-20 pb-10">
       {/* Cinematic Background */}
       <HeroBackgroundVideo />
       
@@ -67,31 +66,31 @@ export const TeoHeroConversation = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="flex items-center gap-3 mb-8"
+          className="flex items-center gap-3 mb-6"
         >
           <span className="h-px w-6 bg-gold/60" />
           <span className="text-[10px] md:text-xs uppercase tracking-[0.4em] text-gold-light/90 font-medium">
-            Inteligência Artificial + Consultoria Humana
+            Empresa registrada + IA de viagens + consultoria humana
           </span>
           <span className="h-px w-6 bg-gold/60" />
         </motion.div>
 
         {/* Headline */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8 md:mb-10">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
             className="font-editorial text-5xl md:text-8xl lg:text-9xl leading-[0.9] text-white"
           >
-            <span className="block mb-2">Não procure a viagem</span>
-            <span className="font-editorial-italic gradient-text-teal italic block mb-2">perfeita.</span>
-            <span className="block opacity-90 text-4xl md:text-7xl lg:text-8xl">Converse com o Téo.</span>
+            <span className="block mb-2">Tomorrow Travel</span>
+            <span className="font-editorial-italic gradient-text-teal italic block mb-2">existe.</span>
+            <span className="block opacity-90 text-4xl md:text-7xl lg:text-8xl">E acompanha sua viagem.</span>
           </motion.h1>
         </div>
 
         {/* Téo Protagonist Center */}
-        <div className="relative mb-8 md:mb-12 flex items-center justify-center">
+        <div className="relative mb-6 md:mb-8 flex items-center justify-center">
           {/* Téo Aura/Glow */}
           <motion.div
             animate={{ 
@@ -172,18 +171,17 @@ export const TeoHeroConversation = () => {
           transition={{ duration: 0.8, delay: 0.6 }}
           className="flex flex-col items-center"
         >
-          <div className="flex flex-wrap justify-center gap-3 mb-6">
-            <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-bold tracking-[0.2em] text-white uppercase">100% Grátis</span>
-            <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-bold tracking-[0.2em] text-white uppercase">Roteiro em 10s</span>
-            <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-bold tracking-[0.2em] text-white uppercase">IA + Consultor Humano</span>
+          <div className="flex flex-wrap justify-center gap-3 mb-5">
+            <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-bold tracking-[0.2em] text-white uppercase">Viagens reais</span>
+            <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-bold tracking-[0.2em] text-white uppercase">Empresa brasileira</span>
+            <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-bold tracking-[0.2em] text-white uppercase">IA + time humano</span>
           </div>
           
-          <p className="text-lg md:text-xl text-white/70 max-w-2xl text-center leading-relaxed mb-6 md:mb-8">
-            Fale como fala com um amigo. O Téo cria seu roteiro personalizado em minutos — 
-            e um consultor humano transforma em realidade.
+          <p className="text-lg md:text-xl text-white/70 max-w-3xl text-center leading-relaxed mb-6 md:mb-8">
+            O Téo desenha o roteiro com inteligência artificial. A Tomorrow Travel cuida da execução com atendimento humano, WhatsApp oficial e empresa registrada no Brasil.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-5 mb-8 md:mb-10">
+          <div className="flex flex-col sm:flex-row gap-5 mb-7 md:mb-8">
             <Link
               to="/teo"
               className="btn-gold flex items-center justify-center gap-4 text-lg px-10 py-5 group relative overflow-hidden"
@@ -204,30 +202,26 @@ export const TeoHeroConversation = () => {
             </Link>
           </div>
 
-          {/* Social Proof */}
-          <div className="flex flex-col items-center gap-3">
-            <div className="flex -space-x-3">
-              {avatars.map((src, i) => (
-                <motion.img
-                  key={i}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.8 + (i * 0.1) }}
-                  src={src}
-                  alt=""
-                  className="w-10 h-10 rounded-full ring-2 ring-black/40 object-cover"
-                />
-              ))}
-            </div>
-            <div className="flex flex-col items-center text-center">
-              <div className="flex items-center gap-1.5 text-gold-light mb-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-current" />
-                ))}
-                <span className="ml-1 text-white font-bold">4.9/5</span>
-              </div>
-              <span className="text-xs uppercase tracking-[0.2em] text-white/50">Confiança de +1.200 viajantes premium</span>
-            </div>
+          {/* Verified proof */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-4xl">
+            {proofItems.map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <motion.div
+                  key={item.label}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.8 + i * 0.1 }}
+                  className="flex items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 backdrop-blur-md"
+                >
+                  <Icon className="w-5 h-5 text-gold flex-shrink-0" />
+                  <span className="text-left leading-tight">
+                    <span className="block text-xs font-bold uppercase tracking-[0.18em] text-white">{item.label}</span>
+                    <span className="block text-xs text-white/55">{item.detail}</span>
+                  </span>
+                </motion.div>
+              );
+            })}
           </div>
         </motion.div>
       </div>
