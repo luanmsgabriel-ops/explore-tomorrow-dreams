@@ -101,6 +101,8 @@ const DESTINATIONS: Destination[] = [
     poster: '/images/posters/dubai.jpg',
     size: 'normal',
   },
+];
+
 
 // ---------------------------------------------------------------------------
 // Lazy video hook
