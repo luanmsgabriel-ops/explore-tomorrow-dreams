@@ -135,24 +135,6 @@ export const TeoHeroConversation = () => {
               </motion.div>
             </AnimatePresence>
 
-            {/* Typing Indicator - Left */}
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 1 }}
-              className="absolute bottom-10 -left-12 md:-left-20 glass rounded-full px-4 py-2 shadow-xl border border-white/10"
-            >
-              <div className="flex items-center gap-1.5">
-                {[0, 0.2, 0.4].map((delay) => (
-                  <motion.span
-                    key={delay}
-                    animate={{ y: [0, -4, 0] }}
-                    transition={{ duration: 0.6, repeat: Infinity, delay }}
-                    className="w-1.5 h-1.5 rounded-full bg-teal"
-                  />
-                ))}
-              </div>
-            </motion.div>
           </motion.div>
         </div>
 
