@@ -8,7 +8,7 @@ import { HowItWorksTimeline } from '@/components/landing/HowItWorksTimeline';
 import { ComparisonTable } from '@/components/landing/ComparisonTable';
 import { ClosingCTA } from '@/components/landing/ClosingCTA';
 import { FloatingTeoButton } from '@/components/landing/FloatingTeoButton';
-import { ActiveOffersCarousel } from '@/components/ActiveOffersCarousel';
+import { ImmersiveVideoShowcase } from '@/components/landing/ImmersiveVideoShowcase';
 import { RealItinerariesShowcase } from '@/components/landing/RealItinerariesShowcase';
 import { CinematicDestinations } from '@/components/landing/CinematicDestinations';
 import { LandingFAQ } from '@/components/landing/LandingFAQ';
@@ -76,8 +76,8 @@ const Index = () => {
         {/* 11 — Comparison */}
         <ComparisonTable />
 
-        {/* 12 — Conditional offers */}
-        <ActiveOffersCarousel />
+        {/* 12 — Immersive video showcase */}
+        <ImmersiveVideoShowcase />
 
         {/* 13 — Google Reviews */}
         <GoogleReviews />
