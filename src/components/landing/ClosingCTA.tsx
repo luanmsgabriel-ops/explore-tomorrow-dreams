@@ -16,7 +16,7 @@ export const ClosingCTA = () => {
       />
 
       {/* Dark overlay to keep text legible */}
-      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
+      <div className="absolute inset-0 z-[1] bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
 
 
       {/* Teal accent glow */}
