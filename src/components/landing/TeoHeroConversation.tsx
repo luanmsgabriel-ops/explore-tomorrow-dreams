@@ -38,16 +38,15 @@ export const TeoHeroConversation = () => {
         aria-hidden="true"
         fetchPriority="high"
         decoding="async"
-        className="absolute inset-0 w-full h-full object-cover -z-20"
+        className="absolute inset-0 w-full h-full object-cover -z-10"
       />
-      <HeroBackgroundVideo />
 
-      {/* Dark Overlay & Gradients */}
-      <div className="absolute inset-0 bg-black/55 -z-10" />
+      {/* Dark Overlay & Gradients (above image, below content) */}
+      <div className="absolute inset-0 bg-black/40 -z-10 pointer-events-none" />
       <div
-        className="absolute inset-0 -z-10"
+        className="absolute inset-0 -z-10 pointer-events-none"
         style={{
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.85) 100%)'
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.75) 100%)'
         }}
       />
 
