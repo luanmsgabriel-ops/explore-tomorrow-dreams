@@ -8,19 +8,12 @@ import swissVillage from '@/assets/hero-swiss-village.jpg';
 export const ClosingCTA = () => {
   return (
     <section className="relative py-32 md:py-48 overflow-hidden bg-black">
-      {/* Cinematic Video Background — Swiss Alps / Turquoise Lakes */}
-      <video
-        autoPlay
-        muted
-        loop
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover opacity-30 -z-20"
-      >
-        <source
-          src="https://player.vimeo.com/external/494248530.hd.mp4?s=e84e5904005b63b2f814457e4e11e05d9c22268a&profile_id=175"
-          type="video/mp4"
-        />
-      </video>
+      {/* Swiss Village Background Image */}
+      <img
+        src={swissVillage}
+        alt="Vila suíça com lago azul e montanhas"
+        className="absolute inset-0 w-full h-full object-cover opacity-40 -z-20"
+      />
 
       {/* Dark overlay to keep text legible */}
       <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black via-black/70 to-black/50" />
