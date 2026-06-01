@@ -37,13 +37,13 @@ export const HeroCinematicBackground = () => {
         alt=""
         aria-hidden="true"
         decoding="async"
-        className="absolute inset-0 w-full h-full object-cover -z-10"
+        className="absolute inset-0 w-full h-full object-cover z-0"
       />
     );
   }
 
   return (
-    <div className="absolute inset-0 -z-10 overflow-hidden bg-ocean-deep">
+    <div className="absolute inset-0 z-0 overflow-hidden bg-ocean-deep">
       {/* Poster while first clip loads */}
       <img
         src={heroMountainBg}
