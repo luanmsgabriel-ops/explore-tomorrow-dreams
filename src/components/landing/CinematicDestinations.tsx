@@ -189,12 +189,15 @@ const DestinationCard = ({
     const el = cardRef.current;
     if (!el) return;
 
+    // Observer leve: 3 thresholds apenas, sem rootMargin agressivo.
+    // Evita o re-render constante que causava flicker nos 6 cards simultâneos.
+    let hasEntered = false;
     const observer = new IntersectionObserver(
       ([entry]) => {
         onRatioUpdate(destination.name, entry.intersectionRatio);
-        
-        if (entry.isIntersecting) {
-          // Entry animation with anime.js
+
+        if (entry.isIntersecting && !hasEntered) {
+          hasEntered = true;
           anime({
             targets: el,
             opacity: [0, 1],
@@ -204,7 +207,6 @@ const DestinationCard = ({
             easing: 'easeOutExpo'
           });
 
-          // Stagger title letters/entrance
           if (titleRef.current) {
             anime({
               targets: titleRef.current,
@@ -217,10 +219,7 @@ const DestinationCard = ({
           }
         }
       },
-      { 
-        threshold: Array.from({ length: 11 }, (_, i) => i * 0.1),
-        rootMargin: "-10% 0px -10% 0px"
-      }
+      { threshold: [0, 0.5, 1] }
     );
 
     observer.observe(el);
