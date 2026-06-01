@@ -2,9 +2,8 @@ import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { MessageCircle, ArrowRight, Star, Building2, Headphones } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HeroBackgroundVideo } from './HeroBackgroundVideo';
+import { HeroCinematicBackground } from './HeroCinematicBackground';
 import teoCharacter from '@/assets/teo-character.png';
-import heroMountainBg from '@/assets/hero-mountain-bg.jpg';
 
 const TEO_LINES = [
   'Pra onde a gente vai dessa vez?',
@@ -31,24 +30,9 @@ export const TeoHeroConversation = () => {
 
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden pt-20 pb-10">
-      {/* Cinematic Mountain Background */}
-      <img
-        src={heroMountainBg}
-        alt=""
-        aria-hidden="true"
-        fetchPriority="high"
-        decoding="async"
-        className="absolute inset-0 w-full h-full object-cover -z-10"
-      />
+      {/* Cinematic 30s destination video background — no dark overlay */}
+      <HeroCinematicBackground />
 
-      {/* Dark Overlay & Gradients (above image, below content) */}
-      <div className="absolute inset-0 bg-black/40 -z-10 pointer-events-none" />
-      <div
-        className="absolute inset-0 -z-10 pointer-events-none"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.75) 100%)'
-        }}
-      />
 
       {/* Ambient Light Orbs */}
       <motion.div 
