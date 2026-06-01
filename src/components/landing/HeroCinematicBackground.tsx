@@ -39,7 +39,7 @@ export const HeroCinematicBackground = () => {
           }`}
         />
       ))}
-      <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]" />
+      <div className="absolute inset-0 bg-black/20 backdrop-blur-[4px]" />
       <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/30" />
     </div>
   );
