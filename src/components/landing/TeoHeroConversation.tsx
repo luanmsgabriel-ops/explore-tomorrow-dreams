@@ -29,7 +29,7 @@ export const TeoHeroConversation = () => {
   }, []);
 
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden pt-20 pb-10">
+    <section className="relative min-h-screen flex flex-col items-center justify-start overflow-hidden pt-24 pb-10">
       {/* Cinematic 30s destination video background — no dark overlay */}
       <HeroCinematicBackground />
 
@@ -68,7 +68,7 @@ export const TeoHeroConversation = () => {
         </motion.div>
 
         {/* Headline */}
-        <div className="text-center mb-8 md:mb-10">
+        <div className="order-1 text-center mb-6 md:mb-7">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -82,7 +82,7 @@ export const TeoHeroConversation = () => {
         </div>
 
         {/* Téo Protagonist Center */}
-        <div className="relative mb-6 md:mb-8 flex items-center justify-center">
+        <div className="relative order-3 mt-4 mb-0 md:mb-4 flex items-center justify-center">
           {/* Téo Aura/Glow */}
           <motion.div
             animate={{ 
@@ -143,7 +143,7 @@ export const TeoHeroConversation = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
-          className="flex flex-col items-center"
+          className="order-2 flex flex-col items-center"
         >
 
           <div className="flex flex-wrap justify-center gap-3 mb-5">
@@ -156,16 +156,18 @@ export const TeoHeroConversation = () => {
             O Téo desenha o roteiro com inteligência artificial. A Tomorrow Travel cuida da execução com atendimento humano, WhatsApp oficial e empresa registrada no Brasil.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-5 mb-7 md:mb-8">
+          <div className="relative z-30 flex flex-col sm:flex-row gap-5 mb-7 md:mb-8">
             <Link
               to="/teo"
-              className="btn-gold flex items-center justify-center gap-4 text-lg px-10 py-5 group relative overflow-hidden"
+              className="relative z-30 isolate inline-flex min-h-[68px] min-w-[320px] items-center justify-center gap-4 overflow-hidden rounded-lg border border-gold-light/70 px-10 py-5 text-lg font-bold text-accent-foreground opacity-100 shadow-[var(--shadow-glow-gold)] transition-transform duration-300 hover:scale-105"
+              style={{
+                background: 'var(--gradient-gold)',
+                color: 'hsl(var(--accent-foreground))',
+                boxShadow: 'var(--shadow-glow-gold)',
+              }}
             >
-              <motion.div
-                className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-700"
-              />
-              <MessageCircle className="w-6 h-6" />
-              <span className="relative z-10 font-semibold">Conversar com o Téo</span>
+              <MessageCircle className="relative z-10 w-6 h-6" />
+              <span className="relative z-10 whitespace-nowrap font-semibold">Conversar com o Téo</span>
               <ArrowRight className="w-5 h-5 relative z-10 transition-transform group-hover:translate-x-2" />
             </Link>
             
