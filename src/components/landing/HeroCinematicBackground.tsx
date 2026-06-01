@@ -33,13 +33,18 @@ export const HeroCinematicBackground = () => {
           muted
           playsInline
           autoPlay={i === 0}
-          preload="auto"
+          preload={i === 0 ? 'auto' : 'metadata'}
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 scale-105 ${
             i === index ? 'opacity-100' : 'opacity-0'
           }`}
+          style={{
+            filter: 'blur(4px)',
+            willChange: 'opacity',
+            transform: 'translateZ(0) scale(1.05)',
+          }}
         />
       ))}
-      <div className="absolute inset-0 bg-black/20 backdrop-blur-[4px]" />
+      <div className="absolute inset-0 bg-black/20" />
       <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/30" />
     </div>
   );
