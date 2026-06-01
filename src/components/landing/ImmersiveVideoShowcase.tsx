@@ -15,8 +15,9 @@ export const ImmersiveVideoShowcase = () => {
             muted
             loop
             playsInline
-            preload="auto"
+            preload="metadata"
             className="absolute inset-0 w-full h-full object-cover"
+            style={{ transform: 'translateZ(0)', willChange: 'transform' }}
             aria-hidden="true"
           />
           {/* subtle gradient for legibility of overlaid text */}
