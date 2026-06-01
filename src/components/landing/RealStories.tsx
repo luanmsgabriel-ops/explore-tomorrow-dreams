@@ -1,28 +1,28 @@
 import { motion } from 'framer-motion';
 import { EditorialHeading } from './EditorialHeading';
 import { fadeUp, staggerContainer } from '@/lib/animations';
+import storyCaboFrio from '@/assets/story-cabo-frio-praia-do-forte.jpg';
+import storyBombinhas from '@/assets/story-bombinhas-beto-carrero.jpg';
+import storyMaragogi from '@/assets/story-maragogi-piscinas-naturais.jpg';
 
 const STORIES = [
   {
     destination: "CABO FRIO • RJ",
     quote: "O atendimento foi personalizado, muito rápido e nos acompanhou do início ao fim.",
     author: "Alex Vieira",
-    // Praia do Forte / Cabo Frio — RJ
-    image: "https://images.unsplash.com/photo-1583416750470-965b2707b355?auto=format&fit=crop&w=800&q=80",
+    image: storyCaboFrio,
   },
   {
     destination: "BOMBINHAS + BETO CARRERO",
     quote: "Achei maravilhosa.",
     author: "Mylena Cavalheiro",
-    // Praia de Bombinhas — SC
-    image: "https://images.unsplash.com/photo-1535470850581-95288969cdb3?auto=format&fit=crop&w=800&q=80",
+    image: storyBombinhas,
   },
   {
     destination: "MARAGOGI",
     quote: "Obrigada por essa experiência.",
     author: "Cliente Tomorrow Travel",
-    // Piscinas naturais de Maragogi — AL
-    image: "https://images.unsplash.com/photo-1621789098261-9c79a056af9d?auto=format&fit=crop&w=800&q=80",
+    image: storyMaragogi,
   }
 ];
 
@@ -61,6 +61,10 @@ export const RealStories = () => {
                   <img
                     src={story.image}
                     alt={story.destination}
+                    loading="lazy"
+                    decoding="async"
+                    width={1024}
+                    height={1365}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
