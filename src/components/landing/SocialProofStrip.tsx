@@ -42,14 +42,12 @@ export const SocialProofStrip = () => {
              <span className="text-[10px] uppercase tracking-[0.4em] text-white/30 mb-6 font-bold">
               Rede Global de Parceiros
             </span>
-            <div className="flex flex-wrap justify-center gap-x-12 gap-y-6">
+            <div className="flex flex-wrap justify-center gap-x-10 gap-y-4">
               {partners.map((p) => (
-                <div key={p.name} className="flex items-center gap-3 group opacity-40 hover:opacity-100 transition-opacity duration-500">
-                  <img 
-                    src={p.logo} 
-                    alt={p.name} 
-                    className="h-6 md:h-8 w-auto grayscale group-hover:grayscale-0 transition-all duration-500 object-contain"
-                  />
+                <div key={p.name} className="opacity-60 hover:opacity-100 transition-opacity duration-500">
+                  <span className="text-sm md:text-base font-serif tracking-[0.15em] text-white/80 uppercase">
+                    {p.name}
+                  </span>
                 </div>
               ))}
             </div>
