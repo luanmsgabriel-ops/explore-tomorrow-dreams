@@ -158,11 +158,12 @@ export const TeoHeroConversation = () => {
 
         {/* Subheadline & CTAs */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
           className="flex flex-col items-center"
         >
+
           <div className="flex flex-wrap justify-center gap-3 mb-5">
             <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-bold tracking-[0.2em] text-white uppercase">Viagens reais</span>
             <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-bold tracking-[0.2em] text-white uppercase">Empresa brasileira</span>
