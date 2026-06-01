@@ -81,7 +81,28 @@ const DESTINATIONS: Destination[] = [
     poster: '/images/posters/maldivas.jpg',
     size: 'normal',
   },
+  {
+    name: 'Bali',
+    country: 'Indonésia',
+    tag: 'Paraíso',
+    tagColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+    description: 'Terraços de arroz, templos milenares e praias de tirar o fôlego.',
+    video: '/videos/destinations/bali.mp4',
+    poster: '/images/posters/bali.jpg',
+    size: 'normal',
+  },
+  {
+    name: 'Dubai',
+    country: 'Emirados Árabes',
+    tag: 'Moderno',
+    tagColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+    description: 'Onde o deserto encontra o futuro em arranha-céus deslumbrantes.',
+    video: '/videos/destinations/dubai.mp4',
+    poster: '/images/posters/dubai.jpg',
+    size: 'normal',
+  },
 ];
+
 
 // ---------------------------------------------------------------------------
 // Lazy video hook
@@ -450,6 +471,8 @@ export const CinematicDestinations = ({
     'Rio de Janeiro': { angle: 135, direction: 'Sudeste do Brasil', x: 65, y: 70 },
     'Santorini': { angle: 90, direction: 'Ilhas Cíclades, Grécia', x: 15, y: 30 },
     'Maldivas': { angle: 110, direction: 'Oceano Índico', x: 25, y: 55 },
+    'Bali': { angle: 120, direction: 'Indonésia', x: 35, y: 60 },
+    'Dubai': { angle: 95, direction: 'Emirados Árabes', x: 20, y: 45 },
   };
 
   const [prevDestination, setPrevDestination] = useState(DESTINATIONS[0].name);
