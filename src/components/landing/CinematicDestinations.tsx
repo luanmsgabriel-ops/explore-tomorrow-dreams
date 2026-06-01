@@ -471,6 +471,8 @@ export const CinematicDestinations = ({
     'Rio de Janeiro': { angle: 135, direction: 'Sudeste do Brasil', x: 65, y: 70 },
     'Santorini': { angle: 90, direction: 'Ilhas Cíclades, Grécia', x: 15, y: 30 },
     'Maldivas': { angle: 110, direction: 'Oceano Índico', x: 25, y: 55 },
+    'Bali': { angle: 120, direction: 'Indonésia', x: 35, y: 60 },
+    'Dubai': { angle: 95, direction: 'Emirados Árabes', x: 20, y: 45 },
   };
 
   const [prevDestination, setPrevDestination] = useState(DESTINATIONS[0].name);
