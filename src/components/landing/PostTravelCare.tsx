@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { fadeUp } from '@/lib/animations';
+import postTravelMemory from '@/assets/post-travel-memory.jpg';
 
 export const PostTravelCare = () => {
   return (
@@ -14,8 +15,12 @@ export const PostTravelCare = () => {
           >
             <div className="aspect-[4/5] rounded-[3rem] overflow-hidden border border-gold/20 shadow-2xl shadow-gold/5">
               <img
-                src="https://images.unsplash.com/photo-1516483642773-2f66ef7c63f6?auto=format&fit=crop&w=1200&q=80"
+                src={postTravelMemory}
                 alt="Memória de viagem em porta-retrato"
+                loading="lazy"
+                decoding="async"
+                width={1280}
+                height={1600}
                 className="w-full h-full object-cover"
               />
             </div>
