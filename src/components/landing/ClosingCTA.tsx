@@ -12,11 +12,12 @@ export const ClosingCTA = () => {
       <img
         src={swissVillage}
         alt="Vila suíça com lago azul e montanhas"
-        className="absolute inset-0 w-full h-full object-cover opacity-60 z-0"
+        className="absolute inset-0 w-full h-full object-cover opacity-90 z-0"
       />
 
       {/* Dark overlay to keep text legible */}
-      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black via-black/60 to-black/30" />
+      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
+
 
       {/* Teal accent glow */}
       <div
