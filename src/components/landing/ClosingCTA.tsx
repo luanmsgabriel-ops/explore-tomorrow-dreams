@@ -92,12 +92,12 @@ export const ClosingCTA = () => {
           </motion.div>
 
           <motion.div variants={fadeUp} className="mt-16 flex flex-col items-center gap-2">
-            <p className="text-[10px] uppercase tracking-[0.4em] text-white/20">Tomorrow Travel · 2026</p>
+            <p className="text-[10px] uppercase tracking-[0.4em] text-white drop-shadow-md">Tomorrow Travel · 2026</p>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1">
-                {[...Array(5)].map((_, i) => <Star key={i} className="w-2.5 h-2.5 fill-gold/40 text-transparent" />)}
+                {[...Array(5)].map((_, i) => <Star key={i} className="w-2.5 h-2.5 fill-gold text-transparent drop-shadow-md" />)}
               </div>
-              <span className="text-[9px] text-white/30 uppercase tracking-widest font-medium">Excelência Comprovada</span>
+              <span className="text-[9px] text-white uppercase tracking-widest font-medium drop-shadow-md">Excelência Comprovada</span>
             </div>
           </motion.div>
         </motion.div>
