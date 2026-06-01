@@ -7,20 +7,20 @@ import swissVillage from '@/assets/hero-swiss-village.jpg';
 
 export const ClosingCTA = () => {
   return (
-    <section className="relative py-32 md:py-48 overflow-hidden bg-black">
+    <section className="relative py-32 md:py-48 overflow-hidden bg-black isolate">
       {/* Swiss Village Background Image */}
       <img
         src={swissVillage}
         alt="Vila suíça com lago azul e montanhas"
-        className="absolute inset-0 w-full h-full object-cover opacity-40 -z-20"
+        className="absolute inset-0 w-full h-full object-cover opacity-60 z-0"
       />
 
       {/* Dark overlay to keep text legible */}
-      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black via-black/70 to-black/50" />
+      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black via-black/60 to-black/30" />
 
       {/* Teal accent glow */}
       <div
-        className="absolute inset-0 -z-10 opacity-20"
+        className="absolute inset-0 z-[1] opacity-20 pointer-events-none"
         style={{
           background: 'radial-gradient(circle at center, rgba(0,255,200,0.15) 0%, transparent 70%)'
         }}
