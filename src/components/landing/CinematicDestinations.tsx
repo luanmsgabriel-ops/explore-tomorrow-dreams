@@ -525,7 +525,7 @@ export const CinematicDestinations = ({
   }, [activeDestination, currentData, onStateChange]);
 
   return (
-    <section id="cinematic-destinations" className="bg-black py-24 md:py-40 relative">
+    <section id="cinematic-destinations" className="bg-[radial-gradient(ellipse_at_top,_#fde68a_0%,_#f5c542_35%,_#c8941f_70%,_#8a5a10_100%)] py-24 md:py-40 relative">
       <div className="container mx-auto px-4 lg:px-8 mb-16 text-center">
         <span
           data-anime-eyebrow

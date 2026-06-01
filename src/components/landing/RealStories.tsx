@@ -29,7 +29,7 @@ const STORIES = [
 
 export const RealStories = () => {
   return (
-    <section className="py-24 md:py-40 bg-[#020607]">
+    <section className="py-24 md:py-40 bg-[radial-gradient(ellipse_at_top,_#fde68a_0%,_#f5c542_35%,_#c8941f_70%,_#8a5a10_100%)]">
       <div className="container mx-auto px-4 lg:px-8">
         <motion.div
           initial="hidden"
