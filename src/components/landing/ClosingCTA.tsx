@@ -34,21 +34,6 @@ export const ClosingCTA = () => {
           viewport={{ once: true }}
           className="max-w-4xl mx-auto text-center"
         >
-          <motion.div variants={scaleUp} className="flex justify-center mb-12">
-            <div className="relative">
-              <motion.div
-                animate={{
-                  scale: [1, 1.3, 1],
-                  opacity: [0.3, 0.6, 0.3]
-                }}
-                transition={{ duration: 4, repeat: Infinity }}
-                className="absolute inset-0 -m-10 rounded-full bg-teal/20 blur-3xl"
-              />
-              <div className="relative z-10">
-                <TeoMascot size="large" animated />
-              </div>
-            </div>
-          </motion.div>
 
           <motion.div variants={fadeUp}>
             <h2 className="font-editorial text-5xl md:text-8xl lg:text-9xl text-white leading-[0.9] mb-8">
