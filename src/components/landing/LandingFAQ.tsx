@@ -27,7 +27,7 @@ export const LandingFAQ = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section className="py-24 md:py-40 bg-black relative">
+    <section className="py-24 md:py-40 bg-teal-900 relative">
       <div className="container mx-auto px-4 lg:px-8">
         <motion.div
           initial="hidden"
