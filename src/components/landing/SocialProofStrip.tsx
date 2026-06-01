@@ -3,12 +3,11 @@ import { motion } from 'framer-motion';
 import { fadeUp, staggerContainer } from '@/lib/animations';
 
 const partners = [
-  { name: 'LATAM', logo: 'https://cdn.worldvectorlogo.com/logos/latam-airlines-1.svg' },
-  { name: 'Emirates', logo: 'https://upload.wikimedia.org/wikipedia/commons/d/d0/Emirates_logo.svg' },
-  { name: 'Marriott', logo: 'https://cdn.worldvectorlogo.com/logos/marriott-international-1.svg' },
-  { name: 'Four Seasons', logo: 'https://cdn.worldvectorlogo.com/logos/four-seasons-hotels-and-resorts.svg' },
-  { name: 'Aman', logo: 'https://www.aman.com/themes/custom/aman/logo.svg' },
-  { name: 'Belmond', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Belmond_logo.svg/1200px-Belmond_logo.svg.png' }
+  { name: 'Azul Viagens' },
+  { name: 'HotelDo' },
+  { name: 'Cativa' },
+  { name: 'Orinter' },
+  { name: 'BedsOnline' },
 ];
 
 export const SocialProofStrip = () => {
