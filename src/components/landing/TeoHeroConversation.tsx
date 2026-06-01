@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { MessageCircle, ArrowRight, Star, ShieldCheck, Building2, Headphones } from 'lucide-react';
+import { MessageCircle, ArrowRight, Star, Building2, Headphones } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HeroBackgroundVideo } from './HeroBackgroundVideo';
 import teoCharacter from '@/assets/teo-character.png';
