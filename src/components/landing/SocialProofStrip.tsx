@@ -3,12 +3,11 @@ import { motion } from 'framer-motion';
 import { fadeUp, staggerContainer } from '@/lib/animations';
 
 const partners = [
-  { name: 'LATAM', logo: 'https://cdn.worldvectorlogo.com/logos/latam-airlines-1.svg' },
-  { name: 'Emirates', logo: 'https://upload.wikimedia.org/wikipedia/commons/d/d0/Emirates_logo.svg' },
-  { name: 'Marriott', logo: 'https://cdn.worldvectorlogo.com/logos/marriott-international-1.svg' },
-  { name: 'Four Seasons', logo: 'https://cdn.worldvectorlogo.com/logos/four-seasons-hotels-and-resorts.svg' },
-  { name: 'Aman', logo: 'https://www.aman.com/themes/custom/aman/logo.svg' },
-  { name: 'Belmond', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Belmond_logo.svg/1200px-Belmond_logo.svg.png' }
+  { name: 'Azul Viagens' },
+  { name: 'HotelDo' },
+  { name: 'Cativa' },
+  { name: 'Orinter' },
+  { name: 'BedsOnline' },
 ];
 
 export const SocialProofStrip = () => {
@@ -43,14 +42,12 @@ export const SocialProofStrip = () => {
              <span className="text-[10px] uppercase tracking-[0.4em] text-white/30 mb-6 font-bold">
               Rede Global de Parceiros
             </span>
-            <div className="flex flex-wrap justify-center gap-x-12 gap-y-6">
+            <div className="flex flex-wrap justify-center gap-x-10 gap-y-4">
               {partners.map((p) => (
-                <div key={p.name} className="flex items-center gap-3 group opacity-40 hover:opacity-100 transition-opacity duration-500">
-                  <img 
-                    src={p.logo} 
-                    alt={p.name} 
-                    className="h-6 md:h-8 w-auto grayscale group-hover:grayscale-0 transition-all duration-500 object-contain"
-                  />
+                <div key={p.name} className="opacity-60 hover:opacity-100 transition-opacity duration-500">
+                  <span className="text-sm md:text-base font-serif tracking-[0.15em] text-white/80 uppercase">
+                    {p.name}
+                  </span>
                 </div>
               ))}
             </div>
