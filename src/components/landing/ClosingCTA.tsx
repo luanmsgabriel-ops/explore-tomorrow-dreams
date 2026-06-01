@@ -37,9 +37,9 @@ export const ClosingCTA = () => {
         >
 
           <motion.div variants={fadeUp}>
-            <h2 className="font-editorial text-5xl md:text-8xl lg:text-9xl text-white leading-[0.9] mb-8 text-center">
-              <span className="block">Sua história</span>
-              <span className="block font-editorial-italic gradient-text-teal italic pr-[0.15em]">começa aqui.</span>
+            <h2 className="font-editorial text-5xl md:text-8xl lg:text-9xl text-white leading-[0.9] mb-8 text-center [text-shadow:_0_4px_24px_rgba(0,0,0,0.6)]">
+              <span className="block drop-shadow-lg">Sua história</span>
+              <span className="block font-editorial-italic gradient-text-teal italic pr-[0.15em] drop-shadow-lg">começa aqui.</span>
             </h2>
 
           </motion.div>
