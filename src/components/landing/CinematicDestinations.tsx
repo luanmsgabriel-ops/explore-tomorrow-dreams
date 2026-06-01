@@ -93,19 +93,9 @@ function useLazyVideo(threshold = 0.25) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
 
-  // Detecta condições para NÃO carregar vídeo (mobile, save-data, conexão lenta, reduced-motion)
-  const shouldLoadVideo = useMemo(() => {
-    if (typeof window === 'undefined') return false;
-    // Mobile/tablet pequeno: nunca carrega vídeo (causa travamento)
-    if (window.matchMedia('(max-width: 1024px)').matches) return false;
-    // Usuário pediu menos movimento
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
-    // Save-data ou conexão lenta
-    const conn = (navigator as any).connection;
-    if (conn?.saveData) return false;
-    if (conn?.effectiveType && /2g|slow-2g/.test(conn.effectiveType)) return false;
-    return true;
-  }, []);
+  // Vídeos desabilitados — causavam travamento e flicker ao carregar 6 simultaneamente.
+  // Posters de alta qualidade entregam a mesma experiência visual sem custo de performance.
+  const shouldLoadVideo = false;
 
   // Step 1 — detect entry into viewport
   useEffect(() => {
@@ -199,12 +189,15 @@ const DestinationCard = ({
     const el = cardRef.current;
     if (!el) return;
 
+    // Observer leve: 3 thresholds apenas, sem rootMargin agressivo.
+    // Evita o re-render constante que causava flicker nos 6 cards simultâneos.
+    let hasEntered = false;
     const observer = new IntersectionObserver(
       ([entry]) => {
         onRatioUpdate(destination.name, entry.intersectionRatio);
-        
-        if (entry.isIntersecting) {
-          // Entry animation with anime.js
+
+        if (entry.isIntersecting && !hasEntered) {
+          hasEntered = true;
           anime({
             targets: el,
             opacity: [0, 1],
@@ -214,7 +207,6 @@ const DestinationCard = ({
             easing: 'easeOutExpo'
           });
 
-          // Stagger title letters/entrance
           if (titleRef.current) {
             anime({
               targets: titleRef.current,
@@ -227,10 +219,7 @@ const DestinationCard = ({
           }
         }
       },
-      { 
-        threshold: Array.from({ length: 11 }, (_, i) => i * 0.1),
-        rootMargin: "-10% 0px -10% 0px"
-      }
+      { threshold: [0, 0.5, 1] }
     );
 
     observer.observe(el);
