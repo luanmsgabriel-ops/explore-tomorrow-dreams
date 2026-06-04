@@ -581,7 +581,7 @@ function normalizeAirportToken(value: string): string {
 
 function extractFlightLocation(text: string, labels: string[]): string {
   for (const label of labels) {
-    const re = new RegExp(`${label}\\s*[:\\-]?\\s*([^\\n,;]+)`, "i");
+    const re = new RegExp(`(?:^|\\n|[;,])\\s*${label}\\s*[:\\-]\\s*([^\\n,;]+)`, "i");
     const m = text.match(re);
     if (m?.[1]) return m[1].trim();
   }
@@ -641,14 +641,14 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
       if (m) { iata = code + m[1]; break; }
     }
   }
-  const origin = extractFlightLocation(text, ["origem", "saindo de", "partindo de", "de"]);
-  const destination = extractFlightLocation(text, ["destino", "chegada", "indo para", "para"]);
+  const origin = extractFlightLocation(text, ["origem", "saindo de", "partindo de"]);
+  const destination = extractFlightLocation(text, ["destino", "chegada", "indo para"]);
 
   if (!iata) return hasFlightContext ? { intent: "flight_status", iata: "", date: "", origin, destination, missing: ["código do voo"] } : null;
   if (!hasFlightContext && !/voo|flight/i.test(lower)) return null;
 
   // Date: DD/MM/YYYY, DD/MM, YYYY-MM-DD, "hoje", "amanhã"
-  let date = new Date().toISOString().split("T")[0];
+  let date = "";
   const dmy = text.match(/\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b/);
   if (dmy) {
     const d = dmy[1].padStart(2, "0");
@@ -659,6 +659,7 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
   } else {
     const ymd = text.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/);
     if (ymd) date = `${ymd[1]}-${ymd[2]}-${ymd[3]}`;
+    else if (/hoje/i.test(lower)) date = new Date().toISOString().split("T")[0];
     else if (/amanh[ãa]/i.test(lower)) {
       const t = new Date(); t.setDate(t.getDate() + 1);
       date = t.toISOString().split("T")[0];
