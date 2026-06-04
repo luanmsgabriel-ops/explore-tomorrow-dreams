@@ -699,7 +699,12 @@ function formatFlightReply(intent: string, r: any): string {
   if (r?.error) return `❌ Não consegui consultar o voo: ${r.error}`;
   if (intent === "track_flight") return `✅ ${r.message || "Acompanhamento ativado."}`;
   if (intent === "untrack_flight") return `🛑 ${r.message || "Acompanhamento desativado."}`;
-  if (!r?.found) return `🔎 Não encontrei o voo *${r?.flight_iata}* na data *${r?.flight_date}*. Verifique o código IATA e tente novamente.`;
+  if (!r?.found) {
+    if (r?.route_mismatch) {
+      return `🔎 Encontrei o código *${r?.flight_iata}*, mas nenhum resultado bateu com a rota informada${r?.origin ? ` (origem: ${r.origin})` : ""}${r?.destination ? ` (destino: ${r.destination})` : ""}.\n\nConfirma pra mim a *origem e o destino* exatamente como estão na reserva?`;
+    }
+    return `🔎 Não encontrei o voo *${r?.flight_iata}* na data *${r?.flight_date}*. Verifique o código IATA, data, origem e destino e tente novamente.`;
+  }
   const f = r.flight || {};
   const statusEmoji: Record<string, string> = {
     scheduled: "🗓️", active: "🛫", landed: "🛬", cancelled: "❌", incident: "⚠️", diverted: "↪️",
@@ -734,7 +739,13 @@ async function handleAdminMessage(phoneNumber: string, messageText: string): Pro
     const fastFlight = detectFlightQuery(messageText);
     if (fastFlight) {
       console.log("[ADMIN] FAST-PATH flight detected:", JSON.stringify(fastFlight));
-      const action: any = { id: "a1", type: fastFlight.intent, flight_iata: fastFlight.iata, flight_date: fastFlight.date };
+      if (fastFlight.missing?.length) {
+        const reply = `Consigo consultar em tempo real pela API de voos, mas preciso confirmar ${fastFlight.missing.map((item) => `*${item}*`).join(", ")} para validar certinho.\n\nMe manda assim:\nCompanhia/código do voo:\nData:\nOrigem:\nDestino:`;
+        await logAdminAccess(phoneNumber, messageText, "flight_missing_data", reply);
+        await sendWhatsAppMessage(phoneNumber, reply);
+        return;
+      }
+      const action: any = { id: "a1", type: fastFlight.intent, flight_iata: fastFlight.iata, flight_date: fastFlight.date, origin: fastFlight.origin, destination: fastFlight.destination };
       const result = await executeAdminAction(action);
       const reply = formatFlightReply(fastFlight.intent, result);
       await logAdminAccess(phoneNumber, messageText, "flight_" + fastFlight.intent, reply);
