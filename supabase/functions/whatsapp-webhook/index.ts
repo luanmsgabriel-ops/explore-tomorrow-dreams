@@ -657,7 +657,6 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
   const destination = extractFlightLocation(text, ["destino", "chegada", "indo para"]);
 
   if (!iata) return hasFlightContext ? { intent: "flight_status", iata: "", date: "", origin, destination, missing: ["código do voo"] } : null;
-  if (!hasFlightContext && !date && !origin && !destination) return null;
 
   // Date: DD/MM/YYYY, DD/MM, YYYY-MM-DD, "hoje", "amanhã"
   let date = "";
@@ -679,6 +678,8 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
     }
   }
   }
+
+  if (!hasFlightContext && !date && !origin && !destination) return null;
 
   // Intent
   let intent: "flight_status" | "track_flight" | "untrack_flight" = "flight_status";
