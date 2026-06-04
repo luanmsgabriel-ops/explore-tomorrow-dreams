@@ -481,15 +481,24 @@ async function executeAdminAction(action: any): Promise<any> {
           return { error: `AviationStack: ${data.error.message || data.error.code}` };
         }
         const list: any[] = Array.isArray(data?.data) ? data.data : [];
-        let flight = list.find((f) => f.flight_date === flightDate);
-        if (!flight && list.length > 0) {
-          flight = list.slice().sort((a, b) => {
+        const requestedOrigin = String(action.origin || "").trim();
+        const requestedDestination = String(action.destination || "").trim();
+        const routeMatches = list.filter((f) =>
+          airportMatches(f.departure?.iata, f.departure?.airport, requestedOrigin) &&
+          airportMatches(f.arrival?.iata, f.arrival?.airport, requestedDestination)
+        );
+        const candidates = routeMatches.length > 0 ? routeMatches : list;
+        let flight = candidates.find((f) => f.flight_date === flightDate);
+        if (!flight && candidates.length > 0) {
+          flight = candidates.slice().sort((a, b) => {
             const da = Math.abs(new Date(a.flight_date).getTime() - new Date(flightDate).getTime());
             const db = Math.abs(new Date(b.flight_date).getTime() - new Date(flightDate).getTime());
             return da - db;
           })[0];
         }
-        if (!flight) return { success: true, found: false, flight_iata: flightIata, flight_date: flightDate };
+        if (!flight || (list.length > 0 && routeMatches.length === 0 && (requestedOrigin || requestedDestination))) {
+          return { success: true, found: false, route_mismatch: list.length > 0, flight_iata: flightIata, flight_date: flightDate, origin: requestedOrigin, destination: requestedDestination };
+        }
         const actualDate = flight.flight_date || flightDate;
         const { data: existing } = await supabase
           .from("flight_tracking_subscriptions")
