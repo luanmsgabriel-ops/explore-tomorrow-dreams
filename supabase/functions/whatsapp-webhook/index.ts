@@ -284,7 +284,16 @@ REGRAS:
   * A mensagem deve ser no estilo do Téo: amigável, com emojis, breve e profissional
 - IMPORTANTE: Quando o admin pedir para enviar mensagens, SEMPRE gere o message_template no estilo do Téo (amigável, com emojis, curta)
 - Se o admin especificar o conteúdo da mensagem, use exatamente o que ele pediu
-- Se o admin não especificar, gere uma mensagem contextual (ex: para pendentes, pergunte se ainda tem interesse)`;
+- Se o admin não especificar, gere uma mensagem contextual (ex: para pendentes, pergunte se ainda tem interesse)
+
+STATUS DE VOO (AviationStack):
+- Quando o admin pedir status/situação de um voo (ex: "status do voo G31234", "como está o LA8084", "voo AD4567 hoje"), use action type "flight_status" com:
+  { "type": "flight_status", "flight_iata": "G31234", "flight_date": "YYYY-MM-DD" }
+- Se o admin não informar a data, use a data de hoje (${new Date().toISOString().split("T")[0]}).
+- Normalize o código IATA: remova espaços e hífens, deixe MAIÚSCULO (ex: "g3 1234" → "G31234").
+- Quando o admin confirmar/pedir para ATIVAR atualização periódica (ex: "ativar atualização voo G31234", "sim, ativar voo G31234 a cada 10 min", "acompanhar voo G31234"), use action type "track_flight":
+  { "type": "track_flight", "flight_iata": "G31234", "flight_date": "YYYY-MM-DD" }
+- Para DESATIVAR (ex: "parar atualização voo G31234", "cancelar acompanhamento voo G31234"), use action type "untrack_flight" com os mesmos campos.`;
 
 const ADMIN_FORMATTER_PROMPT = `Você é o assistente administrativo da Tomorrow Travel respondendo ao dono da agência via WhatsApp.
 
@@ -316,7 +325,14 @@ LINKS DE CONTATO DIRETO (OBRIGATÓRIO):
 - Ao mostrar conversas do WhatsApp, SEMPRE inclua o link direto do cliente no topo
 - NÃO mascare o telefone quando o admin pedir contato específico de um cliente — mostre completo com o link
 
-CONTEXTO: Você tem acesso a TODAS as tabelas do sistema. Pode consultar vendas, cotações, conversas do WhatsApp, viagens de clientes, destinos, ofertas, analytics, avaliações, e qualquer outro dado do painel administrativo.`;
+CONTEXTO: Você tem acesso a TODAS as tabelas do sistema. Pode consultar vendas, cotações, conversas do WhatsApp, viagens de clientes, destinos, ofertas, analytics, avaliações, e qualquer outro dado do painel administrativo.
+
+STATUS DE VOO:
+- Quando uma action "flight_status" retornar dados do voo, formate de forma clara: status (com emoji), companhia, origem/destino (códigos IATA + nome aeroporto), horários previstos e estimados (em BRT), e atraso em minutos se houver.
+- Se "already_tracking" for false, FINALIZE a mensagem perguntando: "Quer que eu te avise a cada 10 minutos quando algo mudar nesse voo? Responde: *ativar atualização voo <IATA>*"
+- Se "already_tracking" for true, mencione: "✅ Acompanhamento já ativo — vou te avisar quando algo mudar."
+- Se "found" for false, informe que o voo não foi encontrado na AviationStack (verifique o código IATA e a data).
+- Quando uma action "track_flight" tiver sucesso, confirme que o acompanhamento foi ativado e que atualizações chegarão a cada 10 min quando houver mudança de status ou atraso.`;
 
 function maskPhone(phone: string): string {
   if (!phone || phone.length < 8) return phone;
@@ -439,6 +455,76 @@ async function executeAdminAction(action: any): Promise<any> {
       };
     }
     
+    if (action.type === "flight_status") {
+      const flightIata = String(action.flight_iata || "").replace(/[\s-]/g, "").toUpperCase();
+      const flightDate = action.flight_date || new Date().toISOString().split("T")[0];
+      if (!flightIata) return { error: "flight_iata é obrigatório" };
+      try {
+        const url = `https://api.aviationstack.com/v1/flights?access_key=${Deno.env.get("AVIATIONSTACK_API_KEY")}&flight_iata=${flightIata}&flight_date=${flightDate}`;
+        const res = await fetch(url);
+        if (!res.ok) return { error: `AviationStack ${res.status}` };
+        const data = await res.json();
+        const flight = data.data?.[0];
+        if (!flight) return { success: true, found: false, flight_iata: flightIata, flight_date: flightDate };
+        // Check if already tracked
+        const { data: existing } = await supabase
+          .from("flight_tracking_subscriptions")
+          .select("active")
+          .eq("phone_number", ADMIN_PHONE_NUMBER)
+          .eq("flight_iata", flightIata)
+          .eq("flight_date", flightDate)
+          .maybeSingle();
+        return {
+          success: true,
+          found: true,
+          flight_iata: flightIata,
+          flight_date: flightDate,
+          already_tracking: !!existing?.active,
+          flight: {
+            status: flight.flight_status,
+            airline: flight.airline?.name,
+            departure: flight.departure,
+            arrival: flight.arrival,
+            delay_minutes: flight.departure?.delay || 0,
+          },
+        };
+      } catch (e) {
+        return { error: String(e) };
+      }
+    }
+
+    if (action.type === "track_flight") {
+      const flightIata = String(action.flight_iata || "").replace(/[\s-]/g, "").toUpperCase();
+      const flightDate = action.flight_date || new Date().toISOString().split("T")[0];
+      if (!flightIata) return { error: "flight_iata é obrigatório" };
+      const { error } = await supabase
+        .from("flight_tracking_subscriptions")
+        .upsert({
+          phone_number: ADMIN_PHONE_NUMBER,
+          flight_iata: flightIata,
+          flight_date: flightDate,
+          active: true,
+          last_status: null,
+          last_delay_minutes: null,
+          last_notified_at: null,
+        }, { onConflict: "phone_number,flight_iata,flight_date" });
+      if (error) return { error: error.message };
+      return { success: true, message: `Acompanhamento ativado para ${flightIata} (${flightDate}). Atualizações a cada 10 min quando houver mudança.` };
+    }
+
+    if (action.type === "untrack_flight") {
+      const flightIata = String(action.flight_iata || "").replace(/[\s-]/g, "").toUpperCase();
+      const flightDate = action.flight_date || new Date().toISOString().split("T")[0];
+      const { error } = await supabase
+        .from("flight_tracking_subscriptions")
+        .update({ active: false })
+        .eq("phone_number", ADMIN_PHONE_NUMBER)
+        .eq("flight_iata", flightIata)
+        .eq("flight_date", flightDate);
+      if (error) return { error: error.message };
+      return { success: true, message: `Acompanhamento do voo ${flightIata} desativado.` };
+    }
+
     return { error: "Tipo de ação não suportado: " + action.type };
   } catch (e) {
     return { error: String(e) };
