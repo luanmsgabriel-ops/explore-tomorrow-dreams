@@ -289,20 +289,22 @@ REGRAS:
 🛫 STATUS DE VOO (AviationStack) — REGRA CRÍTICA:
 - SEMPRE que o admin perguntar sobre QUALQUER voo (status, situação, localizar, onde está, está atrasado, decolou, pousou, vai chegar que horas, "me fala desse voo", "consulta o voo X", "localize este voo", etc), você OBRIGATORIAMENTE retorna uma action "flight_status". NUNCA responda com "direct_answer" dizendo que não tem acesso — a action flight_status CHAMA a API AviationStack em tempo real e retorna o status do voo.
 - A API funciona para QUALQUER voo do mundo (Gol/G3, Latam/LA, Azul/AD, American/AA, Delta/DL, Lufthansa/LH, etc), não precisa estar no banco de dados.
+- NUNCA consulte client_trips para localizar status de voo em tempo real. Status de voo é sempre via action flight_status.
+- Se faltarem dados mínimos para validar o voo, responda pedindo exatamente o que falta antes da consulta. Dados mínimos: código IATA ou companhia+número, data do voo, origem e destino. Exemplo: se vier "Companhia: Gol / Número: G31356 / Data: 04/06/2026 / Origem: Guarulhos" sem destino, peça o destino.
 - Extraia o código IATA do voo de qualquer formato que o admin enviar:
   * "Companhia: Gol, Número do Voo: G31356" → flight_iata="G31356"
   * "voo da Gol 1356" → flight_iata="G31356" (Gol=G3)
   * "LATAM 8084" → flight_iata="LA8084" (LATAM=LA, também aceita JJ)
   * "AZUL 4567" → flight_iata="AD4567" (Azul=AD)
   * "g3 1356", "G3-1356", "G3 1356" → flight_iata="G31356" (sempre MAIÚSCULO, sem espaços/hífens)
-- Extraia a data em qualquer formato (DD/MM/YYYY, DD-MM, "hoje", "amanhã") e converta para YYYY-MM-DD. Se não houver data, use hoje (${new Date().toISOString().split("T")[0]}).
+- Extraia a data em qualquer formato (DD/MM/YYYY, DD-MM, "hoje", "amanhã") e converta para YYYY-MM-DD. Se não houver data, peça a data antes de consultar.
 - Formato da action:
   { "id": "a1", "type": "flight_status", "flight_iata": "G31356", "flight_date": "2026-06-04" }
 - ATIVAR ACOMPANHAMENTO: quando o admin disser "ativar atualização voo G31356", "sim ativar", "quero acompanhar", "me avise a cada 10 min", use:
   { "id": "a1", "type": "track_flight", "flight_iata": "G31356", "flight_date": "2026-06-04" }
 - DESATIVAR: "parar atualização voo G31356", "cancelar acompanhamento":
   { "id": "a1", "type": "untrack_flight", "flight_iata": "G31356", "flight_date": "2026-06-04" }
-- ⚠️ PROIBIDO retornar direct_answer dizendo "não tenho acesso a dados de voo" ou "não tenho essa consulta". A action flight_status é a ferramenta para isso e DEVE ser usada.`;
+- ⚠️ PROIBIDO retornar direct_answer dizendo "não tenho acesso a dados de voo", "não tenho essa consulta" ou "consulte a companhia aérea". Se tiver dados suficientes, use flight_status; se faltar algo, peça os dados faltantes.`;
 
 const ADMIN_FORMATTER_PROMPT = `Você é o assistente administrativo da Tomorrow Travel respondendo ao dono da agência via WhatsApp.
 
@@ -479,15 +481,24 @@ async function executeAdminAction(action: any): Promise<any> {
           return { error: `AviationStack: ${data.error.message || data.error.code}` };
         }
         const list: any[] = Array.isArray(data?.data) ? data.data : [];
-        let flight = list.find((f) => f.flight_date === flightDate);
-        if (!flight && list.length > 0) {
-          flight = list.slice().sort((a, b) => {
+        const requestedOrigin = String(action.origin || "").trim();
+        const requestedDestination = String(action.destination || "").trim();
+        const routeMatches = list.filter((f) =>
+          airportMatches(f.departure?.iata, f.departure?.airport, requestedOrigin) &&
+          airportMatches(f.arrival?.iata, f.arrival?.airport, requestedDestination)
+        );
+        const candidates = routeMatches.length > 0 ? routeMatches : list;
+        let flight = candidates.find((f) => f.flight_date === flightDate);
+        if (!flight && candidates.length > 0) {
+          flight = candidates.slice().sort((a, b) => {
             const da = Math.abs(new Date(a.flight_date).getTime() - new Date(flightDate).getTime());
             const db = Math.abs(new Date(b.flight_date).getTime() - new Date(flightDate).getTime());
             return da - db;
           })[0];
         }
-        if (!flight) return { success: true, found: false, flight_iata: flightIata, flight_date: flightDate };
+        if (!flight || (list.length > 0 && routeMatches.length === 0 && (requestedOrigin || requestedDestination))) {
+          return { success: true, found: false, route_mismatch: list.length > 0, flight_iata: flightIata, flight_date: flightDate, origin: requestedOrigin, destination: requestedDestination };
+        }
         const actualDate = flight.flight_date || flightDate;
         const { data: existing } = await supabase
           .from("flight_tracking_subscriptions")
@@ -569,7 +580,52 @@ async function logAdminAccess(phoneNumber: string, commandText: string, queryTyp
 }
 
 // ===== Flight fast-path helpers =====
-function detectFlightQuery(text: string): { intent: "flight_status" | "track_flight" | "untrack_flight"; iata: string; date: string } | null {
+function normalizeAirportToken(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function extractFlightLocation(text: string, labels: string[]): string {
+  for (const label of labels) {
+    const re = new RegExp(`(?:^|\\n|[;,])\\s*${label}\\s*[:\\-]\\s*([^\\n,;]+)`, "i");
+    const m = text.match(re);
+    if (m?.[1]) return m[1].trim();
+  }
+  return "";
+}
+
+function airportMatches(apiIata?: string | null, apiName?: string | null, input?: string): boolean {
+  if (!input) return true;
+  const normalizedInput = normalizeAirportToken(input);
+  const normalizedName = normalizeAirportToken(apiName || "");
+  const normalizedIata = normalizeAirportToken(apiIata || "");
+  const aliases: Record<string, string[]> = {
+    gru: ["gru", "guarulhos", "sao paulo", "governador andre franco montoro"],
+    cgh: ["cgh", "congonhas", "sao paulo"],
+    vcp: ["vcp", "viracopos", "campinas"],
+    ssa: ["ssa", "salvador", "deputado luis eduardo magalhaes"],
+    gig: ["gig", "galeao", "rio de janeiro", "tom jobim"],
+    sdu: ["sdu", "santos dumont", "rio de janeiro"],
+    bsb: ["bsb", "brasilia", "presidente juscelino kubitschek"],
+    cnf: ["cnf", "confins", "belo horizonte", "tancredo neves"],
+    rec: ["rec", "recife", "guararapes", "gilberto freyre"],
+    for: ["for", "fortaleza", "pinto martins"],
+    poa: ["poa", "porto alegre", "salgado filho"],
+    cwb: ["cwb", "curitiba", "afonso pena"],
+    fln: ["fln", "florianopolis", "hercilio luz"],
+    nat: ["nat", "natal", "sao goncalo do amarante"],
+    mcx: ["mcx", "maceio", "zumbi dos palmares"],
+  };
+  if (normalizedIata && normalizedInput === normalizedIata) return true;
+  if (normalizedName && (normalizedName.includes(normalizedInput) || normalizedInput.includes(normalizedName))) return true;
+  const apiAliases = aliases[normalizedIata] || [];
+  return apiAliases.some((alias) => normalizedInput.includes(alias) || alias.includes(normalizedInput));
+}
+
+function detectFlightQuery(text: string): { intent: "flight_status" | "track_flight" | "untrack_flight"; iata: string; date: string; origin?: string; destination?: string; missing?: string[] } | null {
   if (!text) return null;
   const lower = text.toLowerCase();
   const hasFlightContext = /(voo|flight|companhia|n[uú]mero do voo|localiz|status|acompanh|atualiza[cç][aã]o|cada\s*10\s*min)/i.test(lower);
@@ -594,11 +650,17 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
       if (m) { iata = code + m[1]; break; }
     }
   }
-  if (!iata) return null;
+  const origin = extractFlightLocation(text, ["origem", "saindo de", "partindo de"]);
+  const destination = extractFlightLocation(text, ["destino", "chegada", "indo para"]);
+
+  if (!iata) return hasFlightContext ? { intent: "flight_status", iata: "", date: "", origin, destination, missing: ["código do voo"] } : null;
   if (!hasFlightContext && !/voo|flight/i.test(lower)) return null;
 
   // Date: DD/MM/YYYY, DD/MM, YYYY-MM-DD, "hoje", "amanhã"
-  let date = new Date().toISOString().split("T")[0];
+  let date = "";
+  const ymd = text.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/);
+  if (ymd) date = `${ymd[1]}-${ymd[2]}-${ymd[3]}`;
+  else {
   const dmy = text.match(/\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b/);
   if (dmy) {
     const d = dmy[1].padStart(2, "0");
@@ -607,12 +669,12 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
     if (y.length === 2) y = "20" + y;
     date = `${y}-${m}-${d}`;
   } else {
-    const ymd = text.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/);
-    if (ymd) date = `${ymd[1]}-${ymd[2]}-${ymd[3]}`;
+    if (/hoje/i.test(lower)) date = new Date().toISOString().split("T")[0];
     else if (/amanh[ãa]/i.test(lower)) {
       const t = new Date(); t.setDate(t.getDate() + 1);
       date = t.toISOString().split("T")[0];
     }
+  }
   }
 
   // Intent
@@ -620,7 +682,14 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
   if (/(parar|cancelar|desativ|desligar)\s+(acompanh|atualiza)/i.test(lower)) intent = "untrack_flight";
   else if (/(ativar|ativa|quero acompanhar|me avise|me avisa|a cada\s*10\s*min|sim,?\s*ativar?)/i.test(lower)) intent = "track_flight";
 
-  return { intent, iata, date };
+  const missing: string[] = [];
+  if (!date) missing.push("data do voo");
+  if (intent === "flight_status") {
+    if (!origin) missing.push("origem");
+    if (!destination) missing.push("destino");
+  }
+
+  return { intent, iata, date, origin, destination, missing };
 }
 
 function fmtBRT(iso?: string | null): string {
@@ -634,7 +703,12 @@ function formatFlightReply(intent: string, r: any): string {
   if (r?.error) return `❌ Não consegui consultar o voo: ${r.error}`;
   if (intent === "track_flight") return `✅ ${r.message || "Acompanhamento ativado."}`;
   if (intent === "untrack_flight") return `🛑 ${r.message || "Acompanhamento desativado."}`;
-  if (!r?.found) return `🔎 Não encontrei o voo *${r?.flight_iata}* na data *${r?.flight_date}*. Verifique o código IATA e tente novamente.`;
+  if (!r?.found) {
+    if (r?.route_mismatch) {
+      return `🔎 Encontrei o código *${r?.flight_iata}*, mas nenhum resultado bateu com a rota informada${r?.origin ? ` (origem: ${r.origin})` : ""}${r?.destination ? ` (destino: ${r.destination})` : ""}.\n\nConfirma pra mim a *origem e o destino* exatamente como estão na reserva?`;
+    }
+    return `🔎 Não encontrei o voo *${r?.flight_iata}* na data *${r?.flight_date}*. Verifique o código IATA, data, origem e destino e tente novamente.`;
+  }
   const f = r.flight || {};
   const statusEmoji: Record<string, string> = {
     scheduled: "🗓️", active: "🛫", landed: "🛬", cancelled: "❌", incident: "⚠️", diverted: "↪️",
@@ -656,7 +730,7 @@ function formatFlightReply(intent: string, r: any): string {
   if (f.delay_minutes) msg += `\n⏰ *Atraso:* ${f.delay_minutes} min\n`;
   msg += `\n`;
   if (r.already_tracking) msg += `✅ Acompanhamento já ativo — te aviso quando algo mudar.`;
-  else msg += `Quer que eu te avise a cada 10 min quando algo mudar?\nResponde: *ativar atualização voo ${r.flight_iata}*`;
+  else msg += `Quer que eu te avise a cada 10 min quando algo mudar?\nResponde: *ativar atualização voo ${r.flight_iata} em ${r.flight_date}*`;
   return msg;
 }
 
@@ -669,7 +743,13 @@ async function handleAdminMessage(phoneNumber: string, messageText: string): Pro
     const fastFlight = detectFlightQuery(messageText);
     if (fastFlight) {
       console.log("[ADMIN] FAST-PATH flight detected:", JSON.stringify(fastFlight));
-      const action: any = { id: "a1", type: fastFlight.intent, flight_iata: fastFlight.iata, flight_date: fastFlight.date };
+      if (fastFlight.missing?.length) {
+        const reply = `Consigo consultar em tempo real pela API de voos, mas preciso confirmar ${fastFlight.missing.map((item) => `*${item}*`).join(", ")} para validar certinho.\n\nMe manda assim:\nCompanhia/código do voo:\nData:\nOrigem:\nDestino:`;
+        await logAdminAccess(phoneNumber, messageText, "flight_missing_data", reply);
+        await sendWhatsAppMessage(phoneNumber, reply);
+        return;
+      }
+      const action: any = { id: "a1", type: fastFlight.intent, flight_iata: fastFlight.iata, flight_date: fastFlight.date, origin: fastFlight.origin, destination: fastFlight.destination };
       const result = await executeAdminAction(action);
       const reply = formatFlightReply(fastFlight.intent, result);
       await logAdminAccess(phoneNumber, messageText, "flight_" + fastFlight.intent, reply);
