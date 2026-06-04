@@ -631,7 +631,7 @@ function airportMatches(apiIata?: string | null, apiName?: string | null, input?
 function detectFlightQuery(text: string): { intent: "flight_status" | "track_flight" | "untrack_flight"; iata: string; date: string; origin?: string; destination?: string; missing?: string[] } | null {
   if (!text) return null;
   const lower = text.toLowerCase();
-  const hasFlightContext = /(voo|flight|companhia|n[uú]mero do voo|localiz|status|acompanh|atualiza[cç][aã]o|cada\s*10\s*min)/i.test(lower);
+  const hasFlightContext = /(voo|flight|companhia|n[uú]mero do voo|localiz|status|acompanh|atualiza[cç][aã]o|cada\s*10\s*min|origem|destino|chegada|partida|\bgol\b|\blatam\b|\bazul\b)/i.test(lower);
   // IATA pattern: 2 letters or digit+letter (e.g. G3) + 1-5 digits, with optional space/hyphen
   // Try common Brazilian/global airline prefixes first
   const airlineMap: Record<string, string> = {
@@ -657,7 +657,7 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
   const destination = extractFlightLocation(text, ["destino", "chegada", "indo para"]);
 
   if (!iata) return hasFlightContext ? { intent: "flight_status", iata: "", date: "", origin, destination, missing: ["código do voo"] } : null;
-  if (!hasFlightContext && !/voo|flight/i.test(lower)) return null;
+  if (!hasFlightContext && !date && !origin && !destination) return null;
 
   // Date: DD/MM/YYYY, DD/MM, YYYY-MM-DD, "hoje", "amanhã"
   let date = "";
