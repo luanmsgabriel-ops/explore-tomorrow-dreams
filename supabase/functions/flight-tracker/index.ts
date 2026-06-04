@@ -117,13 +117,13 @@ export function buildStatusMessage(flight: any, flightIata: string): string {
   return (
     `${emoji} *Voo ${flightIata}* — ${status.toUpperCase()}\n\n` +
     `🛫 *Origem:* ${dep.airport ?? "—"} (${dep.iata ?? "—"})\n` +
-    `   Previsto: ${fmtTime(dep.scheduled)}\n` +
-    `   Estimado: ${fmtTime(dep.estimated)}\n` +
+    `   Previsto: ${fmtTime(dep.scheduled, dep.timezone, dep.iata)}\n` +
+    `   Estimado: ${fmtTime(dep.estimated, dep.timezone, dep.iata)}\n` +
     (delay ? `   ⏱️ Atraso: ${delay} min\n` : "") +
     `\n🛬 *Destino:* ${arr.airport ?? "—"} (${arr.iata ?? "—"})\n` +
-    `   Previsto: ${fmtTime(arr.scheduled)}\n` +
-    `   Estimado: ${fmtTime(arr.estimated)}\n` +
-    (arr.actual ? `   ✅ Pousou: ${fmtTime(arr.actual)}\n` : "")
+    `   Previsto: ${fmtTime(arr.scheduled, arr.timezone, arr.iata)}\n` +
+    `   Estimado: ${fmtTime(arr.estimated, arr.timezone, arr.iata)}\n` +
+    (arr.actual ? `   ✅ Pousou: ${fmtTime(arr.actual, arr.timezone, arr.iata)}\n` : "")
   );
 }
 
