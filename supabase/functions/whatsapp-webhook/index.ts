@@ -297,7 +297,7 @@ REGRAS:
   * "LATAM 8084" → flight_iata="LA8084" (LATAM=LA, também aceita JJ)
   * "AZUL 4567" → flight_iata="AD4567" (Azul=AD)
   * "g3 1356", "G3-1356", "G3 1356" → flight_iata="G31356" (sempre MAIÚSCULO, sem espaços/hífens)
-- Extraia a data em qualquer formato (DD/MM/YYYY, DD-MM, "hoje", "amanhã") e converta para YYYY-MM-DD. Se não houver data, use hoje (${new Date().toISOString().split("T")[0]}).
+- Extraia a data em qualquer formato (DD/MM/YYYY, DD-MM, "hoje", "amanhã") e converta para YYYY-MM-DD. Se não houver data, peça a data antes de consultar.
 - Formato da action:
   { "id": "a1", "type": "flight_status", "flight_iata": "G31356", "flight_date": "2026-06-04" }
 - ATIVAR ACOMPANHAMENTO: quando o admin disser "ativar atualização voo G31356", "sim ativar", "quero acompanhar", "me avise a cada 10 min", use:
