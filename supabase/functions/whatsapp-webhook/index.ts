@@ -289,6 +289,8 @@ REGRAS:
 🛫 STATUS DE VOO (AviationStack) — REGRA CRÍTICA:
 - SEMPRE que o admin perguntar sobre QUALQUER voo (status, situação, localizar, onde está, está atrasado, decolou, pousou, vai chegar que horas, "me fala desse voo", "consulta o voo X", "localize este voo", etc), você OBRIGATORIAMENTE retorna uma action "flight_status". NUNCA responda com "direct_answer" dizendo que não tem acesso — a action flight_status CHAMA a API AviationStack em tempo real e retorna o status do voo.
 - A API funciona para QUALQUER voo do mundo (Gol/G3, Latam/LA, Azul/AD, American/AA, Delta/DL, Lufthansa/LH, etc), não precisa estar no banco de dados.
+- NUNCA consulte client_trips para localizar status de voo em tempo real. Status de voo é sempre via action flight_status.
+- Se faltarem dados mínimos para validar o voo, responda pedindo exatamente o que falta antes da consulta. Dados mínimos: código IATA ou companhia+número, data do voo, origem e destino. Exemplo: se vier "Companhia: Gol / Número: G31356 / Data: 04/06/2026 / Origem: Guarulhos" sem destino, peça o destino.
 - Extraia o código IATA do voo de qualquer formato que o admin enviar:
   * "Companhia: Gol, Número do Voo: G31356" → flight_iata="G31356"
   * "voo da Gol 1356" → flight_iata="G31356" (Gol=G3)
@@ -302,7 +304,7 @@ REGRAS:
   { "id": "a1", "type": "track_flight", "flight_iata": "G31356", "flight_date": "2026-06-04" }
 - DESATIVAR: "parar atualização voo G31356", "cancelar acompanhamento":
   { "id": "a1", "type": "untrack_flight", "flight_iata": "G31356", "flight_date": "2026-06-04" }
-- ⚠️ PROIBIDO retornar direct_answer dizendo "não tenho acesso a dados de voo" ou "não tenho essa consulta". A action flight_status é a ferramenta para isso e DEVE ser usada.`;
+- ⚠️ PROIBIDO retornar direct_answer dizendo "não tenho acesso a dados de voo", "não tenho essa consulta" ou "consulte a companhia aérea". Se tiver dados suficientes, use flight_status; se faltar algo, peça os dados faltantes.`;
 
 const ADMIN_FORMATTER_PROMPT = `Você é o assistente administrativo da Tomorrow Travel respondendo ao dono da agência via WhatsApp.
 
