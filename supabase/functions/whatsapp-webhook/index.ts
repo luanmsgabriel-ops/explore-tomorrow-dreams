@@ -284,7 +284,16 @@ REGRAS:
   * A mensagem deve ser no estilo do Téo: amigável, com emojis, breve e profissional
 - IMPORTANTE: Quando o admin pedir para enviar mensagens, SEMPRE gere o message_template no estilo do Téo (amigável, com emojis, curta)
 - Se o admin especificar o conteúdo da mensagem, use exatamente o que ele pediu
-- Se o admin não especificar, gere uma mensagem contextual (ex: para pendentes, pergunte se ainda tem interesse)`;
+- Se o admin não especificar, gere uma mensagem contextual (ex: para pendentes, pergunte se ainda tem interesse)
+
+STATUS DE VOO (AviationStack):
+- Quando o admin pedir status/situação de um voo (ex: "status do voo G31234", "como está o LA8084", "voo AD4567 hoje"), use action type "flight_status" com:
+  { "type": "flight_status", "flight_iata": "G31234", "flight_date": "YYYY-MM-DD" }
+- Se o admin não informar a data, use a data de hoje (${new Date().toISOString().split("T")[0]}).
+- Normalize o código IATA: remova espaços e hífens, deixe MAIÚSCULO (ex: "g3 1234" → "G31234").
+- Quando o admin confirmar/pedir para ATIVAR atualização periódica (ex: "ativar atualização voo G31234", "sim, ativar voo G31234 a cada 10 min", "acompanhar voo G31234"), use action type "track_flight":
+  { "type": "track_flight", "flight_iata": "G31234", "flight_date": "YYYY-MM-DD" }
+- Para DESATIVAR (ex: "parar atualização voo G31234", "cancelar acompanhamento voo G31234"), use action type "untrack_flight" com os mesmos campos.`;
 
 const ADMIN_FORMATTER_PROMPT = `Você é o assistente administrativo da Tomorrow Travel respondendo ao dono da agência via WhatsApp.
 
