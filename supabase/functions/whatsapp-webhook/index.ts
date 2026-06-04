@@ -692,14 +692,69 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
   return { intent, iata, date, origin, destination, missing };
 }
 
-function fmtBRT(iso?: string | null): string {
+// IATA → IANA timezone fallback (caso a API não retorne timezone do aeroporto)
+const AIRPORT_TZ: Record<string, string> = {
+  GRU: "America/Sao_Paulo", CGH: "America/Sao_Paulo", VCP: "America/Sao_Paulo",
+  GIG: "America/Sao_Paulo", SDU: "America/Sao_Paulo", BSB: "America/Sao_Paulo",
+  CNF: "America/Sao_Paulo", CWB: "America/Sao_Paulo", POA: "America/Sao_Paulo",
+  FLN: "America/Sao_Paulo", SSA: "America/Bahia", REC: "America/Recife",
+  FOR: "America/Fortaleza", NAT: "America/Fortaleza", BEL: "America/Belem",
+  MAO: "America/Manaus", CGB: "America/Cuiaba", CGR: "America/Campo_Grande",
+  MCZ: "America/Maceio", AJU: "America/Maceio", THE: "America/Fortaleza",
+  SLZ: "America/Fortaleza", PMW: "America/Araguaina", PVH: "America/Porto_Velho",
+  RBR: "America/Rio_Branco", BVB: "America/Boa_Vista", MGF: "America/Sao_Paulo",
+  LDB: "America/Sao_Paulo", JPA: "America/Fortaleza", IGU: "America/Sao_Paulo",
+  // Internacionais comuns
+  MIA: "America/New_York", JFK: "America/New_York", EWR: "America/New_York",
+  LAX: "America/Los_Angeles", ORD: "America/Chicago", MCO: "America/New_York",
+  LIS: "Europe/Lisbon", MAD: "Europe/Madrid", CDG: "Europe/Paris",
+  LHR: "Europe/London", FRA: "Europe/Berlin", FCO: "Europe/Rome",
+  EZE: "America/Argentina/Buenos_Aires", SCL: "America/Santiago",
+  BOG: "America/Bogota", LIM: "America/Lima", MEX: "America/Mexico_City",
+  PTY: "America/Panama", CUN: "America/Cancun",
+};
+
+function resolveTz(apiTz?: string | null, iata?: string | null): string | null {
+  if (apiTz && apiTz !== "UTC" && apiTz !== "\\N") return apiTz;
+  if (iata && AIRPORT_TZ[iata.toUpperCase()]) return AIRPORT_TZ[iata.toUpperCase()];
+  return apiTz || null;
+}
+
+// Formata sempre no horário LOCAL DO AEROPORTO (igual ao site da cia aérea),
+// independentemente de a API devolver UTC real ou wall-clock com offset enganoso.
+function fmtAirportLocal(iso?: string | null, apiTz?: string | null, iata?: string | null): string {
   if (!iso) return "—";
   try {
-    // AviationStack returns local airport times tagged with "+00:00" (misleading).
-    // Treat the wall-clock time as-is instead of converting timezones.
-    const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    const tz = resolveTz(apiTz, iata);
+    const raw = String(iso);
+    const offsetMatch = raw.match(/([+-]\d{2}:?\d{2}|Z)$/);
+    const offset = offsetMatch ? offsetMatch[1] : null;
+
+    // Caso 1: API retornou "+00:00"/"Z" mas o aeroporto NÃO é UTC →
+    // é o bug clássico da AviationStack: o número já é wall-clock local.
+    const isUtcLikeOffset = offset === "Z" || /^[+-]00:?00$/.test(offset || "");
+    if (isUtcLikeOffset && tz && tz !== "UTC") {
+      const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+      if (m) return `${m[3]}/${m[2]} ${m[4]}:${m[5]}`;
+    }
+
+    // Caso 2: temos timezone do aeroporto confiável → converte de verdade.
+    if (tz) {
+      const d = new Date(raw);
+      if (!isNaN(d.getTime())) {
+        const parts = new Intl.DateTimeFormat("pt-BR", {
+          timeZone: tz, day: "2-digit", month: "2-digit",
+          hour: "2-digit", minute: "2-digit", hour12: false,
+        }).formatToParts(d);
+        const g = (t: string) => parts.find((p) => p.type === t)?.value || "";
+        return `${g("day")}/${g("month")} ${g("hour")}:${g("minute")}`;
+      }
+    }
+
+    // Fallback: wall-clock do próprio ISO.
+    const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
     if (m) return `${m[3]}/${m[2]} ${m[4]}:${m[5]}`;
-    return String(iso);
+    return raw;
   } catch { return String(iso); }
 }
 
@@ -719,24 +774,27 @@ function formatFlightReply(intent: string, r: any): string {
   };
   const emoji = statusEmoji[f.status] || "✈️";
   const dep = f.departure || {}; const arr = f.arrival || {};
+  const depTz = dep.timezone, depIata = dep.iata;
+  const arrTz = arr.timezone, arrIata = arr.iata;
   let msg = `${emoji} *Voo ${r.flight_iata}* — ${f.airline || ""}\n`;
   msg += `📅 ${r.flight_date}${r.date_mismatch ? `  _(você pediu ${r.requested_date}, mais próximo encontrado)_` : ""}\n`;
   msg += `*Status:* ${(f.status || "—").toUpperCase()}\n\n`;
   msg += `🛫 *Origem:* ${dep.iata || "?"} — ${dep.airport || ""}\n`;
-  msg += `   Previsto: ${fmtBRT(dep.scheduled)}\n`;
-  if (dep.estimated && dep.estimated !== dep.scheduled) msg += `   Estimado: ${fmtBRT(dep.estimated)}\n`;
-  if (dep.actual) msg += `   Real: ${fmtBRT(dep.actual)}\n`;
+  msg += `   Previsto: ${fmtAirportLocal(dep.scheduled, depTz, depIata)} (horário local)\n`;
+  if (dep.estimated && dep.estimated !== dep.scheduled) msg += `   Estimado: ${fmtAirportLocal(dep.estimated, depTz, depIata)}\n`;
+  if (dep.actual) msg += `   Real: ${fmtAirportLocal(dep.actual, depTz, depIata)}\n`;
   if (dep.terminal || dep.gate) msg += `   Terminal ${dep.terminal || "?"} • Portão ${dep.gate || "?"}\n`;
   msg += `\n🛬 *Destino:* ${arr.iata || "?"} — ${arr.airport || ""}\n`;
-  msg += `   Previsto: ${fmtBRT(arr.scheduled)}\n`;
-  if (arr.estimated && arr.estimated !== arr.scheduled) msg += `   Estimado: ${fmtBRT(arr.estimated)}\n`;
-  if (arr.actual) msg += `   Real: ${fmtBRT(arr.actual)}\n`;
+  msg += `   Previsto: ${fmtAirportLocal(arr.scheduled, arrTz, arrIata)} (horário local)\n`;
+  if (arr.estimated && arr.estimated !== arr.scheduled) msg += `   Estimado: ${fmtAirportLocal(arr.estimated, arrTz, arrIata)}\n`;
+  if (arr.actual) msg += `   Real: ${fmtAirportLocal(arr.actual, arrTz, arrIata)}\n`;
   if (f.delay_minutes) msg += `\n⏰ *Atraso:* ${f.delay_minutes} min\n`;
   msg += `\n`;
   if (r.already_tracking) msg += `✅ Acompanhamento já ativo — te aviso quando algo mudar.`;
   else msg += `Quer que eu te avise a cada 10 min quando algo mudar?\nResponde: *ativar atualização voo ${r.flight_iata} em ${r.flight_date}*`;
   return msg;
 }
+
 
 async function handleAdminMessage(phoneNumber: string, messageText: string): Promise<void> {
   console.log(`[ADMIN] Message from ${phoneNumber}: ${messageText}`);
