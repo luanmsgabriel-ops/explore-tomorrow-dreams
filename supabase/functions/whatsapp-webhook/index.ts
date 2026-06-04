@@ -696,6 +696,44 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
   return { intent, iata, date, origin, destination, missing };
 }
 
+function isGenericFlightTrackingActivation(text: string): boolean {
+  const normalized = normalizeAirportToken(text).replace(/\s+/g, " ").trim();
+  return /^(ativar|ativa|sim|sim ativar|pode ativar|quero|quero sim)$/.test(normalized) ||
+    /^(ativar|ativa)( acompanhamento| atualizacao)?$/.test(normalized);
+}
+
+function extractFlightContextFromText(text?: string | null): { iata: string; date: string } | null {
+  if (!text) return null;
+  const iataMatch = text.match(/\b([A-Z]{2}|[A-Z]\d|\d[A-Z])\s*-?\s*(\d{2,5})\b/i);
+  if (!iataMatch) return null;
+  let date = "";
+  const ymd = text.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/);
+  const dmy = text.match(/\b(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})\b/);
+  if (ymd) date = `${ymd[1]}-${ymd[2]}-${ymd[3]}`;
+  else if (dmy) {
+    const y = dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3];
+    date = `${y}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+  }
+  if (!date) return null;
+  return { iata: (iataMatch[1] + iataMatch[2]).toUpperCase().replace(/[\s-]/g, ""), date };
+}
+
+async function getLastTrackableFlightContext(phoneNumber: string): Promise<{ iata: string; date: string } | null> {
+  const { data } = await supabase
+    .from("admin_access_logs")
+    .select("command_text, response_summary")
+    .eq("phone_number", phoneNumber)
+    .or("query_type.ilike.%flight%,query_type.ilike.%voo%,response_summary.ilike.%ativar atualização voo%")
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  for (const row of data || []) {
+    const context = extractFlightContextFromText(`${row.response_summary || ""}\n${row.command_text || ""}`);
+    if (context) return context;
+  }
+  return null;
+}
+
 // IATA → IANA timezone fallback (caso a API não retorne timezone do aeroporto)
 const AIRPORT_TZ: Record<string, string> = {
   GRU: "America/Sao_Paulo", CGH: "America/Sao_Paulo", VCP: "America/Sao_Paulo",
