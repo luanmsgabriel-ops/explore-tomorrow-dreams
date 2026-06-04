@@ -717,6 +717,45 @@ export type Database = {
         }
         Relationships: []
       }
+      flight_tracking_subscriptions: {
+        Row: {
+          active: boolean
+          created_at: string
+          flight_date: string
+          flight_iata: string
+          id: string
+          last_delay_minutes: number | null
+          last_notified_at: string | null
+          last_status: string | null
+          phone_number: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          flight_date: string
+          flight_iata: string
+          id?: string
+          last_delay_minutes?: number | null
+          last_notified_at?: string | null
+          last_status?: string | null
+          phone_number: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          flight_date?: string
+          flight_iata?: string
+          id?: string
+          last_delay_minutes?: number | null
+          last_notified_at?: string | null
+          last_status?: string | null
+          phone_number?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       instagram_conversations: {
         Row: {
           collected_data: Json | null
