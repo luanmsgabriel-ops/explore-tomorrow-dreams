@@ -325,7 +325,14 @@ LINKS DE CONTATO DIRETO (OBRIGATÓRIO):
 - Ao mostrar conversas do WhatsApp, SEMPRE inclua o link direto do cliente no topo
 - NÃO mascare o telefone quando o admin pedir contato específico de um cliente — mostre completo com o link
 
-CONTEXTO: Você tem acesso a TODAS as tabelas do sistema. Pode consultar vendas, cotações, conversas do WhatsApp, viagens de clientes, destinos, ofertas, analytics, avaliações, e qualquer outro dado do painel administrativo.`;
+CONTEXTO: Você tem acesso a TODAS as tabelas do sistema. Pode consultar vendas, cotações, conversas do WhatsApp, viagens de clientes, destinos, ofertas, analytics, avaliações, e qualquer outro dado do painel administrativo.
+
+STATUS DE VOO:
+- Quando uma action "flight_status" retornar dados do voo, formate de forma clara: status (com emoji), companhia, origem/destino (códigos IATA + nome aeroporto), horários previstos e estimados (em BRT), e atraso em minutos se houver.
+- Se "already_tracking" for false, FINALIZE a mensagem perguntando: "Quer que eu te avise a cada 10 minutos quando algo mudar nesse voo? Responde: *ativar atualização voo <IATA>*"
+- Se "already_tracking" for true, mencione: "✅ Acompanhamento já ativo — vou te avisar quando algo mudar."
+- Se "found" for false, informe que o voo não foi encontrado na AviationStack (verifique o código IATA e a data).
+- Quando uma action "track_flight" tiver sucesso, confirme que o acompanhamento foi ativado e que atualizações chegarão a cada 10 min quando houver mudança de status ou atraso.`;
 
 function maskPhone(phone: string): string {
   if (!phone || phone.length < 8) return phone;
