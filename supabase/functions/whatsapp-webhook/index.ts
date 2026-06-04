@@ -469,25 +469,40 @@ async function executeAdminAction(action: any): Promise<any> {
       const flightDate = action.flight_date || new Date().toISOString().split("T")[0];
       if (!flightIata) return { error: "flight_iata é obrigatório" };
       try {
-        const url = `https://api.aviationstack.com/v1/flights?access_key=${Deno.env.get("AVIATIONSTACK_API_KEY")}&flight_iata=${flightIata}&flight_date=${flightDate}`;
+        // IMPORTANT: free AviationStack plan does NOT accept flight_date param
+        // (returns function_access_restricted). Fetch by IATA and filter by date here.
+        const url = `https://api.aviationstack.com/v1/flights?access_key=${Deno.env.get("AVIATIONSTACK_API_KEY")}&flight_iata=${flightIata}`;
         const res = await fetch(url);
-        if (!res.ok) return { error: `AviationStack ${res.status}` };
         const data = await res.json();
-        const flight = data.data?.[0];
+        if (data?.error) {
+          console.error("[FLIGHT] AviationStack error:", JSON.stringify(data.error));
+          return { error: `AviationStack: ${data.error.message || data.error.code}` };
+        }
+        const list: any[] = Array.isArray(data?.data) ? data.data : [];
+        let flight = list.find((f) => f.flight_date === flightDate);
+        if (!flight && list.length > 0) {
+          flight = list.slice().sort((a, b) => {
+            const da = Math.abs(new Date(a.flight_date).getTime() - new Date(flightDate).getTime());
+            const db = Math.abs(new Date(b.flight_date).getTime() - new Date(flightDate).getTime());
+            return da - db;
+          })[0];
+        }
         if (!flight) return { success: true, found: false, flight_iata: flightIata, flight_date: flightDate };
-        // Check if already tracked
+        const actualDate = flight.flight_date || flightDate;
         const { data: existing } = await supabase
           .from("flight_tracking_subscriptions")
           .select("active")
           .eq("phone_number", ADMIN_PHONE_NUMBER)
           .eq("flight_iata", flightIata)
-          .eq("flight_date", flightDate)
+          .eq("flight_date", actualDate)
           .maybeSingle();
         return {
           success: true,
           found: true,
           flight_iata: flightIata,
-          flight_date: flightDate,
+          flight_date: actualDate,
+          requested_date: flightDate,
+          date_mismatch: actualDate !== flightDate,
           already_tracking: !!existing?.active,
           flight: {
             status: flight.flight_status,
