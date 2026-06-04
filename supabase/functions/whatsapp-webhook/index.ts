@@ -658,6 +658,9 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
 
   // Date: DD/MM/YYYY, DD/MM, YYYY-MM-DD, "hoje", "amanhã"
   let date = "";
+  const ymd = text.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/);
+  if (ymd) date = `${ymd[1]}-${ymd[2]}-${ymd[3]}`;
+  else {
   const dmy = text.match(/\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b/);
   if (dmy) {
     const d = dmy[1].padStart(2, "0");
@@ -666,13 +669,12 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
     if (y.length === 2) y = "20" + y;
     date = `${y}-${m}-${d}`;
   } else {
-    const ymd = text.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/);
-    if (ymd) date = `${ymd[1]}-${ymd[2]}-${ymd[3]}`;
-    else if (/hoje/i.test(lower)) date = new Date().toISOString().split("T")[0];
+    if (/hoje/i.test(lower)) date = new Date().toISOString().split("T")[0];
     else if (/amanh[ãa]/i.test(lower)) {
       const t = new Date(); t.setDate(t.getDate() + 1);
       date = t.toISOString().split("T")[0];
     }
+  }
   }
 
   // Intent
@@ -682,8 +684,10 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
 
   const missing: string[] = [];
   if (!date) missing.push("data do voo");
-  if (!origin) missing.push("origem");
-  if (!destination) missing.push("destino");
+  if (intent === "flight_status") {
+    if (!origin) missing.push("origem");
+    if (!destination) missing.push("destino");
+  }
 
   return { intent, iata, date, origin, destination, missing };
 }
