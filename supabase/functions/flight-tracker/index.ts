@@ -93,11 +93,13 @@ function fmtTime(iso?: string | null, apiTz?: string | null, iata?: string | nul
 }
 
 export async function fetchFlight(flightIata: string, flightDate: string) {
-  const url = `https://api.aviationstack.com/v1/flights?access_key=${AVIATIONSTACK_API_KEY}&flight_iata=${flightIata}&flight_date=${flightDate}`;
+  const url = `https://api.aviationstack.com/v1/flights?access_key=${AVIATIONSTACK_API_KEY}&flight_iata=${flightIata}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`AviationStack ${res.status}`);
   const data = await res.json();
-  return data.data?.[0] ?? null;
+  if (data?.error) throw new Error(`AviationStack: ${data.error.message || data.error.code}`);
+  const list: any[] = Array.isArray(data?.data) ? data.data : [];
+  return list.find((flight) => flight.flight_date === flightDate) ?? null;
 }
 
 export function buildStatusMessage(flight: any, flightIata: string): string {
