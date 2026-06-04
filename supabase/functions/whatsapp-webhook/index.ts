@@ -500,10 +500,11 @@ async function executeAdminAction(action: any): Promise<any> {
           return { success: true, found: false, route_mismatch: list.length > 0, flight_iata: flightIata, flight_date: flightDate, origin: requestedOrigin, destination: requestedDestination };
         }
         const actualDate = flight.flight_date || flightDate;
+        const trackingPhone = String(action.phone_number || ADMIN_PHONE_NUMBER);
         const { data: existing } = await supabase
           .from("flight_tracking_subscriptions")
           .select("active")
-          .eq("phone_number", ADMIN_PHONE_NUMBER)
+          .eq("phone_number", trackingPhone)
           .eq("flight_iata", flightIata)
           .eq("flight_date", actualDate)
           .maybeSingle();
@@ -531,11 +532,12 @@ async function executeAdminAction(action: any): Promise<any> {
     if (action.type === "track_flight") {
       const flightIata = String(action.flight_iata || "").replace(/[\s-]/g, "").toUpperCase();
       const flightDate = action.flight_date || new Date().toISOString().split("T")[0];
+      const trackingPhone = String(action.phone_number || ADMIN_PHONE_NUMBER);
       if (!flightIata) return { error: "flight_iata é obrigatório" };
       const { error } = await supabase
         .from("flight_tracking_subscriptions")
         .upsert({
-          phone_number: ADMIN_PHONE_NUMBER,
+          phone_number: trackingPhone,
           flight_iata: flightIata,
           flight_date: flightDate,
           active: true,
@@ -550,10 +552,11 @@ async function executeAdminAction(action: any): Promise<any> {
     if (action.type === "untrack_flight") {
       const flightIata = String(action.flight_iata || "").replace(/[\s-]/g, "").toUpperCase();
       const flightDate = action.flight_date || new Date().toISOString().split("T")[0];
+      const trackingPhone = String(action.phone_number || ADMIN_PHONE_NUMBER);
       const { error } = await supabase
         .from("flight_tracking_subscriptions")
         .update({ active: false })
-        .eq("phone_number", ADMIN_PHONE_NUMBER)
+        .eq("phone_number", trackingPhone)
         .eq("flight_iata", flightIata)
         .eq("flight_date", flightDate);
       if (error) return { error: error.message };
@@ -628,7 +631,7 @@ function airportMatches(apiIata?: string | null, apiName?: string | null, input?
 function detectFlightQuery(text: string): { intent: "flight_status" | "track_flight" | "untrack_flight"; iata: string; date: string; origin?: string; destination?: string; missing?: string[] } | null {
   if (!text) return null;
   const lower = text.toLowerCase();
-  const hasFlightContext = /(voo|flight|companhia|n[uú]mero do voo|localiz|status|acompanh|atualiza[cç][aã]o|cada\s*10\s*min)/i.test(lower);
+  const hasFlightContext = /(voo|flight|companhia|n[uú]mero do voo|localiz|status|acompanh|atualiza[cç][aã]o|cada\s*10\s*min|origem|destino|chegada|partida|\bgol\b|\blatam\b|\bazul\b)/i.test(lower);
   // IATA pattern: 2 letters or digit+letter (e.g. G3) + 1-5 digits, with optional space/hyphen
   // Try common Brazilian/global airline prefixes first
   const airlineMap: Record<string, string> = {
@@ -654,7 +657,6 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
   const destination = extractFlightLocation(text, ["destino", "chegada", "indo para"]);
 
   if (!iata) return hasFlightContext ? { intent: "flight_status", iata: "", date: "", origin, destination, missing: ["código do voo"] } : null;
-  if (!hasFlightContext && !/voo|flight/i.test(lower)) return null;
 
   // Date: DD/MM/YYYY, DD/MM, YYYY-MM-DD, "hoje", "amanhã"
   let date = "";
@@ -677,6 +679,8 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
   }
   }
 
+  if (!hasFlightContext && !date && !origin && !destination) return null;
+
   // Intent
   let intent: "flight_status" | "track_flight" | "untrack_flight" = "flight_status";
   if (/(parar|cancelar|desativ|desligar)\s+(acompanh|atualiza)/i.test(lower)) intent = "untrack_flight";
@@ -690,6 +694,44 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
   }
 
   return { intent, iata, date, origin, destination, missing };
+}
+
+function isGenericFlightTrackingActivation(text: string): boolean {
+  const normalized = normalizeAirportToken(text).replace(/\s+/g, " ").trim();
+  return /^(ativar|ativa|sim|sim ativar|pode ativar|quero|quero sim)$/.test(normalized) ||
+    /^(ativar|ativa)( acompanhamento| atualizacao)?$/.test(normalized);
+}
+
+function extractFlightContextFromText(text?: string | null): { iata: string; date: string } | null {
+  if (!text) return null;
+  const iataMatch = text.match(/\b([A-Z]{2}|[A-Z]\d|\d[A-Z])\s*-?\s*(\d{2,5})\b/i);
+  if (!iataMatch) return null;
+  let date = "";
+  const ymd = text.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/);
+  const dmy = text.match(/\b(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})\b/);
+  if (ymd) date = `${ymd[1]}-${ymd[2]}-${ymd[3]}`;
+  else if (dmy) {
+    const y = dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3];
+    date = `${y}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+  }
+  if (!date) return null;
+  return { iata: (iataMatch[1] + iataMatch[2]).toUpperCase().replace(/[\s-]/g, ""), date };
+}
+
+async function getLastTrackableFlightContext(phoneNumber: string): Promise<{ iata: string; date: string } | null> {
+  const { data } = await supabase
+    .from("admin_access_logs")
+    .select("command_text, response_summary")
+    .eq("phone_number", phoneNumber)
+    .or("query_type.ilike.%flight%,query_type.ilike.%voo%,response_summary.ilike.%ativar atualização voo%")
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  for (const row of data || []) {
+    const context = extractFlightContextFromText(`${row.response_summary || ""}\n${row.command_text || ""}`);
+    if (context) return context;
+  }
+  return null;
 }
 
 // IATA → IANA timezone fallback (caso a API não retorne timezone do aeroporto)
@@ -802,6 +844,17 @@ async function handleAdminMessage(phoneNumber: string, messageText: string): Pro
 
   try {
     // ===== FAST-PATH: detect flight queries deterministically (bypasses planner LLM) =====
+    if (isGenericFlightTrackingActivation(messageText)) {
+      const lastFlight = await getLastTrackableFlightContext(phoneNumber);
+      if (lastFlight) {
+        const result = await executeAdminAction({ id: "a1", type: "track_flight", flight_iata: lastFlight.iata, flight_date: lastFlight.date, phone_number: phoneNumber });
+        const reply = formatFlightReply("track_flight", result);
+        await logAdminAccess(phoneNumber, messageText, "flight_track_flight", reply);
+        await sendWhatsAppMessage(phoneNumber, reply);
+        return;
+      }
+    }
+
     const fastFlight = detectFlightQuery(messageText);
     if (fastFlight) {
       console.log("[ADMIN] FAST-PATH flight detected:", JSON.stringify(fastFlight));
@@ -811,7 +864,7 @@ async function handleAdminMessage(phoneNumber: string, messageText: string): Pro
         await sendWhatsAppMessage(phoneNumber, reply);
         return;
       }
-      const action: any = { id: "a1", type: fastFlight.intent, flight_iata: fastFlight.iata, flight_date: fastFlight.date, origin: fastFlight.origin, destination: fastFlight.destination };
+      const action: any = { id: "a1", type: fastFlight.intent, flight_iata: fastFlight.iata, flight_date: fastFlight.date, origin: fastFlight.origin, destination: fastFlight.destination, phone_number: phoneNumber };
       const result = await executeAdminAction(action);
       const reply = formatFlightReply(fastFlight.intent, result);
       await logAdminAccess(phoneNumber, messageText, "flight_" + fastFlight.intent, reply);
@@ -929,6 +982,14 @@ async function handleAdminMessage(phoneNumber: string, messageText: string): Pro
 
     console.log("[ADMIN] Query results keys:", Object.keys(queryResults));
     console.log("[ADMIN] Action results:", actionResults);
+
+    const flightAction = (plan.actions || []).find((action: any) => ["flight_status", "track_flight", "untrack_flight"].includes(action.type));
+    if (flightAction) {
+      const finalResponse = formatFlightReply(flightAction.type, actionResults[flightAction.id]);
+      await logAdminAccess(phoneNumber, messageText, plan.intent || `flight_${flightAction.type}`, finalResponse);
+      await sendWhatsAppMessage(phoneNumber, finalResponse);
+      return;
+    }
 
     // Pass 2: AI formats the response
     const formatterResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

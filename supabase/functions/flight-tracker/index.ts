@@ -37,27 +37,69 @@ async function sendWhatsApp(to: string, message: string) {
   );
 }
 
-function fmtTime(iso?: string | null): string {
+const AIRPORT_TZ: Record<string, string> = {
+  GRU: "America/Sao_Paulo", CGH: "America/Sao_Paulo", VCP: "America/Sao_Paulo",
+  GIG: "America/Sao_Paulo", SDU: "America/Sao_Paulo", BSB: "America/Sao_Paulo",
+  CNF: "America/Sao_Paulo", CWB: "America/Sao_Paulo", POA: "America/Sao_Paulo",
+  FLN: "America/Sao_Paulo", SSA: "America/Bahia", REC: "America/Recife",
+  FOR: "America/Fortaleza", NAT: "America/Fortaleza", BEL: "America/Belem",
+  MAO: "America/Manaus", CGB: "America/Cuiaba", CGR: "America/Campo_Grande",
+  MCZ: "America/Maceio", AJU: "America/Maceio", THE: "America/Fortaleza",
+  SLZ: "America/Fortaleza", PMW: "America/Araguaina", PVH: "America/Porto_Velho",
+  RBR: "America/Rio_Branco", BVB: "America/Boa_Vista", MGF: "America/Sao_Paulo",
+  LDB: "America/Sao_Paulo", JPA: "America/Fortaleza", IGU: "America/Sao_Paulo",
+  MIA: "America/New_York", JFK: "America/New_York", EWR: "America/New_York",
+  LAX: "America/Los_Angeles", ORD: "America/Chicago", MCO: "America/New_York",
+  LIS: "Europe/Lisbon", MAD: "Europe/Madrid", CDG: "Europe/Paris",
+  LHR: "Europe/London", FRA: "Europe/Berlin", FCO: "Europe/Rome",
+  EZE: "America/Argentina/Buenos_Aires", SCL: "America/Santiago",
+  BOG: "America/Bogota", LIM: "America/Lima", MEX: "America/Mexico_City",
+  PTY: "America/Panama", CUN: "America/Cancun",
+};
+
+function resolveTz(apiTz?: string | null, iata?: string | null): string | null {
+  if (apiTz && apiTz !== "UTC" && apiTz !== "\\N") return apiTz;
+  if (iata && AIRPORT_TZ[iata.toUpperCase()]) return AIRPORT_TZ[iata.toUpperCase()];
+  return apiTz || null;
+}
+
+function fmtTime(iso?: string | null, apiTz?: string | null, iata?: string | null): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString("pt-BR", {
-      timeZone: "America/Sao_Paulo",
-      hour: "2-digit",
-      minute: "2-digit",
-      day: "2-digit",
-      month: "2-digit",
-    });
+    const raw = String(iso);
+    const tz = resolveTz(apiTz, iata);
+    const offset = raw.match(/([+-]\d{2}:?\d{2}|Z)$/)?.[1] || null;
+    const isUtcLikeOffset = offset === "Z" || /^[+-]00:?00$/.test(offset || "");
+    if (isUtcLikeOffset && tz && tz !== "UTC") {
+      const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+      if (m) return `${m[3]}/${m[2]} ${m[4]}:${m[5]}`;
+    }
+    if (tz) {
+      const d = new Date(raw);
+      if (!isNaN(d.getTime())) {
+        const parts = new Intl.DateTimeFormat("pt-BR", {
+          timeZone: tz, hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", hour12: false,
+        }).formatToParts(d);
+        const g = (t: string) => parts.find((p) => p.type === t)?.value || "";
+        return `${g("day")}/${g("month")} ${g("hour")}:${g("minute")}`;
+      }
+    }
+    const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (m) return `${m[3]}/${m[2]} ${m[4]}:${m[5]}`;
+    return raw;
   } catch {
     return iso;
   }
 }
 
 export async function fetchFlight(flightIata: string, flightDate: string) {
-  const url = `https://api.aviationstack.com/v1/flights?access_key=${AVIATIONSTACK_API_KEY}&flight_iata=${flightIata}&flight_date=${flightDate}`;
+  const url = `https://api.aviationstack.com/v1/flights?access_key=${AVIATIONSTACK_API_KEY}&flight_iata=${flightIata}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`AviationStack ${res.status}`);
   const data = await res.json();
-  return data.data?.[0] ?? null;
+  if (data?.error) throw new Error(`AviationStack: ${data.error.message || data.error.code}`);
+  const list: any[] = Array.isArray(data?.data) ? data.data : [];
+  return list.find((flight) => flight.flight_date === flightDate) ?? null;
 }
 
 export function buildStatusMessage(flight: any, flightIata: string): string {
@@ -77,13 +119,13 @@ export function buildStatusMessage(flight: any, flightIata: string): string {
   return (
     `${emoji} *Voo ${flightIata}* — ${status.toUpperCase()}\n\n` +
     `🛫 *Origem:* ${dep.airport ?? "—"} (${dep.iata ?? "—"})\n` +
-    `   Previsto: ${fmtTime(dep.scheduled)}\n` +
-    `   Estimado: ${fmtTime(dep.estimated)}\n` +
+    `   Previsto: ${fmtTime(dep.scheduled, dep.timezone, dep.iata)}\n` +
+    `   Estimado: ${fmtTime(dep.estimated, dep.timezone, dep.iata)}\n` +
     (delay ? `   ⏱️ Atraso: ${delay} min\n` : "") +
     `\n🛬 *Destino:* ${arr.airport ?? "—"} (${arr.iata ?? "—"})\n` +
-    `   Previsto: ${fmtTime(arr.scheduled)}\n` +
-    `   Estimado: ${fmtTime(arr.estimated)}\n` +
-    (arr.actual ? `   ✅ Pousou: ${fmtTime(arr.actual)}\n` : "")
+    `   Previsto: ${fmtTime(arr.scheduled, arr.timezone, arr.iata)}\n` +
+    `   Estimado: ${fmtTime(arr.estimated, arr.timezone, arr.iata)}\n` +
+    (arr.actual ? `   ✅ Pousou: ${fmtTime(arr.actual, arr.timezone, arr.iata)}\n` : "")
   );
 }
 
