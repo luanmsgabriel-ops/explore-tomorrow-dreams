@@ -575,13 +575,12 @@ async function handleAdminMessage(phoneNumber: string, messageText: string): Pro
     // ===== FAST-PATH: detect flight queries deterministically (bypasses planner LLM) =====
     const fastFlight = detectFlightQuery(messageText);
     if (fastFlight) {
-      console.log("[ADMIN] FAST-PATH flight detected:", fastFlight);
-      const action = { id: "a1", type: fastFlight.intent, flight_iata: fastFlight.iata, flight_date: fastFlight.date };
+      console.log("[ADMIN] FAST-PATH flight detected:", JSON.stringify(fastFlight));
+      const action: any = { id: "a1", type: fastFlight.intent, flight_iata: fastFlight.iata, flight_date: fastFlight.date };
       const result = await executeAdminAction(action);
-      const plan = { intent: "flight_query", queries: [], actions: [action] };
-      const queryResults: Record<string, any> = {};
-      const actionResults: Record<string, any> = { a1: result };
-      await formatAndSendAdminResponse(phoneNumber, messageText, plan, queryResults, actionResults);
+      const reply = formatFlightReply(fastFlight.intent, result);
+      await logAdminAccess(phoneNumber, messageText, "flight_" + fastFlight.intent, reply);
+      await sendWhatsAppMessage(phoneNumber, reply);
       return;
     }
     // Pass 1: AI plans what data to fetch
