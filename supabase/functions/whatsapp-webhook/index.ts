@@ -695,8 +695,12 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
 function fmtBRT(iso?: string | null): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-  } catch { return iso; }
+    // AviationStack returns local airport times tagged with "+00:00" (misleading).
+    // Treat the wall-clock time as-is instead of converting timezones.
+    const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (m) return `${m[3]}/${m[2]} ${m[4]}:${m[5]}`;
+    return String(iso);
+  } catch { return String(iso); }
 }
 
 function formatFlightReply(intent: string, r: any): string {
