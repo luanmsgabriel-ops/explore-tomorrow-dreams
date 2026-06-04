@@ -572,6 +572,18 @@ async function handleAdminMessage(phoneNumber: string, messageText: string): Pro
   console.log(`[ADMIN] Message from ${phoneNumber}: ${messageText}`);
 
   try {
+    // ===== FAST-PATH: detect flight queries deterministically (bypasses planner LLM) =====
+    const fastFlight = detectFlightQuery(messageText);
+    if (fastFlight) {
+      console.log("[ADMIN] FAST-PATH flight detected:", fastFlight);
+      const action = { id: "a1", type: fastFlight.intent, flight_iata: fastFlight.iata, flight_date: fastFlight.date };
+      const result = await executeAdminAction(action);
+      const plan = { intent: "flight_query", queries: [], actions: [action] };
+      const queryResults: Record<string, any> = {};
+      const actionResults: Record<string, any> = { a1: result };
+      await formatAndSendAdminResponse(phoneNumber, messageText, plan, queryResults, actionResults);
+      return;
+    }
     // Pass 1: AI plans what data to fetch
     const plannerResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
