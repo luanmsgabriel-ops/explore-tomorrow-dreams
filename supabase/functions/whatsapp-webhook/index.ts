@@ -571,7 +571,52 @@ async function logAdminAccess(phoneNumber: string, commandText: string, queryTyp
 }
 
 // ===== Flight fast-path helpers =====
-function detectFlightQuery(text: string): { intent: "flight_status" | "track_flight" | "untrack_flight"; iata: string; date: string } | null {
+function normalizeAirportToken(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function extractFlightLocation(text: string, labels: string[]): string {
+  for (const label of labels) {
+    const re = new RegExp(`${label}\\s*[:\\-]?\\s*([^\\n,;]+)`, "i");
+    const m = text.match(re);
+    if (m?.[1]) return m[1].trim();
+  }
+  return "";
+}
+
+function airportMatches(apiIata?: string | null, apiName?: string | null, input?: string): boolean {
+  if (!input) return true;
+  const normalizedInput = normalizeAirportToken(input);
+  const normalizedName = normalizeAirportToken(apiName || "");
+  const normalizedIata = normalizeAirportToken(apiIata || "");
+  const aliases: Record<string, string[]> = {
+    gru: ["gru", "guarulhos", "sao paulo", "governador andre franco montoro"],
+    cgh: ["cgh", "congonhas", "sao paulo"],
+    vcp: ["vcp", "viracopos", "campinas"],
+    ssa: ["ssa", "salvador", "deputado luis eduardo magalhaes"],
+    gig: ["gig", "galeao", "rio de janeiro", "tom jobim"],
+    sdu: ["sdu", "santos dumont", "rio de janeiro"],
+    bsb: ["bsb", "brasilia", "presidente juscelino kubitschek"],
+    cnf: ["cnf", "confins", "belo horizonte", "tancredo neves"],
+    rec: ["rec", "recife", "guararapes", "gilberto freyre"],
+    for: ["for", "fortaleza", "pinto martins"],
+    poa: ["poa", "porto alegre", "salgado filho"],
+    cwb: ["cwb", "curitiba", "afonso pena"],
+    fln: ["fln", "florianopolis", "hercilio luz"],
+    nat: ["nat", "natal", "sao goncalo do amarante"],
+    mcx: ["mcx", "maceio", "zumbi dos palmares"],
+  };
+  if (normalizedIata && normalizedInput === normalizedIata) return true;
+  if (normalizedName && (normalizedName.includes(normalizedInput) || normalizedInput.includes(normalizedName))) return true;
+  const apiAliases = aliases[normalizedIata] || [];
+  return apiAliases.some((alias) => normalizedInput.includes(alias) || alias.includes(normalizedInput));
+}
+
+function detectFlightQuery(text: string): { intent: "flight_status" | "track_flight" | "untrack_flight"; iata: string; date: string; origin?: string; destination?: string; missing?: string[] } | null {
   if (!text) return null;
   const lower = text.toLowerCase();
   const hasFlightContext = /(voo|flight|companhia|n[uú]mero do voo|localiz|status|acompanh|atualiza[cç][aã]o|cada\s*10\s*min)/i.test(lower);
@@ -596,7 +641,10 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
       if (m) { iata = code + m[1]; break; }
     }
   }
-  if (!iata) return null;
+  const origin = extractFlightLocation(text, ["origem", "saindo de", "partindo de", "de"]);
+  const destination = extractFlightLocation(text, ["destino", "chegada", "indo para", "para"]);
+
+  if (!iata) return hasFlightContext ? { intent: "flight_status", iata: "", date: "", origin, destination, missing: ["código do voo"] } : null;
   if (!hasFlightContext && !/voo|flight/i.test(lower)) return null;
 
   // Date: DD/MM/YYYY, DD/MM, YYYY-MM-DD, "hoje", "amanhã"
@@ -622,7 +670,12 @@ function detectFlightQuery(text: string): { intent: "flight_status" | "track_fli
   if (/(parar|cancelar|desativ|desligar)\s+(acompanh|atualiza)/i.test(lower)) intent = "untrack_flight";
   else if (/(ativar|ativa|quero acompanhar|me avise|me avisa|a cada\s*10\s*min|sim,?\s*ativar?)/i.test(lower)) intent = "track_flight";
 
-  return { intent, iata, date };
+  const missing: string[] = [];
+  if (!date) missing.push("data do voo");
+  if (!origin) missing.push("origem");
+  if (!destination) missing.push("destino");
+
+  return { intent, iata, date, origin, destination, missing };
 }
 
 function fmtBRT(iso?: string | null): string {
