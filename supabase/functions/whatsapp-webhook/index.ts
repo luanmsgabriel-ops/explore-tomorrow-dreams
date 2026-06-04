@@ -726,7 +726,7 @@ function formatFlightReply(intent: string, r: any): string {
   if (f.delay_minutes) msg += `\n⏰ *Atraso:* ${f.delay_minutes} min\n`;
   msg += `\n`;
   if (r.already_tracking) msg += `✅ Acompanhamento já ativo — te aviso quando algo mudar.`;
-  else msg += `Quer que eu te avise a cada 10 min quando algo mudar?\nResponde: *ativar atualização voo ${r.flight_iata}*`;
+  else msg += `Quer que eu te avise a cada 10 min quando algo mudar?\nResponde: *ativar atualização voo ${r.flight_iata} em ${r.flight_date}*`;
   return msg;
 }
 
