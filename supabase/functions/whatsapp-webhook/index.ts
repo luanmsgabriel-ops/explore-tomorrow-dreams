@@ -568,8 +568,101 @@ async function logAdminAccess(phoneNumber: string, commandText: string, queryTyp
   }
 }
 
+// ===== Flight fast-path helpers =====
+function detectFlightQuery(text: string): { intent: "flight_status" | "track_flight" | "untrack_flight"; iata: string; date: string } | null {
+  if (!text) return null;
+  const lower = text.toLowerCase();
+  const hasFlightContext = /(voo|flight|companhia|n[uú]mero do voo|localiz|status|acompanh|atualiza[cç][aã]o|cada\s*10\s*min)/i.test(lower);
+  // IATA pattern: 2 letters or digit+letter (e.g. G3) + 1-5 digits, with optional space/hyphen
+  // Try common Brazilian/global airline prefixes first
+  const airlineMap: Record<string, string> = {
+    "gol": "G3", "latam": "LA", "azul": "AD", "american": "AA", "delta": "DL",
+    "united": "UA", "lufthansa": "LH", "air france": "AF", "british": "BA",
+    "iberia": "IB", "tap": "TP", "klm": "KL", "emirates": "EK", "qatar": "QR",
+    "turkish": "TK", "alitalia": "AZ", "ita": "AZ", "copa": "CM", "avianca": "AV",
+  };
+  let iata = "";
+  // Match explicit IATA codes anywhere
+  const iataMatch = text.match(/\b([A-Z]{2}|[A-Z]\d|\d[A-Z])\s*-?\s*(\d{1,5})\b/i);
+  if (iataMatch) {
+    iata = (iataMatch[1] + iataMatch[2]).toUpperCase().replace(/[\s-]/g, "");
+  } else {
+    // Match airline name + number
+    for (const [name, code] of Object.entries(airlineMap)) {
+      const re = new RegExp(`${name}[^\\d]{0,20}(\\d{2,5})`, "i");
+      const m = lower.match(re);
+      if (m) { iata = code + m[1]; break; }
+    }
+  }
+  if (!iata) return null;
+  if (!hasFlightContext && !/voo|flight/i.test(lower)) return null;
+
+  // Date: DD/MM/YYYY, DD/MM, YYYY-MM-DD, "hoje", "amanhã"
+  let date = new Date().toISOString().split("T")[0];
+  const dmy = text.match(/\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b/);
+  if (dmy) {
+    const d = dmy[1].padStart(2, "0");
+    const m = dmy[2].padStart(2, "0");
+    let y = dmy[3] || String(new Date().getFullYear());
+    if (y.length === 2) y = "20" + y;
+    date = `${y}-${m}-${d}`;
+  } else {
+    const ymd = text.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/);
+    if (ymd) date = `${ymd[1]}-${ymd[2]}-${ymd[3]}`;
+    else if (/amanh[ãa]/i.test(lower)) {
+      const t = new Date(); t.setDate(t.getDate() + 1);
+      date = t.toISOString().split("T")[0];
+    }
+  }
+
+  // Intent
+  let intent: "flight_status" | "track_flight" | "untrack_flight" = "flight_status";
+  if (/(parar|cancelar|desativ|desligar)\s+(acompanh|atualiza)/i.test(lower)) intent = "untrack_flight";
+  else if (/(ativar|ativa|quero acompanhar|me avise|me avisa|a cada\s*10\s*min|sim,?\s*ativar?)/i.test(lower)) intent = "track_flight";
+
+  return { intent, iata, date };
+}
+
+function fmtBRT(iso?: string | null): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  } catch { return iso; }
+}
+
+function formatFlightReply(intent: string, r: any): string {
+  if (r?.error) return `❌ Não consegui consultar o voo: ${r.error}`;
+  if (intent === "track_flight") return `✅ ${r.message || "Acompanhamento ativado."}`;
+  if (intent === "untrack_flight") return `🛑 ${r.message || "Acompanhamento desativado."}`;
+  if (!r?.found) return `🔎 Não encontrei o voo *${r?.flight_iata}* na data *${r?.flight_date}*. Verifique o código IATA e tente novamente.`;
+  const f = r.flight || {};
+  const statusEmoji: Record<string, string> = {
+    scheduled: "🗓️", active: "🛫", landed: "🛬", cancelled: "❌", incident: "⚠️", diverted: "↪️",
+  };
+  const emoji = statusEmoji[f.status] || "✈️";
+  const dep = f.departure || {}; const arr = f.arrival || {};
+  let msg = `${emoji} *Voo ${r.flight_iata}* — ${f.airline || ""}\n`;
+  msg += `📅 ${r.flight_date}${r.date_mismatch ? `  _(você pediu ${r.requested_date}, mais próximo encontrado)_` : ""}\n`;
+  msg += `*Status:* ${(f.status || "—").toUpperCase()}\n\n`;
+  msg += `🛫 *Origem:* ${dep.iata || "?"} — ${dep.airport || ""}\n`;
+  msg += `   Previsto: ${fmtBRT(dep.scheduled)}\n`;
+  if (dep.estimated && dep.estimated !== dep.scheduled) msg += `   Estimado: ${fmtBRT(dep.estimated)}\n`;
+  if (dep.actual) msg += `   Real: ${fmtBRT(dep.actual)}\n`;
+  if (dep.terminal || dep.gate) msg += `   Terminal ${dep.terminal || "?"} • Portão ${dep.gate || "?"}\n`;
+  msg += `\n🛬 *Destino:* ${arr.iata || "?"} — ${arr.airport || ""}\n`;
+  msg += `   Previsto: ${fmtBRT(arr.scheduled)}\n`;
+  if (arr.estimated && arr.estimated !== arr.scheduled) msg += `   Estimado: ${fmtBRT(arr.estimated)}\n`;
+  if (arr.actual) msg += `   Real: ${fmtBRT(arr.actual)}\n`;
+  if (f.delay_minutes) msg += `\n⏰ *Atraso:* ${f.delay_minutes} min\n`;
+  msg += `\n`;
+  if (r.already_tracking) msg += `✅ Acompanhamento já ativo — te aviso quando algo mudar.`;
+  else msg += `Quer que eu te avise a cada 10 min quando algo mudar?\nResponde: *ativar atualização voo ${r.flight_iata}*`;
+  return msg;
+}
+
 async function handleAdminMessage(phoneNumber: string, messageText: string): Promise<void> {
   console.log(`[ADMIN] Message from ${phoneNumber}: ${messageText}`);
+
 
   try {
     // ===== FAST-PATH: detect flight queries deterministically (bypasses planner LLM) =====
