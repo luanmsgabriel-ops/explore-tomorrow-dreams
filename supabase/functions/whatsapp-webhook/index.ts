@@ -500,10 +500,11 @@ async function executeAdminAction(action: any): Promise<any> {
           return { success: true, found: false, route_mismatch: list.length > 0, flight_iata: flightIata, flight_date: flightDate, origin: requestedOrigin, destination: requestedDestination };
         }
         const actualDate = flight.flight_date || flightDate;
+        const trackingPhone = String(action.phone_number || ADMIN_PHONE_NUMBER);
         const { data: existing } = await supabase
           .from("flight_tracking_subscriptions")
           .select("active")
-          .eq("phone_number", ADMIN_PHONE_NUMBER)
+          .eq("phone_number", trackingPhone)
           .eq("flight_iata", flightIata)
           .eq("flight_date", actualDate)
           .maybeSingle();
@@ -531,11 +532,12 @@ async function executeAdminAction(action: any): Promise<any> {
     if (action.type === "track_flight") {
       const flightIata = String(action.flight_iata || "").replace(/[\s-]/g, "").toUpperCase();
       const flightDate = action.flight_date || new Date().toISOString().split("T")[0];
+      const trackingPhone = String(action.phone_number || ADMIN_PHONE_NUMBER);
       if (!flightIata) return { error: "flight_iata é obrigatório" };
       const { error } = await supabase
         .from("flight_tracking_subscriptions")
         .upsert({
-          phone_number: ADMIN_PHONE_NUMBER,
+          phone_number: trackingPhone,
           flight_iata: flightIata,
           flight_date: flightDate,
           active: true,
@@ -550,10 +552,11 @@ async function executeAdminAction(action: any): Promise<any> {
     if (action.type === "untrack_flight") {
       const flightIata = String(action.flight_iata || "").replace(/[\s-]/g, "").toUpperCase();
       const flightDate = action.flight_date || new Date().toISOString().split("T")[0];
+      const trackingPhone = String(action.phone_number || ADMIN_PHONE_NUMBER);
       const { error } = await supabase
         .from("flight_tracking_subscriptions")
         .update({ active: false })
-        .eq("phone_number", ADMIN_PHONE_NUMBER)
+        .eq("phone_number", trackingPhone)
         .eq("flight_iata", flightIata)
         .eq("flight_date", flightDate);
       if (error) return { error: error.message };
