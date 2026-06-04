@@ -844,6 +844,17 @@ async function handleAdminMessage(phoneNumber: string, messageText: string): Pro
 
   try {
     // ===== FAST-PATH: detect flight queries deterministically (bypasses planner LLM) =====
+    if (isGenericFlightTrackingActivation(messageText)) {
+      const lastFlight = await getLastTrackableFlightContext(phoneNumber);
+      if (lastFlight) {
+        const result = await executeAdminAction({ id: "a1", type: "track_flight", flight_iata: lastFlight.iata, flight_date: lastFlight.date, phone_number: phoneNumber });
+        const reply = formatFlightReply("track_flight", result);
+        await logAdminAccess(phoneNumber, messageText, "flight_track_flight", reply);
+        await sendWhatsAppMessage(phoneNumber, reply);
+        return;
+      }
+    }
+
     const fastFlight = detectFlightQuery(messageText);
     if (fastFlight) {
       console.log("[ADMIN] FAST-PATH flight detected:", JSON.stringify(fastFlight));
@@ -853,7 +864,7 @@ async function handleAdminMessage(phoneNumber: string, messageText: string): Pro
         await sendWhatsAppMessage(phoneNumber, reply);
         return;
       }
-      const action: any = { id: "a1", type: fastFlight.intent, flight_iata: fastFlight.iata, flight_date: fastFlight.date, origin: fastFlight.origin, destination: fastFlight.destination };
+      const action: any = { id: "a1", type: fastFlight.intent, flight_iata: fastFlight.iata, flight_date: fastFlight.date, origin: fastFlight.origin, destination: fastFlight.destination, phone_number: phoneNumber };
       const result = await executeAdminAction(action);
       const reply = formatFlightReply(fastFlight.intent, result);
       await logAdminAccess(phoneNumber, messageText, "flight_" + fastFlight.intent, reply);
