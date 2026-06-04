@@ -448,6 +448,76 @@ async function executeAdminAction(action: any): Promise<any> {
       };
     }
     
+    if (action.type === "flight_status") {
+      const flightIata = String(action.flight_iata || "").replace(/[\s-]/g, "").toUpperCase();
+      const flightDate = action.flight_date || new Date().toISOString().split("T")[0];
+      if (!flightIata) return { error: "flight_iata é obrigatório" };
+      try {
+        const url = `https://api.aviationstack.com/v1/flights?access_key=${Deno.env.get("AVIATIONSTACK_API_KEY")}&flight_iata=${flightIata}&flight_date=${flightDate}`;
+        const res = await fetch(url);
+        if (!res.ok) return { error: `AviationStack ${res.status}` };
+        const data = await res.json();
+        const flight = data.data?.[0];
+        if (!flight) return { success: true, found: false, flight_iata: flightIata, flight_date: flightDate };
+        // Check if already tracked
+        const { data: existing } = await supabase
+          .from("flight_tracking_subscriptions")
+          .select("active")
+          .eq("phone_number", ADMIN_PHONE_NUMBER)
+          .eq("flight_iata", flightIata)
+          .eq("flight_date", flightDate)
+          .maybeSingle();
+        return {
+          success: true,
+          found: true,
+          flight_iata: flightIata,
+          flight_date: flightDate,
+          already_tracking: !!existing?.active,
+          flight: {
+            status: flight.flight_status,
+            airline: flight.airline?.name,
+            departure: flight.departure,
+            arrival: flight.arrival,
+            delay_minutes: flight.departure?.delay || 0,
+          },
+        };
+      } catch (e) {
+        return { error: String(e) };
+      }
+    }
+
+    if (action.type === "track_flight") {
+      const flightIata = String(action.flight_iata || "").replace(/[\s-]/g, "").toUpperCase();
+      const flightDate = action.flight_date || new Date().toISOString().split("T")[0];
+      if (!flightIata) return { error: "flight_iata é obrigatório" };
+      const { error } = await supabase
+        .from("flight_tracking_subscriptions")
+        .upsert({
+          phone_number: ADMIN_PHONE_NUMBER,
+          flight_iata: flightIata,
+          flight_date: flightDate,
+          active: true,
+          last_status: null,
+          last_delay_minutes: null,
+          last_notified_at: null,
+        }, { onConflict: "phone_number,flight_iata,flight_date" });
+      if (error) return { error: error.message };
+      return { success: true, message: `Acompanhamento ativado para ${flightIata} (${flightDate}). Atualizações a cada 10 min quando houver mudança.` };
+    }
+
+    if (action.type === "untrack_flight") {
+      const flightIata = String(action.flight_iata || "").replace(/[\s-]/g, "").toUpperCase();
+      const flightDate = action.flight_date || new Date().toISOString().split("T")[0];
+      const { error } = await supabase
+        .from("flight_tracking_subscriptions")
+        .update({ active: false })
+        .eq("phone_number", ADMIN_PHONE_NUMBER)
+        .eq("flight_iata", flightIata)
+        .eq("flight_date", flightDate);
+      if (error) return { error: error.message };
+      return { success: true, message: `Acompanhamento do voo ${flightIata} desativado.` };
+    }
+
     return { error: "Tipo de ação não suportado: " + action.type };
   } catch (e) {
     return { error: String(e) };
