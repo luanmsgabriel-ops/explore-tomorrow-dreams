@@ -983,6 +983,14 @@ async function handleAdminMessage(phoneNumber: string, messageText: string): Pro
     console.log("[ADMIN] Query results keys:", Object.keys(queryResults));
     console.log("[ADMIN] Action results:", actionResults);
 
+    const flightAction = (plan.actions || []).find((action: any) => ["flight_status", "track_flight", "untrack_flight"].includes(action.type));
+    if (flightAction) {
+      const finalResponse = formatFlightReply(flightAction.type, actionResults[flightAction.id]);
+      await logAdminAccess(phoneNumber, messageText, plan.intent || `flight_${flightAction.type}`, finalResponse);
+      await sendWhatsAppMessage(phoneNumber, finalResponse);
+      return;
+    }
+
     // Pass 2: AI formats the response
     const formatterResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
