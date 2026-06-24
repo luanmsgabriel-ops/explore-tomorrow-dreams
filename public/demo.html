@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Tomorrow Travel — Demo (Admin & Cliente)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* exato do projeto - Ocean Teal Premium */
+    --background: 192 65% 12%;
+    --foreground: 45 20% 95%;
+    --card: 192 60% 15%;
+    --primary: 185 65% 35%;
+    --primary-foreground: 45 20% 95%;
+    --secondary: 192 55% 18%;
+    --muted: 192 50% 22%;
+    --muted-foreground: 192 20% 70%;
+    --accent: 40 75% 50%;
+    --accent-foreground: 192 65% 12%;
+    --border: 192 40% 25%;
+    --destructive: 0 84% 60%;
+    --teal-light: 175 60% 45%;
+  }
+  html,body{background:hsl(var(--background));color:hsl(var(--foreground));font-family:'Montserrat',sans-serif;}
+  .font-serif{font-family:'Playfair Display',serif;}
+  .bg-background{background:hsl(var(--background))}
+  .bg-card{background:hsl(var(--card))}
+  .bg-primary{background:hsl(var(--primary))}
+  .bg-secondary{background:hsl(var(--secondary))}
+  .bg-accent{background:hsl(var(--accent))}
+  .bg-muted{background:hsl(var(--muted))}
+  .bg-destructive{background:hsl(var(--destructive))}
+  .text-foreground{color:hsl(var(--foreground))}
+  .text-primary{color:hsl(var(--primary))}
+  .text-accent{color:hsl(var(--accent))}
+  .text-muted-foreground{color:hsl(var(--muted-foreground))}
+  .text-destructive{color:hsl(var(--destructive))}
+  .text-teal-light{color:hsl(var(--teal-light))}
+  .border-border{border-color:hsl(var(--border))}
+  .border-primary{border-color:hsl(var(--primary))}
+  .border-accent{border-color:hsl(var(--accent))}
+  .divide-border > * + *{border-top:1px solid hsl(var(--border))}
+
+  .glass{
+    background: linear-gradient(180deg, hsl(192 60% 18% / .9) 0%, hsl(192 60% 12% / .9) 100%);
+    border:1px solid hsl(var(--border));
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 40px hsl(192 65% 5% / 0.5);
+  }
+  .gradient-text-teal{
+    background: linear-gradient(135deg, hsl(185 65% 55%), hsl(175 60% 45%));
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .text-gold-embossed{
+    background: linear-gradient(180deg, hsl(45 85% 85%), hsl(40 80% 70%) 40%, hsl(35 75% 60%) 70%, hsl(45 85% 82%));
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    filter: drop-shadow(0 2px 4px hsl(0 0% 0% / .4));
+  }
+  .scrollbar::-webkit-scrollbar{width:6px;height:6px}
+  .scrollbar::-webkit-scrollbar-thumb{background:hsl(var(--border));border-radius:3px}
+  .scrollbar::-webkit-scrollbar-track{background:transparent}
+
+  .stat-card-primary{background:linear-gradient(135deg, hsl(185 65% 35% / .2), hsl(185 65% 35% / .05));border:1px solid hsl(185 65% 35% / .2)}
+  .stat-card-accent{background:linear-gradient(135deg, hsl(40 75% 50% / .2), hsl(40 75% 50% / .05));border:1px solid hsl(40 75% 50% / .2)}
+  .stat-card-teal{background:linear-gradient(135deg, hsl(175 60% 45% / .2), hsl(175 60% 45% / .05));border:1px solid hsl(175 60% 45% / .2)}
+  .stat-card-gold{background:linear-gradient(135deg, hsl(192 55% 18%), hsl(192 55% 18% / .5));border:1px solid hsl(var(--border))}
+
+  .bg-icon-primary{background:hsl(185 65% 35% / .2)}
+  .bg-icon-accent{background:hsl(40 75% 50% / .2)}
+  .bg-icon-teal{background:hsl(175 60% 45% / .2)}
+  .bg-wa{background:hsl(142 70% 45% / .15)} .text-wa{color:hsl(142 70% 45%)}
+
+  details>summary{list-style:none;cursor:pointer} details>summary::-webkit-details-marker{display:none}
+  .bar{height:6px;border-radius:3px;background:hsl(var(--secondary));overflow:hidden}
+  .bar>span{display:block;height:100%;background:linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)))}
+
+  /* Header */
+  .top-header{background:hsl(192 65% 10% / .95); border-bottom:1px solid hsl(var(--border)); backdrop-filter:blur(10px);}
+
+  /* Pulse banner */
+  @keyframes pulseSoft {0%,100%{opacity:1}50%{opacity:.85}}
+  .animate-pulse-soft{animation:pulseSoft 3s ease-in-out infinite}
+
+  .hide{display:none}
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- Top app switcher -->
+<header class="top-header sticky top-0 z-50">
+  <div class="max-w-[1500px] mx-auto px-6 h-20 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,hsl(var(--primary)),hsl(var(--accent)))">
+        <span class="font-serif font-bold text-xl text-gold-embossed">T</span>
+      </div>
+      <div>
+        <div class="font-serif text-xl leading-none">Tomorrow Travel</div>
+        <div class="text-[11px] text-muted-foreground mt-1">Painel interno · demonstração</div>
+      </div>
+    </div>
+    <nav class="flex items-center gap-2 p-1 rounded-xl bg-secondary border-border" style="border-width:1px">
+      <button onclick="showApp('admin')" id="nav-admin" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all">Admin Dashboard</button>
+      <button onclick="showApp('client')" id="nav-client" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all">Área do Cliente</button>
+    </nav>
+    <div class="flex items-center gap-3 text-xs text-muted-foreground">
+      <span class="hidden md:inline">Demo · dados fictícios</span>
+      <div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center font-bold text-sm">AD</div>
+    </div>
+  </div>
+</header>
+
+<!-- ===================== ADMIN ===================== -->
+<section id="app-admin" class="max-w-[1500px] mx-auto px-4 lg:px-8 pt-8 pb-12">
+  <div class="flex flex-col lg:flex-row gap-8">
+
+    <!-- Sidebar -->
+    <aside class="lg:w-64 shrink-0">
+      <div class="glass rounded-2xl p-4 sticky top-28">
+        <nav id="admin-nav" class="space-y-1.5"></nav>
+        <div class="border-t border-border mt-4 pt-4">
+          <button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+            <span class="font-medium text-sm">Sair</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 min-w-0">
+      <div id="admin-content"></div>
+    </main>
+  </div>
+</section>
+
+<!-- ===================== CLIENTE ===================== -->
+<section id="app-client" class="max-w-[1500px] mx-auto px-4 lg:px-8 pt-8 pb-12 hide">
+
+  <!-- Flight alert banner -->
+  <div class="mb-6 p-4 rounded-2xl animate-pulse-soft" style="background:linear-gradient(90deg, hsl(40 75% 50% / .2), hsl(185 65% 35% / .2)); border:1px solid hsl(40 75% 50% / .3)">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-icon-accent flex items-center justify-center">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--accent))" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 0 0 4 0"/></svg>
+      </div>
+      <div class="flex-1">
+        <h3 class="font-semibold text-foreground">✈️ Lembrete: Seu voo está próximo!</h3>
+        <p class="text-sm text-muted-foreground">
+          Voo para <strong class="text-foreground">Maldivas</strong> em <strong class="text-foreground">36 horas</strong>. Não esqueça de fazer o check-in online!
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Welcome header -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+    <div>
+      <h1 class="font-serif text-3xl font-bold">Olá, <span class="gradient-text-teal">Mariana</span>!</h1>
+      <p class="text-muted-foreground mt-1">Bem-vinda à sua área exclusiva</p>
+    </div>
+    <button class="flex items-center gap-2 px-4 py-2 rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      <span>Sair</span>
+    </button>
+  </div>
+
+  <div class="flex flex-col lg:flex-row gap-8">
+    <aside class="lg:w-64 shrink-0">
+      <div class="glass rounded-2xl p-4 sticky top-28">
+        <div class="mb-4 pb-4 border-b border-border">
+          <label class="block text-sm font-medium text-muted-foreground mb-2">Viagem Selecionada</label>
+          <select class="w-full p-2 rounded-lg bg-secondary border border-border text-foreground text-sm">
+            <option>Maldivas · 12/Set/2026</option>
+            <option>Paris · 03/Dez/2026</option>
+          </select>
+        </div>
+        <nav id="client-nav" class="space-y-2"></nav>
+      </div>
+    </aside>
+    <main class="flex-1 min-w-0">
+      <div id="client-content"></div>
+    </main>
+  </div>
+</section>
+
+<footer class="max-w-[1500px] mx-auto px-6 py-10 text-center text-xs text-muted-foreground">
+  Demo estática · Tomorrow Travel · Réplica visual fiel · Stack real: React + Vite + Supabase + Deno + Lovable AI Gateway
+</footer>
+
+<script>
+/* ================== ÍCONES (lucide inline) ================== */
+const I = {
+  dash:'<path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1"/>',
+  bar:'<path d="M3 3v18h18M7 16V10M12 16V6M17 16v-4"/>',
+  dollar:'<path d="M12 1v22M17 5H9a4 4 0 0 0 0 8h6a4 4 0 0 1 0 8H7"/>',
+  users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8m14 10v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>',
+  plane:'<path d="M17.8 19.8 16 14l4-4V4l-6 4h-4L6 4v6l4 4-2 6 2-2 2 2 2-2 2 2 2-2 2 2z"/>',
+  list:'<path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+  globe:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20"/>',
+  tag:'<path d="M20.59 13.41L13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1"/>',
+  image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/>',
+  file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>',
+  map:'<path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4zM8 2v16M16 6v16"/>',
+  msg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  msgc:'<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
+  nav:'<polygon points="3 11 22 2 13 21 11 13 3 11"/>',
+  clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  vol:'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>',
+  heart:'<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>',
+  user_add:'<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M8.5 11a4 4 0 100-8 4 4 0 000 8M20 8v6M23 11h-6"/>',
+  hotel:'<path d="M3 21h18M3 7v14M21 7v14M3 7l9-4 9 4M9 21V11h6v10M9 11h6"/>',
+  ticket:'<path d="M3 7v2a3 3 0 010 6v2a2 2 0 002 2h14a2 2 0 002-2v-2a3 3 0 010-6V7a2 2 0 00-2-2H5a2 2 0 00-2 2zM13 5v14"/>',
+  info:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+  check:'<polyline points="20 6 9 17 4 12"/>',
+  bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 0 0 4 0"/>',
+  alert:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+  phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
+};
+const Ic = (k, cls='w-5 h-5') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${I[k]||''}</svg>`;
+
+/* ================== TABS (idênticas ao código real) ================== */
+const ADMIN_TABS = [
+  ['overview','Visão Geral','dash'],
+  ['analytics','Analytics','bar'],
+  ['sales','Vendas','dollar'],
+  ['clients','Clientes','users'],
+  ['trips','Viagens','plane'],
+  ['checklist','Checklist Padrão','list'],
+  ['destinations','Destinos','globe'],
+  ['offers','Ofertas','tag'],
+  ['banner-generator','Gerar Banner','image'],
+  ['quotes','Cotações','file'],
+  ['itineraries','Roteiros IA','map'],
+  ['images','Imagens IA','image'],
+  ['conversations','Conversas IA','msg'],
+  ['whatsapp','WhatsApp','msgc'],
+  ['concierge','Concierge','nav'],
+  ['scheduled-messages','Mensagens Agendadas','clock'],
+  ['audio','Áudio Teo','vol'],
+  ['reviews','Avaliações','heart'],
+  ['users','Admins','user_add'],
+];
+const CLIENT_TABS = [
+  ['flight','Aéreo','plane'],
+  ['accommodation','Hospedagem','hotel'],
+  ['vouchers','Vouchers','ticket'],
+  ['checklist','Checklist','check'],
+  ['info','Informações','info'],
+  ['itinerary','Roteiro IA','map'],
+  ['image','Imagem IA','image'],
+];
+
+/* ================== ADMIN VIEWS ================== */
+const adminViews = {
+  overview: () => `
+    <div class="space-y-6">
+      <h1 class="font-serif text-3xl font-bold text-foreground">Visão Geral</h1>
+
+      <!-- Main stats -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        ${[
+          ['stat-card-primary','bg-icon-primary','text-primary','users','1.284','Clientes'],
+          ['stat-card-accent','bg-icon-accent','text-accent','plane','37','Viagens'],
+          ['stat-card-teal','bg-icon-teal','text-teal-light','globe','84','Destinos Ativos'],
+          ['stat-card-gold','bg-icon-accent','text-accent','tag','12','Ofertas Ativas'],
+        ].map(([bg,ib,it,ic,v,l])=>`
+          <button class="p-4 rounded-2xl ${bg} hover:border-primary/40 transition-all text-left group">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl ${ib} flex items-center justify-center group-hover:scale-110 transition-transform ${it}">${Ic(ic)}</div>
+              <div><p class="text-2xl font-bold text-foreground">${v}</p><p class="text-muted-foreground text-xs">${l}</p></div>
+            </div>
+          </button>`).join('')}
+      </div>
+
+      <!-- Secondary stats -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        ${[
+          ['file','text-primary','148','Cotações'],
+          ['clock','text-accent','37','Pendentes'],
+          ['map','text-teal-light','640','Roteiros IA'],
+          ['image','text-primary','412','Imagens IA'],
+        ].map(([ic,it,v,l])=>`
+          <button class="p-4 rounded-xl bg-secondary border border-border hover:border-primary/40 transition-all text-left group">
+            <div class="flex items-center gap-3">
+              <span class="${it} group-hover:scale-110 transition-transform">${Ic(ic)}</span>
+              <div><p class="text-lg font-semibold text-foreground">${v}</p><p class="text-muted-foreground text-xs">${l}</p></div>
+            </div>
+          </button>`).join('')}
+      </div>
+
+      <!-- WhatsApp Conversations Summary -->
+      <div class="rounded-2xl border border-border overflow-hidden">
+        <div class="p-4 bg-secondary border-b border-border flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-wa flex items-center justify-center text-wa">${Ic('msgc','w-4 h-4')}</div>
+            <h2 class="font-serif text-xl font-bold text-foreground">WhatsApp - Conversas do Teo</h2>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-sm text-muted-foreground">6 conversas</span>
+            <button class="text-xs px-3 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors">Ver todas</button>
+          </div>
+        </div>
+        <div class="divide-border">
+          ${[
+            ['Mariana Costa','+55 11 99183-3448','Tudo pronto pra Maldivas! 💛','completed','🎉 Concluída','primary',12,'12 set, 14:32'],
+            ['Rodrigo Lima','+55 21 98745-1234','Vamos confirmar as datas então?','collecting_dates','📅 Datas','accent',8,'hoje, 11:08'],
+            ['Patrícia Almeida','+55 11 91234-5678','Posso parcelar em 10x sem juros?','summary_confirmation','✅ Confirmação','accent',14,'hoje, 09:42'],
+            ['Felipe Souza','+55 31 99888-7766','Quero levar a família pra Disney em janeiro','collecting_destination','🗺️ Destino','accent',5,'ontem, 22:11'],
+            ['Carla Mendes','+55 11 95555-4433','Cliente pediu falar com humano','human_takeover','🙋 Atendimento humano','destructive',22,'ontem, 18:50'],
+          ].map(c=>`
+            <div class="p-4 transition-colors cursor-pointer ${c[3]==='human_takeover'?'bg-destructive/5':c[3]==='completed'?'bg-primary/5':'hover:bg-secondary/50'}">
+              ${c[3]==='human_takeover'?`<div class="mb-3 px-3 py-2 rounded-lg bg-destructive/20 border border-destructive/30 flex items-center gap-2 text-destructive">${Ic('alert','w-4 h-4')}<span class="text-xs font-medium">🙋 Cliente pediu atendimento humano!</span></div>`:''}
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                  <div class="w-10 h-10 rounded-full flex items-center justify-center ${c[3]==='human_takeover'?'bg-destructive/20 text-destructive':c[3]==='completed'?'bg-primary/20 text-primary':'bg-wa text-wa'}">${Ic('msgc')}</div>
+                  <div>
+                    <p class="font-medium text-foreground">${c[0]}</p>
+                    <p class="text-sm text-muted-foreground truncate max-w-[280px]">${c[2]}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3">
+                  <div class="text-right">
+                    <p class="text-xs text-muted-foreground">${c[7]}</p>
+                    <p class="text-xs text-muted-foreground">${c[6]} msgs</p>
+                  </div>
+                  <span class="px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${c[3]==='completed'?'bg-primary/20 text-primary':c[3]==='human_takeover'?'bg-destructive/20 text-destructive':'bg-accent/20 text-accent'}">${c[4]}</span>
+                </div>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- Analytics CTA -->
+      <button class="w-full p-4 rounded-2xl border border-primary/20 hover:border-primary/40 transition-all text-left group" style="background:linear-gradient(90deg,hsl(var(--primary)/.1),hsl(var(--accent)/.1),hsl(var(--teal-light)/.1))">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-icon-primary text-primary flex items-center justify-center group-hover:scale-110 transition-transform">${Ic('bar')}</div>
+            <div><p class="font-semibold text-foreground">Ver Analytics Completo</p><p class="text-sm text-muted-foreground">Métricas, gráficos e insights do site</p></div>
+          </div>
+          <span class="text-primary">→</span>
+        </div>
+      </button>
+    </div>`,
+
+  analytics: () => `
+    <div class="space-y-6">
+      <h1 class="font-serif text-3xl font-bold">Analytics</h1>
+      <div class="grid grid-cols-4 gap-4">
+        ${[['Visitas (7d)','12.480','+18%'],['Sessões IA','3.120','+24%'],['Conversão','3,3%','+0,5pp'],['Bounce','41%','-3pp']].map(([l,v,d])=>`
+          <div class="stat-card-primary rounded-2xl p-4"><p class="text-xs text-muted-foreground">${l}</p><p class="text-2xl font-bold mt-1">${v}</p><p class="text-xs text-primary mt-1">${d}</p></div>`).join('')}
+      </div>
+      <div class="grid grid-cols-2 gap-6">
+        <div class="glass rounded-2xl p-5">
+          <h3 class="font-serif text-lg mb-4">Tráfego (últimos 7 dias)</h3>
+          <div class="flex items-end gap-2 h-48">
+            ${[42,58,49,72,84,90,68].map(v=>`<div class="flex-1 rounded-t" style="height:${v}%;background:linear-gradient(to top, hsl(var(--primary)), hsl(var(--accent)/.6))"></div>`).join('')}
+          </div>
+          <div class="flex justify-between text-[11px] text-muted-foreground mt-2">${['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map(d=>`<span>${d}</span>`).join('')}</div>
+        </div>
+        <div class="glass rounded-2xl p-5">
+          <h3 class="font-serif text-lg mb-4">Ferramentas IA mais usadas</h3>
+          ${[['Téo Chat',1820,80],['Roteiro IA',640,40],['Imagem IA',412,28],['Quote Visual',287,18],['Daily Story',194,12]].map(([n,v,p])=>`
+            <div class="mb-3"><div class="flex justify-between text-xs mb-1"><span>${n}</span><span class="text-muted-foreground">${v}</span></div><div class="bar"><span style="width:${p}%"></span></div></div>`).join('')}
+        </div>
+      </div>
+    </div>`,
+
+  sales: () => `
+    <div class="space-y-6">
+      <h1 class="font-serif text-3xl font-bold">Vendas</h1>
+      <div class="grid grid-cols-3 gap-4">
+        ${[['Faturamento mês','R$ 412.380'],['Ticket médio','R$ 9.430'],['Vendas fechadas','42']].map(([l,v])=>`
+          <div class="stat-card-accent rounded-2xl p-4"><p class="text-xs text-muted-foreground">${l}</p><p class="text-2xl font-bold mt-1 text-gold-embossed">${v}</p></div>`).join('')}
+      </div>
+      <div class="glass rounded-2xl overflow-hidden">
+        <div class="p-4 border-b border-border bg-secondary"><h3 class="font-serif text-lg">Vendas recentes</h3></div>
+        <table class="w-full text-sm">
+          <thead class="text-xs text-muted-foreground border-b border-border bg-secondary/50">
+            <tr><th class="text-left px-4 py-3">Cliente</th><th class="text-left">Pacote</th><th class="text-left">Embarque</th><th class="text-left">Pago</th><th class="text-right pr-4">Valor</th></tr>
+          </thead>
+          <tbody>
+          ${[
+            ['Mariana Costa','Maldivas · OBLU Select 9n','12/Set/26','100%','R$ 38.900'],
+            ['Patrícia Almeida','Portugal Romance 12n','18/Nov/26','60%','R$ 22.450'],
+            ['Carla Mendes','Cancún All Inclusive 7n','03/Jul/26','100%','R$ 18.700'],
+            ['Henrique Dias','Buenos Aires 5n','21/Ago/26','30%','R$ 6.480'],
+            ['Renata Souza','Paris Romance 7n','01/Out/26','100%','R$ 16.300'],
+          ].map(r=>`<tr class="border-b border-border hover:bg-secondary/30">
+            <td class="px-4 py-3 font-medium">${r[0]}</td><td>${r[1]}</td><td class="text-muted-foreground">${r[2]}</td>
+            <td><span class="px-2 py-1 rounded-full text-xs bg-primary/20 text-primary">${r[3]}</span></td>
+            <td class="text-right pr-4 text-gold-embossed font-semibold">${r[4]}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`,
+
+  clients: () => `
+    <div class="space-y-6">
+      <div class="flex items-center justify-between">
+        <h1 class="font-serif text-3xl font-bold">Clientes</h1>
+        <button class="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold">+ Novo cliente</button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      ${[
+        ['Mariana Costa','mariana@mail.com','+55 11 99183-3448','VIP','5'],
+        ['Rodrigo Lima','rodrigo@mail.com','+55 21 98745-1234','Lead quente','0'],
+        ['Patrícia Almeida','paty@mail.com','+55 11 91234-5678','Recorrente','3'],
+        ['Felipe Souza','felipe@mail.com','+55 31 99888-7766','Novo','0'],
+        ['Juliana Ramos','jur@mail.com','+55 11 94455-2211','VIP','7'],
+        ['Eduardo Tavares','edu@mail.com','+55 11 93322-1100','Recorrente','2'],
+      ].map(c=>`<div class="glass rounded-2xl p-5">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg" style="background:linear-gradient(135deg,hsl(var(--primary)),hsl(var(--accent)))">${c[0][0]}</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-semibold truncate">${c[0]}</div>
+            <div class="text-xs text-muted-foreground truncate">${c[1]}</div>
+          </div>
+        </div>
+        <div class="mt-3 pt-3 border-t border-border flex items-center justify-between text-xs">
+          <span class="px-2 py-1 rounded-full bg-accent/20 text-accent font-medium">${c[3]}</span>
+          <span class="text-muted-foreground">${c[4]} viagens</span>
+        </div>
+        <div class="mt-2 text-xs text-muted-foreground">${c[2]}</div>
+      </div>`).join('')}
+      </div>
+    </div>`,
+
+  trips: () => `
+    <div class="space-y-6">
+      <h1 class="font-serif text-3xl font-bold">Viagens</h1>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      ${[
+        ['Mariana Costa','Maldivas','12-22/Set/26','OBLU Select · 9 noites','confirmada','primary'],
+        ['Patrícia Almeida','Lisboa + Porto','18-30/Nov/26','Pestana Palace · 12 noites','confirmada','primary'],
+        ['Juliana Ramos','Bariloche','10-17/Ago/26','Llao Llao · 7 noites','aguardando pagamento','accent'],
+        ['Henrique Dias','Buenos Aires','21-26/Ago/26','Alvear Palace · 5 noites','confirmada','primary'],
+      ].map(t=>`<div class="glass rounded-2xl p-5">
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <h3 class="font-serif text-xl">${t[1]}</h3>
+            <p class="text-xs text-muted-foreground mt-1">${t[0]}</p>
+          </div>
+          <span class="px-2 py-1 rounded-full text-xs ${t[5]==='primary'?'bg-primary/20 text-primary':'bg-accent/20 text-accent'}">${t[4]}</span>
+        </div>
+        <div class="text-sm text-muted-foreground">${t[2]}</div>
+        <div class="text-sm mt-1">${t[3]}</div>
+        <div class="mt-4 flex gap-2">
+          <button class="text-xs px-3 py-1.5 rounded-lg bg-secondary border border-border hover:border-primary/40">Detalhes</button>
+          <button class="text-xs px-3 py-1.5 rounded-lg bg-secondary border border-border hover:border-primary/40">Vouchers</button>
+        </div>
+      </div>`).join('')}
+      </div>
+    </div>`,
+
+  quotes: () => `
+    <div class="space-y-6">
+      <div class="flex items-center justify-between">
+        <h1 class="font-serif text-3xl font-bold">Cotações</h1>
+        <button class="px-4 py-2 rounded-xl bg-accent text-accent-foreground text-sm font-semibold">+ Nova Cotação Manual</button>
+      </div>
+      <div class="glass rounded-2xl p-5">
+        <div class="flex gap-2 mb-4 flex-wrap">
+          ${['Todas','Novas','Em cotação','Enviadas','Aprovadas','Perdidas'].map((f,i)=>`
+            <button class="px-3 py-1.5 rounded-lg text-xs ${i===0?'bg-primary text-primary-foreground font-semibold':'bg-secondary text-muted-foreground border border-border'}">${f}</button>`).join('')}
+        </div>
+        <table class="w-full text-sm">
+          <thead class="text-xs text-muted-foreground border-b border-border">
+            <tr><th class="text-left py-3">Cliente</th><th class="text-left">Destino</th><th class="text-left">Datas</th><th class="text-left">Pax</th><th class="text-left">Operador</th><th class="text-left">Status</th><th class="text-right">Valor</th></tr>
+          </thead>
+          <tbody>
+            ${[
+              ['Mariana Costa','Maldivas','12-22/Set','2 ad','Cativa','Enviada','accent','R$ 38.900'],
+              ['Rodrigo Lima','Cancún','05-12/Out','2 ad 1 ch','Orinter','Em cotação','accent','—'],
+              ['Patrícia Almeida','Lisboa + Porto','18-30/Nov','2 ad','Patria','Aprovada','primary','R$ 22.450'],
+              ['Felipe Souza','Disney Orlando','02-15/Jan/27','2 ad 2 ch','Cativa','Nova','destructive','—'],
+              ['Juliana Ramos','Bariloche','10-17/Ago','4 ad','Orinter','Enviada','accent','R$ 14.200'],
+              ['Eduardo Tavares','Tóquio','01-12/Mar/27','2 ad','Patria','Em cotação','accent','—'],
+            ].map(r=>`<tr class="border-b border-border hover:bg-secondary/30">
+              <td class="py-3 font-medium">${r[0]}</td><td>${r[1]}</td><td class="text-muted-foreground">${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td>
+              <td><span class="px-2 py-1 rounded-full text-xs ${r[6]==='primary'?'bg-primary/20 text-primary':r[6]==='accent'?'bg-accent/20 text-accent':'bg-destructive/20 text-destructive'}">${r[5]}</span></td>
+              <td class="text-right text-gold-embossed font-semibold">${r[7]}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`,
+
+  whatsapp: () => `
+    <div class="space-y-6">
+      <h1 class="font-serif text-3xl font-bold">WhatsApp · Inbox</h1>
+      <div class="glass rounded-2xl overflow-hidden" style="height:640px">
+        <div class="grid grid-cols-[320px_1fr] h-full">
+          <div class="border-r border-border overflow-y-auto scrollbar">
+            ${[
+              ['Mariana Costa','Tudo pronto pra Maldivas! 💛','agora','3',true],
+              ['Rodrigo Lima','Vamos confirmar as datas então?','5m','1',true],
+              ['Patrícia Almeida','Posso pagar em 10x?','12m','',true],
+              ['Felipe Souza','Quero Disney em janeiro','1h','2',true],
+              ['Carla Mendes','Voltei amada! 💛','3h','',false],
+              ['Eduardo Tavares','Quanto Tóquio em março?','5h','1',true],
+            ].map((c,i)=>`<div class="p-3 border-b border-border cursor-pointer ${i===0?'bg-secondary':''}">
+              <div class="flex justify-between"><span class="font-semibold text-sm">${c[0]}</span><span class="text-[10px] text-muted-foreground">${c[2]}</span></div>
+              <div class="flex justify-between mt-1 items-center"><span class="text-xs text-muted-foreground truncate pr-2">${c[1]}</span>${c[3]?`<span class="px-1.5 py-0.5 rounded-full text-[10px] bg-primary text-primary-foreground font-bold">${c[3]}</span>`:''}</div>
+              <div class="mt-1 text-[10px] ${c[4]?'text-primary':'text-muted-foreground'}">${c[4]?'● IA ativa':'○ Controle manual'}</div>
+            </div>`).join('')}
+          </div>
+          <div class="flex flex-col">
+            <div class="p-4 border-b border-border flex justify-between items-center">
+              <div>
+                <div class="font-semibold">Mariana Costa</div>
+                <div class="text-[11px] text-muted-foreground">+55 11 99183-3448 · IA ativa</div>
+              </div>
+              <div class="flex gap-2">
+                <button class="text-xs px-3 py-1.5 rounded-lg bg-secondary border border-border">Pausar IA</button>
+                <button class="text-xs px-3 py-1.5 rounded-lg bg-accent text-accent-foreground font-semibold">Assumir</button>
+              </div>
+            </div>
+            <div class="flex-1 overflow-y-auto p-5 space-y-3 scrollbar">
+              ${[
+                ['client','Oi Téo! Tudo pronto pra Maldivas?'],
+                ['ai','Oi Mariana! Tá tudo lindo por aqui 💛 Seu voo G3 7660 sai 12/Set às 23:55 de GRU. Já mandei o check-in pra você. Quer que eu te avise sobre o clima diário do destino?'],
+                ['client','Sim! E o transfer do hotel?'],
+                ['ai','Transfer de speedboat OBLU já confirmado. Embarque às 08:30 no Velana Intl. Te mando o voucher agora 📄'],
+                ['client','Você é fera. Obrigada!'],
+                ['ai','Imagina, é nosso trabalho cuidar de você 💛 Daqui a 48h te mando o lembrete do check-in.'],
+              ].map(([w,m])=>`<div class="flex ${w==='client'?'justify-start':'justify-end'}">
+                <div class="max-w-[70%] px-4 py-2.5 rounded-2xl text-sm ${w==='client'?'bg-secondary':'text-primary-foreground'}" ${w!=='client'?'style="background:hsl(var(--primary))"':''}>${m}</div>
+              </div>`).join('')}
+            </div>
+            <div class="p-3 border-t border-border flex gap-2">
+              <input class="flex-1 bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm" placeholder="Escrever mensagem..."/>
+              <button class="bg-primary text-primary-foreground px-5 py-2.5 rounded-xl text-sm font-semibold">Enviar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`,
+
+  destinations: () => `
+    <div class="space-y-6">
+      <div class="flex justify-between items-center">
+        <h1 class="font-serif text-3xl font-bold">Destinos</h1>
+        <button class="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold">+ Novo destino</button>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        ${[['Maldivas','🏝️','Internacional'],['Paris','🗼','Romance'],['Tóquio','⛩️','Internacional'],['Cancún','🌴','Família'],['Lisboa','🏛️','Internacional'],['Bariloche','🏔️','América do Sul'],['Disney Orlando','🎢','Família'],['Dubai','🌇','Luxo'],['Bali','🌺','Romance'],['Santorini','🏖️','Romance'],['Patagônia','🐧','Aventura'],['Roma','🏟️','Internacional']]
+          .map(d=>`<div class="glass rounded-2xl overflow-hidden hover:border-accent transition-all cursor-pointer group">
+            <div class="h-32 flex items-center justify-center text-5xl" style="background:linear-gradient(135deg,hsl(var(--primary)/.4),hsl(var(--accent)/.3))">${d[1]}</div>
+            <div class="p-3"><div class="font-semibold">${d[0]}</div><div class="text-xs text-muted-foreground">${d[2]}</div></div>
+          </div>`).join('')}
+      </div>
+    </div>`,
+
+  offers: () => `
+    <div class="space-y-6">
+      <h1 class="font-serif text-3xl font-bold">Ofertas Promocionais</h1>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        ${[['Maldivas 9n','R$ 19.900','12x sem juros','OBLU Select'],['Cancún All In','R$ 8.490','até 30/Jul','Riu Palace'],['Paris Romance','R$ 11.200','aéreo + 7n','Pullman Eiffel']]
+          .map(o=>`<div class="rounded-2xl p-5 border" style="background:linear-gradient(135deg,hsl(var(--accent)/.15),hsl(var(--primary)/.1));border-color:hsl(var(--accent)/.3)">
+            <div class="text-xs text-muted-foreground">${o[3]}</div>
+            <div class="font-serif text-xl mt-1">${o[0]}</div>
+            <div class="text-3xl font-bold text-gold-embossed mt-3">${o[1]}</div>
+            <div class="text-xs text-muted-foreground mt-1">${o[2]}</div>
+            <div class="flex justify-between items-center mt-4">
+              <span class="px-2 py-1 rounded-full text-xs bg-primary/20 text-primary">ATIVA</span>
+              <button class="text-xs text-muted-foreground hover:text-foreground">editar</button>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`,
+
+  reviews: () => `
+    <div class="space-y-6">
+      <h1 class="font-serif text-3xl font-bold">Avaliações</h1>
+      <div class="grid grid-cols-4 gap-4">
+        ${[['Nota média','4.9 ★'],['Reviews','187'],['NPS','82'],['Recomendam','98%']].map(([l,v])=>`<div class="stat-card-accent rounded-2xl p-4"><p class="text-xs text-muted-foreground">${l}</p><p class="text-2xl font-bold mt-1">${v}</p></div>`).join('')}
+      </div>
+      <div class="space-y-3">
+        ${[
+          ['Carla M.','Maldivas',5,'Voltei amada! Téo lembrou de tudo, até do clima. Recomendo demais 💛'],
+          ['João V.','Disney',5,'Primeira vez levando os meninos, foi tranquilo do começo ao fim.'],
+          ['Renata S.','Paris',4,'Hotel incrível, só achei o transfer apertado. No mais, perfeito.'],
+        ].map(r=>`<div class="glass rounded-2xl p-5">
+          <div class="flex justify-between mb-2">
+            <div><span class="font-semibold">${r[0]}</span> <span class="text-xs text-muted-foreground ml-2">${r[1]}</span></div>
+            <span class="text-gold-embossed text-lg">${'★'.repeat(r[2])}<span class="text-muted-foreground">${'★'.repeat(5-r[2])}</span></span>
+          </div>
+          <p class="text-sm text-muted-foreground">${r[3]}</p>
+        </div>`).join('')}
+      </div>
+    </div>`,
+
+  concierge: () => `
+    <div class="space-y-6">
+      <h1 class="font-serif text-3xl font-bold">Concierge</h1>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="glass rounded-2xl p-5">
+          <h3 class="font-serif text-lg mb-3">Voos rastreados</h3>
+          ${[['G3 7660','GRU → MLE','Hoje 23:55','no horário','primary'],['LA 8084','GRU → MAD','25/Out 17:40','atrasado 45min','accent'],['AD 4178','VCP → REC','30/Out 06:10','no horário','primary']]
+            .map(f=>`<div class="flex justify-between py-3 border-b border-border last:border-0">
+              <div><div class="font-semibold">${f[0]}</div><div class="text-xs text-muted-foreground">${f[1]} · ${f[2]}</div></div>
+              <span class="px-2 py-1 rounded-full text-xs ${f[4]==='primary'?'bg-primary/20 text-primary':'bg-accent/20 text-accent'}">${f[3]}</span>
+            </div>`).join('')}
+        </div>
+        <div class="glass rounded-2xl p-5">
+          <h3 class="font-serif text-lg mb-3">Serviços ativos</h3>
+          ${[['Daily Stories','12 destinos'],['Carteira Viagem','8 clientes'],['SOS Viagem','24/7'],['Compatibilidade Astral','Ativo'],['Vidente do Destino','Ativo']]
+            .map(s=>`<div class="flex justify-between py-3 border-b border-border last:border-0"><span>${s[0]}</span><span class="text-xs text-muted-foreground">${s[1]}</span></div>`).join('')}
+        </div>
+      </div>
+    </div>`,
+
+  'scheduled-messages': () => `
+    <div class="space-y-6">
+      <h1 class="font-serif text-3xl font-bold">Mensagens Agendadas</h1>
+      <div class="glass rounded-2xl overflow-hidden">
+        <table class="w-full text-sm">
+          <thead class="text-xs text-muted-foreground bg-secondary border-b border-border"><tr><th class="text-left px-4 py-3">Destinatário</th><th class="text-left">Tipo</th><th class="text-left">Conteúdo</th><th class="text-left">Envio</th></tr></thead>
+          <tbody>
+          ${[
+            ['Mariana C.','Check-in 48h','Lembrete + boas-vindas','10/Set 23:55'],
+            ['Patrícia A.','Follow-up D+3','Tudo certo com a cotação?','27/Jun 09:00'],
+            ['Felipe S.','Follow-up D+7','Posso reservar pra você?','01/Jul 09:00'],
+            ['Carla M.','Pesquisa pós-viagem','Como foi sua experiência?','05/Jul 10:00'],
+          ].map(r=>`<tr class="border-b border-border hover:bg-secondary/30"><td class="px-4 py-3">${r[0]}</td><td><span class="px-2 py-1 rounded-full text-xs bg-accent/20 text-accent">${r[1]}</span></td><td class="text-muted-foreground">${r[2]}</td><td>${r[3]}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`,
+
+  // Stubs visuais idênticos em estética
+  itineraries: () => stubGrid('Roteiros IA','Geração de roteiros personalizados pelo Téo',['Maldivas · 9 dias','Paris romance · 7 dias','Disney família · 12 dias','Tóquio cultural · 10 dias']),
+  images: () => stubImages('Imagens IA'),
+  conversations: () => stubChat('Conversas IA','Histórico das interações no Téo (site)'),
+  checklist: () => stubGrid('Checklist Padrão','Templates aplicados automaticamente em novas viagens',['Internacional','Família com crianças','Romance lua de mel','Aventura/Trekking']),
+  'banner-generator': () => `<div class="space-y-6"><h1 class="font-serif text-3xl font-bold">Gerar Banner</h1>
+    <div class="glass rounded-2xl p-6"><p class="text-sm text-muted-foreground mb-4">Gere banners promocionais para Stories, Feed e WhatsApp.</p>
+    <div class="grid grid-cols-3 gap-3">${[1,2,3].map(()=>`<div class="aspect-square rounded-xl flex items-center justify-center text-5xl" style="background:linear-gradient(135deg,hsl(var(--primary)/.3),hsl(var(--accent)/.3))">🎨</div>`).join('')}</div></div></div>`,
+  audio: () => `<div class="space-y-6"><h1 class="font-serif text-3xl font-bold">Áudio Teo</h1>
+    <div class="glass rounded-2xl p-6"><p class="text-sm text-muted-foreground mb-4">ElevenLabs · voz padrão eleven_multilingual_v2</p>
+    ${[1,2,3].map(i=>`<div class="flex items-center gap-3 py-3 border-b border-border last:border-0"><button class="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center">▶</button><div class="flex-1"><div class="text-sm">Áudio boas-vindas #${i}</div><div class="text-xs text-muted-foreground">0:32 · Maldivas</div></div></div>`).join('')}</div></div>`,
+  users: () => `<div class="space-y-6"><h1 class="font-serif text-3xl font-bold">Admins</h1>
+    <div class="glass rounded-2xl overflow-hidden"><table class="w-full text-sm">
+    <thead class="bg-secondary text-xs text-muted-foreground border-b border-border"><tr><th class="text-left px-4 py-3">Nome</th><th class="text-left">Email</th><th class="text-left">Adicionado</th></tr></thead>
+    <tbody>${[['Admin Principal','admin@tomorrowtravel.com.br','01/Jan/26'],['Atendimento','equipe@tomorrowtravel.com.br','15/Mar/26']].map(r=>`<tr class="border-b border-border"><td class="px-4 py-3">${r[0]}</td><td class="text-muted-foreground">${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody></table></div></div>`,
+};
+function stubGrid(title, sub, items){
+  return `<div class="space-y-6"><h1 class="font-serif text-3xl font-bold">${title}</h1>
+  <p class="text-sm text-muted-foreground">${sub}</p>
+  <div class="grid grid-cols-2 gap-4">${items.map(i=>`<div class="glass rounded-2xl p-5"><div class="font-semibold">${i}</div><div class="text-xs text-muted-foreground mt-1">criado em ${new Date().toLocaleDateString('pt-BR')}</div></div>`).join('')}</div></div>`;
+}
+function stubImages(title){
+  return `<div class="space-y-6"><h1 class="font-serif text-3xl font-bold">${title}</h1>
+  <div class="grid grid-cols-3 gap-3">${[1,2,3,4,5,6].map(()=>`<div class="aspect-square rounded-xl flex items-center justify-center text-5xl" style="background:linear-gradient(135deg,hsl(var(--primary)/.3),hsl(var(--accent)/.2),hsl(var(--teal-light)/.3))">🌅</div>`).join('')}</div></div>`;
+}
+function stubChat(title, sub){
+  return `<div class="space-y-6"><h1 class="font-serif text-3xl font-bold">${title}</h1><p class="text-sm text-muted-foreground">${sub}</p>
+  <div class="glass rounded-2xl divide-border">${['Quero Maldivas em setembro','Tem pacote pra Disney?','Quanto custa Bariloche?','Sugere algo romântico em Paris?'].map(m=>`<div class="p-4 flex justify-between"><span>${m}</span><span class="text-xs text-muted-foreground">há 2h</span></div>`).join('')}</div></div>`;
+}
+
+/* ================== CLIENT VIEWS ================== */
+const clientViews = {
+  flight: () => `
+    <div class="space-y-6">
+      <div class="glass rounded-2xl overflow-hidden">
+        <div class="h-64 flex items-center justify-center text-7xl" style="background:linear-gradient(135deg,hsl(var(--primary)/.4),hsl(var(--accent)/.3),hsl(var(--teal-light)/.4))">🏝️</div>
+        <div class="p-6 text-center">
+          <h2 class="font-serif text-3xl md:text-4xl font-bold">Bem-vinda ao início da sua próxima história.</h2>
+          <p class="text-lg text-muted-foreground mt-2">Com a Tomorrow Travel sua experiência começa antes mesmo da sua viagem ✈️</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        ${[
+          ['IDA','GRU → MLE','12/Set/26 · 23:55','Chegada 13/Set · 19:40 (+1)','G3 7660','GOL Linhas Aéreas','9h 45min'],
+          ['VOLTA','MLE → GRU','22/Set/26 · 21:30','Chegada 23/Set · 14:20','G3 7661','GOL Linhas Aéreas','11h 50min'],
+        ].map(f=>`
+          <div class="glass rounded-2xl p-6">
+            <div class="flex justify-between items-center mb-4">
+              <span class="px-3 py-1 rounded-full text-xs font-semibold bg-primary/20 text-primary">${f[0]} · Confirmado</span>
+              <span class="text-xs text-muted-foreground">${f[6]}</span>
+            </div>
+            <div class="font-serif text-2xl">${f[1]}</div>
+            <div class="text-sm mt-2">${f[2]}</div>
+            <div class="text-xs text-muted-foreground">${f[3]}</div>
+            <div class="mt-4 pt-4 border-t border-border flex justify-between text-sm">
+              <span>Voo <strong>${f[4]}</strong></span>
+              <span class="text-muted-foreground text-xs">${f[5]}</span>
+            </div>
+          </div>`).join('')}
+      </div>
+      <div class="glass rounded-2xl p-5">
+        <h3 class="font-serif text-lg mb-3">Status em tempo real</h3>
+        <div class="flex items-center gap-4">
+          <div class="text-5xl">🛫</div>
+          <div class="flex-1">
+            <div class="text-sm">Seu voo está <strong class="text-primary">no horário</strong></div>
+            <div class="text-xs text-muted-foreground mt-1">Atualizado há 8 minutos · check-in abre em 12 horas</div>
+          </div>
+          <button class="px-4 py-2 rounded-xl bg-accent text-accent-foreground text-sm font-semibold">Fazer check-in</button>
+        </div>
+      </div>
+    </div>`,
+
+  accommodation: () => `
+    <div class="space-y-6">
+      <div class="glass rounded-2xl overflow-hidden">
+        <div class="h-56 flex items-center justify-center text-7xl" style="background:linear-gradient(135deg,hsl(var(--teal-light)/.4),hsl(var(--primary)/.4))">🏨</div>
+        <div class="p-6">
+          <h2 class="font-serif text-3xl">OBLU Select Sangeli</h2>
+          <p class="text-sm text-muted-foreground">All Inclusive · Maldivas · Atol Norte de Malé</p>
+          <div class="grid grid-cols-2 gap-4 mt-5">
+            ${[['Check-in','13/Set/26 · 14:00'],['Check-out','22/Set/26 · 12:00'],['Quarto','Water Villa com piscina'],['Hóspedes','2 adultos']]
+              .map(([l,v])=>`<div><div class="text-xs text-muted-foreground">${l}</div><div class="font-semibold mt-1">${v}</div></div>`).join('')}
+          </div>
+          <div class="mt-5 p-4 rounded-xl bg-secondary text-sm text-muted-foreground">
+            📍 Transfer de speedboat incluso · Embarque às 08:30 no Velana Intl. Apresentar voucher na chegada.
+          </div>
+        </div>
+      </div>
+    </div>`,
+
+  vouchers: () => `
+    <div class="space-y-6">
+      <h2 class="font-serif text-2xl">Seus vouchers</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      ${[['Aéreo · GOL 7660','PDF · 230 KB'],['Hospedagem · OBLU','PDF · 180 KB'],['Transfer Speedboat','PDF · 90 KB'],['Seguro · Assist Card','PDF · 310 KB']]
+        .map(v=>`<div class="glass rounded-2xl p-5 flex items-center gap-4">
+          <div class="w-14 h-14 rounded-xl bg-icon-accent text-accent flex items-center justify-center text-2xl">📄</div>
+          <div class="flex-1"><div class="font-semibold">${v[0]}</div><div class="text-xs text-muted-foreground">${v[1]}</div></div>
+          <button class="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold">Baixar</button>
+        </div>`).join('')}
+      </div>
+    </div>`,
+
+  checklist: () => `
+    <div class="glass rounded-2xl p-6">
+      <div class="flex justify-between items-baseline mb-4"><h2 class="font-serif text-2xl">Checklist Maldivas</h2><span class="text-sm text-muted-foreground">8 de 14</span></div>
+      <div class="bar mb-5"><span style="width:57%"></span></div>
+      ${[
+        ['Passaporte válido (6+ meses)',true],['Cartão de embarque salvo',true],['Seguro viagem ativo',true],['Adaptador de tomada universal',true],
+        ['Protetor solar 50+',true],['Repelente',true],['Roupa de praia',true],['Snorkel (opcional)',true],
+        ['Reais convertidos em USD',false],['Chip internacional / eSIM',false],['Cópia digital dos documentos',false],
+        ['App da companhia aérea',false],['Reservas de restaurantes',false],['Lista de números de emergência',false],
+      ].map(([t,d])=>`<label class="flex items-center gap-3 py-3 border-b border-border last:border-0 text-sm cursor-pointer">
+        <input type="checkbox" ${d?'checked':''} class="w-4 h-4 accent-current text-primary"/>
+        <span class="${d?'line-through text-muted-foreground':''}">${t}</span>
+      </label>`).join('')}
+    </div>`,
+
+  info: () => `
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="glass rounded-2xl p-5"><h3 class="font-serif text-lg mb-3">Clima esperado</h3><div class="text-5xl">☀️ 30°C</div><div class="text-xs text-muted-foreground mt-1">Ensolarado · 12% chuva · vento 14 km/h</div></div>
+      <div class="glass rounded-2xl p-5"><h3 class="font-serif text-lg mb-3">Moeda</h3><div class="text-2xl">1 USD = MVR 15,40</div><div class="text-xs text-muted-foreground mt-1">USD aceito em todo o resort</div></div>
+      <div class="glass rounded-2xl p-5"><h3 class="font-serif text-lg mb-3">Idioma & cultura</h3><p class="text-sm text-muted-foreground">Dhivehi (oficial), inglês fluente no resort. Gorjeta de 10% bem-vinda.</p></div>
+      <div class="glass rounded-2xl p-5"><h3 class="font-serif text-lg mb-3">Téo dicas pra você 💛</h3>
+        <ul class="text-sm text-muted-foreground space-y-2 list-disc pl-5">
+          <li>Reserve o jantar privativo na praia no 2º dia</li>
+          <li>Snorkel sai melhor pela manhã (visibilidade)</li>
+          <li>Spa OBLU tem desconto pra hóspedes</li>
+        </ul></div>
+    </div>`,
+
+  itinerary: () => `
+    <div class="glass rounded-2xl p-6">
+      <div class="flex justify-between items-center mb-5">
+        <div><h2 class="font-serif text-2xl">Roteiro gerado por IA</h2><p class="text-xs text-muted-foreground mt-1">9 dias · Maldivas · romance & relaxamento</p></div>
+        <button class="px-4 py-2 rounded-xl bg-accent text-accent-foreground text-sm font-semibold">Regenerar</button>
+      </div>
+      <div class="space-y-3">
+      ${[
+        ['Dia 1 · 13/Set','Chegada e boas-vindas','Transfer de speedboat, check-in na water villa, jantar no Plates ao pôr do sol.'],
+        ['Dia 2 · 14/Set','Snorkel no house reef','Manhã livre, snorkel guiado às 10h, almoço no Just Veggies, spa à tarde.'],
+        ['Dia 3 · 15/Set','Tour pelas ilhas locais','Visita a Himmafushi e Hura, almoço típico maldívio, retorno ao pôr do sol.'],
+        ['Dia 4 · 16/Set','Dia das atividades aquáticas','Caiaque transparente, paddle, jet ski, jantar privativo na praia.'],
+        ['Dia 5 · 17/Set','Mergulho com mantas','Excursão de manhã cedo, brunch no Sand, tarde livre na piscina infinita.'],
+      ].map(d=>`<div class="p-4 rounded-xl bg-secondary border border-border">
+        <div class="flex justify-between mb-2"><strong>${d[1]}</strong><span class="text-xs text-muted-foreground">${d[0]}</span></div>
+        <p class="text-sm text-muted-foreground">${d[2]}</p>
+      </div>`).join('')}
+      </div>
+    </div>`,
+
+  image: () => `
+    <div class="glass rounded-2xl p-6">
+      <h2 class="font-serif text-2xl mb-2">Imagem IA — pré-visualize seu destino</h2>
+      <p class="text-sm text-muted-foreground mb-5">Descreva o momento e a IA gera uma imagem inspiracional.</p>
+      <div class="flex gap-2 mb-5">
+        <input class="flex-1 bg-secondary border border-border rounded-xl px-4 py-3 text-sm" value="Casal assistindo o pôr do sol numa water villa em Maldivas, fotografia cinematográfica"/>
+        <button class="bg-primary text-primary-foreground px-5 py-3 rounded-xl text-sm font-semibold">Gerar</button>
+      </div>
+      <div class="grid grid-cols-3 gap-3">
+        ${[1,2,3].map(()=>`<div class="aspect-square rounded-xl flex items-center justify-center text-5xl" style="background:linear-gradient(135deg,hsl(var(--accent)/.3),hsl(var(--primary)/.3),hsl(var(--teal-light)/.3))">🌅</div>`).join('')}
+      </div>
+    </div>`,
+};
+
+/* ================== RENDER ================== */
+function renderNav(navId, tabs, fn, active){
+  document.getElementById(navId).innerHTML = tabs.map(([id,label,ic])=>`
+    <button onclick="${fn}('${id}')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${id===active?'bg-primary text-primary-foreground':'text-muted-foreground hover:bg-secondary'}">
+      ${Ic(ic)}<span class="font-medium text-sm">${label}</span>
+    </button>`).join('');
+}
+let adminActive='overview', clientActive='flight';
+function selectAdmin(id){ adminActive=id; renderNav('admin-nav',ADMIN_TABS,'selectAdmin',id); document.getElementById('admin-content').innerHTML = adminViews[id]?.() || stubGrid(ADMIN_TABS.find(t=>t[0]===id)[1],'Aba em construção nesta demonstração',['Item 1','Item 2','Item 3','Item 4']); window.scrollTo({top:0,behavior:'smooth'}); }
+function selectClient(id){ clientActive=id; renderNav('client-nav',CLIENT_TABS,'selectClient',id); document.getElementById('client-content').innerHTML = clientViews[id]?.()||''; window.scrollTo({top:0,behavior:'smooth'}); }
+function showApp(which){
+  document.getElementById('app-admin').classList.toggle('hide', which!=='admin');
+  document.getElementById('app-client').classList.toggle('hide', which!=='client');
+  document.getElementById('nav-admin').className = 'px-4 py-2 rounded-lg text-sm font-semibold transition-all ' + (which==='admin'?'bg-primary text-primary-foreground':'text-muted-foreground');
+  document.getElementById('nav-client').className = 'px-4 py-2 rounded-lg text-sm font-semibold transition-all ' + (which==='client'?'bg-primary text-primary-foreground':'text-muted-foreground');
+}
+selectAdmin('overview');
+selectClient('flight');
+showApp('admin');
+</script>
+</body>
+</html>
