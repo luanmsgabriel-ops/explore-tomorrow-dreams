@@ -300,17 +300,19 @@ const DestinationCard = ({
         isWide ? 'md:col-span-2 aspect-[4/5] md:aspect-[16/9]' : 'aspect-[4/5] md:aspect-[3/4]'
       }`}
     >
-      {/* Poster — sempre visível em mobile; fade out em desktop quando vídeo toca */}
+      {/* Poster — sempre visível; com Ken Burns substituindo o vídeo desabilitado */}
       <img
         src={destination.poster}
         alt={destination.name}
         loading="lazy"
         decoding="async"
-        className={`absolute inset-0 w-full h-full object-cover ${
+        className={`absolute inset-0 w-full h-full object-cover transition-all duration-[8000ms] ease-in-out group-hover:scale-110 group-hover:translate-x-1 ${
           isWide ? 'object-[center_40%]' : 'object-center'
-        } transition-opacity duration-1000 ${
-          !shouldLoadVideo ? 'opacity-100' : isLoaded ? 'opacity-0' : 'opacity-60'
-        }`}
+        } ${!shouldLoadVideo ? 'opacity-100' : isLoaded ? 'opacity-0' : 'opacity-60'}`}
+        style={{
+          transformOrigin: index % 4 === 0 ? '45% 50%' : index % 4 === 1 ? '55% 50%' : index % 4 === 2 ? '50% 45%' : '50% 55%',
+          willChange: 'transform',
+        }}
         aria-hidden="true"
       />
 
