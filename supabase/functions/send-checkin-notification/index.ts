@@ -107,6 +107,22 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("RESEND_API_KEY not configured");
     }
 
+    // Early exit: skip entirely if no active concierge clients
+    {
+      const { count, error: gateErr } = await supabase
+        .from("active_trips")
+        .select("id", { count: "exact", head: true })
+        .eq("concierge_active", true);
+      if (!gateErr && (!count || count === 0)) {
+        console.log("[CHECKIN] Skipping: no active concierge clients");
+        return new Response(
+          JSON.stringify({ skipped: true, reason: "no active concierge clients" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        );
+      }
+    }
+
+
     // Check for test mode with specific trip
     const body = await req.json().catch(() => ({}));
     const forceTestTripId = body.forceTest ? body.tripId : null;

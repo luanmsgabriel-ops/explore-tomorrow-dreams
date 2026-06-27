@@ -1370,10 +1370,32 @@ serve(async (req) => {
 
     console.log(`[CONCIERGE] Action: ${action}`);
 
+    // Early exit: if there are no active concierge clients, skip heavy actions entirely.
+    const GATED_ACTIONS = new Set([
+      "check_flights", "daily_weather", "proactive_alerts", "daily_stories",
+      "golden_hour", "checkin_alerts", "school_reminders", "scheduled_messages",
+    ]);
+    if (GATED_ACTIONS.has(action)) {
+      const { count, error: gateErr } = await supabase
+        .from("active_trips")
+        .select("id", { count: "exact", head: true })
+        .eq("concierge_active", true);
+      if (gateErr) {
+        console.error("[CONCIERGE] Gate check failed:", gateErr);
+      } else if (!count || count === 0) {
+        console.log(`[CONCIERGE] Skipping ${action}: no active concierge clients`);
+        return new Response(
+          JSON.stringify({ skipped: true, reason: "no active concierge clients", action }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
+
     // Auto-schedule concierge based on dates before any action
     await autoScheduleConcierge();
 
     switch (action) {
+
       case "check_flights":
         await checkFlights();
         break;
