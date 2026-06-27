@@ -271,7 +271,7 @@ Me conta aí! 👇`
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({
-          messages: messages.slice(-10).concat(userMessage).filter(m => 
+          messages: messages.slice(-5).concat(userMessage).filter(m =>
             !m.content.includes('qual é o seu nome?') &&
             !m.content.includes('Me conta, qual é o seu nome?') &&
             !m.content.includes('me passa seu WhatsApp')
