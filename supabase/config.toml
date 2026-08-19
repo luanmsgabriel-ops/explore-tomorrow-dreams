@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.generate-school-badges]
 verify_jwt = false
+
+[functions.travel-offers-sync]
+verify_jwt = false
