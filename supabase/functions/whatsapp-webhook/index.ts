@@ -1148,7 +1148,6 @@ Cliente quer falar com humano:
 [STATUS:human_takeover]
 
 
-[STATUS:completed]
 
 Cliente quer falar com humano:
 [STATUS:human_takeover]
