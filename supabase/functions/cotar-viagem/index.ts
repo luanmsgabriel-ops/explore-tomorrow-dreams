@@ -81,7 +81,13 @@ serve(async (req) => {
     // Destination filter (Fuzzy for packages or IATA for air)
     const destFuzzy = destino.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const destFilters = destCodes.map(c => `destination_iata.eq.${c}`).join(",");
+    const originFilters = originCodes.map(c => `origin_iata.eq.${c}`).join(",");
+    
     query = query.or(`${destFilters},destination_name.ilike.%${destFuzzy}%`);
+    if (originFilters) {
+      query = query.or(originFilters);
+    }
+
 
     // 3. Date handling (Fixed window +/- 7 days or full month)
     const targetDep = new Date(data_ida + "T12:00:00");
