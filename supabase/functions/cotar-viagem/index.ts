@@ -104,6 +104,7 @@ serve(async (req) => {
 
 
 
+
     // 3. Date handling (Fixed window +/- 7 days or full month)
     const targetDep = new Date(data_ida + "T12:00:00");
     const isOnlyMonth = data_ida.length <= 7; // "2024-10"
