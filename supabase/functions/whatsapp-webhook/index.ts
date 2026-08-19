@@ -6352,6 +6352,7 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
           delete cleanData._school_step;
           delete cleanData._school_target_phrase;
           delete cleanData._school_quiz_answer;
+          delete cleanData._school_history; // Limpa o histórico da escola para liberar contexto
           delete cleanData._mode_activated_at;
           
           await supabase.from("whatsapp_conversations").update({ 
