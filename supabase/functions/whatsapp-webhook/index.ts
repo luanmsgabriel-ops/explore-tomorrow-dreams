@@ -8825,6 +8825,14 @@ Regras OBRIGATÓRIAS:
       console.log("[DEBUG_RAW_AI_RESPONSE] Full response:", aiResponse);
 
       // 1. ISOLATED QUOTATION FLOW
+      // TEO_DEBUG_LOG: ANTES_QUOTATION
+      await supabase.from("teo_debug_log").insert({
+        phone_number: phoneNumber,
+        tags_encontradas: "ANTES_QUOTATION",
+        raw_ai_response: aiResponse,
+        collected_data_antes: collectedData
+      }).catch(e => console.error("[DEBUG] Error saving ANTES_QUOTATION:", e));
+
       const { newCollectedData, additionalMessage, triggeredSearch } = await handleQuotationFlow(
         aiResponse,
         collectedData,
