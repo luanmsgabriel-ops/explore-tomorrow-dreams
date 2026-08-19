@@ -19,7 +19,6 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const dryRun = body.dry_run === true;
     
-    // We'll search the main domain again but search for DIFFERENT data markers
     const targetUrl = "https://viajandocomdesconto.com.br/";
     const res = await fetch(targetUrl, {
         headers: {
@@ -30,22 +29,19 @@ serve(async (req) => {
     const html = await res.text();
     
     if (dryRun) {
-      // Find where 'tsx_pacotes_lista' or similar is defined
-      const listMatches = html.match(/tsx_[a-zA-Z0-9_]+lista[a-zA-Z0-9_]*\.data = \[[\s\S]*?\];/gi) || [];
-      const offerMatches = html.match(/tsx_[a-zA-Z0-9_]+oferta[a-zA-Z0-9_]*\.data = \[[\s\S]*?\];/gi) || [];
-      const bannerMatches = html.match(/tsx_[a-zA-Z0-9_]+banner[a-zA-Z0-9_]*\.data = \[[\s\S]*?\];/gi) || [];
-      
-      // Look for any large data structures
-      const allDataMatches = html.match(/tsx_[a-zA-Z0-9_]+\.data = \[[\s\S]*?\];/g) || [];
+      // Return a targeted slice of the HTML to find the data structure
+      // We'll search for 'tsx_' which seems to be the object prefix
+      const tsxMatches = html.match(/tsx_[a-zA-Z0-9_]+\.attribute = \{[^}]+\}/g) || [];
+      const dataMatches = html.match(/tsx_[a-zA-Z0-9_]+\.data = \[[\s\S]*?\];/g) || [];
       
       return new Response(JSON.stringify({
-        status: "dry_run_data_discovery",
+        status: "dry_run_discovery",
         url: targetUrl,
-        list_matches: listMatches.map(m => m.substring(0, 1000)),
-        offer_matches: offerMatches.map(m => m.substring(0, 1000)),
-        banner_matches: bannerMatches.map(m => m.substring(0, 1000)),
-        total_data_blocks: allDataMatches.length,
-        largest_data_block_sample: allDataMatches.sort((a,b) => b.length - a.length)[0]?.substring(0, 3000) || "none"
+        tsx_matches: tsxMatches.slice(0, 50),
+        data_matches_count: dataMatches.length,
+        html_contains_bloqueios: html.toLowerCase().includes("bloqueio"),
+        html_contains_pacotes: html.toLowerCase().includes("pacote"),
+        html_head: html.substring(0, 2000)
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
