@@ -2,7 +2,6 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SALES_KNOWLEDGE } from "../_shared/sales-knowledge.ts";
 import { fetchClientMemory, formatMemoryForPrompt, MEMORY_RULE, updateClientMemory } from "../_shared/client-memory.ts";
-import { handleQuotationFlow } from "./quotation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1054,7 +1053,7 @@ FLUXO DE ATENDIMENTO:
    - Após o cliente confirmar, você deve informar que encaminhou o pedido para um consultor e que enquanto isso vai buscar ofertas promocionais em datas próximas.
    - Use suas próprias palavras, não copie um texto fixo. Exemplo: "Sensacional! Já encaminhei seu pedido para um de nossos consultores especializados..."
    - OBRIGATÓRIO: No final da mensagem de handover, emita a tag [STATUS:awaiting_quotation].
-   - IMPORTANTE: Se o cliente repetir o pedido ou confirmar algo que já foi pedido recentemente, apenas confirme que a busca já está em andamento ou mostre as opções se o sistema já tiver retornado.
+   - OPCIONAL: Você pode incluir a tag [COTAR_VIAGEM:{"origem":"...","destino":"...","data_ida":"AAAA-MM-DD","data_volta":"AAAA-MM-DD","adultos":N,"criancas":N,"idades_criancas":[]}] se desejar ser mais específico, mas o sistema usará os dados já coletados se a tag faltar.
 
 ⚠️ PROIBIÇÃO ABSOLUTA DE INVENTAR OFERTA:
 - Você NUNCA pode apresentar voo, hotel, preço, companhia, avaliação ou prazo que não tenha vindo do resultado real da busca.
@@ -1062,10 +1061,7 @@ FLUXO DE ATENDIMENTO:
 - Se não houver resultado, o cliente apenas aguardará o consultor.
 
 5. RESULTADOS (PROCESSADOS POR CÓDIGO):
-- O sistema inserirá o resultado da busca na conversa.
-- MENSAGEM FINAL: Após os resultados, pare imediatamente após perguntar qual opção o cliente prefere. NÃO envie dicas turísticas ou roteiros a menos que o cliente peça especificamente.
-- URGÊNCIA: Use o prazo de emissão (que é uma DATA, nunca horas) para mostrar urgência legítima. Ex: "Você tem até o dia DD/MM para decidir essa oferta".
-- ASSENTOS: Dê destaque se houver poucos assentos (ex: 3 ou menos). Mencione como um ponto de decisão.
+- Você NÃO escreve o bloco de ofertas. O sistema inserirá o resultado da busca na conversa.
 
 REGRA DE ANO: O ano atual é 2026. Use 2026 para meses à frente, ou 2027 se o mês já passou.
 
@@ -1935,9 +1931,7 @@ function extractCollectedData(aiResponse: string, existingData: Record<string, a
 
   // Enhanced regex to capture keys and values, handling multiple pairs in one tag if needed
   const tagMatches = aiResponse.matchAll(/\[DADOS:([^\]]+)\]/g);
-  let tagFound = false;
   for (const tagMatch of tagMatches) {
-    tagFound = true;
     const content = tagMatch[1];
     
     // Split by comma to handle multiple pairs like [DADOS:origem=SP, destino=RJ]
@@ -1950,29 +1944,6 @@ function extractCollectedData(aiResponse: string, existingData: Record<string, a
         newData[key] = value;
       }
     }
-  }
-
-  // Fallback: If no [DADOS] tag found but [STATUS:awaiting_quotation] is present, 
-  // try to extract from plain text patterns
-  if (!tagFound && (aiResponse.includes("[STATUS:awaiting_quotation]") || aiResponse.match(/Confirm[ao] pra mim/i))) {
-    console.log("[PARSER] Nenhuma tag [DADOS] encontrada, tentando extração de texto plano...");
-    
-    const destMatch = aiResponse.match(/Destino:\s*([^\n\r\|]+)/i) || 
-                     aiResponse.match(/para\s+([A-Z][a-zà-ú]+(?:\s+[A-Z][a-zà-ú]+)*)/);
-    if (destMatch && !newData.destino) newData.destino = destMatch[1].trim();
-    
-    const originMatch = aiResponse.match(/Origem:\s*([^\n\r\|]+)/i) || 
-                       aiResponse.match(/saindo\s+de\s+([A-Z][a-zà-ú]+(?:\s+[A-Z][a-zà-ú]+)*)/);
-    if (originMatch && !newData.origem) newData.origem = originMatch[1].trim();
-
-    const dateMatches = aiResponse.match(/(\d{2}\/\d{2}\/\d{4})/g);
-    if (dateMatches && dateMatches.length >= 2) {
-      if (!newData.data_ida) newData.data_ida = dateMatches[0].split('/').reverse().join('-');
-      if (!newData.data_volta) newData.data_volta = dateMatches[1].split('/').reverse().join('-');
-    }
-
-    const paxMatch = aiResponse.match(/(\d+)\s*adultos/i);
-    if (paxMatch && !newData.adultos) newData.adultos = paxMatch[1];
   }
 
   const statusMatch = aiResponse.match(/\[STATUS:(\w+)\]/);
@@ -2418,23 +2389,17 @@ function formatQuotationResults(data: any): string {
     formatted += `👤 Valor por pessoa: *R$ ${pp}*\n`;
     formatted += `⚓ Taxa de embarque: R$ ${taxa}\n`;
     formatted += `💎 *Total do grupo: R$ ${total}*\n`;
-    
-    const seats = Number(r.assentos_disponiveis || 0);
-    if (seats <= 3) {
-      formatted += `⚠️ *APENAS ${seats} ASSENTOS RESTANTES!*\n`;
-    } else {
-      formatted += `💺 Assentos disponíveis: ${seats}\n`;
-    }
+    formatted += `💺 Assentos: ${r.assentos_disponiveis}\n`;
     
     if (r.prazo_emissao) {
       const prazo = new Date(r.prazo_emissao.split('T')[0] + "T12:00:00").toLocaleDateString("pt-BR");
-      formatted += `⏳ Prazo de emissão: *até ${prazo}*\n`;
+      formatted += `⏳ Prazo de emissão: ${prazo}\n`;
     }
 
     formatted += "\n━━━━━━━━━━━━━━━━━━\n\n";
   });
 
-  formatted += "Qual dessas opções faz mais sentido para você? 😊";
+  formatted += "Qual dessas opções faz mais sentido para você? Ou prefere aguardar o consultor com as datas exatas? 😊";
   return formatted.trim();
 }
 
@@ -2708,7 +2673,7 @@ serve(async (req) => {
           // Call Cativa/Infotravel API directly
           const quotationResult = await requestQuotation(quotationData);
 
-          let quotationMsg = "";
+          let quotationMsg: string;
 
           if (quotationResult.status === "success" && quotationResult.data?.resultados?.length > 0) {
             quotationMsg = formatQuotationResults(quotationResult.data);
@@ -2774,8 +2739,33 @@ serve(async (req) => {
             console.error("[ASYNC-QUOTATION] Error updating conversation:", histErr);
           }
 
-          // Auto travel tips removed per user request to avoid competing with quotation options.
-          console.log(`[ASYNC-QUOTATION] Done for ${phone}`);
+          // Generate travel tips (non-blocking, delayed)
+          try {
+            const tipsResponse = await getAiResponse([
+              { role: "user", content: `Você é o Téo, assistente de viagens divertido e humano da Tomorrow Travel. Gere uma mensagem para o cliente ${clientName || ''} com exatamente 5 dicas incríveis sobre ${quotationData.destino} (passeios, comidas, curiosidades, experiências). Seja divertido, use emojis, tom leve e descontraído. Uma dica por linha numerada. Comece com algo como "${clientName ? clientName + ', e' : 'E'}nquanto isso, bora conhecer um pouco mais sobre ${quotationData.destino}? 🗺️✨" e depois as 5 dicas. No FINAL da mensagem, adicione uma quebra de linha e pergunte de forma divertida e natural se o cliente sabia que você (o Téo) também pode montar um roteiro personalizado dia a dia pra viagem dele. Algo como: "Ah, e sabia que eu também posso montar um roteiro completinho dia a dia pra sua viagem? 🗓️✨ Quer que eu prepare um pra você?" Seja criativo e mantenha o tom do Téo!` }
+            ]);
+            const cleanTips = cleanAiResponse(tipsResponse);
+            if (cleanTips && cleanTips.length > 20) {
+              await new Promise(r => setTimeout(r, 30000));
+              await sendWhatsAppMessage(phone, cleanTips);
+
+              // Save tips to history
+              const { data: convAfterTips } = await supabase
+                .from("whatsapp_conversations")
+                .select("id, messages_history")
+                .eq("id", conversationId)
+                .single();
+              if (convAfterTips) {
+                const updH = [
+                  ...((convAfterTips.messages_history as any[]) || []),
+                  { role: "assistant", content: cleanTips, timestamp: new Date().toISOString() },
+                ];
+                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterTips.id);
+              }
+            }
+          } catch (tipErr) {
+            console.error("[ASYNC-QUOTATION] Tips error:", tipErr);
+          }
 
           console.log(`[ASYNC-QUOTATION] Done for ${phone}`);
         }
@@ -8458,16 +8448,6 @@ Regras OBRIGATÓRIAS:
         
         const hasConcierge = conciergeSignals.test(msgLower);
         const hasCotacao = cotacaoSignals.test(msgLower);
-
-        // Detect potential destination change if user mentions a new place in a travel context
-        // This is a simple heuristic: if they are in cotacao mode and mention a place they aren't currently going to
-        const currentDest = (collectedData.destino || "").toLowerCase();
-        const mentionsNewDestination = hasCotacao && currentDest && !msgLower.includes(currentDest);
-
-        // Logic moved: Reset happens after AI extraction to avoid clearing new data
-        if (mentionsNewDestination) {
-          console.log(`🔄 New destination intent detected. Will reset data after AI processing.`);
-        }
         
         if (effectiveTeoMode === "auto") {
           // Auto mode: detect and switch
@@ -8659,14 +8639,6 @@ Regras OBRIGATÓRIAS:
           { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
         ];
 
-        // 1. INSTRUMENTE A ENTRADA DO WEBHOOK
-        await supabase.from("teo_debug_log").insert({
-          phone_number: phoneNumber,
-          tags_encontradas: "ENTRADA_WEBHOOK",
-          raw_ai_response: cleanResponse,
-          collected_data_antes: conversation.collected_data
-        }).catch(e => console.error("[DEBUG] Error saving ENTRADA_WEBHOOK:", e));
-
         await supabase
           .from("whatsapp_conversations")
           .update({
@@ -8832,30 +8804,17 @@ Regras OBRIGATÓRIAS:
       // DEBUG: Log RAW AI Response before any processing
       console.log("[DEBUG_RAW_AI_RESPONSE] Full response:", aiResponse);
 
-      // 1. ISOLATED QUOTATION FLOW
-      // TEO_DEBUG_LOG: ANTES_QUOTATION
-      await supabase.from("teo_debug_log").insert({
-        phone_number: phoneNumber,
-        tags_encontradas: "ANTES_QUOTATION",
-        raw_ai_response: aiResponse,
-        collected_data_antes: collectedData
-      }).catch(e => console.error("[DEBUG] Error saving ANTES_QUOTATION:", e));
-
-      // TEO_DEBUG_LOG: ANTES_QUOTATION
-      await supabase.from("teo_debug_log").insert({
-        phone_number: phoneNumber,
-        tags_encontradas: "ANTES_QUOTATION",
-        raw_ai_response: aiResponse,
-        collected_data_antes: collectedData
-      }).catch(e => console.error("[DEBUG] Error saving ANTES_QUOTATION:", e));
-
-      const { newCollectedData, additionalMessage, triggeredSearch } = await handleQuotationFlow(
+      // Extract collected data and status
+      const { data: newCollectedData, status: conversationStatus } = extractCollectedData(
         aiResponse,
-        collectedData,
-        phoneNumber,
-        conversation.id,
-        false // Turno atual: processamos a resposta que o modelo ACABOU de gerar
+        collectedData
       );
+
+      // Check if AI triggered a quotation request
+      const quotationData = parseQuotationTag(aiResponse);
+
+      // Check for itinerary visual tag BEFORE cleaning
+      const itineraryVisualDataFromTag = parseItineraryVisualTag(aiResponse);
 
       // Clean response (remove all tags)
       let cleanResponse = cleanAiResponse(aiResponse);
@@ -8866,40 +8825,130 @@ Regras OBRIGATÓRIAS:
         cleanResponse += "\n\nPara viagem em grupo, mande *criar grupo* aqui no chat! 🎉";
       }
 
-      // If search was triggered, we send the cleanResponse (handover) first, then the additionalMessage (offers)
-      if (triggeredSearch || additionalMessage) {
-        if (cleanResponse) {
-          await sendWhatsAppMessage(phoneNumber, cleanResponse);
+      // Handle quotation if triggered
+      // We check if it was already triggered in PREVIOUS turns to avoid duplication
+      const alreadyQuotedInDB = (conversation.collected_data as any)?._quotation_triggered === true || 
+                                (conversation.collected_data as any)?._quotation_triggered === "true";
+      
+      // DISPARE A BUSCA A PARTIR DO COLLECTED_DATA SE [STATUS:awaiting_quotation] ESTIVER PRESENTE
+      let effectiveQuotationData = quotationData;
+      if (!effectiveQuotationData && conversationStatus === "awaiting_quotation") {
+        console.log("[QUOTATION] Tag [COTAR_VIAGEM] missing, but [STATUS:awaiting_quotation] detected. Using newCollectedData.");
+        
+        const hasMandatory = newCollectedData.destino && 
+                            newCollectedData.origem && 
+                            newCollectedData.data_ida && 
+                            newCollectedData.data_volta;
+
+        if (hasMandatory) {
+          effectiveQuotationData = {
+            origem: newCollectedData.origem,
+            destino: newCollectedData.destino,
+            data_ida: newCollectedData.data_ida,
+            data_volta: newCollectedData.data_volta,
+            adultos: Number(newCollectedData.adultos || newCollectedData.num_viajantes || 2),
+            criancas: Number(newCollectedData.criancas || 0),
+            idades_criancas: newCollectedData.idades_criancas || []
+          };
+          console.log("[QUOTATION] Payload mounted from newCollectedData:", effectiveQuotationData);
         }
-        if (additionalMessage) {
-          await sendWhatsAppMessage(phoneNumber, additionalMessage);
-        }
-
-        // Update history and persist state
-        const updatedHistory = [
-          ...(conversation.messages_history as any[] || []),
-          ...(cleanResponse ? [{ role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() }] : []),
-          ...(additionalMessage ? [{ role: "assistant", content: additionalMessage, timestamp: new Date().toISOString() }] : []),
-        ];
-
-        await supabase
-          .from("whatsapp_conversations")
-          .update({
-            collected_data: newCollectedData,
-            messages_history: updatedHistory,
-            conversation_state: "awaiting_quotation"
-          })
-          .eq("id", conversation.id);
-
-        return new Response(JSON.stringify({ status: "ok", quotation: true, async: false }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
       }
 
-      // Check for itinerary visual tag BEFORE cleaning
-      const itineraryVisualDataFromTag = parseItineraryVisualTag(aiResponse);
+      const hasMandatoryData = effectiveQuotationData && 
+                              effectiveQuotationData.destino && 
+                              effectiveQuotationData.origem && 
+                              effectiveQuotationData.data_ida && 
+                              effectiveQuotationData.data_volta &&
+                              /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_ida) &&
+                              /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_volta);
 
+      if (effectiveQuotationData && !alreadyQuotedInDB) {
+        if (!hasMandatoryData) {
+          console.log("[VALIDATION] Quotation ignored - missing or invalid mandatory data:", {
+            effectiveData: effectiveQuotationData
+          });
+        } else {
+          console.log("Quotation request triggered:", JSON.stringify(effectiveQuotationData));
+          
+          if (cleanResponse) {
+            await sendWhatsAppMessage(phoneNumber, cleanResponse);
+            cleanResponse = ""; 
+          }
+
+          const saveResult = await saveQuotationRequest(
+            effectiveQuotationData,
+            phoneNumber,
+            newCollectedData.nome || conversation.client_name || contactName,
+            newCollectedData.preferencias || newCollectedData.tipo_viagem || null
+          );
+
+          if (saveResult.success && saveResult.id) {
+            // Mark quotation as triggered ONLY IF save was successful and returned an ID
+            newCollectedData._last_quote_id = saveResult.id;
+            newCollectedData._quotation_triggered = true;
+            
+            // IMPORTANT: Also update the conversation record in the database IMMEDIATELY to prevent race conditions
+            await supabase
+              .from("whatsapp_conversations")
+              .update({ 
+                collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
+                conversation_state: "awaiting_quotation"
+              })
+              .eq("id", conversation.id);
+
+            // No longer sending searchingMsg here. Handover message is now part of the AI's cleanResponse.
+            
+            // Update conversation state immediately
+            const updatedHistory = [
+              ...(conversation.messages_history as any[] || []),
+              { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
+            ];
+
+            await supabase
+              .from("whatsapp_conversations")
+              .update({
+                client_name: newCollectedData.nome || conversation.client_name || contactName,
+                conversation_state: "awaiting_quotation",
+                collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
+                messages_history: updatedHistory,
+                is_ai_active: true,
+              })
+              .eq("id", conversation.id);
+
+            // Process quotation via self-invocation
+            const selfUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
+            const processPromise = fetch(selfUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              },
+              body: JSON.stringify({
+                action: "process_quotation",
+                phone_number: phoneNumber,
+                quotation_data: effectiveQuotationData,
+                save_result_id: saveResult.id,
+                conversation_id: conversation.id,
+                client_name: newCollectedData.nome || conversation.client_name || contactName || "",
+                collected_data: newCollectedData,
+              }),
+            });
+
+            // Ensure the process is awaited or scheduled so it doesn't die when the response is sent
+            // In Deno Edge Functions, we must await any promise that we want to finish before the response
+            await processPromise.catch(err => console.error("Error in async quotation:", err));
+
+            // Return immediately to Meta webhook (fast response)
+            return new Response(JSON.stringify({ status: "ok", quotation: true, async: true }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          } else {
+            console.error("[VALIDATION] Failed to save quotation request. Not marking as triggered.");
+            // We don't return early here, so it continues to standard message sending
+          }
+        }
+      }
 
       // Check for change request tag from AI
       const changeRequest = parseChangeRequestTag(aiResponse);
@@ -8909,12 +8958,14 @@ Regras OBRIGATÓRIAS:
         const changeMsg = `Entendi que você gostaria de personalizar sua viagem! 😊\n\nPara garantir que montemos o pacote perfeito para você, vou encaminhar sua solicitação para um de nossos especialistas no destino.\n\nEm breve, um consultor da Tomorrow Travel entrará em contato para criar uma experiência sob medida para sua viagem! ✈️🏖️\n\nAguarde nosso retorno!`;
 
         // Save change request to travel_quote_requests if we have one
-        const quoteId = newCollectedData._last_quote_id || null;
-        if (quoteId) {
-          await supabase
-            .from("travel_quote_requests")
-            .update({ change_request: changeRequest })
-            .eq("id", quoteId);
+        if (conversation.quote_request_id || collectedData._last_quote_id) {
+          const quoteId = collectedData._last_quote_id || null;
+          if (quoteId) {
+            await supabase
+              .from("travel_quote_requests")
+              .update({ change_request: changeRequest })
+              .eq("id", quoteId);
+          }
         }
 
         // Also save to quote_requests for team visibility
@@ -8947,7 +8998,7 @@ Regras OBRIGATÓRIAS:
               data: {
                 client_name: newCollectedData.nome || conversation.client_name || contactName,
                 phone_number: phoneNumber,
-                destination: newCollectedData.destino || "Não informado",
+                destination: newCollectedData.destino || collectedData.destino || "Não informado",
                 change_description: changeRequest,
                 original_message: messageText,
               },
@@ -8980,7 +9031,6 @@ Regras OBRIGATÓRIAS:
         });
       }
 
-
       // Standard flow (no quotation)
       const updatedHistory = [
         ...(conversation.messages_history as any[] || []),
@@ -9002,12 +9052,11 @@ Regras OBRIGATÓRIAS:
         }
       }
 
-      console.log(`[SAVE] Updating conversation with collected_data: ${JSON.stringify(newCollectedData)}`);
       await supabase
         .from("whatsapp_conversations")
         .update({
           client_name: newCollectedData.nome || conversation.client_name || contactName,
-          conversation_state: newState === "awaiting_quotation" ? "chatting" : newState,
+          conversation_state: newState,
           collected_data: newCollectedData,
           messages_history: updatedHistory,
           quote_request_id: quoteRequestId,
@@ -9046,16 +9095,11 @@ Regras OBRIGATÓRIAS:
       } else if (isLikelyItineraryText(cleanResponse)) {
         // Never send long itinerary text, only card
         await sendWhatsAppMessage(phoneNumber, "Estou preparando seu card de roteiro 🎨 Pode me pedir de novo com o destino para eu gerar certinho.");
-      } else {
+      } else if (!quotationData) {
         // ONLY send the standard message if a quotation was NOT triggered.
         // If quotation was triggered, the "cleanResponse" and "searchingMsg" were already sent above.
-        // ALSO: only send if cleanResponse is not empty (it might have been cleared by quotation logic)
-        // Wait, the quotation flow already returns early. So we only reach here if NO quotation triggered.
-        if (cleanResponse && cleanResponse.trim()) {
-          await sendWhatsAppMessage(phoneNumber, cleanResponse);
-        }
+        await sendWhatsAppMessage(phoneNumber, cleanResponse);
       }
-
 
       // Update client memory after response (fire-and-forget)
       const allMsgsForMemory = [
