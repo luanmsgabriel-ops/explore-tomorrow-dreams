@@ -8878,7 +8878,7 @@ Regras OBRIGATÓRIAS:
       // REDUNDÂNCIA DE SEGURANÇA: Tenta pegar do JSON da tag se o collected_data falhar
       let effectiveQuotationData = quotationData;
       
-      if (!effectiveQuotationData && conversationStatus === "awaiting_quotation") {
+      if (!effectiveQuotationData && (conversationStatus === "awaiting_quotation" || aiResponse.includes("[STATUS:awaiting_quotation]"))) {
         console.log("[QUOTATION] Tag [COTAR_VIAGEM] missing or invalid, trying newCollectedData.");
         
         const hasMandatory = newCollectedData.destino && 
