@@ -36,6 +36,17 @@ export async function handleQuotationFlow(
     triggeredSearch: false,
   };
 
+  // TEO_DEBUG_LOG: Instrumentação solicitada
+  const logEntry = {
+    phone_number: phoneNumber,
+    raw_ai_response: aiResponse,
+    collected_data_antes: currentCollectedData,
+    collected_data_depois: null as any,
+    tags_encontradas: "nenhuma"
+  };
+
+  try {
+
   // O gatilho de processamento é sempre uma mensagem recebida do cliente.
   // A extração SEMPRE lê a resposta que o modelo acabou de gerar no turno atual.
   // A trava anti-loop impede apenas que mensagens ANTIGAS ou do HISTÓRICO disparem novas buscas.
@@ -74,6 +85,13 @@ export async function handleQuotationFlow(
       console.error("[QUOTATION-MODULE] Failed to parse COTAR_VIAGEM tag:", e);
     }
   }
+
+  // Registra quais tags foram encontradas
+  const foundTags: string[] = [];
+  if (tagFound) foundTags.push("DADOS");
+  if (quoteTagMatch) foundTags.push("COTAR_VIAGEM");
+  if (aiResponse.includes("[STATUS:")) foundTags.push("STATUS");
+  logEntry.tags_encontradas = foundTags.length > 0 ? foundTags.join(",") : "nenhuma";
 
   // 2. b) Se o destino extraído for diferente do anterior, limpa os campos do pedido anterior
   const currentDest = (currentCollectedData.destino || "").toLowerCase();
@@ -237,6 +255,10 @@ export async function handleQuotationFlow(
     }
   } catch (err) {
     console.error("[QUOTATION-MODULE] Fetch error:", err);
+  } finally {
+    // Grava o log antes de retornar
+    logEntry.collected_data_depois = result.newCollectedData;
+    await supabase.from("teo_debug_log").insert(logEntry).catch(e => console.error("[QUOTATION-MODULE] Error saving debug log:", e));
   }
 
   return result;

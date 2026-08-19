@@ -1290,6 +1290,36 @@ export type Database = {
         }
         Relationships: []
       }
+      teo_debug_log: {
+        Row: {
+          collected_data_antes: Json | null
+          collected_data_depois: Json | null
+          created_at: string | null
+          id: string
+          phone_number: string
+          raw_ai_response: string | null
+          tags_encontradas: string | null
+        }
+        Insert: {
+          collected_data_antes?: Json | null
+          collected_data_depois?: Json | null
+          created_at?: string | null
+          id?: string
+          phone_number: string
+          raw_ai_response?: string | null
+          tags_encontradas?: string | null
+        }
+        Update: {
+          collected_data_antes?: Json | null
+          collected_data_depois?: Json | null
+          created_at?: string | null
+          id?: string
+          phone_number?: string
+          raw_ai_response?: string | null
+          tags_encontradas?: string | null
+        }
+        Relationships: []
+      }
       travel_group_members: {
         Row: {
           group_id: string
