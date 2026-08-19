@@ -2589,7 +2589,7 @@ function formatQuotationResults(data: any): string {
     return msg.trim();
   }
 
-  return `✈️ *Resultado da cotação:*\n${JSON.stringify(data, null, 2)}`;
+  return "✈️ *Resultado da cotação:*\n\nOlha, tô terminando de conferir os melhores preços com nossos parceiros! ✈️✨\n\nComo quero te entregar a melhor opção de todas, passei seu pedido pra um de nossos consultores especialistas. Ele vai finalizar os detalhes e te chama rapidinho por aqui, beleza? 😊";
 }
 
 async function createQuoteRequest(phoneNumber: string, collectedData: Record<string, any>) {
