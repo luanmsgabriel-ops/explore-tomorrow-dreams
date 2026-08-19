@@ -29,36 +29,46 @@ serve(async (req) => {
     const html = await res.text();
     
     if (dryRun) {
-      const getLiteralDump = (s: string, length = 10000) => {
+      const getLiteralDump = (s: string, length = 15000) => {
         const idx = html.indexOf(s);
         if (idx === -1) return "NOT_FOUND";
         return html.substring(idx, idx + length);
       };
 
-      const dumpPayloadFull = getLiteralDump("__PVOO_PAYLOAD", 20000); // Pegar mais para achar o mapa
+      const dumpPayloadFull = getLiteralDump("__PVOO_PAYLOAD", 25000);
       
-      // Tentar extrair PAYLOAD.mapa completo
+      // Tentar extrair PAYLOAD.mapa completo buscando o objeto no JS
       let mapaJson = "not_extracted";
-      const mapaMatch = dumpPayloadFull.match(/PAYLOAD\.mapa\s*=\s*({[\s\S]+?});/);
+      const mapaRegex = /PAYLOAD\s*=\s*{[\s\S]*?mapa\s*:\s*({[\s\S]*?}),\s*usd/i;
+      const mapaMatch = html.match(mapaRegex);
       if (mapaMatch) mapaJson = mapaMatch[1];
 
-      // Tentar extrair o blob (pelo menos as primeiras linhas)
+      // Tentar extrair o blob
       let blobSnippet = "not_extracted";
-      const blobMatch = dumpPayloadFull.match(/blob\s*:\s*[`"']([\s\S]+?)[`"']/);
-      if (blobMatch) blobSnippet = blobMatch[1].substring(0, 2000);
+      const blobRegex = /blob\s*:\s*[`"']([\s\S]*?)[`"']/i;
+      const blobMatch = html.match(blobRegex);
+      if (blobMatch) blobSnippet = blobMatch[1].substring(0, 3000);
 
       const dataRefMatch = html.match(/var\s+DATA_REF\s*=\s*['"]([^'"]+)['"]/);
       const dataRef = dataRefMatch ? dataRefMatch[1] : "not_found";
+
+      // Contagem de fontes no PV_SNAPSHOT
+      const dumpSnapshotFull = getLiteralDump("PV_SNAPSHOT", 15000);
+      const backupCount = (dumpSnapshotFull.match(/['"]fonte['"]\s*:\s*['"]backup['"]/g) || []).length;
+      const otherCount = (dumpSnapshotFull.match(/['"]fonte['"]\s*:\s*['"](?!backup)[^'"]+['"]/g) || []).length;
 
       return new Response(JSON.stringify({
         status: "dry_run_detailed_discovery",
         data_reference: dataRef,
         mapa_bruto: mapaJson,
         blob_amostra: blobSnippet,
-        // Dumps originais para segurança
+        snapshot_stats: {
+          backup: backupCount,
+          others: otherCount
+        },
         dumps: {
-          __PVOO_PAYLOAD: dumpPayloadFull.substring(0, 5000),
-          PV_SNAPSHOT: getLiteralDump("PV_SNAPSHOT", 5000)
+          __PVOO_PAYLOAD: dumpPayloadFull.substring(0, 3000),
+          PV_SNAPSHOT: dumpSnapshotFull.substring(0, 3000)
         }
       }), {
         status: 200,
