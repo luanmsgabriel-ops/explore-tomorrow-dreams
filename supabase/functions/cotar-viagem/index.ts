@@ -77,31 +77,34 @@ serve(async (req) => {
     // 2. Próxima Data (Somente se Data Pedida estiver vazia. POSTERIOR à data base)
     let finalB: any[] = [];
     if (dataA.length === 0) {
-      // Busca a partir da data base até o futuro
-      finalB = await fetchOffers(true, baseDate, '2099-12-31', false);
+      // Busca a partir de AMANHÃ em relação à baseDate até o futuro
+      const nextDay = new Date(new Date(baseDate + "T12:00:00").getTime() + 86400000)
+        .toISOString().split('T')[0];
+      finalB = await fetchOffers(true, nextDay, '2099-12-31', false);
     }
 
-    // 3. Melhor Preço (Sempre busca no futuro todo)
-    const finalC = await fetchOffers(true, baseDate, '2099-12-31', true);
+    // 3. Melhor Preço (Sempre busca no futuro todo, a partir de hoje)
+    const finalC = await fetchOffers(true, brDateStr, '2099-12-31', true);
 
     let finalA = dataA;
 
-    // Fallbacks se não houver NADA com a origem específica (considerando C como termômetro de disponibilidade futura)
+    // Fallbacks se não houver NADA com a origem específica
     if (finalA.length === 0 && finalB.length === 0 && finalC.length === 0) {
       console.log("[cotar-viagem] Fallback Geral (Sem Origem)");
       const [fA, fC] = await Promise.all([
         fetchOffers(false, monthStart, monthEnd, false),
-        fetchOffers(false, baseDate, '2099-12-31', true)
+        fetchOffers(false, brDateStr, '2099-12-31', true)
       ]);
       finalA = fA;
-      // Se A continua vazio, busca B sem origem
       if (finalA.length === 0) {
-        finalB = await fetchOffers(false, baseDate, '2099-12-31', false);
+        const nextDay = new Date(new Date(baseDate + "T12:00:00").getTime() + 86400000)
+          .toISOString().split('T')[0];
+        finalB = await fetchOffers(false, nextDay, '2099-12-31', false);
       } else {
-        finalB = []; // Se A achou algo no fallback, limpa B
+        finalB = [];
       }
-      // Reatribui finalC com o fallback
-      // (finalC já é reatribuído via fC)
+      finalC = fC;
+    }
     }
 
     const findClosest = (list: any[], targetStr: string) => {
