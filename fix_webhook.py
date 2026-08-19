@@ -1,16 +1,11 @@
-import re
-
 file_path = "supabase/functions/whatsapp-webhook/index.ts"
 with open(file_path, "r") as f:
     content = f.read()
 
-# The issue is that alreadyQuoted is true if conversation_state is "awaiting_quotation".
-# If the user just confirmed and the AI updated the state to "awaiting_quotation", then alreadyQuoted becomes true,
-# and the block if (effectiveQuotationData && !alreadyQuoted) is skipped.
+trigger_start = "// Handle quotation if triggered and not already in progress"
+trigger_end = "if (effectiveQuotationData && !alreadyQuoted) {"
 
-# Fix: check if it was triggered IN THIS TURN even if state is already updated
-new_trigger_logic = """
-      // Handle quotation if triggered
+new_trigger = """// Handle quotation if triggered
       // We check if it was already triggered in PREVIOUS turns to avoid duplication
       const alreadyQuotedInDB = (conversation.collected_data as any)?._quotation_triggered === true || 
                                 (conversation.collected_data as any)?._quotation_triggered === "true";
@@ -47,10 +42,12 @@ new_trigger_logic = """
                               /^\\d{4}-\\d{2}-\\d{2}$/.test(effectiveQuotationData.data_ida) &&
                               /^\\d{4}-\\d{2}-\\d{2}$/.test(effectiveQuotationData.data_volta);
 
-      if (effectiveQuotationData && !alreadyQuotedInDB) {
-"""
+      if (effectiveQuotationData && !alreadyQuotedInDB) {"""
 
-content = re.sub(r'// Handle quotation if triggered and not already in progress.*?if \(effectiveQuotationData && !alreadyQuoted\) \{', new_trigger_logic, content, flags=re.DOTALL)
+s = content.find(trigger_start)
+e = content.find(trigger_end, s)
+if s != -1 and e != -1:
+    content = content[:s] + new_trigger + content[e + len(trigger_end):]
 
 with open(file_path, "w") as f:
     f.write(content)

@@ -8827,9 +8827,10 @@ Regras OBRIGATÓRIAS:
         cleanResponse += "\n\nPara viagem em grupo, mande *criar grupo* aqui no chat! 🎉";
       }
 
-      // Handle quotation if triggered and not already in progress
-      const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || 
-                           (newCollectedData && (newCollectedData._quotation_triggered === true || newCollectedData._quotation_triggered === "true"));
+      // Handle quotation if triggered
+      // We check if it was already triggered in PREVIOUS turns to avoid duplication
+      const alreadyQuotedInDB = (conversation.collected_data as any)?._quotation_triggered === true || 
+                                (conversation.collected_data as any)?._quotation_triggered === "true";
       
       // DISPARE A BUSCA A PARTIR DO COLLECTED_DATA SE [STATUS:awaiting_quotation] ESTIVER PRESENTE
       let effectiveQuotationData = quotationData;
@@ -8863,7 +8864,7 @@ Regras OBRIGATÓRIAS:
                               /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_ida) &&
                               /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_volta);
 
-      if (effectiveQuotationData && !alreadyQuoted) {
+      if (effectiveQuotationData && !alreadyQuotedInDB) {
         if (!hasMandatoryData) {
           console.log("[VALIDATION] Quotation ignored - missing or invalid mandatory data:", {
             effectiveData: effectiveQuotationData
