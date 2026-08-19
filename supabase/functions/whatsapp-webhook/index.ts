@@ -8933,14 +8933,9 @@ Regras OBRIGATÓRIAS:
             newCollectedData._last_quote_id = saveResult.id;
             newCollectedData._quotation_triggered = true;
             
-            // IMPORTANT: Also update the conversation record in the database IMMEDIATELY to prevent race conditions
-            await supabase
-              .from("whatsapp_conversations")
-              .update({ 
-                collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
-                conversation_state: "awaiting_quotation"
-              })
-              .eq("id", conversation.id);
+            // No longer updating _quotation_triggered here to let process_quotation handle it
+            // and the search results sending. 
+            // We just need to ensure the async call is made.
 
             // Update conversation state immediately
             const updatedHistory = [
