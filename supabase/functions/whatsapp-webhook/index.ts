@@ -1149,7 +1149,6 @@ Cliente quer falar com humano:
 
 
 
-Cliente quer falar com humano:
 [STATUS:human_takeover]
 
 COMANDOS ESPECIAIS (instruir o cliente a usar pelo WhatsApp):
