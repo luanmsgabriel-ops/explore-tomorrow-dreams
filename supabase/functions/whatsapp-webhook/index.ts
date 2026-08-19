@@ -20,115 +20,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const ADMIN_PHONE_NUMBER = "5515998389220";
 
-// ========== Spam / Non-Client Detection (first contact) ==========
-
-function isLikelySpamFirstMessage(text: string): { match: boolean; reason: string } {
-  if (!text) return { match: false, reason: "" };
-  const lower = text.toLowerCase();
-
-  const groups: Record<string, RegExp[]> = {
-    spam_telefonia_internet: [
-      /\boperador[ae]\b/, /\bportabilidade\b/, /\bplano (de )?(internet|celular|telefon)/,
-      /\bfibra (ótica|otica|de \d+)/, /\binternet (mais r[áa]pida|fibra)/,
-      /\b(claro|vivo|tim|oi fixo|nextel|algar) (oferec|tem|disponibiliz|promo)/,
-      /\btelefonia (fixa|m[oó]vel|empresarial)/,
-    ],
-    spam_b2b_marketing: [
-      /\brepresent[oa] a (empresa|marca)\b/, /\bsomos (a|uma) empresa\b/,
-      /\bnossa empresa (oferec|trabalh|present|fornec)/,
-      /\bparceria (comercial|estrat[ée]gica|de neg[óo]cios)\b/,
-      /\b(an[úu]ncio|publicidade|marketing digital|tr[áa]fego pago|leads garantidos)\b/,
-      /\bcria[çc][ãa]o de (site|website|loja virtual)\b/,
-      /\bgest[ãa]o de (redes sociais|m[ií]dias)\b/,
-      /\b(seo|otimiza[çc][ãa]o para google)\b/,
-    ],
-    spam_financeiro: [
-      /\bcart[ãa]o de cr[ée]dito (empresarial|sem (anuidade|consulta))/,
-      /\bmaquininh[ao]\b/, /\bpos\b.*(taxa|m[áa]quina)/,
-      /\bempr[ée]stimo (consignado|pessoal|com garantia)\b/,
-      /\bantecipa[çc][ãa]o de (sal[áa]rio|fgts|recebíveis|recebiveis)\b/,
-      /\b(serasa|score)\b.*(limp|negociar|aumentar)/,
-      /\bnegocia[çc][ãa]o de d[íi]vida\b/, /\bboleto em aberto\b/,
-    ],
-    spam_generico: [
-      /\bpromo[çc][ãa]o exclusiva (pra|para) voc[êe]\b/,
-      /\bcampanha (promocional|de divulga[çc][ãa]o)\b/,
-      /\bdivulga[çc][ãa]o (do nosso|de nossos|da nossa)\b/,
-      /\bsou (representante|consultor[a]?) da\b/,
-      /\b(bom dia|ol[áa])[,!.\s]+(somos|representamos|trabalhamos com)\b/,
-    ],
-  };
-
-  for (const [reason, patterns] of Object.entries(groups)) {
-    for (const re of patterns) {
-      if (re.test(lower)) return { match: true, reason };
-    }
-  }
-  return { match: false, reason: "" };
-}
-
-async function classifyFirstMessageWithLLM(text: string, profileName: string | null): Promise<{ is_real_client: boolean; reason: string } | null> {
-  const apiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!apiKey) return null;
-
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 8000);
-
-  try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      signal: ctrl.signal,
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [
-          {
-            role: "system",
-            content:
-              "Você classifica a PRIMEIRA mensagem recebida no WhatsApp de uma agência de viagens (Tomorrow Travel). " +
-              "Decida se é de um CLIENTE REAL (pessoa física buscando viagem, dúvida turística, atendimento, ou se apresentando) " +
-              "ou NÃO-CLIENTE (telemarketing, empresa B2B oferecendo serviço, spam, divulgação, cobrança, banco, telefonia, internet, marketing, agência digital, criação de site, etc.). " +
-              "Em caso de dúvida, classifique como cliente real. Responda APENAS um JSON válido: " +
-              '{"is_real_client": true|false, "reason": "explicação curta"}',
-          },
-          {
-            role: "user",
-            content: `Nome do perfil WhatsApp: ${profileName || "(desconhecido)"}\nMensagem: """${text}"""`,
-          },
-        ],
-        response_format: { type: "json_object" },
-      }),
-    });
-    clearTimeout(t);
-    if (!resp.ok) {
-      console.error("[SPAM-LLM] Gateway error:", resp.status);
-      return null;
-    }
-    const data = await resp.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) return null;
-    const parsed = JSON.parse(content);
-    return { is_real_client: !!parsed.is_real_client, reason: String(parsed.reason || "") };
-  } catch (err) {
-    clearTimeout(t);
-    console.error("[SPAM-LLM] Error:", (err as Error).message);
-    return null;
-  }
-}
-
-async function disableAiForNonClient(conversationId: string, currentCollected: Record<string, any>, reason: string): Promise<void> {
-  const merged = { ...(currentCollected || {}), _auto_disabled_reason: reason, _auto_disabled_at: new Date().toISOString() };
-  await supabase
-    .from("whatsapp_conversations")
-    .update({
-      is_ai_active: false,
-      conversation_state: "human_takeover",
-      collected_data: merged,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", conversationId);
-  console.log(`[SPAM-DETECT] Conversation ${conversationId} marked human_takeover (${reason})`);
-}
+// Spam filter removed per user request. Restore original behavior of first contact.
 
 // ========== Admin Assistant (Intelligent) ==========
 
@@ -8463,48 +8355,8 @@ Regras OBRIGATÓRIAS:
         });
       }
 
-      // ========== SPAM / NON-CLIENT DETECTION (first contact only) ==========
-      // Bypass for admin and for messages where it's not actually the first contact.
-      if (phoneNumber !== ADMIN_PHONE_NUMBER) {
-        const historyArr = (conversation.messages_history as any[]) || [];
-        const collectedSoFar = (conversation.collected_data as Record<string, any>) || {};
-        const noPriorClientName = !conversation.client_name && !collectedSoFar.nome;
-        const isFirstUserMessage = historyArr.filter((m) => m?.role === "user").length <= 1;
-        const notInActiveMode = !collectedSoFar._teo_mode && !collectedSoFar._quotation_triggered;
+      // Spam filter removed per user request.
 
-        if (
-          isFirstUserMessage &&
-          noPriorClientName &&
-          notInActiveMode &&
-          conversation.conversation_state === "greeting" &&
-          messageText &&
-          !messageText.startsWith("[") // ignore non-text payloads like [audio], [Localização: ...]
-        ) {
-          // 1) Fast regex check
-          const regexCheck = isLikelySpamFirstMessage(messageText);
-          if (regexCheck.match) {
-            await disableAiForNonClient(conversation.id, collectedSoFar, regexCheck.reason);
-            return new Response(
-              JSON.stringify({ status: "ok", ai_disabled: true, reason: regexCheck.reason }),
-              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-
-          // 2) LLM classification fallback
-          const verdict = await classifyFirstMessageWithLLM(messageText, contactName || conversation.client_name);
-          if (verdict && verdict.is_real_client === false) {
-            await disableAiForNonClient(
-              conversation.id,
-              collectedSoFar,
-              `llm_classified_non_client: ${verdict.reason}`.slice(0, 250)
-            );
-            return new Response(
-              JSON.stringify({ status: "ok", ai_disabled: true, reason: "llm_non_client" }),
-              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-        }
-      }
 
 
       if (!conversation.is_ai_active || conversation.conversation_state === "completed") {
@@ -9256,6 +9108,22 @@ Regras OBRIGATÓRIAS:
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    if (req.method === "GET" && req.url.includes("discovery")) {
+        const targetDiscoveryUrl = "https://viajandocomdesconto.com.br/site/login";
+        const discResp = await fetch(targetDiscoveryUrl, {
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+        });
+        const discHtml = await discResp.text();
+        return new Response(JSON.stringify({ 
+            status: "discovery_via_webhook", 
+            html_preview: discHtml.substring(0, 8000),
+            includes_pvoo: discHtml.includes("__PVOO_PAYLOAD"),
+            url_used: targetDiscoveryUrl
+        }), { status: 200, headers: corsHeaders });
     }
 
     return new Response("Method not allowed", { status: 405 });
