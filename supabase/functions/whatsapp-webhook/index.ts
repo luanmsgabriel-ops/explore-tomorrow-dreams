@@ -1149,7 +1149,7 @@ Cliente quer falar com humano:
 
 --LIMPO--
 
-   - Confirme o resumo antes de cotar.
+   --LIMPO_2--
    - REMOVIDO_BLOCO_ANTERIOR: 
 
 - Mantenha foco na cotação validada.
