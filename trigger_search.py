@@ -5,10 +5,6 @@ import json
 SUPABASE_URL = os.environ.get("VITE_SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 
-if not SUPABASE_SERVICE_ROLE_KEY:
-    # Try to read from env or local file if needed
-    pass
-
 url = f"{SUPABASE_URL}/functions/v1/whatsapp-webhook"
 headers = {
     "Content-Type": "application/json",
@@ -29,9 +25,9 @@ payload = {
                         "messages": [
                             {
                                 "from": "5515991825285",
-                                "id": "TEST_MSG_" + str(os.getpid()),
+                                "id": "TEST_MSG_FULL_" + str(os.getpid()),
                                 "timestamp": "1724080000",
-                                "text": {"body": "Sim, pode cotar!"},
+                                "text": {"body": "Quero cotar Maceió saindo de São Paulo de 01/10/2026 a 07/10/2026 para 2 adultos."},
                                 "type": "text"
                             }
                         ]
@@ -43,7 +39,16 @@ payload = {
     ]
 }
 
-print(f"Triggering search for Maceió...")
+print(f"Feeding full data for Maceió...")
 response = requests.post(url, headers=headers, json=payload)
+print(f"Status: {response.status_code}")
+
+# Now confirm
+payload_confirm = payload.copy()
+payload_confirm["entry"][0]["changes"][0]["value"]["messages"][0]["id"] = "TEST_MSG_CONFIRM_" + str(os.getpid())
+payload_confirm["entry"][0]["changes"][0]["value"]["messages"][0]["text"]["body"] = "Sim, pode buscar!"
+
+print(f"Confirming search...")
+response = requests.post(url, headers=headers, json=payload_confirm)
 print(f"Status: {response.status_code}")
 print(f"Body: {response.text}")
