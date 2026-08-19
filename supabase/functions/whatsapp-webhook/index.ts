@@ -8824,50 +8824,14 @@ Regras OBRIGATÓRIAS:
       // DEBUG: Log RAW AI Response before any processing
       console.log("[DEBUG_RAW_AI_RESPONSE] Full response:", aiResponse);
 
-      // Extract collected data and status
-      let { data: newCollectedData, status: conversationStatus } = extractCollectedData(
+      // 1. ISOLATED QUOTATION FLOW
+      const { newCollectedData, additionalMessage, triggeredSearch } = await handleQuotationFlow(
         aiResponse,
-        collectedData
+        collectedData,
+        phoneNumber,
+        conversation.id,
+        false // this is coming from the client processing flow
       );
-
-      // FORCE STATE UPDATE: Se a resposta do modelo confirma os dados no texto mas o collected_data falhou,
-      // usamos os dados extraídos pelo parser de fallback dentro do extractCollectedData.
-      // O extractCollectedData já foi atualizado para fazer isso se encontrar [STATUS:awaiting_quotation].
-
-      const msgLowerForReset = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      const currentDestInDB = (collectedData.destino || "").toLowerCase();
-      const mentionsNewDestination = /quanto custa|preco|valor|orcamento|pacote|cotar|cotacao|quero viajar|viagem para/i.test(msgLowerForReset) && 
-                                    currentDestInDB && 
-                                    !msgLowerForReset.includes(currentDestInDB);
-
-      if (mentionsNewDestination) {
-        const extractedDest = (newCollectedData.destino || "").toLowerCase();
-        
-        if (extractedDest && extractedDest !== currentDestInDB) {
-          console.log(`[RESET] New destination "${extractedDest}" detected. Clearing old trip data.`);
-          const metaKeys = ["_teo_mode", "_school_mode", "_last_school_interaction", "nome", "preferencias"];
-          const cleanedCd = { ...newCollectedData };
-          // Remove campos do pedido ANTERIOR que não foram sobrescritos pelo novo
-          ["origem", "data_ida", "data_volta", "adultos", "criancas", "idades_criancas", "_quotation_triggered", "_last_quote_id"].forEach(key => {
-            // Só deletamos se o valor for IDENTICO ao que estava no banco, significando que o extrator não pegou dado novo
-            if (newCollectedData[key] === collectedData[key]) {
-              delete cleanedCd[key];
-            }
-          });
-          newCollectedData = cleanedCd;
-        }
-      }
-
-      // Log para diagnóstico se o collected_data ficar sem destino ou datas após extração
-      if (conversationStatus === "awaiting_quotation" && (!newCollectedData.destino || !newCollectedData.data_ida)) {
-        console.warn(`[PARSER_WARN] Status is awaiting_quotation but data is incomplete. Raw AI: ${aiResponse}`);
-      }
-
-      // Check if AI triggered a quotation request
-      const quotationData = parseQuotationTag(aiResponse);
-
-      // Check for itinerary visual tag BEFORE cleaning
-      const itineraryVisualDataFromTag = parseItineraryVisualTag(aiResponse);
 
       // Clean response (remove all tags)
       let cleanResponse = cleanAiResponse(aiResponse);
@@ -8878,187 +8842,40 @@ Regras OBRIGATÓRIAS:
         cleanResponse += "\n\nPara viagem em grupo, mande *criar grupo* aqui no chat! 🎉";
       }
 
-      // Handle quotation if triggered
-      // We check if it was already triggered in PREVIOUS turns to avoid duplication
-      let alreadyQuotedInDB = (conversation.collected_data as any)?._quotation_triggered === true || 
-                                (conversation.collected_data as any)?._quotation_triggered === "true";
-      
-      // REDUNDÂNCIA DE SEGURANÇA: Tenta pegar do JSON da tag se o collected_data falhar
-      let effectiveQuotationData = quotationData;
-      
-      if (!effectiveQuotationData && (conversationStatus === "awaiting_quotation" || aiResponse.includes("[STATUS:awaiting_quotation]"))) {
-        console.log("[QUOTATION] Tag [COTAR_VIAGEM] missing or invalid, trying newCollectedData.");
-        
-        const hasMandatory = newCollectedData.destino && 
-                            newCollectedData.origem && 
-                            newCollectedData.data_ida && 
-                            newCollectedData.data_volta;
-
-        if (hasMandatory) {
-          effectiveQuotationData = {
-            origem: newCollectedData.origem,
-            destino: newCollectedData.destino,
-            data_ida: newCollectedData.data_ida,
-            data_volta: newCollectedData.data_volta,
-            adultos: Number(newCollectedData.adultos || newCollectedData.num_viajantes || 2),
-            criancas: Number(newCollectedData.criancas || 0),
-            idades_criancas: newCollectedData.idades_criancas || []
-          };
-          console.log("[QUOTATION] Payload mounted from newCollectedData:", effectiveQuotationData);
-        } else {
-          console.warn("[QUOTATION] newCollectedData also incomplete. Search will not trigger.");
+      // If search was triggered, we send the cleanResponse (handover) first, then the additionalMessage (offers)
+      if (triggeredSearch || additionalMessage) {
+        if (cleanResponse) {
+          await sendWhatsAppMessage(phoneNumber, cleanResponse);
         }
-      } else if (effectiveQuotationData) {
-        console.log("[QUOTATION] Using valid [COTAR_VIAGEM] tag data.");
+        if (additionalMessage) {
+          await sendWhatsAppMessage(phoneNumber, additionalMessage);
+        }
+
+        // Update history and persist state
+        const updatedHistory = [
+          ...(conversation.messages_history as any[] || []),
+          ...(cleanResponse ? [{ role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() }] : []),
+          ...(additionalMessage ? [{ role: "assistant", content: additionalMessage, timestamp: new Date().toISOString() }] : []),
+        ];
+
+        await supabase
+          .from("whatsapp_conversations")
+          .update({
+            collected_data: newCollectedData,
+            messages_history: updatedHistory,
+            conversation_state: "awaiting_quotation"
+          })
+          .eq("id", conversation.id);
+
+        return new Response(JSON.stringify({ status: "ok", quotation: true, async: false }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
-      const hasMandatoryData = effectiveQuotationData && 
-                              effectiveQuotationData.destino && 
-                              effectiveQuotationData.origem && 
-                              effectiveQuotationData.data_ida && 
-                              effectiveQuotationData.data_volta &&
-                              /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_ida) &&
-                              /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_volta);
+      // Check for itinerary visual tag BEFORE cleaning
+      const itineraryVisualDataFromTag = parseItineraryVisualTag(aiResponse);
 
-      if (effectiveQuotationData && !alreadyQuotedInDB) {
-        if (!hasMandatoryData) {
-          console.log("[VALIDATION] Quotation ignored - missing or invalid mandatory data:", {
-            effectiveData: effectiveQuotationData
-          });
-        } else {
-          // CHECK FOR DUPLICATE RECENT REQUEST (LAST 24H)
-          // Refined check: only duplicate if ALL parameters match exactly
-          const { data: existingReq } = await supabase
-            .from("travel_quote_requests")
-            .select("id, status, processing_details")
-            .eq("phone_number", phoneNumber)
-            .eq("origin", effectiveQuotationData.origem)
-            .eq("destination", effectiveQuotationData.destino)
-            .eq("departure_date", effectiveQuotationData.data_ida)
-            .eq("return_date", effectiveQuotationData.data_volta)
-            .eq("adults", effectiveQuotationData.adultos)
-            .eq("children", effectiveQuotationData.criancas)
-            .gt("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (existingReq) {
-            console.log("[QUOTATION] Found existing recent request:", existingReq.id);
-            alreadyQuotedInDB = true;
-            
-            if (cleanResponse) {
-              const alreadySentMsg = `Seu pedido para *${effectiveQuotationData.destino}* já foi encaminhado aos nossos consultores! 🚀`;
-              let resultsMsg = "";
-              if (existingReq.status === "completed" && existingReq.processing_details) {
-                resultsMsg = formatQuotationResults(existingReq.processing_details);
-              } else {
-                resultsMsg = "Eles já estão verificando as melhores opções para você. Assim que eu tiver os detalhes, te aviso por aqui! ✈️";
-              }
-              
-              await sendWhatsAppMessage(phoneNumber, alreadySentMsg);
-              await sendWhatsAppMessage(phoneNumber, resultsMsg);
-
-              // Update history and return
-              const updatedHistory = [
-                ...(conversation.messages_history as any[] || []),
-                { role: "assistant", content: alreadySentMsg, timestamp: new Date().toISOString() },
-                { role: "assistant", content: resultsMsg, timestamp: new Date().toISOString() },
-              ];
-
-              await supabase
-                .from("whatsapp_conversations")
-                .update({
-                  collected_data: newCollectedData,
-                  messages_history: updatedHistory,
-                  conversation_state: existingReq.status === "completed" ? "quotation_sent" : "awaiting_quotation"
-                })
-                .eq("id", conversation.id);
-
-              return new Response(JSON.stringify({ status: "ok", duplicate: true }), {
-                status: 200,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-              });
-            }
-          }
-
-          if (!alreadyQuotedInDB) {
-            console.log("Quotation request triggered:", JSON.stringify(effectiveQuotationData));
-            
-            if (cleanResponse) {
-              await sendWhatsAppMessage(phoneNumber, cleanResponse);
-              cleanResponse = ""; 
-            }
-
-            const saveResult = await saveQuotationRequest(
-              effectiveQuotationData,
-              phoneNumber,
-              newCollectedData.nome || conversation.client_name || contactName,
-              newCollectedData.preferencias || newCollectedData.tipo_viagem || null
-            );
-
-            if (saveResult.success && saveResult.id) {
-              // Mark quotation as triggered ONLY IF save was successful and returned an ID
-              newCollectedData._last_quote_id = saveResult.id;
-              newCollectedData._quotation_triggered = true;
-              
-              // IMPORTANT: Also update the conversation record in the database IMMEDIATELY to prevent race conditions
-              await supabase
-                .from("whatsapp_conversations")
-                .update({ 
-                  collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
-                  conversation_state: "awaiting_quotation"
-                })
-                .eq("id", conversation.id);
-              
-              // Update conversation state immediately
-              const updatedHistory = [
-                ...(conversation.messages_history as any[] || []),
-                { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
-              ];
-
-              await supabase
-                .from("whatsapp_conversations")
-                .update({
-                  client_name: newCollectedData.nome || conversation.client_name || contactName,
-                  conversation_state: "awaiting_quotation",
-                  collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
-                  messages_history: updatedHistory,
-                  is_ai_active: true,
-                })
-                .eq("id", conversation.id);
-
-              // Process quotation via self-invocation
-              const selfUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
-              const processPromise = fetch(selfUrl, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-                },
-                body: JSON.stringify({
-                  action: "process_quotation",
-                  phone_number: phoneNumber,
-                  quotation_data: effectiveQuotationData,
-                  save_result_id: saveResult.id,
-                  conversation_id: conversation.id,
-                  client_name: newCollectedData.nome || conversation.client_name || contactName || "",
-                  collected_data: newCollectedData,
-                }),
-              });
-
-              await processPromise.catch(err => console.error("Error in async quotation:", err));
-
-              return new Response(JSON.stringify({ status: "ok", quotation: true, async: true }), {
-                status: 200,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-              });
-            } else {
-              console.error("[VALIDATION] Failed to save quotation request. Not marking as triggered.");
-            }
-          }
-        }
-      }
 
       // Check for change request tag from AI
       const changeRequest = parseChangeRequestTag(aiResponse);
