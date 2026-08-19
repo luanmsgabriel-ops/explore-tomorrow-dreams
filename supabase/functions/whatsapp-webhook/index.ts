@@ -1168,7 +1168,7 @@ Cliente quer falar com humano:
    
    - FIM_BLOCO_3
    
-   🗺️ *Roteiro* — Gero um roteiro dia-a-dia personalizado pro seu destino com dicas de locais reais! Mande *roteiro [destino]*"
+   - FIM_BLOCO_4
 3. Depois disso, dispare [STATUS:completed] para registrar o lead
 
 IMPORTANTE: Datas como "do dia 15 a 22 de junho" → data_ida="15/06/2026", data_volta="22/06/2026".
