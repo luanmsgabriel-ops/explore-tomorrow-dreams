@@ -115,10 +115,7 @@ serve(async (req) => {
     };
 
     const offerA = findClosest(finalA, baseDate);
-    const offerB = finalB.find((o: any) => 
-      (!offerA || o.id !== offerA.id) && 
-      o.departure_date > baseDate
-    );
+    const offerB = finalB.length > 0 ? findClosest(finalB, baseDate) : null;
     
     const referenceOffer = offerA || offerB;
     let offerC = null;
