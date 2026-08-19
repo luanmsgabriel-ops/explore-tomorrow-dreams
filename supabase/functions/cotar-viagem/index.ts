@@ -53,7 +53,16 @@ serve(async (req) => {
         .from('travel_iata_map')
         .select('code')
         .or(`origin_name.ilike.%${cleanTerm}%,destination_name.ilike.%${cleanTerm}%,code.ilike.%${cleanTerm}%`);
+      
       const list = (data || []).map(i => i.code.toUpperCase());
+      
+      // Expansões manuais críticas para garantir cobertura mesmo sem o mapa completo
+      if (cleanTerm.includes("sao paulo") || cleanTerm === "sp") list.push("GRU", "CGH", "VCP");
+      if (cleanTerm.includes("goiania") || cleanTerm === "gyn") list.push("GYN");
+      if (cleanTerm.includes("porto alegre") || cleanTerm === "poa") list.push("POA");
+      if (cleanTerm.includes("maceio") || cleanTerm === "mcz") list.push("MCZ");
+      if (cleanTerm.includes("porto de galinhas") || cleanTerm.includes("recife")) list.push("REC");
+      
       if (cleanTerm.length === 3) list.push(cleanTerm.toUpperCase());
       return [...new Set(list)];
     };
