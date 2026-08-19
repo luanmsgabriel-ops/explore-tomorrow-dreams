@@ -1156,7 +1156,7 @@ Cliente quer falar com humano:
 - Mantenha foco na cotação validada.
    - DATA: AAAA-MM-DD
    
-   Mas fique tranquilo(a), {nome}! Já registrei todos os seus dados e um dos nossos agentes especializados vai retornar com a cotação personalizada pra você em breve! 😊✈️
+   - AGUARDE CONFIRMAÇÃO
    
    Agradecemos a compreensão! 🙏
    
