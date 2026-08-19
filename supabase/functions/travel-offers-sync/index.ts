@@ -11,6 +11,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startTime = new Date().toISOString();
+  
   try {
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -27,6 +29,15 @@ serve(async (req) => {
     });
     const html = await res.text();
     const executionTimestamp = new Date().toISOString();
+
+    // Brasilia Date calculation (UTC-3)
+    const nowUtc = new Date();
+    const brDateStr = new Intl.DateTimeFormat('fr-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(nowUtc); // YYYY-MM-DD
 
     if (html.length < 1000) {
       throw new Error(`HTML muito curto (${html.length} bytes). Status: ${res.status}`);
@@ -95,13 +106,21 @@ serve(async (req) => {
       return `${hhmm.substring(0, 2)}:${hhmm.substring(2, 4)}`;
     };
 
-    const getSimpleId = (cols: string[]) => {
-      return `${cols[0]}-${cols[1]}-${cols[2]}-${cols[3]}-${cols[15]}-${cols[6]}`.substring(0, 64);
+    // Helper for source_id generation (Crypto is available in Deno)
+    const generateId = async (input: string) => {
+      const msgUint8 = new TextEncoder().encode(input);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 64);
     };
 
     for (const line of lines) {
       const cols = line.split("|");
       if (cols.length < 16) continue;
+
+      const deadline = convertDate(cols[8]);
+      // EXCLUSION RULE: discard if deadline is before today (Brasilia)
+      if (deadline && deadline < brDateStr) continue;
 
       const originIata = cols[0];
       const destinationIata = cols[1];
@@ -110,23 +129,31 @@ serve(async (req) => {
 
       if (!mapa[originIata] || !mapa[destinationIata]) mapErrors++;
 
+      const departureDate = convertDate(cols[2]);
+      const returnDate = convertDate(cols[3]);
+      const price = parseFloat(cols[6]);
+      const airline = cols[15];
+
+      // Deterministic hash: origem + destino + data partida + data retorno + companhia + tarifa
+      const idSource = `${originIata}|${destinationIata}|${departureDate}|${returnDate}|${airline}|${price}`;
+      
       parsedOffers.push({
         source: "viajandocomdesconto",
-        source_id: getSimpleId(cols),
+        source_id: await generateId(idSource),
         offer_type: "bloqueio_aereo",
         origin_iata: originIata,
         origin_city: originName,
         destination_iata: destinationIata,
         destination_name: destinationName,
-        departure_date: convertDate(cols[2]),
-        return_date: convertDate(cols[3]),
-        price_per_person: parseFloat(cols[6]),
+        departure_date: departureDate,
+        return_date: returnDate,
+        price_per_person: price,
         currency: cols[7] === "0" ? "BRL" : "USD",
-        airline: cols[15],
+        airline: airline,
         boarding_tax: parseFloat(cols[13]) || 0,
         nights: parseInt(cols[4]) || 0,
         available_seats: parseInt(cols[5]) || 0,
-        issue_deadline: convertDate(cols[8]),
+        issue_deadline: deadline,
         outbound_departure_time: convertTime(cols[9]),
         outbound_arrival_time: convertTime(cols[10]),
         return_departure_time: convertTime(cols[11]),
@@ -138,60 +165,133 @@ serve(async (req) => {
 
     if (Array.isArray(snapshot)) {
       for (const item of snapshot) {
+        let depDate: string | null = null;
+        let retDate: string | null = null;
+        
+        // Parse date "01/10/2026 a 07/10/2026"
+        if (item.data && typeof item.data === 'string') {
+          const parts = item.data.split(/\s+a\s+/);
+          if (parts.length === 2) {
+            const [d1, m1, y1] = parts[0].split('/');
+            const [d2, m2, y2] = parts[1].split('/');
+            if (d1 && m1 && y1) depDate = `${y1}-${m1}-${d1}`;
+            if (d2 && m2 && y2) retDate = `${y2}-${m2}-${d2}`;
+          }
+        }
+
+        const price = parseFloat(String(item.por).replace(/[^0-9.]/g, ""));
+        const name = item.nome || "";
+        const originIata = item.origem_iata || "";
+        const destination = item.destino || "";
+
+        // Package source_id: nome do pacote + origem_iata + destino + data de ida + data de volta + preço
+        const idSource = `pkg|${name}|${originIata}|${destination}|${depDate}|${retDate}|${price}`;
+
         parsedOffers.push({
           source: "viajandocomdesconto",
-          source_id: `pkg-${item.nome}-${item.origem_iata}-${item.destino}-${item.por}`.substring(0, 64),
+          source_id: await generateId(idSource),
           offer_type: "pacote",
-          destination_name: item.destino,
-          origin_iata: item.origem_iata,
+          destination_name: destination,
+          origin_iata: originIata,
           origin_city: item.origem_cidade,
-          departure_date: item.ida ? convertDate(item.ida.replace(/\//g, "").substring(2, 8)) : null,
-          return_date: item.volta ? convertDate(item.volta.replace(/\//g, "").substring(2, 8)) : null,
-          price_per_person: parseFloat(String(item.por).replace(/[^0-9.]/g, "")),
+          departure_date: depDate,
+          return_date: retDate,
+          price_per_person: price,
           currency: "BRL",
           boarding_tax: parseFloat(item.taxa) || 0,
           last_seen_at: executionTimestamp,
           active: true,
-          raw_data: { title: item.nome }
+          alternative_dates: item.outras || null,
+          raw_data: { 
+            title: name,
+            uf: item.uf,
+            min_label: item.min_label
+          }
         });
       }
     }
 
-    // Deduplicate in memory before upserting to avoid Supabase errors
+    if (parsedOffers.length === 0) {
+      throw new Error("Nenhuma oferta processada (lista vazia). Abortando para segurança.");
+    }
+
+    // Deduplicate in memory
     const uniqueOffers = new Map();
     for (const offer of parsedOffers) {
       uniqueOffers.set(`${offer.source_id}-${offer.offer_type}`, offer);
     }
     const finalOffers = Array.from(uniqueOffers.values());
 
-    const CHUNK_SIZE = 300;
+    let created = 0;
+    let updated = 0;
+
+    const CHUNK_SIZE = 200;
     for (let i = 0; i < finalOffers.length; i += CHUNK_SIZE) {
       const chunk = finalOffers.slice(i, i + CHUNK_SIZE);
+      
+      // We need to know which are new and which are updates for the log
+      const { data: existing } = await supabaseClient
+        .from("travel_offers")
+        .select("source_id, offer_type")
+        .in("source_id", chunk.map(c => c.source_id))
+        .eq("source", "viajandocomdesconto");
+
+      const existingKeys = new Set((existing || []).map(e => `${e.source_id}-${e.offer_type}`));
+      
+      chunk.forEach(c => {
+        if (existingKeys.has(`${c.source_id}-${c.offer_type}`)) updated++;
+        else created++;
+      });
+
       const { error } = await supabaseClient
         .from("travel_offers")
         .upsert(chunk, { onConflict: "source,source_id,offer_type" });
       if (error) throw error;
     }
 
-    await supabaseClient
+    const { data: deactivatedData } = await supabaseClient
       .from("travel_offers")
       .update({ active: false })
       .lt("last_seen_at", executionTimestamp)
-      .eq("source", "viajandocomdesconto");
+      .eq("source", "viajandocomdesconto")
+      .select("id");
+
+    const deactivatedCount = deactivatedData?.length || 0;
 
     await supabaseClient.from("travel_sync_logs").insert({
+      source: "viajandocomdesconto",
       status: "success",
       offers_found: finalOffers.length,
+      offers_created: created,
+      offers_updated: updated,
+      offers_deactivated: deactivatedCount,
+      map_errors: mapErrors,
+      started_at: startTime,
       finished_at: new Date().toISOString()
     });
 
     return new Response(JSON.stringify({
       status: "success",
       total_offers: finalOffers.length,
+      created,
+      updated,
+      deactivated: deactivatedCount,
       map_errors: mapErrors
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err: any) {
+    console.error("Sync error:", err);
+    await createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    ).from("travel_sync_logs").insert({
+      source: "viajandocomdesconto",
+      status: "error",
+      error_message: err.message,
+      started_at: startTime,
+      finished_at: new Date().toISOString()
+    });
+
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

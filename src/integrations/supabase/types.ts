@@ -1380,6 +1380,7 @@ export type Database = {
         Row: {
           active: boolean | null
           airline: string | null
+          alternative_dates: string | null
           available_seats: number | null
           boarding_tax: number | null
           created_at: string | null
@@ -1409,6 +1410,7 @@ export type Database = {
         Insert: {
           active?: boolean | null
           airline?: string | null
+          alternative_dates?: string | null
           available_seats?: number | null
           boarding_tax?: number | null
           created_at?: string | null
@@ -1438,6 +1440,7 @@ export type Database = {
         Update: {
           active?: boolean | null
           airline?: string | null
+          alternative_dates?: string | null
           available_seats?: number | null
           boarding_tax?: number | null
           created_at?: string | null
