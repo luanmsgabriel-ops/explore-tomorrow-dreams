@@ -8926,9 +8926,6 @@ Regras OBRIGATÓRIAS:
       // Check if AI triggered a quotation request - but ONLY if not already triggered before
       const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || !!collectedData._quotation_triggered;
       const quotationData = alreadyQuoted ? null : parseQuotationTag(aiResponse);
-      
-      // If AI explicitly requested quotation state via [STATUS:awaiting_quotation] but didn't provide a tag, we might have a state mismatch, 
-      // but the rule is Tag [COTAR_VIAGEM] triggers the process.
 
       // Check for itinerary visual tag BEFORE cleaning
       const itineraryVisualDataFromTag = parseItineraryVisualTag(aiResponse);
