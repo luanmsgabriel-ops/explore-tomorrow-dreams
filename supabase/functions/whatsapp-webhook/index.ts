@@ -8852,11 +8852,42 @@ Regras OBRIGATÓRIAS:
             effectiveData: effectiveQuotationData
           });
         } else {
-          console.log("Quotation request triggered:", JSON.stringify(effectiveQuotationData));
-          
-          if (cleanResponse) {
-            await sendWhatsAppMessage(phoneNumber, cleanResponse);
-            cleanResponse = ""; 
+          // CHECK FOR DUPLICATE RECENT REQUEST (LAST 24H)
+          const { data: existingReq } = await supabase
+            .from("travel_quote_requests")
+            .select("id, status, processing_details")
+            .eq("phone_number", phoneNumber)
+            .eq("destination", effectiveQuotationData.destino)
+            .eq("departure_date", effectiveQuotationData.data_ida)
+            .eq("return_date", effectiveQuotationData.data_volta)
+            .gt("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (existingReq) {
+            console.log("[QUOTATION] Found existing recent request:", existingReq.id);
+            alreadyQuotedInDB = true;
+            
+            if (cleanResponse) {
+              await sendWhatsAppMessage(phoneNumber, `Seu pedido para *${effectiveQuotationData.destino}* já foi encaminhado aos nossos consultores! 🚀`);
+              if (existingReq.status === "completed" && existingReq.processing_details) {
+                const resultsMsg = formatQuotationResults(existingReq.processing_details);
+                await sendWhatsAppMessage(phoneNumber, resultsMsg);
+              } else {
+                await sendWhatsAppMessage(phoneNumber, "Eles já estão verificando as melhores opções para você. Assim que eu tiver os detalhes, te aviso por aqui! ✈️");
+              }
+              cleanResponse = "";
+            }
+          }
+
+          if (!alreadyQuotedInDB) {
+            console.log("Quotation request triggered:", JSON.stringify(effectiveQuotationData));
+            
+            if (cleanResponse) {
+              await sendWhatsAppMessage(phoneNumber, cleanResponse);
+              cleanResponse = ""; 
+            }
           }
 
           const saveResult = await saveQuotationRequest(
