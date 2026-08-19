@@ -581,6 +581,7 @@ const AdminDashboard = () => {
     { id: 'checklist' as TabType, label: 'Checklist Padrão', icon: ListChecks },
     { id: 'destinations' as TabType, label: 'Destinos', icon: Globe },
     { id: 'offers' as TabType, label: 'Ofertas', icon: Tag },
+    { id: 'offer-sync' as TabType, label: 'Coletor', icon: RefreshCw },
     { id: 'banner-generator' as TabType, label: 'Gerar Banner', icon: Image },
     { id: 'quotes' as TabType, label: 'Cotações', icon: FileText },
     { id: 'itineraries' as TabType, label: 'Roteiros IA', icon: Map },
