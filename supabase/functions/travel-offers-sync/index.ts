@@ -19,7 +19,8 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const dryRun = body.dry_run === true;
     
-    const targetUrl = "https://www.viajandocomdesconto.com.br/pacotes";
+    // We'll search the root URL which reported has_pacotes: true
+    const targetUrl = "https://viajandocomdesconto.com.br/";
     const res = await fetch(targetUrl, {
         headers: {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -27,23 +28,21 @@ serve(async (req) => {
         signal: AbortSignal.timeout(20000)
     });
     const html = await res.text();
-
-    // Look for data inside the HTML body script tags
-    // The previous dump showed tsx_app_main_1 and other TSXObject instances
-    // We need to find where the actual list of offers is defined.
     
     if (dryRun) {
-      // Return a targeted slice of the HTML to find the data structure
-      // We'll search for 'tsx_' which seems to be the object prefix
+      // Return targeted info from the root
       const tsxMatches = html.match(/tsx_[a-zA-Z0-9_]+\.attribute = \{[^}]+\}/g) || [];
+      const dataMatches = html.match(/tsx_[a-zA-Z0-9_]+\.data = \[[\s\S]*?\];/g) || [];
       
       return new Response(JSON.stringify({
-        status: "dry_run_discovery",
+        status: "dry_run_root_discovery",
         url: targetUrl,
         tsx_matches: tsxMatches.slice(0, 50),
-        html_contains_bloqueios: html.toLowerCase().includes("bloqueio"),
-        html_contains_pacotes: html.toLowerCase().includes("pacote"),
-        html_head: html.substring(0, 2000)
+        data_matches_count: dataMatches.length,
+        data_sample: dataMatches.length > 0 ? dataMatches[0].substring(0, 2000) : "no data matches found",
+        html_contains_rows: html.includes("rows"),
+        html_contains_cols: html.includes("cols"),
+        html_contains_pvoo: html.includes("__PVOO_PAYLOAD")
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
