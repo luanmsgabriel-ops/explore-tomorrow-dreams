@@ -20,11 +20,8 @@ serve(async (req) => {
     });
     const html = await res.text();
     
-    // We add a COMPLETELY NEW marker to ensure we bypass any potential stale caches
-    const cacheBuster = "VERSION_9999_UNIQUE";
-    
     return new Response(JSON.stringify({
-      ver: cacheBuster,
+      v2: true,
       html_length: html.length,
       html_start: html.substring(0, 1000)
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
