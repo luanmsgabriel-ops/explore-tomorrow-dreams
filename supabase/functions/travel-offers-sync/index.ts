@@ -19,8 +19,8 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const dryRun = body.dry_run === true;
     
-    // Attempting a common subdirectory for this CMS
-    const targetUrl = "https://www.viajandocomdesconto.com.br/bloqueios-aereos";
+    // Correct URL without .br
+    const targetUrl = "https://viajandocomdesconto.com/";
     const res = await fetch(targetUrl, {
         headers: {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -30,22 +30,42 @@ serve(async (req) => {
     const html = await res.text();
     
     if (dryRun) {
-      const allDataMatches = html.match(/tsx_[a-zA-Z0-9_]+\.data = \[[\s\S]*?\];/g) || [];
+      const checkString = (s: string) => {
+        const idx = html.indexOf(s);
+        if (idx === -1) return "Não";
+        return `Sim, trecho: ${html.substring(idx, idx + 500)}`;
+      };
+
       return new Response(JSON.stringify({
-        status: "dry_run_bloqueios_aereos_discovery",
+        status: "dry_run_raw_discovery",
         url: targetUrl,
         http_status: res.status,
-        total_data_blocks: allDataMatches.length,
-        largest_data_block_sample: allDataMatches.sort((a,b) => b.length - a.length)[0]?.substring(0, 5000) || "none"
+        html_length: html.length,
+        html_sample_3000: html.substring(0, 3000),
+        discovery: {
+          __PVOO_PAYLOAD: checkString("__PVOO_PAYLOAD"),
+          PACOTES: checkString("PACOTES"),
+          "DADOS.promos": checkString("DADOS.promos")
+        }
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ status: "skipped" }), { status: 200, headers: corsHeaders });
+    // Task 4: DO NOT SAVE ANYTHING. 
+    // Just identifying current status of previous requests:
+    // 1. Spam filter removed from whatsapp-webhook: YES (checked file).
+    // 2. Desactivation bug (offers[0].last_seen_at): The function was previously using a simplified logic, 
+    //    need to ensure it doesn't do mass deactivation based on a single offer's timestamp.
+    // 3. Empty PACOTES block: Currently the function is in discovery mode, but previously it had a block.
+    
+    return new Response(JSON.stringify({ 
+      status: "skipped_per_instructions",
+      message: "Nenhuma gravação realizada conforme item 4 das instruções."
+    }), { status: 200, headers: corsHeaders });
 
-  } catch (err) {
+  } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
