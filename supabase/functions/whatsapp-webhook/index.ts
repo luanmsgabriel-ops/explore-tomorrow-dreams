@@ -9059,9 +9059,9 @@ Regras OBRIGATÓRIAS:
               })
               .eq("id", conversation.id);
 
-            // Fire-and-forget: process quotation asynchronously via self-invocation
+            // Process quotation via self-invocation
             const selfUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
-            fetch(selfUrl, {
+            const processPromise = fetch(selfUrl, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -9076,7 +9076,11 @@ Regras OBRIGATÓRIAS:
                 client_name: newCollectedData.nome || conversation.client_name || contactName || "",
                 collected_data: newCollectedData,
               }),
-            }).catch(err => console.error("Error scheduling async quotation:", err));
+            });
+
+            // Ensure the process is awaited or scheduled so it doesn't die when the response is sent
+            // In Deno Edge Functions, we must await any promise that we want to finish before the response
+            await processPromise.catch(err => console.error("Error in async quotation:", err));
 
             // Return immediately to Meta webhook (fast response)
             return new Response(JSON.stringify({ status: "ok", quotation: true, async: true }), {
@@ -9235,7 +9239,9 @@ Regras OBRIGATÓRIAS:
       } else if (isLikelyItineraryText(cleanResponse)) {
         // Never send long itinerary text, only card
         await sendWhatsAppMessage(phoneNumber, "Estou preparando seu card de roteiro 🎨 Pode me pedir de novo com o destino para eu gerar certinho.");
-      } else {
+      } else if (!quotationData) {
+        // ONLY send the standard message if a quotation was NOT triggered.
+        // If quotation was triggered, the "cleanResponse" and "searchingMsg" were already sent above.
         await sendWhatsAppMessage(phoneNumber, cleanResponse);
       }
 
