@@ -3013,6 +3013,7 @@ serve(async (req) => {
       const messageId = message.id;
 
       const phoneNumber = message.from;
+      const to = value.metadata?.display_phone_number || "";
 
       if (await isDuplicateMessage(messageId, phoneNumber)) {
         console.log(`[DEDUPLICATION] Skipping duplicate message ID: ${messageId}`);
