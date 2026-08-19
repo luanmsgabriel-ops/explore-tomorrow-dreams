@@ -1152,7 +1152,7 @@ Cliente quer falar com humano:
    --LIMPO_2--
    --LIMPO_3-- 
 
-- Mantenha foco na cotação validada.
+--LIMPO_4--
    - DATA: AAAA-MM-DD
    
    - AGUARDE CONFIRMAÇÃO
