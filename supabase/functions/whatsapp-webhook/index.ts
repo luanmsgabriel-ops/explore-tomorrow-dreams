@@ -8432,6 +8432,23 @@ Regras OBRIGATÓRIAS:
         
         const hasConcierge = conciergeSignals.test(msgLower);
         const hasCotacao = cotacaoSignals.test(msgLower);
+
+        // Detect potential destination change if user mentions a new place in a travel context
+        // This is a simple heuristic: if they are in cotacao mode and mention a place they aren't currently going to
+        const currentDest = (collectedData.destino || "").toLowerCase();
+        const mentionsNewDestination = hasCotacao && currentDest && !msgLower.includes(currentDest);
+
+        if (mentionsNewDestination) {
+          console.log(`🔄 New destination intent detected. Resetting collected data to allow new quotation.`);
+          // Keep only internal metadata and mode, clear trip data
+          const metaKeys = ["_teo_mode", "_school_mode", "_last_school_interaction", "nome", "preferencias"];
+          const newCd = { ...collectedData };
+          Object.keys(newCd).forEach(key => {
+            if (!metaKeys.includes(key)) delete newCd[key];
+          });
+          collectedData = newCd;
+          // We will update the DB later in the final save, but let's update local reference
+        }
         
         if (effectiveTeoMode === "auto") {
           // Auto mode: detect and switch
@@ -8853,13 +8870,17 @@ Regras OBRIGATÓRIAS:
           });
         } else {
           // CHECK FOR DUPLICATE RECENT REQUEST (LAST 24H)
+          // Refined check: only duplicate if ALL parameters match exactly
           const { data: existingReq } = await supabase
             .from("travel_quote_requests")
             .select("id, status, processing_details")
             .eq("phone_number", phoneNumber)
+            .eq("origin", effectiveQuotationData.origem)
             .eq("destination", effectiveQuotationData.destino)
             .eq("departure_date", effectiveQuotationData.data_ida)
             .eq("return_date", effectiveQuotationData.data_volta)
+            .eq("adults", effectiveQuotationData.adultos)
+            .eq("children", effectiveQuotationData.criancas)
             .gt("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
             .order("created_at", { ascending: false })
             .limit(1)
@@ -9088,7 +9109,7 @@ Regras OBRIGATÓRIAS:
         .from("whatsapp_conversations")
         .update({
           client_name: newCollectedData.nome || conversation.client_name || contactName,
-          conversation_state: newState,
+          conversation_state: newState === "awaiting_quotation" ? "chatting" : newState,
           collected_data: newCollectedData,
           messages_history: updatedHistory,
           quote_request_id: quoteRequestId,
@@ -9130,7 +9151,10 @@ Regras OBRIGATÓRIAS:
       } else if (!quotationData) {
         // ONLY send the standard message if a quotation was NOT triggered.
         // If quotation was triggered, the "cleanResponse" and "searchingMsg" were already sent above.
-        await sendWhatsAppMessage(phoneNumber, cleanResponse);
+        // ALSO: only send if cleanResponse is not empty (it might have been cleared by quotation logic)
+        if (cleanResponse && cleanResponse.trim()) {
+          await sendWhatsAppMessage(phoneNumber, cleanResponse);
+        }
       }
 
       // Update client memory after response (fire-and-forget)
