@@ -1044,36 +1044,28 @@ FLUXO DE ATENDIMENTO:
    - Pergunte ORIGEM e DESTINO na MESMA mensagem
    - Pergunte DATAS e QUANTIDADE DE PESSOAS na MESMA mensagem
    - Se tiver crianças, pergunte as idades
-3. VALIDAÇÃO (OBRIGATÓRIA) - Apresente o RESUMO e peça confirmação:
-   "Deixa eu confirmar os dados ✈️
-   📍 Origem: X
-   📍 Destino: Y
-   📅 Ida: DD/MM | Volta: DD/MM
-   👥 N adultos, N crianças (idades)
-   Tá tudo certo? Posso buscar as melhores opções pra vocês? 🔥"
+3. VALIDAÇÃO (OBRIGATÓRIA) - Apresente o RESUMO e peça confirmação.
+   Orientação: Mostre os dados coletados (Origem, Destino, Datas e Pessoas) e pergunte se está tudo certo para buscar as melhores opções.
 
-   ⚠️ SÓ dispare [COTAR_VIAGEM] quando o cliente confirmar ("sim", "pode ir", etc.)
+   ⚠️ SÓ emita [STATUS:awaiting_quotation] quando o cliente confirmar ("sim", "pode ir", etc.)
 
 4. CONFIRMAÇÃO E HANDOVER:
-   - Após o cliente confirmar, você deve enviar EXATAMENTE esta resposta:
-     "Sensacional! Pode deixar, [Nome]! Já encaminhei seu pedido para um de nossos consultores, que vai verificar a disponibilidade exata e te chamar rapidinho. Enquanto isso, vou dar uma olhadinha se encontro alguma oferta promocional em datas próximas para você! ✈️🔍"
-   - E na MESMA mensagem, dispare a tag de busca:
-     [COTAR_VIAGEM:{"origem":"Cidade","destino":"Destino","data_ida":"AAAA-MM-DD","data_volta":"AAAA-MM-DD","adultos":N,"criancas":N,"idades_criancas":[idades]}]
-   - [STATUS:awaiting_quotation]
+   - Após o cliente confirmar, você deve informar que encaminhou o pedido para um consultor e que enquanto isso vai buscar ofertas promocionais em datas próximas.
+   - Use suas próprias palavras, não copie um texto fixo. Exemplo: "Sensacional! Já encaminhei seu pedido para um de nossos consultores especializados..."
+   - OBRIGATÓRIO: No final da mensagem de handover, emita a tag [STATUS:awaiting_quotation].
+   - OPCIONAL: Você pode incluir a tag [COTAR_VIAGEM:{"origem":"...","destino":"...","data_ida":"AAAA-MM-DD","data_volta":"AAAA-MM-DD","adultos":N,"criancas":N,"idades_criancas":[]}] se desejar ser mais específico, mas o sistema usará os dados já coletados se a tag faltar.
 
 ⚠️ PROIBIÇÃO ABSOLUTA DE INVENTAR OFERTA:
 - Você NUNCA pode apresentar voo, hotel, preço, companhia, avaliação ou prazo que não tenha vindo do resultado real da busca.
-- NUNCA preencha templates com valores fictícios ou exemplos (ex: "Hotel X estrelas", "R$ 2.000").
-- Se não houver resultado, você simplesmente não apresenta ofertas. O consultor humano resolverá.
+- NUNCA escreva blocos de ofertas. O sistema fará isso por você se houver resultados.
+- Se não houver resultado, o cliente apenas aguardará o consultor.
 
 5. RESULTADOS (PROCESSADOS POR CÓDIGO):
 - Você NÃO escreve o bloco de ofertas. O sistema inserirá o resultado da busca na conversa.
-- Sua função após a busca é apenas reagir brevemente se o cliente perguntar algo sobre as opções apresentadas.
 
 REGRA DE ANO: O ano atual é 2026. Use 2026 para meses à frente, ou 2027 se o mês já passou.
 
-DADOS: [DADOS:nome=valor, destino=valor, origem=valor, data_ida=AAAA-MM-DD, data_volta=AAAA-MM-DD, adultos=N, criancas=N, idades_criancas=[idades]]
-`;
+DADOS: [DADOS:nome=valor, destino=valor, origem=valor, data_ida=AAAA-MM-DD, data_volta=AAAA-MM-DD, adultos=N, criancas=N, idades_criancas=[idades]]`;
 
 // ========== Audio Helper Functions (ElevenLabs TTS/STT) ==========
 
@@ -2274,27 +2266,25 @@ async function saveQuotationRequest(
     return d;
   };
 
-  const adults = Number(quotationData.adultos) || 1;
-  const children = Number(quotationData.criancas) || 0;
-
+  const adults = Number(quotationData.adultos || 1);
+  const children = Number(quotationData.criancas || 0);
+  
   const insertPayload = {
     phone_number: phoneNumber,
     origin: quotationData.origem,
     destination: quotationData.destino,
-    departure_date: parseDate(quotationData.data_ida),
-    return_date: parseDate(quotationData.data_volta),
+    departure_date: quotationData.data_ida,
+    return_date: quotationData.data_volta,
     adults: adults,
     children: children,
-    num_people: adults + children,
     children_ages: quotationData.idades_criancas || [],
     customer_name: clientName || null,
     preferences: preferences || null,
     status: "pending",
-    raw_request: quotationData,
-    source_channel: "whatsapp_teo",
+    raw_request: quotationData
   };
 
-  console.log("[DEBUG] Salvando cotação no travel_quote_requests:", JSON.stringify(insertPayload));
+  console.log("[DEBUG] Salvando cotação no travel_quote_requests table:", JSON.stringify(insertPayload));
 
   const { data, error } = await supabase
     .from("travel_quote_requests")
@@ -2703,8 +2693,7 @@ serve(async (req) => {
 
           } else {
             // No results or API error — fallback to human specialist
-            quotationMsg = `Oi ${clientName || 'amigo(a)'}! 👋\n\nOlha, tô terminando de conferir os melhores preços pra **${quotationData.destino}** com nossos parceiros! ✈️✨\n\nComo quero te entregar a melhor opção de todas, passei seu pedido pra um de nossos consultores especialistas. Ele vai finalizar os detalhes e te chama rapidinho por aqui, beleza? 😊`;
-
+            console.log("[QUOTATION] No results found for client " + phone + ". Skipping secondary message.");
             if (saveResultId) {
               await supabase.from("travel_quote_requests").update({
                 status: "failed",
@@ -2712,8 +2701,6 @@ serve(async (req) => {
                 processed_at: new Date().toISOString(),
               }).eq("id", saveResultId);
             }
-
-            // Create lead for human follow-up
             try {
               await createQuoteRequest(phone, collectedDataForQuote);
             } catch (err) {
@@ -2722,7 +2709,8 @@ serve(async (req) => {
           }
 
           // Send results to client
-          await sendWhatsAppMessage(phone, quotationMsg);
+          // Send results to client ONLY if there are results
+          if (quotationMsg) await sendWhatsAppMessage(phone, quotationMsg);
 
           // Save to conversation history
           try {
@@ -8837,45 +8825,58 @@ Regras OBRIGATÓRIAS:
         cleanResponse += "\n\nPara viagem em grupo, mande *criar grupo* aqui no chat! 🎉";
       }
 
-      // Handle quotation if triggered and not already in progress
-      const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || 
-                           (collectedData && (collectedData._quotation_triggered === true || collectedData._quotation_triggered === "true"));
+      // Handle quotation if triggered
+      // We check if it was already triggered in PREVIOUS turns to avoid duplication
+      const alreadyQuotedInDB = (conversation.collected_data as any)?._quotation_triggered === true || 
+                                (conversation.collected_data as any)?._quotation_triggered === "true";
       
-      // VALIDATION: Priority to data inside the [COTAR_VIAGEM] tag, then fallback to collected_data
-      const effectiveData = {
-        destino: quotationData?.destino || newCollectedData.destino,
-        origem: quotationData?.origem || newCollectedData.origem,
-        data_ida: quotationData?.data_ida || newCollectedData.data_ida,
-        data_volta: quotationData?.data_volta || newCollectedData.data_volta
-      };
+      // DISPARE A BUSCA A PARTIR DO COLLECTED_DATA SE [STATUS:awaiting_quotation] ESTIVER PRESENTE
+      let effectiveQuotationData = quotationData;
+      if (!effectiveQuotationData && conversationStatus === "awaiting_quotation") {
+        console.log("[QUOTATION] Tag [COTAR_VIAGEM] missing, but [STATUS:awaiting_quotation] detected. Using newCollectedData.");
+        
+        const hasMandatory = newCollectedData.destino && 
+                            newCollectedData.origem && 
+                            newCollectedData.data_ida && 
+                            newCollectedData.data_volta;
 
-      const hasMandatoryData = effectiveData.destino && 
-                              effectiveData.origem && 
-                              effectiveData.data_ida && 
-                              effectiveData.data_volta &&
-                              /^\d{4}-\d{2}-\d{2}$/.test(effectiveData.data_ida) &&
-                              /^\d{4}-\d{2}-\d{2}$/.test(effectiveData.data_volta);
+        if (hasMandatory) {
+          effectiveQuotationData = {
+            origem: newCollectedData.origem,
+            destino: newCollectedData.destino,
+            data_ida: newCollectedData.data_ida,
+            data_volta: newCollectedData.data_volta,
+            adultos: Number(newCollectedData.adultos || newCollectedData.num_viajantes || 2),
+            criancas: Number(newCollectedData.criancas || 0),
+            idades_criancas: newCollectedData.idades_criancas || []
+          };
+          console.log("[QUOTATION] Payload mounted from newCollectedData:", effectiveQuotationData);
+        }
+      }
 
-      if (quotationData && !alreadyQuoted) {
+      const hasMandatoryData = effectiveQuotationData && 
+                              effectiveQuotationData.destino && 
+                              effectiveQuotationData.origem && 
+                              effectiveQuotationData.data_ida && 
+                              effectiveQuotationData.data_volta &&
+                              /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_ida) &&
+                              /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_volta);
+
+      if (effectiveQuotationData && !alreadyQuotedInDB) {
         if (!hasMandatoryData) {
-          console.log("[VALIDATION] Quotation tag ignored - missing or invalid mandatory data:", {
-            effectiveData,
-            sourceTag: quotationData
+          console.log("[VALIDATION] Quotation ignored - missing or invalid mandatory data:", {
+            effectiveData: effectiveQuotationData
           });
-          // AI will naturally ask for what's missing in the clean response
         } else {
-          console.log("AI triggered quotation request:", JSON.stringify(quotationData));
+          console.log("Quotation request triggered:", JSON.stringify(effectiveQuotationData));
           
-          // Send the clean message first
           if (cleanResponse) {
             await sendWhatsAppMessage(phoneNumber, cleanResponse);
-            // Deduplication: remove cleanResponse so it's not sent again at the end of the script
             cleanResponse = ""; 
           }
 
-          // Save quotation request to table for tracking
           const saveResult = await saveQuotationRequest(
-            quotationData,
+            effectiveQuotationData,
             phoneNumber,
             newCollectedData.nome || conversation.client_name || contactName,
             newCollectedData.preferencias || newCollectedData.tipo_viagem || null
@@ -8925,7 +8926,7 @@ Regras OBRIGATÓRIAS:
               body: JSON.stringify({
                 action: "process_quotation",
                 phone_number: phoneNumber,
-                quotation_data: quotationData,
+                quotation_data: effectiveQuotationData,
                 save_result_id: saveResult.id,
                 conversation_id: conversation.id,
                 client_name: newCollectedData.nome || conversation.client_name || contactName || "",
