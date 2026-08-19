@@ -1169,7 +1169,7 @@ Cliente quer falar com humano:
    --LIMPO_11--
    
    --LIMPO_12--
-- FIM_BLOCO_5
+--LIMPO_13--
 
 - USE YYYY-MM-DD
 REGRA CRÍTICA DE ANO: O ano atual é ${new Date().getFullYear()}. Se o cliente NÃO especificar o ano, SEMPRE use ${new Date().getFullYear()}. NUNCA use 2024 ou 2025. Exemplo: "junho" = "junho de ${new Date().getFullYear()}".
