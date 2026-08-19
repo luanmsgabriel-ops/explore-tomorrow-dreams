@@ -39,7 +39,7 @@ serve(async (req) => {
     }).format(nowUtc);
 
     // 1. Resolve IATA codes and names
-    const resolveLocation = async (input: string) => {
+    const resolveLocation = async (input: string, type: 'origin' | 'destination') => {
       const cleanInput = input.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
       
       // Try exact IATA code first
@@ -51,11 +51,12 @@ serve(async (req) => {
       
       if (byCode) return [byCode.code];
 
-      // Try fuzzy name match
+      // Try fuzzy name match using the correct column based on type
+      const col = type === 'origin' ? 'origin_name' : 'destination_name';
       const { data: byName } = await supabaseClient
         .from("travel_iata_map")
         .select("code")
-        .or(`origin_name.ilike.%${cleanInput}%,destination_name.ilike.%${cleanInput}%`);
+        .ilike(col, `%${cleanInput}%`);
       
       if (byName && byName.length > 0) return byName.map(n => n.code);
 
@@ -63,11 +64,12 @@ serve(async (req) => {
       const iataMatch = cleanInput.match(/\(([A-Z]{3})\)/);
       if (iataMatch) return [iataMatch[1]];
 
-      return [cleanInput]; // Return original if not found
+      return []; 
     };
 
-    const originCodes = await resolveLocation(origem);
-    const destCodes = await resolveLocation(destino);
+    const originCodes = await resolveLocation(origem, 'origin');
+    const destCodes = await resolveLocation(destino, 'destination');
+
 
     console.log(`Searching from ${origem} (${originCodes}) to ${destino} (${destCodes}) for dates ${data_ida} to ${data_volta}`);
 
@@ -84,18 +86,19 @@ serve(async (req) => {
     // Destination and Origin filters
     const destFuzzy = destino.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     
-    // We combine destination (IATA or Name) AND Origin (IATA)
-    // PostgREST: filter1=val1&filter2=val2 is AND
+    // We combine destination (IATA or Name) AND Origin (IATA or City Name)
     if (destCodes.length > 0) {
-      const destOr = destCodes.map(c => `destination_iata.eq.${c}`).join(",");
-      query = query.or(`${destOr},destination_name.ilike.%${destFuzzy}%`);
+      query = query.or(`destination_iata.in.(${destCodes.join(",")}),destination_name.ilike.%${destFuzzy}%`);
     } else {
       query = query.ilike("destination_name", `%${destFuzzy}%`);
     }
     
     if (originCodes.length > 0) {
-      query = query.in("origin_iata", originCodes);
+      query = query.or(`origin_iata.in.(${originCodes.join(",")}),origin_city.ilike.%${origem.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}%`);
+    } else {
+      query = query.ilike("origin_city", `%${origem.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}%`);
     }
+
 
 
 
