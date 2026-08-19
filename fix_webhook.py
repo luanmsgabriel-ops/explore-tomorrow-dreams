@@ -4,9 +4,16 @@ file_path = "supabase/functions/whatsapp-webhook/index.ts"
 with open(file_path, "r") as f:
     content = f.read()
 
-# Fix 1: Quotation trigger logic (lines 8840+)
-# Make sure we use collectedData accurately and check for [STATUS:awaiting_quotation]
-trigger_fix = r"""
+# Prompt fix
+prompt_fix = """4. CONFIRMAÇÃO E HANDOVER:
+   - Após o cliente confirmar, você deve informar que encaminhou o pedido para um consultor e que enquanto isso vai buscar ofertas promocionais em datas próximas.
+   - Use suas próprias palavras, não copie um texto fixo. Exemplo: "Sensacional! Já encaminhei seu pedido para um de nossos consultores especializados..."
+   - OBRIGATÓRIO: No final da mensagem de handover, emita a tag [STATUS:awaiting_quotation].
+   - OPCIONAL: Você pode incluir a tag [COTAR_VIAGEM:{"origem":"...","destino":"...","data_ida":"AAAA-MM-DD","data_volta":"AAAA-MM-DD","adultos":N,"criancas":N,"idades_criancas":[]}] se desejar ser mais específico, mas o sistema usará os dados já coletados se a tag faltar.
+"""
+
+# Trigger logic fix
+trigger_fix = """
       // Handle quotation if triggered and not already in progress
       const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || 
                            (newCollectedData && (newCollectedData._quotation_triggered === true || newCollectedData._quotation_triggered === "true"));
@@ -40,8 +47,8 @@ trigger_fix = r"""
                               effectiveQuotationData.origem && 
                               effectiveQuotationData.data_ida && 
                               effectiveQuotationData.data_volta &&
-                              /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_ida) &&
-                              /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_volta);
+                              /^\\d{4}-\\d{2}-\\d{2}$/.test(effectiveQuotationData.data_ida) &&
+                              /^\\d{4}-\\d{2}-\\d{2}$/.test(effectiveQuotationData.data_volta);
 
       if (effectiveQuotationData && !alreadyQuoted) {
         if (!hasMandatoryData) {
@@ -57,24 +64,16 @@ trigger_fix = r"""
           }
 
           const saveResult = await saveQuotationRequest(
-            effectiveQuotationData,
-            phoneNumber,
-            newCollectedData.nome || conversation.client_name || contactName,
-            newCollectedData.preferencias || newCollectedData.tipo_viagem || null
-          );
 """
 
-# Apply trigger fix (find the block starting with // Handle quotation if triggered)
-content = re.sub(r'// Handle quotation if triggered and not already in progress.*?const saveResult = await saveQuotationRequest\(', trigger_fix + '          ', content, flags=re.DOTALL)
+# Apply with simple replacement
+# Prompt
+prompt_pattern = r'4\. CONFIRMAÇÃO E HANDOVER:.*?OPCIONAL: Você pode incluir a tag \[COTAR_VIAGEM:.*?se a tag faltar\.'
+content = re.sub(prompt_pattern, prompt_fix, content, flags=re.DOTALL)
 
-# Fix 2: Prompt fix (lines 1040+)
-prompt_fix = r"""4. CONFIRMAÇÃO E HANDOVER:
-   - Após o cliente confirmar, você deve informar que encaminhou o pedido para um consultor e que enquanto isso vai buscar ofertas promocionais em datas próximas.
-   - Use suas próprias palavras, não copie um texto fixo. Exemplo: "Sensacional! Já encaminhei seu pedido para um de nossos consultores especializados..."
-   - OBRIGATÓRIO: No final da mensagem de handover, emita a tag [STATUS:awaiting_quotation].
-   - OPCIONAL: Você pode incluir a tag [COTAR_VIAGEM:{"origem":"...","destino":"...","data_ida":"AAAA-MM-DD","data_volta":"AAAA-MM-DD","adultos":N,"criancas":N,"idades_criancas":[]}] se desejar ser mais específico, mas o sistema usará os dados já coletados se a tag faltar.
-"""
-content = re.sub(r'4\. CONFIRMAÇÃO E HANDOVER:.*?OPCIONAL: Você pode incluir a tag \[COTAR_VIAGEM:.*?se a tag faltar\.', prompt_fix, content, flags=re.DOTALL)
+# Trigger
+trigger_pattern = r'// Handle quotation if triggered and not already in progress.*?const saveResult = await saveQuotationRequest\('
+content = re.sub(trigger_pattern, trigger_fix, content, flags=re.DOTALL)
 
 with open(file_path, "w") as f:
     f.write(content)
