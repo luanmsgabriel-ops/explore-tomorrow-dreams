@@ -29,23 +29,42 @@ serve(async (req) => {
     const html = await res.text();
     
     if (dryRun) {
-      // Pedaços aleatórios do HTML para encontrar a declaração do PAYLOAD
-      const parts = [];
-      const step = 50000;
-      for (let i = 0; i < html.length; i += step) {
-        const chunk = html.substring(i, i + 10000);
-        if (chunk.includes("PAYLOAD") || chunk.includes("mapa") || chunk.includes("blob")) {
-          parts.push({ offset: i, content: chunk });
-        }
+      // 1. Localizar o início do objeto PAYLOAD
+      const pIdx = html.indexOf("const PAYLOAD = {");
+      if (pIdx === -1) {
+        return new Response(JSON.stringify({ status: "error", message: "PAYLOAD not found" }), { status: 200, headers: corsHeaders });
       }
+
+      // 2. Extrair um bloco grande (150kb) para garantir que pegamos o mapa (que é gigante)
+      const payloadBlock = html.substring(pIdx, pIdx + 150000);
+
+      // 3. Extrair chaves usando regex
+      const mapaMatch = payloadBlock.match(/mapa\s*:\s*({[\s\S]*?}),\s*usd/i);
+      const blobMatch = payloadBlock.match(/blob\s*:\s*[`"']([\s\S]*?)[`"']/i);
+      const usdMatch = payloadBlock.match(/usd\s*:\s*([\d.]+)/i);
+
+      // 4. Estatísticas do Snapshot
+      const snapshotIdx = html.indexOf("PV_SNAPSHOT = [");
+      const snapshotBlock = snapshotIdx !== -1 ? html.substring(snapshotIdx, snapshotIdx + 30000) : "";
+      const backupCount = (snapshotBlock.match(/['"]fonte['"]\s*:\s*['"]backup['"]/g) || []).length;
+      const others = [...snapshotBlock.matchAll(/['"]fonte['"]\s*:\s*['"](?!backup)([^'"]+)['"]/g)].map(m => m[1]);
 
       const dataRefMatch = html.match(/var\s+DATA_REF\s*=\s*['"]([^'"]+)['"]/);
 
       return new Response(JSON.stringify({
-        status: "dry_run_html_scanning",
-        html_length: html.length,
+        status: "dry_run_payload_discovery",
         data_reference: dataRefMatch ? dataRefMatch[1] : "not_found",
-        found_parts: parts
+        usd_value: usdMatch ? usdMatch[1] : "not_found",
+        snapshot_stats: {
+          backup: backupCount,
+          others_count: others.length,
+          other_values_unique: [...new Set(others)]
+        },
+        // Enviar os dados brutos solicitados
+        mapa_sample: mapaMatch ? mapaMatch[1].substring(0, 5000) : "not_found",
+        blob_sample: blobMatch ? blobMatch[1].substring(0, 3000) : "not_found",
+        blob_total_length: blobMatch ? blobMatch[1].length : 0,
+        snapshot_sample: snapshotBlock.substring(0, 3000)
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
