@@ -159,11 +159,13 @@ serve(async (req) => {
         return_departure_time: convertTime(cols[11]),
         return_arrival_time: convertTime(cols[12]),
         last_seen_at: executionTimestamp,
-        active: true
+        active: true,
+        source_type: 'bloqueio'
       });
     }
 
     if (Array.isArray(snapshot)) {
+      const brToday = new Date(brDateStr + "T00:00:00");
       for (const item of snapshot) {
         let depDate: string | null = null;
         let retDate: string | null = null;
@@ -179,13 +181,34 @@ serve(async (req) => {
           }
         }
 
-        const price = parseFloat(String(item.por).replace(/[^0-9.]/g, ""));
+        // EXCLUSION RULE: discard packages whose departure date has passed
+        if (depDate && new Date(depDate + "T00:00:00") < brToday) {
+          continue;
+        }
+
+        // Helper for BR currency parsing: "R$ 1.159,00" -> 1159.00
+        const parseBrCurrency = (val: any) => {
+          if (!val) return 0;
+          const clean = String(val)
+            .replace(/R\$\s?/, "")
+            .replace(/\./g, "")
+            .replace(",", ".");
+          return parseFloat(clean) || 0;
+        };
+
+        const price = parseBrCurrency(item.por);
+        const priceOld = parseBrCurrency(item.de);
+        const boardingTax = parseBrCurrency(item.taxas);
+
         const name = item.nome || "";
         const originIata = item.origem_iata || "";
         const destination = item.destino || "";
 
-        // Package source_id: nome do pacote + origem_iata + destino + data de ida + data de volta + preço
+        // Deterministic hash for packages
         const idSource = `pkg|${name}|${originIata}|${destination}|${depDate}|${retDate}|${price}`;
+        
+        // Clean raw_data: everything except 'link'
+        const { link, ...cleanRawData } = item;
 
         parsedOffers.push({
           source: "viajandocomdesconto",
@@ -198,15 +221,12 @@ serve(async (req) => {
           return_date: retDate,
           price_per_person: price,
           currency: "BRL",
-          boarding_tax: parseFloat(item.taxa) || 0,
+          boarding_tax: boardingTax,
           last_seen_at: executionTimestamp,
           active: true,
           alternative_dates: item.outras || null,
-          raw_data: { 
-            title: name,
-            uf: item.uf,
-            min_label: item.min_label
-          }
+          source_type: item.fonte || null,
+          raw_data: cleanRawData
         });
       }
     }
@@ -266,6 +286,7 @@ serve(async (req) => {
       offers_updated: updated,
       offers_deactivated: deactivatedCount,
       map_errors: mapErrors,
+      offers_ignored: (Array.isArray(snapshot) ? snapshot.length : 0) + lines.length - parsedOffers.length,
       started_at: startTime,
       finished_at: new Date().toISOString()
     });
@@ -276,7 +297,21 @@ serve(async (req) => {
       created,
       updated,
       deactivated: deactivatedCount,
-      map_errors: mapErrors
+      map_errors: mapErrors,
+      raw_execution_info: {
+        total_snapshot: Array.isArray(snapshot) ? snapshot.length : 0,
+        packages_no_date: Array.isArray(snapshot) ? snapshot.filter(i => !i.data).length : 0,
+        ignored_due_to_past_date: Array.isArray(snapshot) ? snapshot.filter(i => {
+          if (!i.data) return false;
+          const parts = i.data.split(/\s+a\s+/);
+          if (parts.length === 2) {
+            const [d1, m1, y1] = parts[0].split('/');
+            const date = `${y1}-${m1}-${d1}`;
+            return date < brDateStr;
+          }
+          return false;
+        }).length : 0
+      }
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err: any) {

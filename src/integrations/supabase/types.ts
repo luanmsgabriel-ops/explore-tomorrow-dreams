@@ -1404,6 +1404,7 @@ export type Database = {
           return_departure_time: string | null
           source: string
           source_id: string
+          source_type: string | null
           source_url: string | null
           updated_at: string | null
         }
@@ -1434,6 +1435,7 @@ export type Database = {
           return_departure_time?: string | null
           source: string
           source_id: string
+          source_type?: string | null
           source_url?: string | null
           updated_at?: string | null
         }
@@ -1464,6 +1466,7 @@ export type Database = {
           return_departure_time?: string | null
           source?: string
           source_id?: string
+          source_type?: string | null
           source_url?: string | null
           updated_at?: string | null
         }
