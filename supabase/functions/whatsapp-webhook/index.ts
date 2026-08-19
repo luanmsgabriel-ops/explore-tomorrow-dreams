@@ -9219,7 +9219,7 @@ Regras OBRIGATÓRIAS:
       }
 
       // Schedule follow-up quote if no quotation was triggered yet
-      if (newState !== "completed" && newState !== "human_takeover" && !newCollectedData._quotation_triggered && !conversation.quote_request_id) {
+      if (newState !== "completed" && newState !== "human_takeover" && !effectiveQuotationData && !newCollectedData._quotation_triggered && !conversation.quote_request_id) {
         try {
           const selfUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
           // Get the updated_at from the DB after our update
