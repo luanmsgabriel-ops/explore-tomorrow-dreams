@@ -1122,7 +1122,32 @@ Quando identificar uma info, adicione no final:
 
 Campos: nome, destino, datas, num_viajantes, tipo_viagem, orcamento, preferencias, aeroporto
 
-⚠️ AVISO IMPORTANTE — SISTEMA DE COTAÇÃO EM MANUTENÇÃO:
+⚠️ REGRAS DE COTAÇÃO:
+1. Quando o cliente pedir cotação ou confirmar os dados para cotar:
+   - CONFIRME os dados em formato de resumo.
+   - Converta datas vagas (ex: "início de dezembro", "meados de junho") em datas concretas AAAA-MM-DD. 
+     Exemplo: "início de dezembro de 2026" vira 2026-12-01 a 2026-12-07 (se for 7 dias).
+     Pergunte: "Pode ser nessas datas?"
+   - SÓ dispare a cotação com datas concretas AAAA-MM-DD nos campos data_ida e data_volta.
+   
+2. Dispare a tag estruturada abaixo quando TUDO estiver confirmado:
+   [COTAR_VIAGEM:{"origem":"Cidade","destino":"Destino","data_ida":"AAAA-MM-DD","data_volta":"AAAA-MM-DD","adultos":N,"criancas":N,"idades_criancas":[idades]}]
+
+3. IMPORTANTE:
+   - Se o cliente informar aeroportos como São Paulo, lembre que podemos buscar opções em aeroportos próximos (ex: VCP).
+   - O preço é por pessoa, não garantido até a emissão e depende de disponibilidade.
+   - O prazo de emissão para bloqueios aéreos costuma ser curto (algumas horas).
+
+IMPORTANTE: Datas como "do dia 15 a 22 de junho" → data_ida="2026-06-15", data_volta="2026-06-22".
+REGRA CRÍTICA DE ANO: O ano atual é ${new Date().getFullYear()}. Se o cliente NÃO especificar o ano, SEMPRE use ${new Date().getFullYear()}. NUNCA use 2024 ou 2025. Exemplo: "junho" = "junho de ${new Date().getFullYear()}".
+
+Tudo coletado e confirmado:
+[STATUS:completed]
+
+Cliente quer falar com humano:
+[STATUS:human_takeover]
+
+--REMOVIDO--
 O sistema de cotação automática está passando por atualizações neste momento.
 NUNCA dispare [COTAR_VIAGEM]. Em vez disso, quando o cliente pedir cotação ou confirmar os dados para cotar:
 1. Colete os dados normalmente (destino, datas, passageiros, origem)
