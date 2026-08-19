@@ -157,9 +157,16 @@ serve(async (req) => {
       }
     }
 
-    const CHUNK_SIZE = 500;
-    for (let i = 0; i < parsedOffers.length; i += CHUNK_SIZE) {
-      const chunk = parsedOffers.slice(i, i + CHUNK_SIZE);
+    // Deduplicate in memory before upserting to avoid Supabase errors
+    const uniqueOffers = new Map();
+    for (const offer of parsedOffers) {
+      uniqueOffers.set(`${offer.source_id}-${offer.offer_type}`, offer);
+    }
+    const finalOffers = Array.from(uniqueOffers.values());
+
+    const CHUNK_SIZE = 300;
+    for (let i = 0; i < finalOffers.length; i += CHUNK_SIZE) {
+      const chunk = finalOffers.slice(i, i + CHUNK_SIZE);
       const { error } = await supabaseClient
         .from("travel_offers")
         .upsert(chunk, { onConflict: "source,source_id,offer_type" });
@@ -174,13 +181,13 @@ serve(async (req) => {
 
     await supabaseClient.from("travel_sync_logs").insert({
       status: "success",
-      offers_found: parsedOffers.length,
+      offers_found: finalOffers.length,
       finished_at: new Date().toISOString()
     });
 
     return new Response(JSON.stringify({
       status: "success",
-      total_offers: parsedOffers.length,
+      total_offers: finalOffers.length,
       map_errors: mapErrors
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
