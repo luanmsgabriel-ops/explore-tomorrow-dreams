@@ -80,22 +80,20 @@ serve(async (req) => {
 
     // Destination and Origin filters
     const destFuzzy = destino.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const destFilters = destCodes.map(c => `destination_iata.eq.${c}`).join(",");
-    const originFilters = originCodes.map(c => `origin_iata.eq.${c}`).join(",");
     
-    let filterString = "";
-    if (destFilters || destFuzzy) {
-      filterString += `(destination_iata.in.(${destCodes.join(",")}),destination_name.ilike.%${destFuzzy}%)`;
+    // We combine destination (IATA or Name) AND Origin (IATA)
+    // PostgREST: filter1=val1&filter2=val2 is AND
+    if (destCodes.length > 0) {
+      const destOr = destCodes.map(c => `destination_iata.eq.${c}`).join(",");
+      query = query.or(`${destOr},destination_name.ilike.%${destFuzzy}%`);
+    } else {
+      query = query.ilike("destination_name", `%${destFuzzy}%`);
     }
     
-    if (originFilters) {
-      if (filterString) filterString += ",";
-      filterString += `origin_iata.in.(${originCodes.join(",")})`;
+    if (originCodes.length > 0) {
+      query = query.in("origin_iata", originCodes);
     }
 
-    if (filterString) {
-      query = query.or(filterString);
-    }
 
 
 
