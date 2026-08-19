@@ -27,37 +27,7 @@ serve(async (req) => {
     const destClean = normalize(destino);
     const originClean = normalize(origem);
 
-    const fetchOffers = async (filterOrigin: boolean, minDate: string, maxDate: string, orderByPrice: boolean) => {
-      const { data, error } = await supabaseClient.rpc('search_travel_offers', {
-        p_dest_term: destClean,
-        p_origin_term: filterOrigin ? originClean : null,
-        p_min_date: minDate,
-        p_max_date: maxDate,
-        p_total_passengers: totalPassageiros,
-        p_order_by_price: orderByPrice
-      });
-      if (error) {
-        console.error("[cotar-viagem] RPC Error:", error);
-        return [];
-      }
-      
-      // FILTRO DE SEGURANÇA: 
-      // 1. Apenas bloqueio_aereo (conforme regra 3)
-      // 2. departure_date não nulo (conforme regra 2)
-      // 3. Assentos disponíveis >= passageiros (conforme regra 1)
-      return (data || []).filter((o: any) => 
-        o.offer_type === 'bloqueio_aereo' && 
-        o.departure_date && 
-        Number(o.available_seats || 0) >= totalPassageiros
-      );
-    };
-
-    let targetDepStr = data_ida;
-    if (data_ida && data_ida.includes('/')) {
-      const [d, m, y] = data_ida.split('/');
-      targetDepStr = `${y}-${m}-${d}`;
-    }
-
+    // Data de hoje no fuso de Brasília (para o issue_deadline e departure_date)
     const nowUtc = new Date();
     const brDateStr = new Intl.DateTimeFormat('fr-CA', {
       timeZone: 'America/Sao_Paulo',
@@ -66,69 +36,130 @@ serve(async (req) => {
       day: '2-digit'
     }).format(nowUtc);
 
-    const baseDate = (targetDepStr && targetDepStr >= brDateStr) ? targetDepStr : brDateStr;
-    const targetMonth = baseDate.substring(0, 7);
-    const monthStart = `${targetMonth}-01`;
-    const monthEnd = `${targetMonth}-31`;
+    // 1. REFATORE PARA UMA ÚNICA CONSULTA BASE
+    // Buscamos todas as ofertas futuras elegíveis (sem filtro de origem ainda, para permitir fallback de origem)
+    const { data: allData, error } = await supabaseClient.rpc('search_travel_offers', {
+      p_dest_term: destClean,
+      p_origin_term: null, // Buscamos tudo para filtrar no código e gerenciar fallback
+      p_min_date: brDateStr,
+      p_max_date: '2099-12-31',
+      p_total_passengers: totalPassageiros,
+      p_order_by_price: false
+    });
 
-    // 1. Data Pedida (Mês alvo)
-    const dataA = await fetchOffers(true, monthStart, monthEnd, false);
-    
-    // 2. Próxima Data (Somente se Data Pedida estiver vazia. POSTERIOR à data base)
-    let finalB: any[] = [];
-    if (dataA.length === 0) {
-      const nextDay = new Date(new Date(baseDate + "T12:00:00").getTime() + 86400000)
-        .toISOString().split('T')[0];
-      finalB = await fetchOffers(true, nextDay, '2099-12-31', false);
-    }
+    if (error) throw error;
 
-    // 3. Melhor Preço (Sempre busca no futuro todo, a partir de hoje)
-    const finalC = await fetchOffers(true, brDateStr, '2099-12-31', true);
+    // Filtros obrigatórios aplicados em memória no conjunto retornado
+    // Obs: A RPC já filtra por active=true, price > 0 e issue_deadline >= hoje.
+    // Reforçamos aqui conforme a regra do usuário.
+    let eligibleOffers = (allData || []).filter((o: any) => {
+      const isBloqueio = o.offer_type === 'bloqueio_aereo';
+      const hasSeats = Number(o.available_seats || 0) >= totalPassageiros;
+      const isFuture = o.departure_date >= brDateStr;
+      const priceOk = Number(o.price_per_person) > 0;
+      
+      return isBloqueio && hasSeats && isFuture && priceOk;
+    });
 
-    let finalA = dataA;
-
-    // Fallbacks se não houver NADA com a origem específica
-    if (finalA.length === 0 && finalB.length === 0 && finalC.length === 0) {
-      const [fA, fC] = await Promise.all([
-        fetchOffers(false, monthStart, monthEnd, false),
-        fetchOffers(false, brDateStr, '2099-12-31', true)
-      ]);
-      finalA = fA;
-      if (finalA.length === 0) {
-        const nextDay = new Date(new Date(baseDate + "T12:00:00").getTime() + 86400000)
-          .toISOString().split('T')[0];
-        finalB = await fetchOffers(false, nextDay, '2099-12-31', false);
-      } else {
-        finalB = [];
+    // Filtro de Origem com Fallback
+    // Tentamos filtrar pela origem solicitada primeiro
+    const filterByOrigin = (list: any[], term: string) => {
+      if (!term) return list;
+      const termClean = normalize(term);
+      // Mapeamento simples de expansão de origens (sincronizado com a lógica da RPC)
+      const expansions: Record<string, string[]> = {
+        'sao paulo': ['gru', 'cgh', 'vcp', 'campinas', 'sp'],
+        'sp': ['gru', 'cgh', 'vcp', 'campinas', 'sao paulo'],
+        'goiania': ['gyn'],
+        'porto alegre': ['poa'],
+        'curitiba': ['cwb'],
+        'belo horizonte': ['cnf', 'bhz'],
+        'rio': ['gig', 'sdu'],
+        'brasilia': ['bsb']
+      };
+      
+      const searchTerms = [termClean];
+      for (const [key, val] of Object.entries(expansions)) {
+        if (termClean.includes(key)) searchTerms.push(...val);
       }
-      finalC = fC;
-    }
 
-    const findClosest = (list: any[], targetStr: string) => {
-      if (!list || list.length === 0) return null;
-      const targetTime = new Date(targetStr + "T12:00:00").getTime();
-      return list.reduce((prev, curr) => {
-        const prevTime = new Date(prev.departure_date + "T12:00:00").getTime();
-        const currTime = new Date(curr.departure_date + "T12:00:00").getTime();
-        return Math.abs(currTime - targetTime) < Math.abs(prevTime - targetTime) ? curr : prev;
+      return list.filter(o => {
+        const oOrig = normalize(o.origin_city || o.origin_iata);
+        const oIata = normalize(o.origin_iata);
+        return searchTerms.some(t => oOrig.includes(t) || oIata.includes(t));
       });
     };
 
-    const offerA = findClosest(finalA, baseDate);
-    const offerB = finalB.length > 0 ? findClosest(finalB, baseDate) : null;
-    
+    let finalSet = filterByOrigin(eligibleOffers, originClean);
+    let usedFallback = false;
+
+    if (finalSet.length === 0) {
+      finalSet = eligibleOffers; // Fallback: qualquer origem para o destino
+      usedFallback = true;
+    }
+
+    // Preparação de datas para seleção
+    let targetDepStr = data_ida;
+    if (data_ida && data_ida.includes('/')) {
+      const [d, m, y] = data_ida.split('/');
+      targetDepStr = `${y}-${m}-${d}`;
+    }
+    const baseDate = (targetDepStr && targetDepStr >= brDateStr) ? targetDepStr : brDateStr;
+    const targetMonth = baseDate.substring(0, 7);
+
+    // 2. REGRAS DE SELEÇÃO DENTRO DO CONJUNTO
+
+    // DATA PEDIDA: Mês da data pedida, menor distância, desempate preço total
+    const monthOffers = finalSet.filter(o => o.departure_date.startsWith(targetMonth));
+    let offerA = null;
+    if (monthOffers.length > 0) {
+      const targetTime = new Date(baseDate + "T12:00:00").getTime();
+      offerA = monthOffers.reduce((prev, curr) => {
+        const prevTime = new Date(prev.departure_date + "T12:00:00").getTime();
+        const currTime = new Date(curr.departure_date + "T12:00:00").getTime();
+        const distPrev = Math.abs(prevTime - targetTime);
+        const distCurr = Math.abs(currTime - targetTime);
+
+        if (distCurr < distPrev) return curr;
+        if (distCurr > distPrev) return prev;
+        
+        // Empate na distância: o mais barato (tarifa + taxa)
+        const totalPrev = Number(prev.price_per_person) + Number(prev.boarding_tax || 0);
+        const totalCurr = Number(curr.price_per_person) + Number(curr.boarding_tax || 0);
+        return totalCurr < totalPrev ? curr : prev;
+      });
+    }
+
+    // PROXIMA DATA: Somente se A for vazio. Primeiro estritamente posterior à data pedida.
+    let offerB = null;
+    if (!offerA) {
+      const futureOffers = finalSet.filter(o => o.departure_date > baseDate)
+        .sort((a, b) => a.departure_date.localeCompare(b.departure_date));
+      if (futureOffers.length > 0) {
+        offerB = futureOffers[0];
+      }
+    }
+
+    // MELHOR PREÇO: Menor custo total (tarifa + taxa). Não repete A ou B.
     const referenceOffer = offerA || offerB;
     let offerC = null;
     if (referenceOffer) {
       const refTotal = Number(referenceOffer.price_per_person) + Number(referenceOffer.boarding_tax || 0);
-      offerC = finalC.find((o: any) => {
+      
+      const sortedByPrice = [...finalSet].sort((a, b) => {
+        const totalA = Number(a.price_per_person) + Number(a.boarding_tax || 0);
+        const totalB = Number(b.price_per_person) + Number(b.boarding_tax || 0);
+        return totalA - totalB;
+      });
+
+      offerC = sortedByPrice.find(o => {
         if (o.id === referenceOffer.id) return false;
-        if (offerB && o.id === offerB.id) return false;
         const currentTotal = Number(o.price_per_person) + Number(o.boarding_tax || 0);
         return currentTotal < refTotal;
       });
     }
 
+    // Formatação
     const format = (o: any, role: string, referenceTotal?: number) => {
       const personPrice = Number(o.price_per_person);
       const tax = Number(o.boarding_tax || 0);
@@ -172,7 +203,7 @@ serve(async (req) => {
       resultados.push(format(offerC, "melhor_preco", refTotal));
     }
 
-    return new Response(JSON.stringify({ resultados }), {
+    return new Response(JSON.stringify({ resultados, meta: { used_fallback: usedFallback, total_passengers: totalPassageiros } }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
