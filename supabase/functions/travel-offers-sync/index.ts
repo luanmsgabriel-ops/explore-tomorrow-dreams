@@ -29,41 +29,45 @@ serve(async (req) => {
     const html = await res.text();
     
     if (dryRun) {
-      const getLiteralDump = (s: string, length = 30000) => {
+      const getLiteralDump = (s: string, length = 60000) => {
         const idx = html.indexOf(s);
         if (idx === -1) return "NOT_FOUND";
         return html.substring(idx, idx + length);
       };
 
-      const rawContent = html;
-      
-      // Busca literal do objeto PAYLOAD no HTML
-      let payloadLiteral = "not_found";
-      const pIdx = rawContent.indexOf("const PAYLOAD = {");
-      if (pIdx !== -1) {
-        // Tentar encontrar o fechamento do objeto (aproximado)
-        payloadLiteral = rawContent.substring(pIdx, pIdx + 30000);
+      // Tentar localizar a definição exata do objeto PAYLOAD
+      let payloadBlock = "not_found";
+      const payloadStartIdx = html.indexOf("const PAYLOAD = {");
+      if (payloadStartIdx !== -1) {
+        // Capturar um bloco grande para garantir que pegamos o mapa e o blob
+        payloadBlock = html.substring(payloadStartIdx, payloadStartIdx + 120000);
       }
 
-      const dataRefMatch = html.match(/var\s+DATA_REF\s*=\s*['"]([^'"]+)['"]/);
-      const dataRef = dataRefMatch ? dataRefMatch[1] : "not_found";
+      // Tentar extrair chaves específicas para facilitar a leitura no log
+      const mapaMatch = payloadBlock.match(/mapa\s*:\s*({[\s\S]*?}),\s*usd/i);
+      const blobMatch = payloadBlock.match(/blob\s*:\s*[`"']([\s\S]*?)[`"']/i);
+      const usdMatch = payloadBlock.match(/usd\s*:\s*([\d.]+)/i);
 
-      const snapshotLiteral = getLiteralDump("PV_SNAPSHOT", 15000);
+      const dataRefMatch = html.match(/var\s+DATA_REF\s*=\s*['"]([^'"]+)['"]/);
+      
+      const snapshotLiteral = getLiteralDump("PV_SNAPSHOT", 20000);
       const backupCount = (snapshotLiteral.match(/['"]fonte['"]\s*:\s*['"]backup['"]/g) || []).length;
-      const othersMatch = snapshotLiteral.match(/['"]fonte['"]\s*:\s*['"](?!backup)([^'"]+)['"]/g) || [];
+      const others = [...snapshotLiteral.matchAll(/['"]fonte['"]\s*:\s*['"](?!backup)([^'"]+)['"]/g)].map(m => m[1]);
 
       return new Response(JSON.stringify({
-        status: "dry_run_raw_payload_extraction",
-        data_reference: dataRef,
+        status: "dry_run_full_payload_extraction",
+        data_reference: dataRefMatch ? dataRefMatch[1] : "not_found",
+        usd_value: usdMatch ? usdMatch[1] : "not_found",
         snapshot_stats: {
           backup: backupCount,
-          others: othersMatch.length,
-          first_other: othersMatch[0] || null
+          others_count: others.length,
+          other_values_unique: [...new Set(others)]
         },
-        payload_literal_start: payloadLiteral.substring(0, 5000),
-        payload_literal_middle: payloadLiteral.substring(10000, 15000),
-        payload_literal_end: payloadLiteral.substring(25000, 30000),
-        snapshot_dump: snapshotLiteral.substring(0, 5000)
+        // Enviar pedaços do bloco para não estourar limite de log mas ver o conteúdo
+        payload_mapa_start: mapaMatch ? mapaMatch[1].substring(0, 5000) : "mapa_not_captured",
+        payload_blob_start: blobMatch ? blobMatch[1].substring(0, 5000) : "blob_not_captured",
+        payload_blob_total_length: blobMatch ? blobMatch[1].length : 0,
+        full_payload_header: payloadBlock.substring(0, 2000)
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
