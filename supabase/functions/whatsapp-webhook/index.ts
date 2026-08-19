@@ -8890,14 +8890,14 @@ Regras OBRIGATÓRIAS:
             }
           }
 
-          const saveResult = await saveQuotationRequest(
-            effectiveQuotationData,
-            phoneNumber,
-            newCollectedData.nome || conversation.client_name || contactName,
-            newCollectedData.preferencias || newCollectedData.tipo_viagem || null
-          );
+            const saveResult = await saveQuotationRequest(
+              effectiveQuotationData,
+              phoneNumber,
+              newCollectedData.nome || conversation.client_name || contactName,
+              newCollectedData.preferencias || newCollectedData.tipo_viagem || null
+            );
 
-          if (saveResult.success && saveResult.id) {
+            if (saveResult.success && saveResult.id) {
             // Mark quotation as triggered ONLY IF save was successful and returned an ID
             newCollectedData._last_quote_id = saveResult.id;
             newCollectedData._quotation_triggered = true;
