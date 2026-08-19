@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { toast } from 'sonner';
 
 interface QuotationPassengers {
   adultos: number;
@@ -63,8 +62,7 @@ export function useQuotation() {
       return { status: 'success' as const, data: responseData };
     } catch (err) {
       setStatus('error');
-      const errorMsg = err instanceof Error ? err.message : 'Erro ao buscar cotação';
-      toast.error(errorMsg);
+      console.error('Quotation error:', err);
       return { status: 'error' as const, data: null };
     }
   };
@@ -154,6 +152,6 @@ export function formatQuotationResults(data: any): string {
     return `📋 ${msg}`;
   }
 
-  // Fallback
-  return `✈️ **Resultado da cotação:**\n\`\`\`\n${JSON.stringify(data, null, 2)}\n\`\`\``;
+  // Fallback - Just a polite message instead of JSON
+  return '✈️ **Resultado da cotação:**\n\nNossos especialistas estão finalizando os detalhes para você. Em breve, enviaremos a cotação completa com os melhores preços! 🌟';
 }

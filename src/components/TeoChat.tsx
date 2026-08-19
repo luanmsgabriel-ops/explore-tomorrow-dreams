@@ -312,7 +312,7 @@ Me conta aí! 👇`
 
         // Trigger quotation request
         const quotResult = await quotation.requestQuotation(quotationData);
-        if (quotResult.status === 'success' && quotResult.data) {
+        if (quotResult.status === 'success' && quotResult.data && !quotResult.data.error) {
           const formatted = formatQuotationResults(quotResult.data);
           setMessages((prev) => [...prev, { role: 'assistant', content: formatted }]);
           // Fire-and-forget: generate visual quote card
@@ -329,6 +329,29 @@ Me conta aí! 👇`
               setMessages((prev) => [...prev, { role: 'assistant', content: `📋 **Sua cotação visual:**\n\n![Cotação ${quotationData.destino}](${visualData.imageUrl})\n\n[📥 Baixar cotação](${visualData.imageUrl})` }]);
             }
           }).catch(() => {/* non-blocking */});
+        } else {
+          // Failure handling: friendly message and record the request
+          setMessages((prev) => [
+            ...prev, 
+            { 
+              role: 'assistant', 
+              content: `Olha, tô terminando de conferir os melhores preços pra **${quotationData.destino}** com nossos parceiros! ✈️✨\n\nComo quero te entregar a melhor opção de todas, passei seu pedido pra um de nossos consultores especialistas. Ele vai finalizar os detalhes e te chama rapidinho, beleza? 😊` 
+            }
+          ]);
+
+          supabase.from('quote_requests').insert({
+            client_name: userName || 'Cliente Téo Site',
+            email: `teo_site_${Date.now()}@tomorrowtravel.com.br`,
+            whatsapp: userWhatsapp || '',
+            destination_name: quotationData.destino,
+            travel_date: quotationData.data_ida,
+            num_people: String((quotationData.passageiros.adultos || 1) + (quotationData.passageiros.criancas || 0)),
+            notes: `Cotação solicitada via Téo Site. Volta: ${quotationData.data_volta}. Adultos: ${quotationData.passageiros.adultos}, Crianças: ${quotationData.passageiros.criancas}${quotationData.passageiros.idades_criancas?.length ? ` (Idades: ${quotationData.passageiros.idades_criancas.join(', ')})` : ''}.`,
+            status: 'pending',
+            source_channel: 'website'
+          } as any).then(({ error }) => {
+            if (error) console.error('Error recording failed quote:', error);
+          });
         }
       }
 
