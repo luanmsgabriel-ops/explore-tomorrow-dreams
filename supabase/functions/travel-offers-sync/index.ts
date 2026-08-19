@@ -120,18 +120,19 @@ serve(async (req) => {
         destination_name: destinationName,
         departure_date: convertDate(cols[2]),
         return_date: convertDate(cols[3]),
-        price: parseFloat(cols[6]),
+        price_per_person: parseFloat(cols[6]),
         currency: cols[7] === "0" ? "BRL" : "USD",
         airline: cols[15],
-        tax: parseFloat(cols[13]) || 0,
+        boarding_tax: parseFloat(cols[13]) || 0,
         nights: parseInt(cols[4]) || 0,
-        seats_available: parseInt(cols[5]) || 0,
-        deadline_date: convertDate(cols[8]),
+        available_seats: parseInt(cols[5]) || 0,
+        issue_deadline: convertDate(cols[8]),
         outbound_departure_time: convertTime(cols[9]),
         outbound_arrival_time: convertTime(cols[10]),
-        inbound_departure_time: convertTime(cols[11]),
-        inbound_arrival_time: convertTime(cols[12]),
-        last_seen_at: executionTimestamp
+        return_departure_time: convertTime(cols[11]),
+        return_arrival_time: convertTime(cols[12]),
+        last_seen_at: executionTimestamp,
+        active: true
       });
     }
 
@@ -141,16 +142,17 @@ serve(async (req) => {
           source: "viajandocomdesconto",
           source_id: `pkg-${item.nome}-${item.origem_iata}-${item.destino}-${item.por}`.substring(0, 64),
           offer_type: "pacote",
-          title: item.nome,
           destination_name: item.destino,
           origin_iata: item.origem_iata,
           origin_city: item.origem_cidade,
           departure_date: item.ida ? convertDate(item.ida.replace(/\//g, "").substring(2, 8)) : null,
           return_date: item.volta ? convertDate(item.volta.replace(/\//g, "").substring(2, 8)) : null,
-          price: parseFloat(String(item.por).replace(/[^0-9.]/g, "")),
+          price_per_person: parseFloat(String(item.por).replace(/[^0-9.]/g, "")),
           currency: "BRL",
-          tax: parseFloat(item.taxa) || 0,
-          last_seen_at: executionTimestamp
+          boarding_tax: parseFloat(item.taxa) || 0,
+          last_seen_at: executionTimestamp,
+          active: true,
+          raw_data: { title: item.nome }
         });
       }
     }
@@ -166,15 +168,14 @@ serve(async (req) => {
 
     await supabaseClient
       .from("travel_offers")
-      .update({ is_active: false })
+      .update({ active: false })
       .lt("last_seen_at", executionTimestamp)
       .eq("source", "viajandocomdesconto");
 
     await supabaseClient.from("travel_sync_logs").insert({
-      source: "viajandocomdesconto",
-      offers_count: parsedOffers.length,
-      map_errors: mapErrors,
-      status: "success"
+      status: "success",
+      offers_found: parsedOffers.length,
+      finished_at: new Date().toISOString()
     });
 
     return new Response(JSON.stringify({
