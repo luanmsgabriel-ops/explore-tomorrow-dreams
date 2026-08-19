@@ -69,6 +69,9 @@ serve(async (req) => {
     const originCodes = await resolveLocation(origem);
     const destCodes = await resolveLocation(destino);
 
+    console.log(`Searching from ${origem} (${originCodes}) to ${destino} (${destCodes}) for dates ${data_ida} to ${data_volta}`);
+
+
     // 2. Build Query
     let query = supabaseClient
       .from("travel_offers")
