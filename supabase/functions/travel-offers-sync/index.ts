@@ -19,7 +19,6 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const dryRun = body.dry_run === true;
     
-    // Target the /pacotes page which we know exists and might contain data
     const targetUrl = "https://www.viajandocomdesconto.com.br/pacotes";
     const res = await fetch(targetUrl, {
         headers: {
@@ -29,21 +28,29 @@ serve(async (req) => {
     });
     const html = await res.text();
 
+    // Look for data inside the HTML body script tags
+    // The previous dump showed tsx_app_main_1 and other TSXObject instances
+    // We need to find where the actual list of offers is defined.
+    
     if (dryRun) {
+      // Return a targeted slice of the HTML to find the data structure
+      // We'll search for 'tsx_' which seems to be the object prefix
+      const tsxMatches = html.match(/tsx_[a-zA-Z0-9_]+\.attribute = \{[^}]+\}/g) || [];
+      
       return new Response(JSON.stringify({
-        status: "dry_run_pacotes",
+        status: "dry_run_discovery",
         url: targetUrl,
-        length: html.length,
-        has_pacotes: html.includes("PACOTES"),
-        has_pvoo: html.includes("__PVOO_PAYLOAD"),
-        html_sample: html.substring(0, 50000) // Large sample to find the data
+        tsx_matches: tsxMatches.slice(0, 50),
+        html_contains_bloqueios: html.toLowerCase().includes("bloqueio"),
+        html_contains_pacotes: html.toLowerCase().includes("pacote"),
+        html_head: html.substring(0, 2000)
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ status: "skipped_real_run" }), { status: 200, headers: corsHeaders });
+    return new Response(JSON.stringify({ status: "skipped" }), { status: 200, headers: corsHeaders });
 
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {
