@@ -25,9 +25,9 @@ payload = {
                         "messages": [
                             {
                                 "from": "5515991825285",
-                                "id": "TEST_COLUMNS_" + str(os.getpid()),
+                                "id": "TEST_SUCCESS_" + str(os.getpid()),
                                 "timestamp": "1724080000",
-                                "text": {"body": "Sim, tudo certo!"},
+                                "text": {"body": "Pode cotar agora!"},
                                 "type": "text"
                             }
                         ]
@@ -39,6 +39,6 @@ payload = {
     ]
 }
 
-print(f"Triggering search with column fix...")
+print(f"Executing search trigger test...")
 response = requests.post(url, headers=headers, json=payload)
 print(f"Status: {response.status_code}")
