@@ -1149,7 +1149,10 @@ Cliente quer falar com humano:
 
 --REMOVIDO--
    - Mantenha o foco na cotação validada.
-1. Colete os dados normalmente (destino, datas, passageiros, origem)
+   - Use datas concretas AAAA-MM-DD.
+   - Confirme o resumo antes de cotar.
+   - REMOVIDO_BLOCO_ANTERIOR: 
+
 2. Após a confirmação, envie uma mensagem como:
    "Nosso sistema de cotação automática está passando por uma atualização pra ficar ainda melhor! 🚀
    
