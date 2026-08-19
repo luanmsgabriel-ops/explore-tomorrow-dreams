@@ -8870,13 +8870,17 @@ Regras OBRIGATÓRIAS:
           });
         } else {
           // CHECK FOR DUPLICATE RECENT REQUEST (LAST 24H)
+          // Refined check: only duplicate if ALL parameters match exactly
           const { data: existingReq } = await supabase
             .from("travel_quote_requests")
             .select("id, status, processing_details")
             .eq("phone_number", phoneNumber)
+            .eq("origin", effectiveQuotationData.origem)
             .eq("destination", effectiveQuotationData.destino)
             .eq("departure_date", effectiveQuotationData.data_ida)
             .eq("return_date", effectiveQuotationData.data_volta)
+            .eq("adults", effectiveQuotationData.adultos)
+            .eq("children", effectiveQuotationData.criancas)
             .gt("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
             .order("created_at", { ascending: false })
             .limit(1)
