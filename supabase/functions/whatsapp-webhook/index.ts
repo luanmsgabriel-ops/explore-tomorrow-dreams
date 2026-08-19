@@ -9110,6 +9110,22 @@ Regras OBRIGATÓRIAS:
       });
     }
 
+    if (req.method === "GET" && req.url.includes("discovery")) {
+        const targetDiscoveryUrl = "https://viajandocomdesconto.com.br/site/login";
+        const discResp = await fetch(targetDiscoveryUrl, {
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+        });
+        const discHtml = await discResp.text();
+        return new Response(JSON.stringify({ 
+            status: "discovery_via_webhook", 
+            html_preview: discHtml.substring(0, 8000),
+            includes_pvoo: discHtml.includes("__PVOO_PAYLOAD"),
+            url_used: targetDiscoveryUrl
+        }), { status: 200, headers: corsHeaders });
+    }
+
     return new Response("Method not allowed", { status: 405 });
   } catch (error) {
     console.error("Webhook error:", error);
