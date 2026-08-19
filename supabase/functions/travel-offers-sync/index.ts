@@ -14,7 +14,7 @@ serve(async (req) => {
     const targetUrl = "https://viajandocomdesconto.com/";
     const res = await fetch(targetUrl, {
       headers: {
-        "User-Agent": "Mozilla/ iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       },
       signal: AbortSignal.timeout(30000)
@@ -24,7 +24,11 @@ serve(async (req) => {
     const payloadIndex = html.indexOf("__PVOO_PAYLOAD =");
     const snapshotIndex = html.indexOf("PV_SNAPSHOT =");
 
+    // Force unique return string
+    const token = "TOKEN_" + Math.random().toString(36).substring(7);
+
     return new Response(JSON.stringify({
+      token,
       status: res.status,
       html_length: html.length,
       payloadIndex,
