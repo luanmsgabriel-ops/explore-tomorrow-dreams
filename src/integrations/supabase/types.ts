@@ -1985,6 +1985,33 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_scheduled_messages: {
+        Row: {
+          created_at: string | null
+          id: string
+          message_text: string
+          phone_number: string
+          send_after: string
+          sent_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message_text: string
+          phone_number: string
+          send_after: string
+          sent_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message_text?: string
+          phone_number?: string
+          send_after?: string
+          sent_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       analytics_daily_stats: {

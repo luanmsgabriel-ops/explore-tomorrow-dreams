@@ -349,7 +349,7 @@ async function executeAdminAction(action: any): Promise<any> {
           
           // Send results via WhatsApp if phone available
           if (quote.phone_number) {
-            const msg = formatQuotationResults(result.data);
+            const msg = formatQuotationResults(result.data, quote.departure_date);
             await sendWhatsAppMessage(quote.phone_number, msg);
           }
         } else {
@@ -478,6 +478,31 @@ async function executeAdminAction(action: any): Promise<any> {
         .eq("flight_date", flightDate);
       if (error) return { error: error.message };
       return { success: true, message: `Acompanhamento do voo ${flightIata} desativado.` };
+    }
+
+    if (action.type === "process_scheduled_messages") {
+      try {
+        const { data: pendingMsgs } = await supabase
+          .from("whatsapp_scheduled_messages")
+          .select("*")
+          .is("sent_at", null)
+          .lte("send_after", new Date().toISOString());
+
+        if (pendingMsgs && pendingMsgs.length > 0) {
+          console.log(`[SCHEDULED] Processing ${pendingMsgs.length} messages...`);
+          for (const msg of pendingMsgs) {
+            await sendWhatsAppMessage(msg.phone_number, msg.message_text);
+            await supabase
+              .from("whatsapp_scheduled_messages")
+              .update({ sent_at: new Date().toISOString() })
+              .eq("id", msg.id);
+          }
+        }
+        return { success: true, count: pendingMsgs?.length || 0 };
+      } catch (err) {
+        console.error("[SCHEDULED] Action error:", err);
+        return { error: String(err) };
+      }
     }
 
     return { error: "Tipo de ação não suportado: " + action.type };
@@ -2361,7 +2386,7 @@ async function requestQuotation(quotationData: Record<string, any>): Promise<{ s
   }
 }
 
-function formatQuotationResults(data: any): string {
+function formatQuotationResults(data: any, requestedDate?: string): string {
   if (!data) return "";
 
   const results = data.resultados || data.results || (Array.isArray(data) ? data : null);
@@ -2372,11 +2397,30 @@ function formatQuotationResults(data: any): string {
 
   results.forEach((r: any, i: number) => {
     let papel = "";
-    if (r.papel === "data_pedida") papel = "📅 *Data solicitada*";
-    else if (r.papel === "proxima_data") papel = "🔜 *Próxima data disponível*";
-    else papel = "💰 *Melhor preço*";
+    let disclaimer = "";
+    
+    if (requestedDate) {
+      const depDateTime = new Date(r.data_ida + "T12:00:00").getTime();
+      const reqDateTime = new Date(requestedDate + "T12:00:00").getTime();
+      const diffDays = (depDateTime - reqDateTime) / (1000 * 60 * 60 * 24);
+      
+      if (Math.abs(diffDays) <= 3) {
+        papel = "📅 *Data solicitada*";
+      } else if (diffDays > 3) {
+        papel = "🔜 *Próxima data disponível*";
+        disclaimer = "_⚠️ Não há bloqueios na data exata, esta é a opção mais próxima._\n";
+      } else if (diffDays < -3) {
+        papel = "💰 *Data alternativa mais econômica*";
+        disclaimer = "_💡 Opção antes do período solicitado com excelente economia!_\n";
+      }
+    } else {
+      if (r.papel === "data_pedida") papel = "📅 *Data solicitada*";
+      else if (r.papel === "proxima_data") papel = "🔜 *Próxima data disponível*";
+      else papel = "💰 *Melhor preço*";
+    }
     
     formatted += `${papel}\n`;
+    if (disclaimer) formatted += disclaimer;
     formatted += `✈️ *${r.origem}* ➔ *${r.destino}*\n`;
     formatted += `📅 Ida: ${new Date(r.data_ida + "T12:00:00").toLocaleDateString("pt-BR")}\n`;
     formatted += `📅 Volta: ${new Date(r.data_volta + "T12:00:00").toLocaleDateString("pt-BR")}\n`;
@@ -2389,11 +2433,17 @@ function formatQuotationResults(data: any): string {
     formatted += `👤 Valor por pessoa: *R$ ${pp}*\n`;
     formatted += `⚓ Taxa de embarque: R$ ${taxa}\n`;
     formatted += `💎 *Total do grupo: R$ ${total}*\n`;
-    formatted += `💺 Assentos: ${r.assentos_disponiveis}\n`;
+    
+    const seats = Number(r.assentos_disponiveis);
+    formatted += `💺 Assentos: ${seats}${seats <= 3 ? " ⚠️ *ÚLTIMOS ASSENTOS!*" : ""}\n`;
     
     if (r.prazo_emissao) {
       const prazo = new Date(r.prazo_emissao.split('T')[0] + "T12:00:00").toLocaleDateString("pt-BR");
       formatted += `⏳ Prazo de emissão: ${prazo}\n`;
+    }
+
+    if (r.economia_total > 0) {
+      formatted += `\n💵 *Economia total: R$ ${Number(r.economia_total).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}* em relação à data solicitada!\n`;
     }
 
     formatted += "\n━━━━━━━━━━━━━━━━━━\n\n";
@@ -8825,11 +8875,6 @@ Regras OBRIGATÓRIAS:
         cleanResponse += "\n\nPara viagem em grupo, mande *criar grupo* aqui no chat! 🎉";
       }
 
-      // Handle quotation if triggered
-      // We check if it was already triggered in PREVIOUS turns to avoid duplication
-      const alreadyQuotedInDB = (conversation.collected_data as any)?._quotation_triggered === true || 
-                                (conversation.collected_data as any)?._quotation_triggered === "true";
-      
       // DISPARE A BUSCA A PARTIR DO COLLECTED_DATA SE [STATUS:awaiting_quotation] ESTIVER PRESENTE
       let effectiveQuotationData = quotationData;
       if (!effectiveQuotationData && conversationStatus === "awaiting_quotation") {
@@ -8854,6 +8899,32 @@ Regras OBRIGATÓRIAS:
         }
       }
 
+      // Handle quotation if triggered
+      // We check if it was already triggered in PREVIOUS turns to avoid duplication
+      const alreadyQuotedInDB = (conversation.collected_data as any)?._quotation_triggered === true || 
+                                (conversation.collected_data as any)?._quotation_triggered === "true";
+      
+      // Check for deduplication of the exact same trip (24h limit)
+      let isExactDuplicate = false;
+      if (effectiveQuotationData && !alreadyQuotedInDB) {
+        const { data: recentSameQuote } = await supabase
+          .from("travel_quote_requests")
+          .select("id")
+          .eq("phone_number", phoneNumber)
+          .eq("origin", effectiveQuotationData.origem)
+          .eq("destination", effectiveQuotationData.destino)
+          .eq("departure_date", effectiveQuotationData.data_ida)
+          .eq("status", "completed")
+          .gt("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+          .limit(1)
+          .maybeSingle();
+        
+        if (recentSameQuote) {
+          console.log("[QUOTATION] Exact duplicate quote found in last 24h. Skipping search.");
+          isExactDuplicate = true;
+        }
+      }
+
       const hasMandatoryData = effectiveQuotationData && 
                               effectiveQuotationData.destino && 
                               effectiveQuotationData.origem && 
@@ -8862,7 +8933,7 @@ Regras OBRIGATÓRIAS:
                               /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_ida) &&
                               /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_volta);
 
-      if (effectiveQuotationData && !alreadyQuotedInDB) {
+      if (effectiveQuotationData && !alreadyQuotedInDB && !isExactDuplicate) {
         if (!hasMandatoryData) {
           console.log("[VALIDATION] Quotation ignored - missing or invalid mandatory data:", {
             effectiveData: effectiveQuotationData
@@ -8887,17 +8958,10 @@ Regras OBRIGATÓRIAS:
             newCollectedData._last_quote_id = saveResult.id;
             newCollectedData._quotation_triggered = true;
             
-            // IMPORTANT: Also update the conversation record in the database IMMEDIATELY to prevent race conditions
-            await supabase
-              .from("whatsapp_conversations")
-              .update({ 
-                collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
-                conversation_state: "awaiting_quotation"
-              })
-              .eq("id", conversation.id);
+            // No longer updating _quotation_triggered here to let process_quotation handle it
+            // and the search results sending. 
+            // We just need to ensure the async call is made.
 
-            // No longer sending searchingMsg here. Handover message is now part of the AI's cleanResponse.
-            
             // Update conversation state immediately
             const updatedHistory = [
               ...(conversation.messages_history as any[] || []),
@@ -8934,20 +8998,23 @@ Regras OBRIGATÓRIAS:
               }),
             });
 
-            // Ensure the process is awaited or scheduled so it doesn't die when the response is sent
-            // In Deno Edge Functions, we must await any promise that we want to finish before the response
             await processPromise.catch(err => console.error("Error in async quotation:", err));
 
-            // Return immediately to Meta webhook (fast response)
             return new Response(JSON.stringify({ status: "ok", quotation: true, async: true }), {
               status: 200,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
-          } else {
-            console.error("[VALIDATION] Failed to save quotation request. Not marking as triggered.");
-            // We don't return early here, so it continues to standard message sending
           }
         }
+      } else if (isExactDuplicate) {
+        // Just send the AI response and exit
+        if (cleanResponse) {
+          await sendWhatsAppMessage(phoneNumber, cleanResponse);
+        }
+        return new Response(JSON.stringify({ status: "ok", duplicate_skip: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       // Check for change request tag from AI
@@ -9095,7 +9162,7 @@ Regras OBRIGATÓRIAS:
       } else if (isLikelyItineraryText(cleanResponse)) {
         // Never send long itinerary text, only card
         await sendWhatsAppMessage(phoneNumber, "Estou preparando seu card de roteiro 🎨 Pode me pedir de novo com o destino para eu gerar certinho.");
-      } else if (!quotationData) {
+      } else if (!effectiveQuotationData) {
         // ONLY send the standard message if a quotation was NOT triggered.
         // If quotation was triggered, the "cleanResponse" and "searchingMsg" were already sent above.
         await sendWhatsAppMessage(phoneNumber, cleanResponse);
@@ -9114,8 +9181,45 @@ Regras OBRIGATÓRIAS:
         clientMemory
       ).catch((err) => console.error("[MEMORY] Background update error:", err));
 
+      // Handle scheduled messages processing
+      if (body.action === "process_scheduled_messages") {
+        try {
+          const { data: pendingMsgs } = await supabase
+            .from("whatsapp_scheduled_messages")
+            .select("*")
+            .is("sent_at", null)
+            .lte("send_after", new Date().toISOString());
+
+          if (pendingMsgs && pendingMsgs.length > 0) {
+            console.log(`[SCHEDULED] Processing ${pendingMsgs.length} messages...`);
+            for (const msg of pendingMsgs) {
+              await sendWhatsAppMessage(msg.phone_number, msg.message_text);
+              await supabase
+                .from("whatsapp_scheduled_messages")
+                .update({ sent_at: new Date().toISOString() })
+                .eq("id", msg.id);
+            }
+          }
+        } catch (err) {
+          console.error("[SCHEDULED] Error processing messages:", err);
+        }
+        return new Response(JSON.stringify({ status: "ok", processed: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // If user replies, cancel any scheduled messages for this phone
+      if (messageText && !body.action) {
+        await supabase
+          .from("whatsapp_scheduled_messages")
+          .update({ sent_at: new Date().toISOString() }) // Mark as "sent" to cancel
+          .eq("phone_number", phoneNumber)
+          .is("sent_at", null);
+      }
+
       // Schedule follow-up quote if no quotation was triggered yet
-      if (newState !== "completed" && newState !== "human_takeover" && !newCollectedData._quotation_triggered && !conversation.quote_request_id) {
+      if (newState !== "completed" && newState !== "human_takeover" && !effectiveQuotationData && !newCollectedData._quotation_triggered && !conversation.quote_request_id) {
         try {
           const selfUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
           // Get the updated_at from the DB after our update
