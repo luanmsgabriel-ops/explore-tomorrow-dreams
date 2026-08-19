@@ -1169,7 +1169,7 @@ Cliente quer falar com humano:
    - FIM_BLOCO_3
    
    - FIM_BLOCO_4
-3. Depois disso, dispare [STATUS:completed] para registrar o lead
+- FIM_BLOCO_5
 
 IMPORTANTE: Datas como "do dia 15 a 22 de junho" → data_ida="15/06/2026", data_volta="22/06/2026".
 REGRA CRÍTICA DE ANO: O ano atual é ${new Date().getFullYear()}. Se o cliente NÃO especificar o ano, SEMPRE use ${new Date().getFullYear()}. NUNCA use 2024 ou 2025. Exemplo: "junho" = "junho de ${new Date().getFullYear()}".
