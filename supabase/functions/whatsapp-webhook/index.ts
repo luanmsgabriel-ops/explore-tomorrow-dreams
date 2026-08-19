@@ -8935,6 +8935,9 @@ Regras OBRIGATÓRIAS:
         });
       }
 
+      // DEBUG: Log RAW AI Response before any processing
+      console.log("[DEBUG_RAW_AI_RESPONSE] Full response:", aiResponse);
+
       // Extract collected data and status
       const { data: newCollectedData, status: conversationStatus } = extractCollectedData(
         aiResponse,
