@@ -20,7 +20,7 @@ serve(async (req) => {
     const dryRun = body.dry_run === true;
     
     // Attempting a common subdirectory for this CMS
-    const targetUrl = "https://www.viajandocomdesconto.com.br/hotsite/bloqueios";
+    const targetUrl = "https://www.viajandocomdesconto.com.br/hotsite/pacotes";
     const res = await fetch(targetUrl, {
         headers: {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -32,7 +32,7 @@ serve(async (req) => {
     if (dryRun) {
       const allDataMatches = html.match(/tsx_[a-zA-Z0-9_]+\.data = \[[\s\S]*?\];/g) || [];
       return new Response(JSON.stringify({
-        status: "dry_run_hotsite_discovery",
+        status: "dry_run_hotsite_pacotes_discovery",
         url: targetUrl,
         http_status: res.status,
         total_data_blocks: allDataMatches.length,
