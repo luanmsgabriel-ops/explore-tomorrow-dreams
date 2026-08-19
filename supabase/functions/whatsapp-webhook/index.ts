@@ -9162,7 +9162,7 @@ Regras OBRIGATÓRIAS:
       } else if (isLikelyItineraryText(cleanResponse)) {
         // Never send long itinerary text, only card
         await sendWhatsAppMessage(phoneNumber, "Estou preparando seu card de roteiro 🎨 Pode me pedir de novo com o destino para eu gerar certinho.");
-      } else if (!quotationData) {
+      } else if (!effectiveQuotationData) {
         // ONLY send the standard message if a quotation was NOT triggered.
         // If quotation was triggered, the "cleanResponse" and "searchingMsg" were already sent above.
         await sendWhatsAppMessage(phoneNumber, cleanResponse);
