@@ -976,7 +976,7 @@ export type Database = {
           created_at: string
           destination_id: string | null
           destination_name: string | null
-          email: string
+          email: string | null
           flight_time_preference: string | null
           follow_up_date: string | null
           follow_up_days: number | null
@@ -1005,7 +1005,7 @@ export type Database = {
           created_at?: string
           destination_id?: string | null
           destination_name?: string | null
-          email: string
+          email?: string | null
           flight_time_preference?: string | null
           follow_up_date?: string | null
           follow_up_days?: number | null
@@ -1034,7 +1034,7 @@ export type Database = {
           created_at?: string
           destination_id?: string | null
           destination_name?: string | null
-          email?: string
+          email?: string | null
           flight_time_preference?: string | null
           follow_up_date?: string | null
           follow_up_days?: number | null
