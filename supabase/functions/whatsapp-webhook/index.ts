@@ -1934,7 +1934,9 @@ function extractCollectedData(aiResponse: string, existingData: Record<string, a
 
   // Enhanced regex to capture keys and values, handling multiple pairs in one tag if needed
   const tagMatches = aiResponse.matchAll(/\[DADOS:([^\]]+)\]/g);
+  let tagFound = false;
   for (const tagMatch of tagMatches) {
+    tagFound = true;
     const content = tagMatch[1];
     
     // Split by comma to handle multiple pairs like [DADOS:origem=SP, destino=RJ]
@@ -1947,6 +1949,29 @@ function extractCollectedData(aiResponse: string, existingData: Record<string, a
         newData[key] = value;
       }
     }
+  }
+
+  // Fallback: If no [DADOS] tag found but [STATUS:awaiting_quotation] is present, 
+  // try to extract from plain text patterns
+  if (!tagFound && (aiResponse.includes("[STATUS:awaiting_quotation]") || aiResponse.match(/Confirm[ao] pra mim/i))) {
+    console.log("[PARSER] Nenhuma tag [DADOS] encontrada, tentando extração de texto plano...");
+    
+    const destMatch = aiResponse.match(/Destino:\s*([^\n\r\|]+)/i) || 
+                     aiResponse.match(/para\s+([A-Z][a-zà-ú]+(?:\s+[A-Z][a-zà-ú]+)*)/);
+    if (destMatch && !newData.destino) newData.destino = destMatch[1].trim();
+    
+    const originMatch = aiResponse.match(/Origem:\s*([^\n\r\|]+)/i) || 
+                       aiResponse.match(/saindo\s+de\s+([A-Z][a-zà-ú]+(?:\s+[A-Z][a-zà-ú]+)*)/);
+    if (originMatch && !newData.origem) newData.origem = originMatch[1].trim();
+
+    const dateMatches = aiResponse.match(/(\d{2}\/\d{2}\/\d{4})/g);
+    if (dateMatches && dateMatches.length >= 2) {
+      if (!newData.data_ida) newData.data_ida = dateMatches[0].split('/').reverse().join('-');
+      if (!newData.data_volta) newData.data_volta = dateMatches[1].split('/').reverse().join('-');
+    }
+
+    const paxMatch = aiResponse.match(/(\d+)\s*adultos/i);
+    if (paxMatch && !newData.adultos) newData.adultos = paxMatch[1];
   }
 
   const statusMatch = aiResponse.match(/\[STATUS:(\w+)\]/);
@@ -8438,16 +8463,9 @@ Regras OBRIGATÓRIAS:
         const currentDest = (collectedData.destino || "").toLowerCase();
         const mentionsNewDestination = hasCotacao && currentDest && !msgLower.includes(currentDest);
 
+        // Logic moved: Reset happens after AI extraction to avoid clearing new data
         if (mentionsNewDestination) {
-          console.log(`🔄 New destination intent detected. Resetting collected data to allow new quotation.`);
-          // Keep only internal metadata and mode, clear trip data
-          const metaKeys = ["_teo_mode", "_school_mode", "_last_school_interaction", "nome", "preferencias"];
-          const newCd = { ...collectedData };
-          Object.keys(newCd).forEach(key => {
-            if (!metaKeys.includes(key)) delete newCd[key];
-          });
-          collectedData = newCd;
-          // We will update the DB later in the final save, but let's update local reference
+          console.log(`🔄 New destination intent detected. Will reset data after AI processing.`);
         }
         
         if (effectiveTeoMode === "auto") {
@@ -8806,10 +8824,43 @@ Regras OBRIGATÓRIAS:
       console.log("[DEBUG_RAW_AI_RESPONSE] Full response:", aiResponse);
 
       // Extract collected data and status
-      const { data: newCollectedData, status: conversationStatus } = extractCollectedData(
+      let { data: newCollectedData, status: conversationStatus } = extractCollectedData(
         aiResponse,
         collectedData
       );
+
+      // FORCE STATE UPDATE: Se a resposta do modelo confirma os dados no texto mas o collected_data falhou,
+      // usamos os dados extraídos pelo parser de fallback dentro do extractCollectedData.
+      // O extractCollectedData já foi atualizado para fazer isso se encontrar [STATUS:awaiting_quotation].
+
+      const msgLowerForReset = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const currentDestInDB = (collectedData.destino || "").toLowerCase();
+      const mentionsNewDestination = /quanto custa|preco|valor|orcamento|pacote|cotar|cotacao|quero viajar|viagem para/i.test(msgLowerForReset) && 
+                                    currentDestInDB && 
+                                    !msgLowerForReset.includes(currentDestInDB);
+
+      if (mentionsNewDestination) {
+        const extractedDest = (newCollectedData.destino || "").toLowerCase();
+        
+        if (extractedDest && extractedDest !== currentDestInDB) {
+          console.log(`[RESET] New destination "${extractedDest}" detected. Clearing old trip data.`);
+          const metaKeys = ["_teo_mode", "_school_mode", "_last_school_interaction", "nome", "preferencias"];
+          const cleanedCd = { ...newCollectedData };
+          // Remove campos do pedido ANTERIOR que não foram sobrescritos pelo novo
+          ["origem", "data_ida", "data_volta", "adultos", "criancas", "idades_criancas", "_quotation_triggered", "_last_quote_id"].forEach(key => {
+            // Só deletamos se o valor for IDENTICO ao que estava no banco, significando que o extrator não pegou dado novo
+            if (newCollectedData[key] === collectedData[key]) {
+              delete cleanedCd[key];
+            }
+          });
+          newCollectedData = cleanedCd;
+        }
+      }
+
+      // Log para diagnóstico se o collected_data ficar sem destino ou datas após extração
+      if (conversationStatus === "awaiting_quotation" && (!newCollectedData.destino || !newCollectedData.data_ida)) {
+        console.warn(`[PARSER_WARN] Status is awaiting_quotation but data is incomplete. Raw AI: ${aiResponse}`);
+      }
 
       // Check if AI triggered a quotation request
       const quotationData = parseQuotationTag(aiResponse);
@@ -8831,10 +8882,11 @@ Regras OBRIGATÓRIAS:
       let alreadyQuotedInDB = (conversation.collected_data as any)?._quotation_triggered === true || 
                                 (conversation.collected_data as any)?._quotation_triggered === "true";
       
-      // DISPARE A BUSCA A PARTIR DO COLLECTED_DATA SE [STATUS:awaiting_quotation] ESTIVER PRESENTE
+      // REDUNDÂNCIA DE SEGURANÇA: Tenta pegar do JSON da tag se o collected_data falhar
       let effectiveQuotationData = quotationData;
-      if (!effectiveQuotationData && conversationStatus === "awaiting_quotation") {
-        console.log("[QUOTATION] Tag [COTAR_VIAGEM] missing, but [STATUS:awaiting_quotation] detected. Using newCollectedData.");
+      
+      if (!effectiveQuotationData && (conversationStatus === "awaiting_quotation" || aiResponse.includes("[STATUS:awaiting_quotation]"))) {
+        console.log("[QUOTATION] Tag [COTAR_VIAGEM] missing or invalid, trying newCollectedData.");
         
         const hasMandatory = newCollectedData.destino && 
                             newCollectedData.origem && 
@@ -8852,7 +8904,11 @@ Regras OBRIGATÓRIAS:
             idades_criancas: newCollectedData.idades_criancas || []
           };
           console.log("[QUOTATION] Payload mounted from newCollectedData:", effectiveQuotationData);
+        } else {
+          console.warn("[QUOTATION] newCollectedData also incomplete. Search will not trigger.");
         }
+      } else if (effectiveQuotationData) {
+        console.log("[QUOTATION] Using valid [COTAR_VIAGEM] tag data.");
       }
 
       const hasMandatoryData = effectiveQuotationData && 
@@ -9078,12 +9134,6 @@ Regras OBRIGATÓRIAS:
 
         await sendWhatsAppMessage(phoneNumber, changeMsg);
 
-        return new Response(JSON.stringify({ status: "ok", change_request: true }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
       // Standard flow (no quotation)
       const updatedHistory = [
         ...(conversation.messages_history as any[] || []),
@@ -9105,6 +9155,7 @@ Regras OBRIGATÓRIAS:
         }
       }
 
+      console.log(`[SAVE] Updating conversation with collected_data: ${JSON.stringify(newCollectedData)}`);
       await supabase
         .from("whatsapp_conversations")
         .update({
