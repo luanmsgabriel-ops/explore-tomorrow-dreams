@@ -8811,7 +8811,7 @@ Regras OBRIGATÓRIAS:
 
       // Handle quotation if triggered
       // We check if it was already triggered in PREVIOUS turns to avoid duplication
-      const alreadyQuotedInDB = (conversation.collected_data as any)?._quotation_triggered === true || 
+      let alreadyQuotedInDB = (conversation.collected_data as any)?._quotation_triggered === true || 
                                 (conversation.collected_data as any)?._quotation_triggered === "true";
       
       // DISPARE A BUSCA A PARTIR DO COLLECTED_DATA SE [STATUS:awaiting_quotation] ESTIVER PRESENTE
