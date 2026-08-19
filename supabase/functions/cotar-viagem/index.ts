@@ -19,17 +19,8 @@ serve(async (req) => {
 
     const body = await req.json();
     const { origem, destino, data_ida, data_volta, passageiros } = body;
+    const totalPassageiros = (passageiros?.adultos || 0) + (passageiros?.criancas || 0);
 
-    if (!origem || !destino || !data_ida || !data_volta || !passageiros) {
-      return new Response(
-        JSON.stringify({ error: "Campos obrigatórios: origem, destino, data_ida, data_volta, passageiros" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const totalPassageiros = (passageiros.adultos || 0) + (passageiros.criancas || 0);
-
-    // Brasilia Date calculation (UTC-3)
     const nowUtc = new Date();
     const brDateStr = new Intl.DateTimeFormat('fr-CA', {
       timeZone: 'America/Sao_Paulo',
@@ -38,95 +29,52 @@ serve(async (req) => {
       day: '2-digit'
     }).format(nowUtc);
 
-    // 1. Resolve IATA codes and names
-    const resolveLocation = async (input: string, type: 'origin' | 'destination') => {
-      const cleanInput = input.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-      
-      // Try exact IATA code first
-      const { data: byCode } = await supabaseClient
-        .from("travel_iata_map")
-        .select("code")
-        .eq("code", cleanInput)
-        .single();
-      
-      if (byCode) return [byCode.code];
-
-      // Try fuzzy name match using the correct column based on type
-      const col = type === 'origin' ? 'origin_name' : 'destination_name';
-      const { data: byName } = await supabaseClient
-        .from("travel_iata_map")
-        .select("code")
-        .ilike(col, `%${cleanInput}%`);
-      
-      if (byName && byName.length > 0) return byName.map(n => n.code);
-
-      // Package destination fallback: "PALMAS (PMW)" extraction
-      const iataMatch = cleanInput.match(/\(([A-Z]{3})\)/);
-      if (iataMatch) return [iataMatch[1]];
-
-      return []; 
-    };
-
-    const originCodes = await resolveLocation(origem, 'origin');
-    const destCodes = await resolveLocation(destino, 'destination');
-
-    // 2. Build Query
     const destFuzzy = destino.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const originFuzzy = origem.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    const targetDep = new Date(data_ida + "T12:00:00");
+    const dMin = new Date(targetDep);
+    dMin.setDate(dMin.getDate() - 7);
+    const dMax = new Date(targetDep);
+    dMax.setDate(dMax.getDate() + 7);
+
+    const sql = `
+      SELECT * FROM travel_offers 
+      WHERE active = true 
+      AND price_per_person > 0
+      AND (issue_deadline >= $1 OR issue_deadline IS NULL)
+      AND (available_seats >= $2 OR available_seats IS NULL)
+      AND (destination_name ILIKE $3 OR destination_iata = $4)
+      AND (origin_city ILIKE $5 OR origin_iata = $6)
+      AND departure_date BETWEEN $7 AND $8
+      ORDER BY ABS(EXTRACT(EPOCH FROM (departure_date::timestamp - $9::timestamp))) ASC, price_per_person ASC
+      LIMIT 5
+    `;
+
+    console.log(`Searching SQL: ${origem} -> ${destino} around ${data_ida}`);
     
-    let query = supabaseClient
+    // We can't run raw SQL via supabase-js easily without a function or RPC.
+    // Let's use RPC if available, or just fallback to fixed .or structure.
+    // Actually, I can use .or() with a single string to bypass the builder limitations:
+    
+    const query = supabaseClient
       .from("travel_offers")
       .select("*")
       .eq("active", true)
       .gt("price_per_person", 0)
       .or(`issue_deadline.gte.${brDateStr},issue_deadline.is.null`)
-      .or(`available_seats.gte.${totalPassageiros},available_seats.is.null`);
+      .or(`available_seats.gte.${totalPassageiros},available_seats.is.null`)
+      .or(`destination_name.ilike.%${destFuzzy}%,destination_iata.ilike.%${destFuzzy}%`)
+      .or(`origin_city.ilike.%${originFuzzy}%,origin_iata.ilike.%${originFuzzy}%`)
+      .gte("departure_date", dMin.toISOString().split("T")[0])
+      .lte("departure_date", dMax.toISOString().split("T")[0])
+      .limit(20);
 
-    // Destination filters
-    if (destCodes.length > 0) {
-      query = query.or(`destination_iata.in.(${destCodes.join(",")}),destination_name.ilike.%${destFuzzy}%`);
-    } else {
-      query = query.ilike("destination_name", `%${destFuzzy}%`);
-    }
-    
-    // Origin filters - PostgREST .or() can't be called twice for different groups easily 
-    // without nesting or raw filters if they are independent.
-    // However, Supabase-js appends filters. If we want (A or B) AND (C or D), 
-    // we need to be careful with .or(). 
-    // Since we already used .or() for deadline and seats, let's use a simpler approach:
-    if (originCodes.length > 0) {
-      // Use .in for IATA and a separate .or check if possible, or just .in since IATA is precise
-      query = query.in("origin_iata", originCodes);
-    } else {
-      query = query.ilike("origin_city", `%${originFuzzy}%`);
-    }
-
-    // 3. Date handling
-    const targetDep = new Date(data_ida + "T12:00:00");
-    const isOnlyMonth = data_ida.length <= 7;
-
-    if (isOnlyMonth) {
-      const [year, month] = data_ida.split("-");
-      const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
-      query = query.gte("departure_date", `${data_ida}-01`)
-                   .lte("departure_date", `${data_ida}-${lastDay}`);
-    } else {
-      const dMin = new Date(targetDep);
-      dMin.setDate(dMin.getDate() - 7);
-      const dMax = new Date(targetDep);
-      dMax.setDate(dMax.getDate() + 7);
-      
-      query = query.gte("departure_date", dMin.toISOString().split("T")[0])
-                   .lte("departure_date", dMax.toISOString().split("T")[0]);
-    }
-
-    console.log(`Executing query for ${origem}->${destino} (${data_ida})`);
     const { data: offers, error } = await query;
     if (error) throw error;
 
     console.log(`Found ${offers?.length || 0} results`);
 
-    // 4. Sort and format
     const formattedResults = (offers || [])
       .map(o => {
         const diff = Math.abs(new Date(o.departure_date + "T12:00:00").getTime() - targetDep.getTime());
@@ -155,16 +103,15 @@ serve(async (req) => {
         operadora: o.source_type || "Direto"
       }));
 
-    return new Response(
-      JSON.stringify({ resultados: formattedResults }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
-    );
-
+    return new Response(JSON.stringify({ resultados: formattedResults }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
   } catch (error: any) {
     console.error("[cotar-viagem] Erro:", error.message);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message || "Erro ao buscar cotação" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ success: false, error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
