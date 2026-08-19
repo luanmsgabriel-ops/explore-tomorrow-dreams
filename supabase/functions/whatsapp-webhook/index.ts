@@ -8923,9 +8923,8 @@ Regras OBRIGATÓRIAS:
         collectedData
       );
 
-      // Check if AI triggered a quotation request - but ONLY if not already triggered before
-      const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || !!collectedData._quotation_triggered;
-      const quotationData = alreadyQuoted ? null : parseQuotationTag(aiResponse);
+      // Check if AI triggered a quotation request
+      const quotationData = parseQuotationTag(aiResponse);
 
       // Check for itinerary visual tag BEFORE cleaning
       const itineraryVisualDataFromTag = parseItineraryVisualTag(aiResponse);
