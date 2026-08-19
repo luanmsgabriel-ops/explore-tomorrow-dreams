@@ -66,7 +66,46 @@ serve(async (req) => {
     ]);
 
     // 3. CONSULTA AO CONJUNTO ELEGÍVEL
-    // SELECT * FROM travel_offers WHERE ... departure_date >= :data_ida_pedida
+    const logs: any = {
+      base_date: baseDate,
+      br_date_str: brDateStr,
+      origin_iatas: originIatas,
+      dest_iatas: destIatas,
+      total_passengers: totalPassageiros
+    };
+
+    const { data: rawData, error: rawError } = await supabaseClient
+      .from('travel_offers')
+      .select('departure_date, active, offer_type, price_per_person, issue_deadline, available_seats, origin_iata, destination_iata')
+      .in('origin_iata', originIatas)
+      .in('destination_iata', destIatas);
+    
+    logs.step_a_total = (rawData || []).length;
+    
+    const stepB = (rawData || []).filter(o => o.active === true && o.offer_type === 'bloqueio_aereo');
+    logs.step_b_active_type = stepB.length;
+    
+    const stepC = stepB.filter(o => Number(o.price_per_person) > 0);
+    logs.step_c_price = stepC.length;
+    
+    const stepD = stepC.filter(o => {
+      if (!o.issue_deadline) return true;
+      const deadline = o.issue_deadline.split('T')[0];
+      return deadline >= brDateStr;
+    });
+    logs.step_d_deadline = stepD.length;
+    
+    const stepE = stepD.filter(o => o.available_seats >= totalPassageiros);
+    logs.step_e_seats = stepE.length;
+    
+    const stepF = stepE.filter(o => o.departure_date >= baseDate);
+    logs.step_f_departure = stepF.length;
+    
+    if (stepF.length > 0) {
+      logs.sample_db_date = stepF[0].departure_date;
+      logs.sample_db_date_type = typeof stepF[0].departure_date;
+    }
+
     const { data: eligibleOffers, error } = await supabaseClient
       .from('travel_offers')
       .select('*')
@@ -79,13 +118,13 @@ serve(async (req) => {
       .gte('departure_date', baseDate);
 
     if (error) throw error;
-    
-    // Filtro adicional de issue_deadline em memória (comparando apenas data YYYY-MM-DD)
     const allEligible = (eligibleOffers || []).filter(o => {
       if (!o.issue_deadline) return true;
       const deadline = o.issue_deadline.split('T')[0];
       return deadline >= brDateStr;
     });
+    
+    logs.final_eligible_count = allEligible.length;
 
     // 4. SELEÇÃO DOS TRÊS PAPÉIS (EM MEMÓRIA)
     const getCost = (o: any) => Number(o.price_per_person) + Number(o.boarding_tax || 0);
@@ -170,7 +209,7 @@ serve(async (req) => {
       resultados.push(format(offerC, "melhor_preco", mainTotal));
     }
 
-    return new Response(JSON.stringify({ resultados, meta: { total_passengers: totalPassageiros } }), {
+    return new Response(JSON.stringify({ resultados, meta: { total_passengers: totalPassageiros, debug_logs: logs } }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
