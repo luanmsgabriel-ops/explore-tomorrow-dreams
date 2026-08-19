@@ -2285,7 +2285,7 @@ async function saveQuotationRequest(
     source_channel: "whatsapp_teo",
   };
 
-  console.log("[DEBUG] Salvando cotação no travel_quote_requests:", JSON.stringify(insertPayload));
+  console.log("[DEBUG] Salvando cotação no travel_quote_requests table:", JSON.stringify(insertPayload));
 
   const { data, error } = await supabase
     .from("travel_quote_requests")
