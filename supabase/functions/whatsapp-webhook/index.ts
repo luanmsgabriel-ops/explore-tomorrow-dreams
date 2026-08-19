@@ -8829,13 +8829,6 @@ Regras OBRIGATÓRIAS:
         collectedData
       );
 
-      // CORREÇÃO: Reset de "nova intenção" (destino diferente)
-      // Deve rodar DEPOIS da extração para detectar se o modelo trouxe um destino novo,
-      // mas ANTES de validar a busca para não usar lixo do pedido anterior.
-
-      // CORREÇÃO: Reset de "nova intenção" (destino diferente)
-      // Deve rodar DEPOIS da extração para detectar se o modelo trouxe um destino novo,
-      // mas ANTES de validar a busca para não usar lixo do pedido anterior.
       const msgLowerForReset = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       const currentDestInDB = (collectedData.destino || "").toLowerCase();
       const mentionsNewDestination = /quanto custa|preco|valor|orcamento|pacote|cotar|cotacao|quero viajar|viagem para/i.test(msgLowerForReset) && 
