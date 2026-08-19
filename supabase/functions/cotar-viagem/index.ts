@@ -72,14 +72,19 @@ serve(async (req) => {
       .eq('active', true)
       .eq('offer_type', 'bloqueio_aereo')
       .gt('price_per_person', 0)
-      .gte('issue_deadline', brDateStr)
       .gte('available_seats', totalPassageiros)
       .in('origin_iata', originIatas)
       .in('destination_iata', destIatas)
       .gte('departure_date', baseDate);
 
     if (error) throw error;
-    const allEligible = eligibleOffers || [];
+    
+    // Filtro adicional de issue_deadline em memória para garantir consistência com o fuso local
+    const allEligible = (eligibleOffers || []).filter(o => {
+      if (!o.issue_deadline) return true;
+      const deadline = o.issue_deadline.split('T')[0];
+      return deadline >= brDateStr;
+    });
 
     // 4. SELEÇÃO DOS TRÊS PAPÉIS (EM MEMÓRIA)
     const getCost = (o: any) => Number(o.price_per_person) + Number(o.boarding_tax || 0);
