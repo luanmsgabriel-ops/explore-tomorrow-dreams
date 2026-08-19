@@ -41,7 +41,7 @@ serve(async (req) => {
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const html = await response.text();
     
-    if (dry_run) {
+    if (dryRun) {
       // 1. Extract __PVOO_PAYLOAD
       const pvooMatch = html.match(/var\s+__PVOO_PAYLOAD\s*=\s*({.*?});/s) || html.match(/__PVOO_PAYLOAD\s*=\s*({.*?});/s);
       
