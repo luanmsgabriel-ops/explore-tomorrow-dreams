@@ -9023,15 +9023,16 @@ Regras OBRIGATÓRIAS:
             newCollectedData.preferencias || newCollectedData.tipo_viagem || null
           );
 
-          if (saveResult.success) {
-            // Mark quotation as triggered ONLY IF save was successful
+          if (saveResult.success && saveResult.id) {
+            // Mark quotation as triggered ONLY IF save was successful and returned an ID
+            newCollectedData._last_quote_id = saveResult.id;
             newCollectedData._quotation_triggered = true;
             
             // IMPORTANT: Also update the conversation record in the database IMMEDIATELY to prevent race conditions
             await supabase
               .from("whatsapp_conversations")
               .update({ 
-                collected_data: { ...newCollectedData, _quotation_triggered: true },
+                collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
                 conversation_state: "awaiting_quotation"
               })
               .eq("id", conversation.id);
@@ -9052,7 +9053,7 @@ Regras OBRIGATÓRIAS:
               .update({
                 client_name: newCollectedData.nome || conversation.client_name || contactName,
                 conversation_state: "awaiting_quotation",
-                collected_data: { ...newCollectedData, _quotation_triggered: true },
+                collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
                 messages_history: updatedHistory,
                 is_ai_active: true,
               })
