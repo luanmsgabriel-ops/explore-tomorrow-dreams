@@ -8870,14 +8870,37 @@ Regras OBRIGATÓRIAS:
             alreadyQuotedInDB = true;
             
             if (cleanResponse) {
-              await sendWhatsAppMessage(phoneNumber, `Seu pedido para *${effectiveQuotationData.destino}* já foi encaminhado aos nossos consultores! 🚀`);
+              const alreadySentMsg = `Seu pedido para *${effectiveQuotationData.destino}* já foi encaminhado aos nossos consultores! 🚀`;
+              let resultsMsg = "";
               if (existingReq.status === "completed" && existingReq.processing_details) {
-                const resultsMsg = formatQuotationResults(existingReq.processing_details);
-                await sendWhatsAppMessage(phoneNumber, resultsMsg);
+                resultsMsg = formatQuotationResults(existingReq.processing_details);
               } else {
-                await sendWhatsAppMessage(phoneNumber, "Eles já estão verificando as melhores opções para você. Assim que eu tiver os detalhes, te aviso por aqui! ✈️");
+                resultsMsg = "Eles já estão verificando as melhores opções para você. Assim que eu tiver os detalhes, te aviso por aqui! ✈️";
               }
-              cleanResponse = "";
+              
+              await sendWhatsAppMessage(phoneNumber, alreadySentMsg);
+              await sendWhatsAppMessage(phoneNumber, resultsMsg);
+
+              // Update history and return
+              const updatedHistory = [
+                ...(conversation.messages_history as any[] || []),
+                { role: "assistant", content: alreadySentMsg, timestamp: new Date().toISOString() },
+                { role: "assistant", content: resultsMsg, timestamp: new Date().toISOString() },
+              ];
+
+              await supabase
+                .from("whatsapp_conversations")
+                .update({
+                  collected_data: newCollectedData,
+                  messages_history: updatedHistory,
+                  conversation_state: existingReq.status === "completed" ? "quotation_sent" : "awaiting_quotation"
+                })
+                .eq("id", conversation.id);
+
+              return new Response(JSON.stringify({ status: "ok", duplicate: true }), {
+                status: 200,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
             }
           }
 
