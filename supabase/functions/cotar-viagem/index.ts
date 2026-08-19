@@ -1,12 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://wimdgvdpefkmjzzsklnt.supabase.co";
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -14,6 +12,11 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
     const body = await req.json();
     const { origem, destino, data_ida, data_volta, passageiros } = body;
 
@@ -24,41 +27,120 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[cotar-viagem] Buscando cotação via API Infotravel: ${origem} → ${destino}`);
+    const totalPassageiros = (passageiros.adultos || 0) + (passageiros.criancas || 0);
 
-    // Call cativa-quotation Edge Function directly
-    const cativaUrl = `${SUPABASE_URL}/functions/v1/cativa-quotation`;
-    const response = await fetch(cativaUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      },
-      body: JSON.stringify({
-        origem,
-        destino,
-        data_ida,
-        data_volta,
-        adultos: passageiros.adultos || 1,
-        criancas: passageiros.criancas || 0,
-        idades_criancas: passageiros.idades_criancas || [],
-      }),
-    });
+    // Brasilia Date calculation (UTC-3)
+    const nowUtc = new Date();
+    const brDateStr = new Intl.DateTimeFormat('fr-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(nowUtc);
 
-    const responseData = await response.json();
+    // 1. Resolve IATA codes and names
+    const resolveLocation = async (input: string) => {
+      const cleanInput = input.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+      
+      // Try exact IATA code first
+      const { data: byCode } = await supabaseClient
+        .from("travel_iata_map")
+        .select("code")
+        .eq("code", cleanInput)
+        .single();
+      
+      if (byCode) return [byCode.code];
 
-    if (!response.ok) {
-      console.error("[cotar-viagem] Erro da API Infotravel:", responseData);
-      throw new Error(responseData.error || "Erro ao buscar cotação");
+      // Try fuzzy name match
+      const { data: byName } = await supabaseClient
+        .from("travel_iata_map")
+        .select("code")
+        .or(`origin_name.ilike.%${cleanInput}%,destination_name.ilike.%${cleanInput}%`);
+      
+      if (byName && byName.length > 0) return byName.map(n => n.code);
+
+      // Package destination fallback: "PALMAS (PMW)" extraction
+      const iataMatch = cleanInput.match(/\(([A-Z]{3})\)/);
+      if (iataMatch) return [iataMatch[1]];
+
+      return [cleanInput]; // Return original if not found
+    };
+
+    const originCodes = await resolveLocation(origem);
+    const destCodes = await resolveLocation(destino);
+
+    // 2. Build Query
+    let query = supabaseClient
+      .from("travel_offers")
+      .select("*")
+      .eq("active", true)
+      .gte("issue_deadline", brDateStr)
+      .gte("available_seats", totalPassageiros)
+      .gt("price_per_person", 0);
+
+    // Destination filter (Fuzzy for packages or IATA for air)
+    const destFuzzy = destino.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const destFilters = destCodes.map(c => `destination_iata.eq.${c}`).join(",");
+    query = query.or(`${destFilters},destination_name.ilike.%${destFuzzy}%`);
+
+    // 3. Date handling (Fixed window +/- 7 days or full month)
+    const targetDep = new Date(data_ida + "T12:00:00");
+    const isOnlyMonth = data_ida.length <= 7; // "2024-10"
+
+    if (isOnlyMonth) {
+      const [year, month] = data_ida.split("-");
+      const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+      query = query.gte("departure_date", `${data_ida}-01`)
+                   .lte("departure_date", `${data_ida}-${lastDay}`);
+    } else {
+      const dMin = new Date(targetDep);
+      dMin.setDate(dMin.getDate() - 7);
+      const dMax = new Date(targetDep);
+      dMax.setDate(dMax.getDate() + 7);
+      
+      query = query.gte("departure_date", dMin.toISOString().split("T")[0])
+                   .lte("departure_date", dMax.toISOString().split("T")[0]);
     }
 
-    console.log(`[cotar-viagem] Sucesso! ${responseData.total_opcoes || 0} opções encontradas`);
+    const { data: offers, error } = await query;
+
+    if (error) throw error;
+
+    // 4. Sort and format (Proximity to date then Price)
+    const formattedResults = (offers || [])
+      .map(o => {
+        const diff = Math.abs(new Date(o.departure_date + "T12:00:00").getTime() - targetDep.getTime());
+        const totalPass = (passageiros.adultos || 1) + (passageiros.criancas || 0);
+        const totalPrice = (o.price_per_person + (o.boarding_tax || 0)) * totalPass;
+
+        return {
+          ...o,
+          dateDiff: diff,
+          total_price: totalPrice
+        };
+      })
+      .sort((a, b) => a.dateDiff - b.dateDiff || a.total_price - b.total_price)
+      .slice(0, 5)
+      .map(o => ({
+        companhia: o.airline || "Pacote",
+        voo_ida: o.outbound_departure_time ? `Voo às ${o.outbound_departure_time}` : (o.departure_date || "Consultar"),
+        voo_volta: o.return_departure_time ? `Voo às ${o.return_departure_time}` : (o.return_date || "Consultar"),
+        noites: o.nights || 0,
+        preco_por_pessoa: o.price_per_person,
+        taxa_embarque: o.boarding_tax || 0,
+        preco: o.total_price,
+        assentos_disponiveis: o.available_seats,
+        prazo_emissao: o.issue_deadline,
+        tipo: o.offer_type === "bloqueio_aereo" ? "aereo" : "pacote",
+        operadora: o.source_type || "Direto"
+      }));
 
     return new Response(
-      JSON.stringify(responseData),
+      JSON.stringify({ resultados: formattedResults }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
-  } catch (error) {
+
+  } catch (error: any) {
     console.error("[cotar-viagem] Erro:", error.message);
     return new Response(
       JSON.stringify({ success: false, error: error.message || "Erro ao buscar cotação" }),
