@@ -6332,6 +6332,51 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
         const schoolData = (convForSchool?.collected_data as Record<string, any>) || {};
         const isSchoolActive = schoolData._school_mode === true;
 
+        // 4. TIMEOUT: Se a última interação em modo escola tiver mais de 24 horas, sai automaticamente
+        const schoolLastInteraction = schoolData._mode_activated_at;
+        const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+        const isTimeout = schoolLastInteraction && (Date.now() - new Date(schoolLastInteraction).getTime()) > TWENTY_FOUR_HOURS;
+
+        // 1. INTENÇÃO DE COMPRA TEM PRIORIDADE ABSOLUTA
+        const quotationIntentRegex = /(?:cotar|cota[cç][aã]o|viagem|passagem|pacote|quero ir para|pre[cç]o|quanto custa|maceio|orlando|lisboa|porto|gramado|natal|fortaleza|recife|bahia|salvador|voo)/i;
+        const hasQuotationIntent = quotationIntentRegex.test(normalizedMsgSchool);
+
+        // 2. COMANDOS DE SAÍDA FUNCIONAM EM QUALQUER PASSO
+        const exitRegex = /^(sair escola|sair school|parar aula|exit school|voltar|sair modo|sair|menu principal|modo cota[cç][aã]o|quero sair|encerrar)$/i;
+        const isExitCommand = exitRegex.test(normalizedMsgSchool);
+
+        // Se houver intenção de compra, timeout ou comando de saída, sai do modo escola
+        if (isSchoolActive && convForSchool && (hasQuotationIntent || isTimeout || isExitCommand)) {
+          const cleanData = { ...schoolData };
+          delete cleanData._school_mode;
+          delete cleanData._school_step;
+          delete cleanData._school_target_phrase;
+          delete cleanData._school_quiz_answer;
+          delete cleanData._school_history; // Limpa o histórico da escola para liberar contexto
+          delete cleanData._mode_activated_at;
+          
+          await supabase.from("whatsapp_conversations").update({ 
+            collected_data: cleanData,
+            conversation_state: 'idle' // Limpa o estado da conversa para fonte única de verdade
+          }).eq("id", convForSchool.id);
+
+          if (hasQuotationIntent) {
+            await sendWhatsAppMessage(phoneNumber, "Com certeza! Vamos focar na sua próxima viagem agora. Para onde você quer ir? ✈️🌍");
+            return new Response(JSON.stringify({ status: "ok", school_exit: "quotation_intent" }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          if (isTimeout || isExitCommand) {
+            const prediction = getAdvancementPrediction(schoolData._school_module || 1, schoolData._school_lesson || 1);
+            const reason = isTimeout ? "Tempo limite excedido" : "Comando de saída";
+            await sendWhatsAppMessage(phoneNumber, `📚 *Téo School desativado!*\n\nSeu progresso foi salvo! Quando quiser retomar, mande *escola* 😊\n\n📊 Pontuação: *${schoolData._school_score || 0} pts*\n\n${prediction}`);
+            return new Response(JSON.stringify({ status: "ok", school_exit: reason }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+
         // ===== SCHOOL MODE HANDLER (when active) =====
         if (isSchoolActive && convForSchool) {
           await ensureConversationAndSaveMessage(phoneNumber, contactName, messageText);
@@ -6344,15 +6389,18 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
           const schoolScore = schoolData._school_score || 0;
           const schoolHistory = Array.isArray(schoolData._school_history) ? schoolData._school_history : [];
 
-          // Exit commands
-          const exitRegex = /^(sair escola|sair school|parar aula|exit school|voltar|sair modo)$/i;
-          if (exitRegex.test(lowerMsgSchool)) {
+          // Exit commands — redundância para segurança (já tratado acima, mas mantendo lógica interna)
+          const stepExitRegex = /^(sair escola|sair school|parar aula|exit school|voltar|sair modo|sair|encerrar)$/i;
+          if (stepExitRegex.test(lowerMsgSchool)) {
             const cleanData = { ...schoolData };
             delete cleanData._school_mode;
             delete cleanData._school_step;
             delete cleanData._mode_activated_at;
             // Keep progress: _school_lang, _school_level, _school_module, _school_lesson, _school_score
-            await supabase.from("whatsapp_conversations").update({ collected_data: cleanData }).eq("id", convForSchool.id);
+            await supabase.from("whatsapp_conversations").update({ 
+              collected_data: cleanData,
+              conversation_state: 'idle' 
+            }).eq("id", convForSchool.id);
 
             // Sync to dedicated school_progress table
             try {
@@ -7019,6 +7067,7 @@ RULES:
                 _school_step: previousLevel && existingData._school_lang === lang ? "learning" : "diagnostic_1",
                 _mode_activated_at: new Date().toISOString(),
               },
+              conversation_state: "school_mode"
             }).eq("id", savedConv!.id);
 
             if (previousLevel && existingData._school_lang === lang) {
@@ -7039,6 +7088,7 @@ RULES:
                 _school_step: "choosing_lang",
                 _mode_activated_at: new Date().toISOString(),
               },
+              conversation_state: "school_mode"
             }).eq("id", savedConv!.id);
 
             await sendWhatsAppMessage(phoneNumber, "📚 *Téo School Ativado!*\n\nQual idioma você quer aprender para viagem?\n\n1️⃣ Inglês 🇺🇸\n2️⃣ Espanhol 🇪🇸");
