@@ -2500,6 +2500,7 @@ async function requestQuotation(quotationData: Record<string, any>): Promise<{ s
     console.log("[QUOTATION] Response (first 2000):", responseText.substring(0, 2000));
 
     if (!response.ok) {
+      console.error("[QUOTATION] API error:", response.status, responseText);
       return { status: "error", data: null };
     }
 
@@ -2517,7 +2518,7 @@ async function requestQuotation(quotationData: Record<string, any>): Promise<{ s
     return { status: "success", data: responseData };
   } catch (err) {
     clearTimeout(timeoutId);
-    console.error("[QUOTATION] Error:", err);
+    console.error("[QUOTATION] Fetch error:", err);
     return { status: "error", data: null };
   }
 }
@@ -2595,17 +2596,17 @@ function formatQuotationResults(data: any): string {
 async function createQuoteRequest(phoneNumber: string, collectedData: Record<string, any>) {
   const { data, error } = await supabase.from("quote_requests").insert({
     client_name: collectedData.nome || null,
-    email: `whatsapp_${phoneNumber}@placeholder.com`,
     whatsapp: phoneNumber,
     destination_name: collectedData.destino || null,
     travel_date: collectedData.datas || null,
-    num_people: collectedData.num_viajantes || null,
+    num_people: String(collectedData.num_viajantes || ""),
     travel_type: collectedData.tipo_viagem || null,
     preferred_airport: collectedData.aeroporto || null,
     special_requests: collectedData.preferencias || null,
-    source_channel: "whatsapp",
+    source_channel: "whatsapp_teo",
     notes: `Orçamento: ${collectedData.orcamento || "Não informado"}`,
     status: "pending",
+    follow_up_enabled: false,
   }).select("id").single();
 
   if (error) {
