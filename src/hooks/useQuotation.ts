@@ -136,7 +136,14 @@ export function formatQuotationResults(data: any): string {
       if (r.voo_ida) formatted += `🛫 Ida: ${r.voo_ida}\n`;
       if (r.voo_volta) formatted += `🛬 Volta: ${r.voo_volta}\n`;
       if (r.noites) formatted += `🌙 ${r.noites} noites\n`;
+      if (r.taxa_embarque > 0) formatted += `🎟️ Taxa de embarque: R$ ${Number(r.taxa_embarque).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+      if (r.assentos_disponiveis > 0) formatted += `🪑 Assentos disponíveis: ${r.assentos_disponiveis}\n`;
+      if (r.prazo_emissao) {
+        const [y, m, d] = r.prazo_emissao.split('-');
+        formatted += `⏰ Data limite para emitir a passagem: ${d}/${m}/${y}\n`;
+      }
       if (r.operadora) formatted += `📌 Operadora: ${r.operadora}\n`;
+
       formatted += '\n';
     });
     return formatted;
