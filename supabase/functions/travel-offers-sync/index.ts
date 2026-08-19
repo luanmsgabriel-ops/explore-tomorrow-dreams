@@ -35,12 +35,35 @@ serve(async (req) => {
         return html.substring(idx, idx + length);
       };
 
+      const dumpPayload = getLiteralDump("__PVOO_PAYLOAD", 3000);
+      const dumpSnapshot = getLiteralDump("PV_SNAPSHOT", 3000);
+      const dumpPromos = getLiteralDump("DADOS.promos", 3000);
+
+      // Extração rudimentar de PAYLOAD.usd e mapa para inspeção
+      let payloadUsd = "unknown";
+      const usdMatch = dumpPayload.match(/usd\s*:\s*([\d.]+)/);
+      if (usdMatch) payloadUsd = usdMatch[1];
+
+      let mapaSnippet = "unknown";
+      const mapaMatch = dumpPayload.match(/mapa\s*:\s*({[^}]+})/);
+      if (mapaMatch) mapaSnippet = mapaMatch[1];
+
+      // Verificação de Atualidade (Item 7)
+      const dataRefMatch = html.match(/var\s+DATA_REF\s*=\s*['"]([^'"]+)['"]/);
+      const dataRef = dataRefMatch ? dataRefMatch[1] : "not_found";
+      
+      const backupCount = (dumpSnapshot.match(/fonte\s*:\s*['"]backup['"]/g) || []).length;
+
       return new Response(JSON.stringify({
         status: "dry_run_literal_dump",
+        data_reference: dataRef,
+        payload_usd: payloadUsd,
+        mapa_snippet: mapaSnippet,
+        backup_source_count: backupCount,
         dumps: {
-          __PVOO_PAYLOAD: getLiteralDump("__PVOO_PAYLOAD"),
-          PV_SNAPSHOT: getLiteralDump("PV_SNAPSHOT"),
-          "DADOS.promos": getLiteralDump("DADOS.promos")
+          __PVOO_PAYLOAD: dumpPayload,
+          PV_SNAPSHOT: dumpSnapshot,
+          "DADOS.promos": dumpPromos
         }
       }), {
         status: 200,
@@ -48,10 +71,7 @@ serve(async (req) => {
       });
     }
 
-    // Task 4: Fix bug with single timestamp
     const executionTimestamp = new Date().toISOString();
-    
-    // Check if we have data before proceeding
     const hasData = html.includes("PV_SNAPSHOT") || html.includes("__PVOO_PAYLOAD");
     
     if (!hasData) {
@@ -61,20 +81,10 @@ serve(async (req) => {
       }), { status: 200, headers: corsHeaders });
     }
 
-    // Logic for deactivation (item 4)
-    // 1. All upserted offers get the SAME executionTimestamp in last_seen_at
-    // 2. After sync:
-    /*
-    await supabase.from('travel_offers')
-      .update({ is_active: false, deactivated_at: executionTimestamp })
-      .lt('last_seen_at', executionTimestamp)
-      .eq('is_active', true);
-    */
-
     return new Response(JSON.stringify({ 
-      status: "dry_run_only",
+      status: "dry_run_active",
       execution_timestamp: executionTimestamp,
-      message: "Item 4 implementado logicamente. Nenhuma gravação realizada."
+      message: "Pronto para o parser. Aguardando validação do dump."
     }), { status: 200, headers: corsHeaders });
 
   } catch (err: any) {
