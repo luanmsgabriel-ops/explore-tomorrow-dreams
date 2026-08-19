@@ -8962,6 +8962,15 @@ Regras OBRIGATÓRIAS:
 
         // Mark quotation as triggered to prevent duplicates
         newCollectedData._quotation_triggered = true;
+        
+        // IMPORTANT: Also update the conversation record in the database IMMEDIATELY to prevent race conditions
+        await supabase
+          .from("whatsapp_conversations")
+          .update({ 
+            collected_data: { ...newCollectedData, _quotation_triggered: true },
+            conversation_state: "awaiting_quotation"
+          })
+          .eq("id", conversation.id);
 
         // Send "searching" message immediately
         const searchingMsg = `Buscando as melhores opções para ${quotationData.destino}... ✈️🔍 Já volto!`;
