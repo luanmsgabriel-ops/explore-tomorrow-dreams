@@ -1127,9 +1127,10 @@ REGRAS:
 - Humor em doses mínimas: uma frase curta ou emoji, sem enrolar
 
 Quando identificar uma info, adicione no final:
-[DADOS:campo=valor]
+[DADOS:nome=valor, destino=valor, origem=valor, data_ida=AAAA-MM-DD, data_volta=AAAA-MM-DD, adultos=N, criancas=N, idades_criancas=[idades]]
 
-Campos: nome, destino, datas, num_viajantes, tipo_viagem, orcamento, preferencias, aeroporto
+Campos: nome, destino, origem, data_ida, data_volta, adultos, criancas, idades_criancas, tipo_viagem, orcamento, preferencias, aeroporto
+⚠️ IMPORTANTE: Em DADOS, use sempre campos simples. Para datas, use data_ida e data_volta separadamente em formato ISO (AAAA-MM-DD). Para passageiros, use adultos e criancas separadamente. Nunca envie texto livre no valor do campo em DADOS.
 
 ⚠️ REGRAS DE COTAÇÃO (ORDEM OBRIGATÓRIA):
 1. COLETA E CONFIRMAÇÃO:
@@ -2026,6 +2027,27 @@ async function analyzeMenuImage(imageBase64: string, mimeType: string = "image/j
 function extractCollectedData(aiResponse: string, existingData: Record<string, any>): { data: Record<string, any>; status: string | null } {
   const newData = { ...existingData };
   let status: string | null = null;
+
+  // Limpeza de dados corrompidos (legado de parsers antigos)
+  // Se destino ou origem contiverem "=", tratamos como corrompido e tentamos extrair novamente
+  for (const key of ['destino', 'origem']) {
+    const val = newData[key];
+    if (typeof val === 'string' && (val.includes('=') || (val.match(/,/g) || []).length > 2)) {
+      console.log(`[PARSER] Detectada corrupção no campo ${key}: "${val}". Limpando e reprocessando...`);
+      delete newData[key];
+      
+      // Tenta reprocessar o conteúdo corrompido como se fosse uma tag DADOS
+      const parts = val.split(/,\s*/);
+      parts.forEach(part => {
+        const subMatch = part.match(/(\w+)=(.+)/);
+        if (subMatch) {
+          const k = subMatch[1].trim();
+          const v = subMatch[2].trim();
+          newData[k] = v;
+        }
+      });
+    }
+  }
 
   // Enhanced regex to capture keys and values, handling multiple pairs in one tag if needed
   const tagMatches = aiResponse.matchAll(/\[DADOS:([^\]]+)\]/g);
@@ -8963,21 +8985,26 @@ Regras OBRIGATÓRIAS:
       const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || 
                            (collectedData && (collectedData._quotation_triggered === true || collectedData._quotation_triggered === "true"));
       
-      // VALIDATION: Only trigger if we have all mandatory concrete data
-      const hasMandatoryData = newCollectedData.destino && 
-                              newCollectedData.origem && 
-                              newCollectedData.data_ida && 
-                              newCollectedData.data_volta &&
-                              /^\d{4}-\d{2}-\d{2}$/.test(newCollectedData.data_ida) &&
-                              /^\d{4}-\d{2}-\d{2}$/.test(newCollectedData.data_volta);
+      // VALIDATION: Priority to data inside the [COTAR_VIAGEM] tag, then fallback to collected_data
+      const effectiveData = {
+        destino: quotationData?.destino || newCollectedData.destino,
+        origem: quotationData?.origem || newCollectedData.origem,
+        data_ida: quotationData?.data_ida || newCollectedData.data_ida,
+        data_volta: quotationData?.data_volta || newCollectedData.data_volta
+      };
+
+      const hasMandatoryData = effectiveData.destino && 
+                              effectiveData.origem && 
+                              effectiveData.data_ida && 
+                              effectiveData.data_volta &&
+                              /^\d{4}-\d{2}-\d{2}$/.test(effectiveData.data_ida) &&
+                              /^\d{4}-\d{2}-\d{2}$/.test(effectiveData.data_volta);
 
       if (quotationData && !alreadyQuoted) {
         if (!hasMandatoryData) {
-          console.log("[VALIDATION] Quotation tag ignored - missing mandatory data:", {
-            destino: newCollectedData.destino,
-            origem: newCollectedData.origem,
-            data_ida: newCollectedData.data_ida,
-            data_volta: newCollectedData.data_volta
+          console.log("[VALIDATION] Quotation tag ignored - missing or invalid mandatory data:", {
+            effectiveData,
+            sourceTag: quotationData
           });
           // AI will naturally ask for what's missing in the clean response
         } else {
@@ -8996,15 +9023,16 @@ Regras OBRIGATÓRIAS:
             newCollectedData.preferencias || newCollectedData.tipo_viagem || null
           );
 
-          if (saveResult.success) {
-            // Mark quotation as triggered ONLY IF save was successful
+          if (saveResult.success && saveResult.id) {
+            // Mark quotation as triggered ONLY IF save was successful and returned an ID
+            newCollectedData._last_quote_id = saveResult.id;
             newCollectedData._quotation_triggered = true;
             
             // IMPORTANT: Also update the conversation record in the database IMMEDIATELY to prevent race conditions
             await supabase
               .from("whatsapp_conversations")
               .update({ 
-                collected_data: { ...newCollectedData, _quotation_triggered: true },
+                collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
                 conversation_state: "awaiting_quotation"
               })
               .eq("id", conversation.id);
@@ -9025,7 +9053,7 @@ Regras OBRIGATÓRIAS:
               .update({
                 client_name: newCollectedData.nome || conversation.client_name || contactName,
                 conversation_state: "awaiting_quotation",
-                collected_data: { ...newCollectedData, _quotation_triggered: true },
+                collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
                 messages_history: updatedHistory,
                 is_ai_active: true,
               })
