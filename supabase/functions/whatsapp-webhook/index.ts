@@ -2484,90 +2484,45 @@ async function requestQuotation(quotationData: Record<string, any>): Promise<{ s
 }
 
 function formatQuotationResults(data: any): string {
-  if (!data) return "Não foi possível obter resultados.";
+  if (!data) return "";
 
   const results = data.resultados || data.results || (Array.isArray(data) ? data : null);
-  if (results && Array.isArray(results)) {
-    if (results.length === 0) return "😕 Nenhuma cotação encontrada para essas datas.";
+  if (!results || !Array.isArray(results) || results.length === 0) return "";
 
-    let formatted = "✈️ *Cotações encontradas!* ✈️\n";
-    formatted += "━━━━━━━━━━━━━━━━━━\n\n";
+  let formatted = "🌟 *Encontrei ofertas incríveis em datas próximas!* 🌟\n";
+  formatted += "_Estes são bloqueios aéreos exclusivos com valores promocionais:_\n\n";
 
-    results.forEach((r: any, i: number) => {
-      const hotelName = r.hotel || r.hotel_name || r.hospedagem || null;
-      const operadora = r.operadora || r.companhia || "Operadora";
-      const preco = r.preco || r.valor || r.price || r.total || null;
-
-      formatted += `🔹 *Opção ${i + 1}*\n`;
-      formatted += `📌 Operadora: *${operadora}*\n`;
-
-      if (hotelName) {
-        formatted += `🏨 Hotel: *${hotelName}*\n`;
-      }
-      if (r.regime || r.meal_plan || r.pensao) {
-        formatted += `🍽️ Regime: ${r.regime || r.meal_plan || r.pensao}\n`;
-      }
-      if (r.categoria || r.category || r.estrelas) {
-        formatted += `⭐ Categoria: ${r.categoria || r.category || r.estrelas}\n`;
-      }
-      
-      const originStr = r.origem_cidade ? `${r.origem_cidade}${r.origem_iata ? ` (${r.origem_iata})` : ""}` : (r.voo_ida || r.flight_out);
-      const destStr = r.destino_cidade ? `${r.destino_cidade}${r.destino_iata ? ` (${r.destino_iata})` : ""}` : (r.voo_volta || r.flight_back);
-      
-      if (r.voo_ida || r.flight_out || r.origem_cidade) formatted += `🛫 Ida: ${originStr}\n`;
-      if (r.voo_volta || r.flight_back || r.destino_cidade) formatted += `🛬 Volta: ${destStr}\n`;
-      if (r.data_partida) formatted += `📅 Partida: ${r.data_partida}\n`;
-      if (r.data_retorno) formatted += `📅 Retorno: ${r.data_retorno}\n`;
-      if (r.paradas !== undefined) formatted += `🔄 Paradas: ${r.paradas}\n`;
-      if (r.duracao || r.duration) formatted += `⏱️ Duração: ${r.duracao || r.duration}\n`;
-      if (r.noites || r.nights) formatted += `🌙 Noites: ${r.noites || r.nights}\n`;
-
-      if (preco) {
-        const valorFormatado = Number(preco).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
-        formatted += `\n💰 *Valor Total: R$ ${valorFormatado}*\n`;
-      }
-      if (r.preco_por_pessoa || r.valor_por_pessoa || r.price_per_person) {
-        const ppFormatado = Number(r.preco_por_pessoa || r.valor_por_pessoa || r.price_per_person).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
-        formatted += `👤 Por pessoa: R$ ${ppFormatado}\n`;
-      }
-      if (r.taxa_embarque !== undefined) {
-        const taxaFormatada = Number(r.taxa_embarque).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
-        formatted += `⚓ Taxa de embarque: R$ ${taxaFormatada}\n`;
-      }
-      if (r.parcelas || r.installments) {
-        formatted += `💳 ${r.parcelas || r.installments}x no cartão\n`;
-      }
-      if (r.prazo_emissao) {
-        formatted += `⏳ Prazo de emissão: *${r.prazo_emissao}*\n`;
-      }
-      if (r.assentos_disponiveis !== undefined) {
-        formatted += `💺 Assentos disponíveis: *${r.assentos_disponiveis}*\n`;
-      }
-
-      formatted += "\n━━━━━━━━━━━━━━━━━━\n\n";
-    });
-
-    return formatted.trim();
-  }
-
-  // Single result object
-  const hotelName = data.hotel || data.hotel_name || data.hospedagem || null;
-  const preco = data.preco || data.valor || data.price || data.total || null;
-
-  if (preco || hotelName) {
-    let msg = "✈️ *Cotação encontrada!* ✈️\n";
-    msg += "━━━━━━━━━━━━━━━━━━\n\n";
-    if (hotelName) msg += `🏨 Hotel: *${hotelName}*\n`;
-    if (data.regime || data.meal_plan) msg += `🍽️ Regime: ${data.regime || data.meal_plan}\n`;
-    if (data.prazo_emissao) msg += `⏳ Prazo de emissão: ${data.prazo_emissao}\n`;
-    if (preco) {
-      const valorFormatado = Number(preco).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
-      msg += `\n💰 *Valor Total: R$ ${valorFormatado}*\n`;
+  results.forEach((r: any, i: number) => {
+    let papel = "";
+    if (r.papel === "data_pedida") papel = "📅 *Data solicitada*";
+    else if (r.papel === "proxima_data") papel = "🔜 *Próxima data disponível*";
+    else papel = "💰 *Melhor preço*";
+    
+    formatted += `${papel}\n`;
+    formatted += `✈️ *${r.origem}* ➔ *${r.destino}*\n`;
+    formatted += `📅 Ida: ${new Date(r.data_ida + "T12:00:00").toLocaleDateString("pt-BR")}\n`;
+    formatted += `📅 Volta: ${new Date(r.data_volta + "T12:00:00").toLocaleDateString("pt-BR")}\n`;
+    formatted += `🏢 Companhia: ${r.companhia}\n`;
+    
+    const pp = Number(r.preco_por_pessoa).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+    const taxa = Number(r.taxa_embarque).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+    const total = Number(r.preco).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+    
+    formatted += `👤 Valor por pessoa: *R$ ${pp}*\n`;
+    formatted += `⚓ Taxa de embarque: R$ ${taxa}\n`;
+    formatted += `💎 *Total do grupo: R$ ${total}*\n`;
+    formatted += `💺 Assentos: ${r.assentos_disponiveis}\n`;
+    
+    if (r.prazo_emissao) {
+      const prazo = new Date(r.prazo_emissao.split('T')[0] + "T12:00:00").toLocaleDateString("pt-BR");
+      formatted += `⏳ Prazo de emissão: ${prazo}\n`;
     }
-    return msg.trim();
-  }
 
-  return "✈️ *Resultado da cotação:*\n\nOlha, tô terminando de conferir os melhores preços com nossos parceiros! ✈️✨\n\nComo quero te entregar a melhor opção de todas, passei seu pedido pra um de nossos consultores especialistas. Ele vai finalizar os detalhes e te chama rapidinho por aqui, beleza? 😊";
+    formatted += "\n━━━━━━━━━━━━━━━━━━\n\n";
+  });
+
+  formatted += "Qual dessas opções faz mais sentido para você? Ou prefere aguardar o consultor com as datas exatas? 😊";
+  return formatted.trim();
 }
 
 async function createQuoteRequest(phoneNumber: string, collectedData: Record<string, any>) {
