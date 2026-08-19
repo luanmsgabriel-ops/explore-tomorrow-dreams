@@ -25,9 +25,9 @@ payload = {
                         "messages": [
                             {
                                 "from": "5515991825285",
-                                "id": "TEST_FINAL_" + str(os.getpid()),
+                                "id": "TEST_RETRY_" + str(os.getpid()),
                                 "timestamp": "1724080000",
-                                "text": {"body": "Sim, tudo certo, pode buscar as ofertas!"},
+                                "text": {"body": "Sim, pode buscar!"},
                                 "type": "text"
                             }
                         ]
@@ -39,7 +39,6 @@ payload = {
     ]
 }
 
-print(f"Final confirmation test for Maceió...")
+print(f"Executing search trigger test...")
 response = requests.post(url, headers=headers, json=payload)
 print(f"Status: {response.status_code}")
-print(f"Body: {response.text}")
