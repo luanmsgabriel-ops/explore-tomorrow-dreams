@@ -2996,6 +2996,16 @@ serve(async (req) => {
       }
 
       const message = value.messages[0];
+      const messageId = message.id;
+
+      if (isDuplicateMessage(messageId)) {
+        console.log(`[DEDUPLICATION] Skipping duplicate message ID: ${messageId}`);
+        return new Response(JSON.stringify({ status: "ok", duplicate: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const phoneNumber = message.from;
       // Variantes do número p/ casar com cadastros (com/sem DDI 55, com/sem 9 extra)
       const phoneVariants = (() => {
