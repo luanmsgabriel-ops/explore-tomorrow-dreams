@@ -74,12 +74,19 @@ serve(async (req) => {
       .gt('price_per_person', 0)
       .gte('available_seats', totalPassageiros)
       .in('origin_iata', originIatas)
-      .in('destination_iata', destIatas)
-      .gte('departure_date', baseDate);
+      .in('destination_iata', destIatas);
 
     if (error) throw error;
     
     const allEligible = (eligibleOffers || []).filter(o => {
+      // 60 days before and 60 days after the requested date
+      const depDate = new Date(o.departure_date + "T12:00:00");
+      const reqDate = new Date(baseDate + "T12:00:00");
+      const diffDays = Math.abs(depDate.getTime() - reqDate.getTime()) / (1000 * 60 * 60 * 24);
+      
+      if (diffDays > 60) return false;
+      if (o.departure_date < brDateStr) return false;
+
       if (!o.issue_deadline) return true;
       const deadline = o.issue_deadline.split('T')[0];
       return deadline >= brDateStr;
@@ -133,6 +140,26 @@ serve(async (req) => {
       const cost = personPrice + tax;
       const totalGroup = cost * totalPassageiros;
       
+      const depDate = o.departure_date;
+      const reqDate = baseDate;
+      
+      let label = "";
+      let disclaimer = "";
+      
+      const depDateTime = new Date(depDate + "T12:00:00").getTime();
+      const reqDateTime = new Date(reqDate + "T12:00:00").getTime();
+      const diffDays = (depDateTime - reqDateTime) / (1000 * 60 * 60 * 24);
+      
+      if (Math.abs(diffDays) <= 3) {
+        label = "Data solicitada";
+      } else if (diffDays > 3) {
+        label = "Próxima data disponível";
+        disclaimer = "⚠️ Note que não há bloqueios exatamente na data que você pediu, então busquei a opção mais próxima disponível para garantir o melhor valor.";
+      } else if (diffDays < -3) {
+        label = "Data alternativa mais econômica";
+        disclaimer = "💡 Esta opção é um pouco antes do período que você solicitou, mas oferece uma economia excelente!";
+      }
+
       const res: any = {
         id: o.id,
         tipo: "aereo",
@@ -149,6 +176,8 @@ serve(async (req) => {
         prazo_emissao: o.issue_deadline,
         operadora: o.source_type || "Direto",
         papel: role,
+        rotulo: label,
+        observacao: disclaimer,
         voo_ida: o.outbound_departure_time ? `Voo às ${o.outbound_departure_time}` : o.departure_date,
         voo_volta: o.return_departure_time ? `Voo às ${o.return_departure_time}` : o.return_date,
       };
