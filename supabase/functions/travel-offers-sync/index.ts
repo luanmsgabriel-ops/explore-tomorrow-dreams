@@ -22,7 +22,7 @@ serve(async (req) => {
     const dryRun = body.dry_run === true;
     console.log(`Starting travel offers sync (dry_run: ${dryRun})...`);
     
-    if (!dry_run) {
+    if (!dryRun) {
       await supabase.from("travel_sync_logs").insert({
         id: logId,
         status: "running",
