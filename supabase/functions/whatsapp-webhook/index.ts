@@ -8355,48 +8355,8 @@ Regras OBRIGATÓRIAS:
         });
       }
 
-      // ========== SPAM / NON-CLIENT DETECTION (first contact only) ==========
-      // Bypass for admin and for messages where it's not actually the first contact.
-      if (phoneNumber !== ADMIN_PHONE_NUMBER) {
-        const historyArr = (conversation.messages_history as any[]) || [];
-        const collectedSoFar = (conversation.collected_data as Record<string, any>) || {};
-        const noPriorClientName = !conversation.client_name && !collectedSoFar.nome;
-        const isFirstUserMessage = historyArr.filter((m) => m?.role === "user").length <= 1;
-        const notInActiveMode = !collectedSoFar._teo_mode && !collectedSoFar._quotation_triggered;
+      // Spam filter removed per user request.
 
-        if (
-          isFirstUserMessage &&
-          noPriorClientName &&
-          notInActiveMode &&
-          conversation.conversation_state === "greeting" &&
-          messageText &&
-          !messageText.startsWith("[") // ignore non-text payloads like [audio], [Localização: ...]
-        ) {
-          // 1) Fast regex check
-          const regexCheck = isLikelySpamFirstMessage(messageText);
-          if (regexCheck.match) {
-            await disableAiForNonClient(conversation.id, collectedSoFar, regexCheck.reason);
-            return new Response(
-              JSON.stringify({ status: "ok", ai_disabled: true, reason: regexCheck.reason }),
-              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-
-          // 2) LLM classification fallback
-          const verdict = await classifyFirstMessageWithLLM(messageText, contactName || conversation.client_name);
-          if (verdict && verdict.is_real_client === false) {
-            await disableAiForNonClient(
-              conversation.id,
-              collectedSoFar,
-              `llm_classified_non_client: ${verdict.reason}`.slice(0, 250)
-            );
-            return new Response(
-              JSON.stringify({ status: "ok", ai_disabled: true, reason: "llm_non_client" }),
-              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-        }
-      }
 
 
       if (!conversation.is_ai_active || conversation.conversation_state === "completed") {
