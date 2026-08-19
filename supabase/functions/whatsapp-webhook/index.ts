@@ -18,6 +18,23 @@ const EXTERNAL_API_URL = "http://212.85.21.28:5000/cotar_viagem";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+// Cache para desduplicação de mensagens do WhatsApp (em memória, reinicia com a Edge Function)
+const processedMessages = new Set<string>();
+const MAX_CACHE_SIZE = 500;
+
+function isDuplicateMessage(messageId: string): boolean {
+  if (!messageId) return false;
+  if (processedMessages.has(messageId)) return true;
+  
+  processedMessages.add(messageId);
+  // Mantém o cache sob controle
+  if (processedMessages.size > MAX_CACHE_SIZE) {
+    const firstItem = processedMessages.values().next().value;
+    processedMessages.delete(firstItem);
+  }
+  return false;
+}
+
 const ADMIN_PHONE_NUMBER = "5515998389220";
 
 // Spam filter removed per user request. Restore original behavior of first contact.
