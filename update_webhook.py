@@ -58,7 +58,7 @@ DADOS: [DADOS:nome=valor, destino=valor, origem=valor, data_ida=AAAA-MM-DD, data
 
 content = re.sub(r'const TEO_SYSTEM_PROMPT = `.*?`;', f'const TEO_SYSTEM_PROMPT = `{new_prompt}`;', content, flags=re.DOTALL)
 
-# 2. Update formatQuotationResults (Fixing Portuguese labels and detail visibility)
+# 2. Update formatQuotationResults (Portuguese labels and detail visibility)
 new_formatter = """function formatQuotationResults(data: any): string {
   if (!data) return "";
 
@@ -103,8 +103,8 @@ new_formatter = """function formatQuotationResults(data: any): string {
 
 content = re.sub(r'function formatQuotationResults\(data: any\): string \{.*?\}', new_formatter, content, flags=re.DOTALL)
 
-# 3. Modify trigger logic to use collected_data if [STATUS:awaiting_quotation] is present but tag is missing
-trigger_block = """
+# 3. Trigger logic update
+trigger_block = r"""
       // Handle quotation if triggered and not already in progress
       const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || 
                            (collectedData && (collectedData._quotation_triggered === true || collectedData._quotation_triggered === "true"));
@@ -145,8 +145,8 @@ trigger_block = """
                               effectiveQuotationData.origem && 
                               effectiveQuotationData.data_ida && 
                               effectiveQuotationData.data_volta &&
-                              /^\\d{4}-\\d{2}-\\d{2}$/.test(effectiveQuotationData.data_ida) &&
-                              /^\\d{4}-\\d{2}-\\d{2}$/.test(effectiveQuotationData.data_volta);
+                              /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_ida) &&
+                              /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_volta);
 
       if (effectiveQuotationData && !alreadyQuoted) {
         if (!hasMandatoryData) {
@@ -169,63 +169,22 @@ trigger_block = """
           );
 """
 
-# Finding the start of the quotation handling logic
+# Pattern to replace
 old_block_pattern = r'// Handle quotation if triggered and not already in progress.*?const saveResult = await saveQuotationRequest\(.*?quotationData,.*?phoneNumber,.*?newCollectedData.nome \|\| conversation.client_name \|\| contactName,.*?newCollectedData.preferencias \|\| newCollectedData.tipo_viagem \|\| null.*?\);'
 content = re.sub(old_block_pattern, trigger_block, content, flags=re.DOTALL)
 
-# 4. Update the self-invocation call to use effectiveQuotationData
-content = re.sub(r'quotation_data: quotationData,', 'quotation_data: effectiveQuotationData,', content)
+# 4. Update async invocation
+content = content.replace('quotation_data: quotationData,', 'quotation_data: effectiveQuotationData,')
 
-# 5. Fix process_quotation handler to NOT send a second message if results are empty
-process_msg_logic = """
-          if (quotationResult.status === "success" && quotationResult.data?.resultados?.length > 0) {
-            quotationMsg = formatQuotationResults(quotationResult.data);
-
-            // Update travel_quote_requests with results
-            if (saveResultId) {
-              await supabase.from("travel_quote_requests").update({
-                status: "completed",
-                processed_at: new Date().toISOString(),
-                processing_details: quotationResult.data,
-              }).eq("id", saveResultId);
-            }
-
-            // Generate quote visual card (fire-and-forget)
-            generateAndSendQuoteVisual(phone, effectiveQuotationData || quotationData, quotationResult.data)
-              .catch(err => console.error("[QUOTE-VISUAL] Fire-and-forget error:", err));
-
-            // Send results to client ONLY if there are results
-            await sendWhatsAppMessage(phone, quotationMsg);
-
-          } else {
-            // No results or API error
-            console.log("[QUOTATION] No results found for client " + phone + ". Skipping secondary message.");
-
-            if (saveResultId) {
-              await supabase.from("travel_quote_requests").update({
-                status: "failed",
-                error_message: "Nenhum resultado encontrado na API Infotravel",
-                processed_at: new Date().toISOString(),
-              }).eq("id", saveResultId);
-            }
-
-            // Create lead for human follow-up (still silent to user)
-            try {
-              await createQuoteRequest(phone, collectedDataForQuote);
-            } catch (err) {
-              console.error("Error creating quote on failure:", err);
-            }
-          }
-
-          // Update conversation history (if we sent something)
-          if (quotationMsg) {
-"""
-
-old_process_pattern = r'if \(quotationResult.status === "success" && quotationResult.data\?.resultados\?.length > 0\) \{.*?// Send results to client.*?await sendWhatsAppMessage\(phone, quotationMsg\);.*?// Save to conversation history.*?try \{.*?const \{ data: conv \} = await supabase'
-# Need to be careful with this regex, it's a bit broad. Let's try to match until the history update.
-
-# Alternative: just replace the sendWhatsAppMessage and history part
+# 5. Skip second message if results are empty
 content = content.replace('await sendWhatsAppMessage(phone, quotationMsg);', '// Send results to client ONLY if there are results\n          if (quotationMsg) await sendWhatsAppMessage(phone, quotationMsg);')
+
+# Also fix the fallback message in process_quotation to not send anything
+# Replacing the entire block for the "else" case in process_quotation
+content = re.sub(r'\} else \{\s+// No results or API error.*?await createQuoteRequest\(phone, collectedDataForQuote\);\s+\}\s+\}', '} else {\n          console.log("[QUOTATION] No results found for client " + phone + ". Skipping secondary message.");\n          if (saveResultId) {\n            await supabase.from("travel_quote_requests").update({\n              status: "failed",\n              error_message: "Nenhum resultado encontrado na API Infotravel",\n              processed_at: new Date().toISOString(),\n            }).eq("id", saveResultId);\n          }\n          try {\n            await createQuoteRequest(phone, collectedDataForQuote);\n          } catch (err) {\n            console.error("Error creating quote on failure:", err);\n          }\n        }', content, flags=re.DOTALL)
+
+# Final check for quotationMsg usage
+content = content.replace('if (quotationMsg) {', 'if (quotationMsg && quotationMsg.trim()) {')
 
 with open(file_path, "w") as f:
     f.write(content)
