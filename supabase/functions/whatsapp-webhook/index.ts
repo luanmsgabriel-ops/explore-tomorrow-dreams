@@ -1147,7 +1147,6 @@ Tudo coletado e confirmado:
 Cliente quer falar com humano:
 [STATUS:human_takeover]
 
-REGRA CRÍTICA DE ANO: O ano atual é ${new Date().getFullYear()}. Se o cliente NÃO especificar o ano, SEMPRE use ${new Date().getFullYear()}. NUNCA use 2024 ou 2025. Exemplo: "junho" = "junho de ${new Date().getFullYear()}".
 
 Tudo coletado e confirmado:
 [STATUS:completed]
