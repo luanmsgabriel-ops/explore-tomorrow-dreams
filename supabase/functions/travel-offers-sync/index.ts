@@ -41,13 +41,12 @@ serve(async (req) => {
     const html = await response.text();
     
     if (dry_run) {
-        if (!html.includes("__PVOO_PAYLOAD")) {
-             return new Response(JSON.stringify({ 
-                error: "Structure changed", 
-                html_preview: html.substring(0, 5000),
-                url_used: targetUrl
-            }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        }
+        return new Response(JSON.stringify({ 
+            status: "discovery", 
+            html_preview: html.substring(0, 5000),
+            includes_pvoo: html.includes("__PVOO_PAYLOAD"),
+            url_used: targetUrl
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Save sample HTML
