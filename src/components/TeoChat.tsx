@@ -339,7 +339,6 @@ Me conta aí! 👇`
             }
           ]);
 
-          // Record the failed request in quote_requests for consultant follow-up
           supabase.from('quote_requests').insert({
             client_name: userName || 'Cliente Téo Site',
             email: `teo_site_${Date.now()}@tomorrowtravel.com.br`,
@@ -350,7 +349,7 @@ Me conta aí! 👇`
             notes: `Cotação solicitada via Téo Site. Volta: ${quotationData.data_volta}. Adultos: ${quotationData.passageiros.adultos}, Crianças: ${quotationData.passageiros.criancas}${quotationData.passageiros.idades_criancas?.length ? ` (Idades: ${quotationData.passageiros.idades_criancas.join(', ')})` : ''}.`,
             status: 'pending',
             source_channel: 'website'
-          }).then(({ error }) => {
+          } as any).then(({ error }) => {
             if (error) console.error('Error recording failed quote:', error);
           });
         }
