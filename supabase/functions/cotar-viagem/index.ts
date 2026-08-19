@@ -125,13 +125,14 @@ serve(async (req) => {
       if (offerA && offerB.id === offerA.id) offerB = null;
     }
 
-    // melhor_preco:
+    // melhor_preco (menor custo total no conjunto elegível):
     let offerC = null;
-    const mainOffer = offerA || offerB;
-    if (mainOffer) {
-      const sortedByPrice = [...allEligible].sort((a, b) => getCost(a) - getCost(b));
-      const cheapest = sortedByPrice[0];
-      if (cheapest && cheapest.id !== mainOffer.id && getCost(cheapest) < getCost(mainOffer)) {
+    const sortedByPrice = [...allEligible].sort((a, b) => getCost(a) - getCost(b));
+    const cheapest = sortedByPrice[0];
+    
+    if (cheapest) {
+      const mainOffer = offerA || offerB;
+      if (!mainOffer || (cheapest.id !== mainOffer.id && getCost(cheapest) < getCost(mainOffer))) {
         offerC = cheapest;
       }
     }
