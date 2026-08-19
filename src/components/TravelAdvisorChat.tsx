@@ -58,6 +58,7 @@ export const TravelAdvisorChat = () => {
   const [step, setStep] = useState<ChatStep>('collect_name');
   const [userName, setUserName] = useState('');
   const [userWhatsapp, setUserWhatsapp] = useState('');
+  const [pendingQuote, setPendingQuote] = useState<any>(null);
   const [quizAnswers, setQuizAnswers] = useState<QuizAnswers>({});
   
   const [messages, setMessages] = useState<Message[]>([
@@ -166,6 +167,24 @@ Agora me passa seu WhatsApp rapidinho - prometo que não vou ficar mandando meme
     
     const sanitizedWhatsapp = sanitizeText(input.trim());
     setUserWhatsapp(sanitizedWhatsapp);
+    
+    // If there's a pending quote, record it now that we have the WhatsApp
+    if (pendingQuote) {
+      supabase.from('quote_requests').insert({
+        client_name: userName || 'Cliente Téo Advisor',
+        whatsapp: sanitizedWhatsapp,
+        destination_name: pendingQuote.destino,
+        travel_date: pendingQuote.data_ida,
+        num_people: String((pendingQuote.passageiros.adultos || 1) + (pendingQuote.passageiros.criancas || 0)),
+        notes: `Cotação solicitada via Téo Advisor. Volta: ${pendingQuote.data_volta}. Adultos: ${pendingQuote.passageiros.adultos}, Crianças: ${pendingQuote.passageiros.criancas}${pendingQuote.passageiros.idades_criancas?.length ? ` (Idades: ${pendingQuote.passageiros.idades_criancas.join(', ')})` : ''}.`,
+        status: 'pending',
+        source_channel: 'website',
+        follow_up_enabled: false
+      }).then(({ error }) => {
+        if (error) console.error('Error recording pending quote after WhatsApp:', error);
+        setPendingQuote(null); // Clear once recorded
+      });
+    }
     
     // Include all messages up to now (including the whatsapp the user just entered)
     const allMessagesUpToNow: Message[] = [
@@ -401,6 +420,7 @@ Me conta aí! 👇`
                 content: `Olha, tô terminando de conferir os melhores preços pra **${quotationData.destino}** com nossos parceiros! ✈️✨\n\nEu adoraria te mandar essa cotação, mas ainda não tenho seu WhatsApp. Me passa seu número com DDD pra eu te enviar tudo por lá? Ou, se preferir, pode chamar a gente direto clicando no botão do WhatsApp ali no canto! 😊` 
               }
             ]);
+            setPendingQuote(quotationData);
             setStep('collect_whatsapp');
           }
         }
