@@ -83,13 +83,20 @@ serve(async (req) => {
     const destFilters = destCodes.map(c => `destination_iata.eq.${c}`).join(",");
     const originFilters = originCodes.map(c => `origin_iata.eq.${c}`).join(",");
     
+    let filterString = "";
     if (destFilters || destFuzzy) {
-      query = query.or(`${destFilters},destination_name.ilike.%${destFuzzy}%`);
+      filterString += `(destination_iata.in.(${destCodes.join(",")}),destination_name.ilike.%${destFuzzy}%)`;
     }
     
     if (originFilters) {
-      query = query.or(originFilters);
+      if (filterString) filterString += ",";
+      filterString += `origin_iata.in.(${originCodes.join(",")})`;
     }
+
+    if (filterString) {
+      query = query.or(filterString);
+    }
+
 
 
 
