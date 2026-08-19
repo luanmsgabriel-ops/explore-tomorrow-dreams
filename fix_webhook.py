@@ -1,20 +1,25 @@
-import re
-
 file_path = "supabase/functions/whatsapp-webhook/index.ts"
 with open(file_path, "r") as f:
     content = f.read()
 
-# Prompt fix
-prompt_fix = """4. CONFIRMAÇÃO E HANDOVER:
+# Target start and end for prompt
+prompt_start = "4. CONFIRMAÇÃO E HANDOVER:"
+prompt_end = "se a tag faltar."
+new_prompt = """4. CONFIRMAÇÃO E HANDOVER:
    - Após o cliente confirmar, você deve informar que encaminhou o pedido para um consultor e que enquanto isso vai buscar ofertas promocionais em datas próximas.
    - Use suas próprias palavras, não copie um texto fixo. Exemplo: "Sensacional! Já encaminhei seu pedido para um de nossos consultores especializados..."
    - OBRIGATÓRIO: No final da mensagem de handover, emita a tag [STATUS:awaiting_quotation].
-   - OPCIONAL: Você pode incluir a tag [COTAR_VIAGEM:{"origem":"...","destino":"...","data_ida":"AAAA-MM-DD","data_volta":"AAAA-MM-DD","adultos":N,"criancas":N,"idades_criancas":[]}] se desejar ser mais específico, mas o sistema usará os dados já coletados se a tag faltar.
-"""
+   - OPCIONAL: Você pode incluir a tag [COTAR_VIAGEM:{"origem":"...","destino":"...","data_ida":"AAAA-MM-DD","data_volta":"AAAA-MM-DD","adultos":N,"criancas":N,"idades_criancas":[]}] se desejar ser mais específico, mas o sistema usará os dados já coletados se a tag faltar."""
 
-# Trigger logic fix
-trigger_fix = """
-      // Handle quotation if triggered and not already in progress
+s = content.find(prompt_start)
+e = content.find(prompt_end, s)
+if s != -1 and e != -1:
+    content = content[:s] + new_prompt + content[e + len(prompt_end):]
+
+# Target start and end for trigger logic
+trigger_start = "// Handle quotation if triggered and not already in progress"
+trigger_end = "const saveResult = await saveQuotationRequest("
+new_trigger = """// Handle quotation if triggered and not already in progress
       const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || 
                            (newCollectedData && (newCollectedData._quotation_triggered === true || newCollectedData._quotation_triggered === "true"));
       
@@ -63,17 +68,12 @@ trigger_fix = """
             cleanResponse = ""; 
           }
 
-          const saveResult = await saveQuotationRequest(
-"""
+          const saveResult = await saveQuotationRequest("""
 
-# Apply with simple replacement
-# Prompt
-prompt_pattern = r'4\. CONFIRMAÇÃO E HANDOVER:.*?OPCIONAL: Você pode incluir a tag \[COTAR_VIAGEM:.*?se a tag faltar\.'
-content = re.sub(prompt_pattern, prompt_fix, content, flags=re.DOTALL)
-
-# Trigger
-trigger_pattern = r'// Handle quotation if triggered and not already in progress.*?const saveResult = await saveQuotationRequest\('
-content = re.sub(trigger_pattern, trigger_fix, content, flags=re.DOTALL)
+s = content.find(trigger_start)
+e = content.find(trigger_end, s)
+if s != -1 and e != -1:
+    content = content[:s] + new_trigger + content[e + len(trigger_end):]
 
 with open(file_path, "w") as f:
     f.write(content)

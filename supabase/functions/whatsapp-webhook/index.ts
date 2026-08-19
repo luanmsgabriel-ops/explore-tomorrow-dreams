@@ -1051,7 +1051,7 @@ FLUXO DE ATENDIMENTO:
 
 4. CONFIRMAÇÃO E HANDOVER:
    - Após o cliente confirmar, você deve informar que encaminhou o pedido para um consultor e que enquanto isso vai buscar ofertas promocionais em datas próximas.
-   - Use suas próprias palavras, não copie um texto fixo.
+   - Use suas próprias palavras, não copie um texto fixo. Exemplo: "Sensacional! Já encaminhei seu pedido para um de nossos consultores especializados..."
    - OBRIGATÓRIO: No final da mensagem de handover, emita a tag [STATUS:awaiting_quotation].
    - OPCIONAL: Você pode incluir a tag [COTAR_VIAGEM:{"origem":"...","destino":"...","data_ida":"AAAA-MM-DD","data_volta":"AAAA-MM-DD","adultos":N,"criancas":N,"idades_criancas":[]}] se desejar ser mais específico, mas o sistema usará os dados já coletados se a tag faltar.
 
@@ -8828,14 +8828,13 @@ Regras OBRIGATÓRIAS:
       }
 
       // Handle quotation if triggered and not already in progress
-      // Handle quotation if triggered and not already in progress
       const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || 
-                           (collectedData && (collectedData._quotation_triggered === true || collectedData._quotation_triggered === "true"));
+                           (newCollectedData && (newCollectedData._quotation_triggered === true || newCollectedData._quotation_triggered === "true"));
       
       // DISPARE A BUSCA A PARTIR DO COLLECTED_DATA SE [STATUS:awaiting_quotation] ESTIVER PRESENTE
       let effectiveQuotationData = quotationData;
       if (!effectiveQuotationData && conversationStatus === "awaiting_quotation") {
-        console.log("[QUOTATION] Tag [COTAR_VIAGEM] missing, but [STATUS:awaiting_quotation] detected. Using collected_data.");
+        console.log("[QUOTATION] Tag [COTAR_VIAGEM] missing, but [STATUS:awaiting_quotation] detected. Using newCollectedData.");
         
         const hasMandatory = newCollectedData.destino && 
                             newCollectedData.origem && 
@@ -8848,11 +8847,11 @@ Regras OBRIGATÓRIAS:
             destino: newCollectedData.destino,
             data_ida: newCollectedData.data_ida,
             data_volta: newCollectedData.data_volta,
-            adultos: Number(newCollectedData.adultos || newCollectedData.num_viajantes || 1),
+            adultos: Number(newCollectedData.adultos || newCollectedData.num_viajantes || 2),
             criancas: Number(newCollectedData.criancas || 0),
             idades_criancas: newCollectedData.idades_criancas || []
           };
-          console.log("[QUOTATION] Payload mounted from collected_data:", effectiveQuotationData);
+          console.log("[QUOTATION] Payload mounted from newCollectedData:", effectiveQuotationData);
         }
       }
 
