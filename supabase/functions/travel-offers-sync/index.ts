@@ -101,11 +101,17 @@ serve(async (req) => {
     }));
 
     if (iataEntries.length > 0) {
+      console.log(`Syncing ${iataEntries.length} IATA entries...`);
       const { error: iataError } = await supabaseClient
         .from("travel_iata_map")
         .upsert(iataEntries, { onConflict: "code" });
-      if (iataError) console.error("Error syncing travel_iata_map:", iataError);
+      if (iataError) {
+        console.error("Error syncing travel_iata_map:", iataError);
+      } else {
+        console.log("travel_iata_map synced successfully");
+      }
     }
+
 
 
     const lines = blob.split("\n").filter((l: string) => l.trim().length > 0);
