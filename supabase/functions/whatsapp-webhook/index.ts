@@ -8888,7 +8888,6 @@ Regras OBRIGATÓRIAS:
               await sendWhatsAppMessage(phoneNumber, cleanResponse);
               cleanResponse = ""; 
             }
-          }
 
             const saveResult = await saveQuotationRequest(
               effectiveQuotationData,
@@ -8898,69 +8897,64 @@ Regras OBRIGATÓRIAS:
             );
 
             if (saveResult.success && saveResult.id) {
-            // Mark quotation as triggered ONLY IF save was successful and returned an ID
-            newCollectedData._last_quote_id = saveResult.id;
-            newCollectedData._quotation_triggered = true;
-            
-            // IMPORTANT: Also update the conversation record in the database IMMEDIATELY to prevent race conditions
-            await supabase
-              .from("whatsapp_conversations")
-              .update({ 
-                collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
-                conversation_state: "awaiting_quotation"
-              })
-              .eq("id", conversation.id);
+              // Mark quotation as triggered ONLY IF save was successful and returned an ID
+              newCollectedData._last_quote_id = saveResult.id;
+              newCollectedData._quotation_triggered = true;
+              
+              // IMPORTANT: Also update the conversation record in the database IMMEDIATELY to prevent race conditions
+              await supabase
+                .from("whatsapp_conversations")
+                .update({ 
+                  collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
+                  conversation_state: "awaiting_quotation"
+                })
+                .eq("id", conversation.id);
+              
+              // Update conversation state immediately
+              const updatedHistory = [
+                ...(conversation.messages_history as any[] || []),
+                { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
+              ];
 
-            // No longer sending searchingMsg here. Handover message is now part of the AI's cleanResponse.
-            
-            // Update conversation state immediately
-            const updatedHistory = [
-              ...(conversation.messages_history as any[] || []),
-              { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
-            ];
+              await supabase
+                .from("whatsapp_conversations")
+                .update({
+                  client_name: newCollectedData.nome || conversation.client_name || contactName,
+                  conversation_state: "awaiting_quotation",
+                  collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
+                  messages_history: updatedHistory,
+                  is_ai_active: true,
+                })
+                .eq("id", conversation.id);
 
-            await supabase
-              .from("whatsapp_conversations")
-              .update({
-                client_name: newCollectedData.nome || conversation.client_name || contactName,
-                conversation_state: "awaiting_quotation",
-                collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
-                messages_history: updatedHistory,
-                is_ai_active: true,
-              })
-              .eq("id", conversation.id);
+              // Process quotation via self-invocation
+              const selfUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
+              const processPromise = fetch(selfUrl, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                },
+                body: JSON.stringify({
+                  action: "process_quotation",
+                  phone_number: phoneNumber,
+                  quotation_data: effectiveQuotationData,
+                  save_result_id: saveResult.id,
+                  conversation_id: conversation.id,
+                  client_name: newCollectedData.nome || conversation.client_name || contactName || "",
+                  collected_data: newCollectedData,
+                }),
+              });
 
-            // Process quotation via self-invocation
-            const selfUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
-            const processPromise = fetch(selfUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-              },
-              body: JSON.stringify({
-                action: "process_quotation",
-                phone_number: phoneNumber,
-                quotation_data: effectiveQuotationData,
-                save_result_id: saveResult.id,
-                conversation_id: conversation.id,
-                client_name: newCollectedData.nome || conversation.client_name || contactName || "",
-                collected_data: newCollectedData,
-              }),
-            });
+              await processPromise.catch(err => console.error("Error in async quotation:", err));
 
-            // Ensure the process is awaited or scheduled so it doesn't die when the response is sent
-            // In Deno Edge Functions, we must await any promise that we want to finish before the response
-            await processPromise.catch(err => console.error("Error in async quotation:", err));
-
-            // Return immediately to Meta webhook (fast response)
-            return new Response(JSON.stringify({ status: "ok", quotation: true, async: true }), {
-              status: 200,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          } else {
-            console.error("[VALIDATION] Failed to save quotation request. Not marking as triggered.");
-            // We don't return early here, so it continues to standard message sending
+              return new Response(JSON.stringify({ status: "ok", quotation: true, async: true }), {
+                status: 200,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            } else {
+              console.error("[VALIDATION] Failed to save quotation request. Not marking as triggered.");
+            }
           }
         }
       }
