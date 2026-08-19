@@ -9137,12 +9137,6 @@ Regras OBRIGATÓRIAS:
 
         await sendWhatsAppMessage(phoneNumber, changeMsg);
 
-        return new Response(JSON.stringify({ status: "ok", change_request: true }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
       // Standard flow (no quotation)
       const updatedHistory = [
         ...(conversation.messages_history as any[] || []),
@@ -9164,6 +9158,7 @@ Regras OBRIGATÓRIAS:
         }
       }
 
+      console.log(`[SAVE] Updating conversation with collected_data: ${JSON.stringify(newCollectedData)}`);
       await supabase
         .from("whatsapp_conversations")
         .update({
