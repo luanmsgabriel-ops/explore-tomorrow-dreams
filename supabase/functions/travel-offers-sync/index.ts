@@ -18,14 +18,16 @@ serve(async (req) => {
   const logId = crypto.randomUUID();
   
   try {
-    console.log("Starting travel offers sync...");
+    const { dry_run = false } = await req.json().catch(() => ({}));
+    console.log(`Starting travel offers sync (dry_run: ${dry_run})...`);
     
-    // Create log entry
-    await supabase.from("travel_sync_logs").insert({
-      id: logId,
-      status: "running",
-      started_at: new Date().toISOString(),
-    });
+    if (!dry_run) {
+      await supabase.from("travel_sync_logs").insert({
+        id: logId,
+        status: "running",
+        started_at: new Date().toISOString(),
+      });
+    }
 
     const targetUrl = "https://viajandocomdesconto.com/";
     const response = await fetch(targetUrl, {
@@ -38,8 +40,49 @@ serve(async (req) => {
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const html = await response.text();
 
+    // Save sample HTML
+    if (!dry_run) {
+      const fileName = `sync-samples/${new Date().toISOString().split('T')[0]}_viajando.html`;
+      await supabase.storage.from("admin-assets").upload(fileName, html, { contentType: "text/html", upsert: true });
+    }
+
     // 1. Extract __PVOO_PAYLOAD
     const pvooMatch = html.match(/var\s+__PVOO_PAYLOAD\s*=\s*({.*?});/s);
+    
+    // 2. Extract PACOTES
+    const pacotesMatch = html.match(/var\s+PACOTES\s*=\s*(\[.*?\]);/s);
+    const pacotes = pacotesMatch ? JSON.parse(pacotesMatch[1]) : null;
+
+    if (dry_run) {
+      let pvooInfo = { error: "__PVOO_PAYLOAD not found" };
+      if (pvooMatch) {
+        const pvooData = JSON.parse(pvooMatch[1]);
+        pvooInfo = {
+          cols: pvooData.cols || "No 'cols' found",
+          rows_sample: (pvooData.rows || []).slice(0, 3),
+          total_rows: (pvooData.rows || []).length
+        };
+      }
+
+      let pacotesInfo = { error: "PACOTES not found" };
+      if (pacotes && pacotes.length > 0) {
+        pacotesInfo = {
+          first_entry: pacotes[0],
+          keys: Object.keys(pacotes[0]),
+          total: pacotes.length
+        };
+      }
+
+      return new Response(JSON.stringify({
+        status: "dry_run_discovery",
+        pvoo: pvooInfo,
+        pacotes: pacotesInfo
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (!pvooMatch) {
       await supabase.from("travel_sync_logs").update({
         status: "structure_changed",
@@ -50,15 +93,11 @@ serve(async (req) => {
     }
 
     const pvooData = JSON.parse(pvooMatch[1]);
-    const { cols, rows } = pvooData;
+    const { rows } = pvooData;
     
-    // Map columns for PVOO
-    // Based on common structure for this platform:
-    // 0: ID, 1: Cia, 2: Origem (Cidade), 3: Origem (IATA), 4: Destino (Cidade), 5: Destino (IATA)
-    // 6: Saída, 7: Retorno, 8: Noites, 9: Assentos, 10: Valor, 11: Taxa, 12: Deadline
-    // 13: Hora Saída, 14: Chegada Saída, 15: Hora Retorno, 16: Chegada Retorno
+    const executionTimestamp = new Date().toISOString();
 
-    const offers = rows.map((row: any[]) => {
+    const offers = (rows || []).map((row: any[]) => {
       const priceStr = String(row[10] || "0");
       const price = parseFloat(priceStr.replace(/\./g, '').replace(',', '.'));
       const taxStr = String(row[11] || "0");
@@ -91,20 +130,10 @@ serve(async (req) => {
         price_per_person: price,
         boarding_tax: tax,
         active: true,
-        last_seen_at: new Date().toISOString(),
+        last_seen_at: executionTimestamp,
         raw_data: row
       };
     }).filter((o: any) => o.departure_date && o.price_per_person > 0);
-
-    // 2. Extract PACOTES
-    const pacotesMatch = html.match(/var\s+PACOTES\s*=\s*(\[.*?\]);/s);
-    if (pacotesMatch) {
-      const pacotes = JSON.parse(pacotesMatch[1]);
-      pacotes.forEach((p: any) => {
-        // Normalization for packages...
-        // Adding only if it has flight info
-      });
-    }
 
     // Safety Check: Low Yield
     const { data: lastLog } = await supabase
@@ -123,6 +152,16 @@ serve(async (req) => {
         finished_at: new Date().toISOString()
       }).eq("id", logId);
       return new Response(JSON.stringify({ error: "Low yield" }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (offers.length === 0) {
+      await supabase.from("travel_sync_logs").update({
+        status: "success",
+        offers_found: 0,
+        error_message: "No offers found in source",
+        finished_at: new Date().toISOString()
+      }).eq("id", logId);
+      return new Response(JSON.stringify({ status: "success", found: 0 }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Upsert offers
@@ -148,19 +187,19 @@ serve(async (req) => {
       }
     }
 
-    // Deactivate missing offers
-    const { data: deactivatedCount } = await supabase
+    // Deactivate missing offers using the execution timestamp
+    const { error: deactivateError } = await supabase
       .from("travel_offers")
       .update({ active: false })
       .eq("source", "viajandocomdesconto")
-      .neq("last_seen_at", offers[0].last_seen_at);
+      .neq("last_seen_at", executionTimestamp);
 
     await supabase.from("travel_sync_logs").update({
       status: "success",
       offers_found: offers.length,
       offers_created: created,
       offers_updated: updated,
-      offers_deactivated: Array.isArray(deactivatedCount) ? deactivatedCount.length : 0,
+      offers_deactivated: deactivateError ? 0 : "check travel_offers",
       finished_at: new Date().toISOString()
     }).eq("id", logId);
 
@@ -176,11 +215,13 @@ serve(async (req) => {
 
   } catch (err) {
     console.error("Sync error:", err);
-    await supabase.from("travel_sync_logs").update({
-      status: "error",
-      error_message: err.message,
-      finished_at: new Date().toISOString()
-    }).eq("id", logId);
+    if (!req.url.includes("dry_run")) {
+      await supabase.from("travel_sync_logs").update({
+        status: "error",
+        error_message: err.message,
+        finished_at: new Date().toISOString()
+      }).eq("id", logId).catch(() => {});
+    }
 
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
