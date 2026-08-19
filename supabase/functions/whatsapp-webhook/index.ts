@@ -8804,6 +8804,22 @@ Regras OBRIGATÓRIAS:
         collectedData
       );
 
+      // REDUNDÂNCIA: Se o modelo não gerou tags [DADOS], tentamos extrair do texto da resposta
+      if (conversationStatus === "awaiting_quotation" && (!newCollectedData.destino || !newCollectedData.data_ida)) {
+        console.log("[PARSER] Tentando extração de texto plano (fallback)...");
+        const destMatch = aiResponse.match(/para (Maceio|Porto Seguro|Gramado|Natal|Fortaleza|Sao Paulo|Rio de Janeiro|Florianopolis|Curitiba|Belo Horizonte|Salvador|Recife|Joao Pessoa|Porto Alegre|Goiania|Brasilia|Manaus|Belem|Cuiaba|Campo Grande|Vitoria|Aracaju|Teresina|Sao Luis|Natal|Maceio|Recife|Joao Pessoa|Salvador|Aracaju|Fortaleza|Sao Luis|Teresina|Pipa|Maragogi|Jericoacoara|Fernando de Noronha|Porto de Galinhas|Maceió|Porto Seguro)/i);
+        if (destMatch && !newCollectedData.destino) newCollectedData.destino = destMatch[1];
+        
+        const originMatch = aiResponse.match(/saindo de (Sao Paulo|Rio de Janeiro|Campinas|Belo Horizonte|Brasilia|Curitiba|Porto Alegre|Salvador|Recife|Fortaleza|Goiania|Manaus|Belem|Vitoria|Florianopolis|Cuiaba|Campo Grande|Maceio|Natal|Sao Luis|Teresina|Joao Pessoa|Aracaju|Palmas|Porto Velho|Boa Vista|Rio Branco|São Paulo)/i);
+        if (originMatch && !newCollectedData.origem) newCollectedData.origem = originMatch[1];
+
+        const dateMatch = aiResponse.match(/(\d{2}\/\d{2}\/\d{4})/g);
+        if (dateMatch && dateMatch.length >= 2) {
+          if (!newCollectedData.data_ida) newCollectedData.data_ida = dateMatch[0].split('/').reverse().join('-');
+          if (!newCollectedData.data_volta) newCollectedData.data_volta = dateMatch[1].split('/').reverse().join('-');
+        }
+      }
+
       // CORREÇÃO: Reset de "nova intenção" (destino diferente)
       // Deve rodar DEPOIS da extração para detectar se o modelo trouxe um destino novo,
       // mas ANTES de validar a busca para não usar lixo do pedido anterior.
@@ -8836,7 +8852,7 @@ Regras OBRIGATÓRIAS:
 
       // Log para diagnóstico se o collected_data ficar sem destino ou datas após extração
       if (conversationStatus === "awaiting_quotation" && (!newCollectedData.destino || !newCollectedData.data_ida)) {
-        console.warn(`[PARSER_WARN] Status is awaiting_quotation but data is incomplete. Dest: ${newCollectedData.destino}, Ida: ${newCollectedData.data_ida}. Raw AI: ${aiResponse}`);
+        console.warn(`[PARSER_WARN] Status is awaiting_quotation but data is incomplete. Raw AI: ${aiResponse}`);
       }
 
       // Check if AI triggered a quotation request
