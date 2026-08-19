@@ -23,10 +23,6 @@ serve(async (req) => {
     const children = Number(passageiros?.criancas) || 0;
     const totalPassageiros = adults + children;
 
-    const normalize = (str: string) => (str || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const destClean = normalize(destino);
-    const originClean = normalize(origem);
-
     // 1. DATA E PASSAGEIROS
     const nowUtc = new Date();
     const brDateStr = new Intl.DateTimeFormat('fr-CA', {
@@ -41,11 +37,9 @@ serve(async (req) => {
       const [d, m, y] = data_ida.split('/');
       targetDepStr = `${y}-${m}-${d}`;
     }
-    // A regra diz: Nenhuma oferta com departure_date anterior à data de ida pedida.
-    // Se não informada, usamos hoje.
     const baseDate = (targetDepStr && targetDepStr >= brDateStr) ? targetDepStr : brDateStr;
 
-    // 2. BUSCA DE IATA EXPANSIONS (Para Origem e Destino)
+    // 2. BUSCA DE IATA EXPANSIONS
     const getIatas = async (term: string) => {
       if (!term) return [];
       const cleanTerm = term.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -56,7 +50,6 @@ serve(async (req) => {
       
       const list = (data || []).map(i => i.code.toUpperCase());
       
-      // Expansões manuais críticas para garantir cobertura mesmo sem o mapa completo
       if (cleanTerm.includes("sao paulo") || cleanTerm === "sp") list.push("GRU", "CGH", "VCP");
       if (cleanTerm.includes("goiania") || cleanTerm === "gyn") list.push("GYN");
       if (cleanTerm.includes("porto alegre") || cleanTerm === "poa") list.push("POA");
@@ -73,9 +66,6 @@ serve(async (req) => {
     ]);
 
     // 3. CONSULTA AO CONJUNTO ELEGÍVEL
-    // SELECT * FROM travel_offers WHERE ... departure_date >= :data_ida_pedida
-    console.log(`[cotar-viagem] Buscando ofertas: Origens=${originIatas}, Destinos=${destIatas}, Ida >= ${baseDate}, PAX=${totalPassageiros}`);
-    
     const { data: eligibleOffers, error } = await supabaseClient
       .from('travel_offers')
       .select('*')
@@ -89,17 +79,12 @@ serve(async (req) => {
       .gte('departure_date', baseDate);
 
     if (error) throw error;
-
     const allEligible = eligibleOffers || [];
-    console.log(`[cotar-viagem] Encontradas ${allEligible.length} ofertas elegíveis.`);
-    
+
     // 4. SELEÇÃO DOS TRÊS PAPÉIS (EM MEMÓRIA)
     const getCost = (o: any) => Number(o.price_per_person) + Number(o.boarding_tax || 0);
 
     // data_pedida:
-    // - Filtrar mês e ano iguais à data pedida
-    // - Ordenar por: diferença absoluta em dias, crescente
-    // - Desempate: menor custo total por pessoa
     let offerA = null;
     const targetMonth = baseDate.substring(0, 7);
     const monthOffers = allEligible.filter(o => o.departure_date.startsWith(targetMonth));
@@ -117,8 +102,6 @@ serve(async (req) => {
     }
 
     // proxima_data:
-    // - Só existe se data_pedida for vazia
-    // - Ordenar por departure_date crescente
     let offerB = null;
     if (!offerA) {
       const futureOffers = [...allEligible].sort((a, b) => a.departure_date.localeCompare(b.departure_date));
@@ -128,8 +111,6 @@ serve(async (req) => {
     }
 
     // melhor_preco:
-    // - Ordenar todo o conjunto por custo total por pessoa crescente
-    // - Só incluir se id diferente do principal E custo estritamente menor
     let offerC = null;
     const mainOffer = offerA || offerB;
     if (mainOffer) {
