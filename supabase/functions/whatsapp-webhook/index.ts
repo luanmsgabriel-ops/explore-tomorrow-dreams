@@ -2266,18 +2266,17 @@ async function saveQuotationRequest(
     return d;
   };
 
-  const adults = Number(quotationData.adultos) || 1;
-  const children = Number(quotationData.criancas) || 0;
-
+  const adults = Number(quotationData.adultos || 1);
+  const children = Number(quotationData.criancas || 0);
+  
   const insertPayload = {
     phone_number: phoneNumber,
     origin: quotationData.origem,
     destination: quotationData.destino,
-    departure_date: parseDate(quotationData.data_ida),
-    return_date: parseDate(quotationData.data_volta),
+    departure_date: quotationData.data_ida,
+    return_date: quotationData.data_volta,
     adults: adults,
     children: children,
-    num_people: adults + children,
     children_ages: quotationData.idades_criancas || [],
     customer_name: clientName || null,
     preferences: preferences || null,
@@ -8828,7 +8827,7 @@ Regras OBRIGATÓRIAS:
       }
 
       // Handle quotation if triggered
-      console.log("[QUOTATION-DEBUG] Starting trigger logic for " + phoneNumber + " status: " + conversationStatus + " alreadyQuotedInDB: " + alreadyQuotedInDB);      // We check if it was already triggered in PREVIOUS turns to avoid duplication
+      // We check if it was already triggered in PREVIOUS turns to avoid duplication
       const alreadyQuotedInDB = (conversation.collected_data as any)?._quotation_triggered === true || 
                                 (conversation.collected_data as any)?._quotation_triggered === "true";
       
