@@ -8829,6 +8829,10 @@ Regras OBRIGATÓRIAS:
         collectedData
       );
 
+      // FORCE STATE UPDATE: Se a resposta do modelo confirma os dados no texto mas o collected_data falhou,
+      // usamos os dados extraídos pelo parser de fallback dentro do extractCollectedData.
+      // O extractCollectedData já foi atualizado para fazer isso se encontrar [STATUS:awaiting_quotation].
+
       const msgLowerForReset = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       const currentDestInDB = (collectedData.destino || "").toLowerCase();
       const mentionsNewDestination = /quanto custa|preco|valor|orcamento|pacote|cotar|cotacao|quero viajar|viagem para/i.test(msgLowerForReset) && 
