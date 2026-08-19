@@ -8938,8 +8938,9 @@ Regras OBRIGATÓRIAS:
         cleanResponse += "\n\nPara viagem em grupo, mande *criar grupo* aqui no chat! 🎉";
       }
 
-      // Handle quotation if triggered
-      if (quotationData) {
+      // Handle quotation if triggered and not already in progress
+      const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || !!collectedData._quotation_triggered;
+      if (quotationData && !alreadyQuoted) {
         console.log("AI triggered quotation request:", JSON.stringify(quotationData));
         
         // Send the clean message first
