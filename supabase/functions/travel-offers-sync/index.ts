@@ -20,7 +20,11 @@ serve(async (req) => {
     });
     const html = await res.text();
     
+    // We force a unique message to verify if deployment happened
+    const deployId = "DEPLOY_TEST_" + Date.now();
+    
     return new Response(JSON.stringify({
+      deployId,
       html_length: html.length,
       html_start: html.substring(0, 5000)
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
