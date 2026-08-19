@@ -70,10 +70,6 @@ serve(async (req) => {
     const originCodes = await resolveLocation(origem, 'origin');
     const destCodes = await resolveLocation(destino, 'destination');
 
-
-    
-
-
     // 2. Build Query
     let query = supabaseClient
       .from("travel_offers")
@@ -99,14 +95,6 @@ serve(async (req) => {
       query = query.ilike("origin_city", `%${origem.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}%`);
     }
 
-
-
-
-
-
-
-
-
     // 3. Date handling (Fixed window +/- 7 days or full month)
     const targetDep = new Date(data_ida + "T12:00:00");
     const isOnlyMonth = data_ida.length <= 7; // "2024-10"
@@ -128,9 +116,7 @@ serve(async (req) => {
 
     const { data: offers, error } = await query;
 
-
     if (error) throw error;
-
 
     // 4. Sort and format (Proximity to date then Price)
     const formattedResults = (offers || [])
