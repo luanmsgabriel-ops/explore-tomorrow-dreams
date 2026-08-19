@@ -197,8 +197,8 @@ serve(async (req) => {
     if (offerA) resultados.push(format(offerA, "data_pedida"));
     if (offerB) resultados.push(format(offerB, "proxima_data"));
     if (offerC) {
-      const mainTotal = getCost(mainOffer);
-      resultados.push(format(offerC, "melhor_preco", mainTotal));
+      const mainTotal = mainOffer ? getCost(mainOffer) : null;
+      resultados.push(format(offerC, "melhor_preco", mainTotal || undefined));
     }
 
     return new Response(JSON.stringify({ resultados, meta: { total_passengers: totalPassageiros } }), {
