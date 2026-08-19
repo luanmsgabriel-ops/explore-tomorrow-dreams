@@ -9007,15 +9007,12 @@ Regras OBRIGATÓRIAS:
               })
               .eq("id", conversation.id);
 
-            // Send "searching" message immediately
-            const searchingMsg = `Buscando as melhores opções para ${quotationData.destino}... ✈️🔍 Já volto!`;
-            await sendWhatsAppMessage(phoneNumber, searchingMsg);
-
+            // No longer sending searchingMsg here. Handover message is now part of the AI's cleanResponse.
+            
             // Update conversation state immediately
             const updatedHistory = [
               ...(conversation.messages_history as any[] || []),
               { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
-              { role: "assistant", content: searchingMsg, timestamp: new Date().toISOString() },
             ];
 
             await supabase
