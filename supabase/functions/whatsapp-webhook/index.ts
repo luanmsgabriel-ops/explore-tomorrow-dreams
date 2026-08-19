@@ -6342,7 +6342,7 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
         const hasQuotationIntent = quotationIntentRegex.test(normalizedMsgSchool);
 
         // 2. COMANDOS DE SAÍDA FUNCIONAM EM QUALQUER PASSO
-        const exitRegex = /^(sair escola|sair school|parar aula|exit school|voltar|sair modo|sair|menu principal|modo cota[cç][aã]o)$/i;
+        const exitRegex = /^(sair escola|sair school|parar aula|exit school|voltar|sair modo|sair|menu principal|modo cota[cç][aã]o|quero sair|encerrar)$/i;
         const isExitCommand = exitRegex.test(normalizedMsgSchool);
 
         // Se houver intenção de compra, timeout ou comando de saída, sai do modo escola
@@ -6388,15 +6388,18 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
           const schoolScore = schoolData._school_score || 0;
           const schoolHistory = Array.isArray(schoolData._school_history) ? schoolData._school_history : [];
 
-          // Exit commands
-          const exitRegex = /^(sair escola|sair school|parar aula|exit school|voltar|sair modo)$/i;
-          if (exitRegex.test(lowerMsgSchool)) {
+          // Exit commands — redundância para segurança (já tratado acima, mas mantendo lógica interna)
+          const stepExitRegex = /^(sair escola|sair school|parar aula|exit school|voltar|sair modo|sair|encerrar)$/i;
+          if (stepExitRegex.test(lowerMsgSchool)) {
             const cleanData = { ...schoolData };
             delete cleanData._school_mode;
             delete cleanData._school_step;
             delete cleanData._mode_activated_at;
             // Keep progress: _school_lang, _school_level, _school_module, _school_lesson, _school_score
-            await supabase.from("whatsapp_conversations").update({ collected_data: cleanData }).eq("id", convForSchool.id);
+            await supabase.from("whatsapp_conversations").update({ 
+              collected_data: cleanData,
+              conversation_state: 'idle' 
+            }).eq("id", convForSchool.id);
 
             // Sync to dedicated school_progress table
             try {
