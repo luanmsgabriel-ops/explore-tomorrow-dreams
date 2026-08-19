@@ -34,7 +34,7 @@ serve(async (req) => {
       pvoo_snippet: pvooMatch ? pvooMatch[0].substring(0, 1000) : "not_found",
       snapshot_snippet: snapshotMatch ? snapshotMatch[0].substring(0, 1000) : "not_found",
       // Retorna pedaços em volta de onde o payload costuma estar
-      context: html.substring(html.indexOf("var "), html.indexOf("var ") + 50000)
+      context: html.substring(0, 80000)
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err: any) {
