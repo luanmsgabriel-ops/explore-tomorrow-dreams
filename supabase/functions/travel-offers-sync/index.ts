@@ -43,7 +43,7 @@ serve(async (req) => {
     if (dry_run) {
         return new Response(JSON.stringify({ 
             status: "discovery", 
-            html_preview: html.substring(0, 5000),
+            html_preview: html.substring(0, 8000),
             includes_pvoo: html.includes("__PVOO_PAYLOAD"),
             url_used: targetUrl
         }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -61,43 +61,6 @@ serve(async (req) => {
     // 2. Extract PACOTES
     const pacotesMatch = html.match(/var\s+PACOTES\s*=\s*(\[.*?\]);/s) || html.match(/PACOTES\s*=\s*(\[.*?\]);/s);
     const pacotes = pacotesMatch ? JSON.parse(pacotesMatch[1]) : null;
-
-    if (dry_run) {
-      let pvooInfo = { error: "__PVOO_PAYLOAD not found", raw_match_preview: html.substring(0, 1000).includes("__PVOO_PAYLOAD") ? "Found string but no match" : "String not found in first 1000 chars" };
-      if (pvooMatch) {
-        const pvooData = JSON.parse(pvooMatch[1]);
-        pvooInfo = {
-          cols: pvooData.cols || "No 'cols' found",
-          rows_sample: (pvooData.rows || []).slice(0, 3),
-          total_rows: (pvooData.rows || []).length
-        };
-      }
-      
-      // Fallback: look for ANY JSON-like structure if named ones fail
-      if (!pvooMatch && html.includes("__PVOO_PAYLOAD")) {
-        const start = html.indexOf("__PVOO_PAYLOAD");
-        pvooInfo.raw_context = html.substring(start, start + 500);
-      }
-
-
-      let pacotesInfo = { error: "PACOTES not found" };
-      if (pacotes && pacotes.length > 0) {
-        pacotesInfo = {
-          first_entry: pacotes[0],
-          keys: Object.keys(pacotes[0]),
-          total: pacotes.length
-        };
-      }
-
-      return new Response(JSON.stringify({
-        status: "dry_run_discovery",
-        pvoo: pvooInfo,
-        pacotes: pacotesInfo
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     if (!pvooMatch) {
       await supabase.from("travel_sync_logs").update({
