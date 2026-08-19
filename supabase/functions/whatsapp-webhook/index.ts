@@ -1147,7 +1147,7 @@ Tudo coletado e confirmado:
 Cliente quer falar com humano:
 [STATUS:human_takeover]
 
---LIMPO--
+
 
    --LIMPO_2--
    --LIMPO_3-- 
