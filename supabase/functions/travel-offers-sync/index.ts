@@ -21,19 +21,12 @@ serve(async (req) => {
     });
     
     const html = await res.text();
-    const payloadIndex = html.indexOf("__PVOO_PAYLOAD =");
-    const snapshotIndex = html.indexOf("PV_SNAPSHOT =");
-
-    // Force unique return string
-    const token = "TOKEN_" + Math.random().toString(36).substring(7);
-
+    
     return new Response(JSON.stringify({
-      token,
+      v2: true,
       status: res.status,
       html_length: html.length,
-      payloadIndex,
-      snapshotIndex,
-      html_sample: html.substring(Math.max(0, payloadIndex), payloadIndex + 500)
+      html_start: html.substring(0, 1000)
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err: any) {
