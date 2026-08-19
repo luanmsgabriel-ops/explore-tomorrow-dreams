@@ -78,15 +78,19 @@ serve(async (req) => {
       .gte("available_seats", totalPassageiros)
       .gt("price_per_person", 0);
 
-    // Destination filter (Fuzzy for packages or IATA for air)
+    // Destination and Origin filters
     const destFuzzy = destino.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const destFilters = destCodes.map(c => `destination_iata.eq.${c}`).join(",");
     const originFilters = originCodes.map(c => `origin_iata.eq.${c}`).join(",");
     
-    query = query.or(`${destFilters},destination_name.ilike.%${destFuzzy}%`);
+    if (destFilters || destFuzzy) {
+      query = query.or(`${destFilters},destination_name.ilike.%${destFuzzy}%`);
+    }
+    
     if (originFilters) {
       query = query.or(originFilters);
     }
+
 
 
     // 3. Date handling (Fixed window +/- 7 days or full month)
