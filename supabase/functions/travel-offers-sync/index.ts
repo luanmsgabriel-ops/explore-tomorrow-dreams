@@ -85,13 +85,6 @@ serve(async (req) => {
     const parsedOffers = [];
     let mapErrors = 0;
 
-    const generateHash = async (text: string) => {
-      const msgUint8 = new TextEncoder().encode(text);
-      const hashBuffer = await crypto.subtle.digest("SHA-256", msgUint8);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, "0")).join("").substring(0, 32);
-    };
-
     const convertDate = (aammdd: string) => {
       if (!aammdd || aammdd.length !== 6) return null;
       return `20${aammdd.substring(0, 2)}-${aammdd.substring(2, 4)}-${aammdd.substring(4, 6)}`;
@@ -102,38 +95,36 @@ serve(async (req) => {
       return `${hhmm.substring(0, 2)}:${hhmm.substring(2, 4)}`;
     };
 
+    // Use synchronous hash to save memory/CPU if possible, or just simpler string concat for source_id
+    // Deterministic ID without async crypto to save resources
+    const getSimpleId = (cols: string[]) => {
+      return `${cols[0]}-${cols[1]}-${cols[2]}-${cols[3]}-${cols[15]}-${cols[6]}`.substring(0, 64);
+    };
+
     for (const line of lines) {
       const cols = line.split("|");
       if (cols.length < 16) continue;
 
       const originIata = cols[0];
       const destinationIata = cols[1];
-      const departureDate = convertDate(cols[2]);
-      const returnDate = convertDate(cols[3]);
-      const price = parseFloat(cols[6]);
-      const currency = cols[7] === "0" ? "BRL" : "USD";
-      const airline = cols[15];
-
       const originName = mapa[originIata] ? mapa[originIata][0] : originIata;
       const destinationName = mapa[destinationIata] ? mapa[destinationIata][1] : destinationIata;
 
       if (!mapa[originIata] || !mapa[destinationIata]) mapErrors++;
 
-      const sourceId = await generateHash(`${originIata}${destinationIata}${cols[2]}${cols[3]}${airline}${cols[6]}`);
-
       parsedOffers.push({
         source: "viajandocomdesconto",
-        source_id: sourceId,
+        source_id: getSimpleId(cols),
         offer_type: "bloqueio_aereo",
         origin_iata: originIata,
         origin_city: originName,
         destination_iata: destinationIata,
         destination_name: destinationName,
-        departure_date: departureDate,
-        return_date: returnDate,
-        price: price,
-        currency: currency,
-        airline: airline,
+        departure_date: convertDate(cols[2]),
+        return_date: convertDate(cols[3]),
+        price: parseFloat(cols[6]),
+        currency: cols[7] === "0" ? "BRL" : "USD",
+        airline: airline = cols[15],
         tax: parseFloat(cols[13]) || 0,
         nights: parseInt(cols[4]) || 0,
         seats_available: parseInt(cols[5]) || 0,
@@ -148,10 +139,9 @@ serve(async (req) => {
 
     if (Array.isArray(snapshot)) {
       for (const item of snapshot) {
-        const sourceId = await generateHash(`pkg-${item.nome}-${item.origem_iata}-${item.destino}-${item.por}`);
         parsedOffers.push({
           source: "viajandocomdesconto",
-          source_id: sourceId,
+          source_id: `pkg-${item.nome}-${item.origem_iata}-${item.destino}-${item.por}`.substring(0, 64),
           offer_type: "pacote",
           title: item.nome,
           destination_name: item.destino,
@@ -167,19 +157,21 @@ serve(async (req) => {
       }
     }
 
-    const { error: upsertError } = await supabaseClient
-      .from("travel_offers")
-      .upsert(parsedOffers, { onConflict: "source,source_id,offer_type" });
+    // Upsert in smaller chunks to avoid memory limit
+    const CHUNK_SIZE = 500;
+    for (let i = 0; i < parsedOffers.length; i += CHUNK_SIZE) {
+      const chunk = parsedOffers.slice(i, i + CHUNK_SIZE);
+      const { error } = await supabaseClient
+        .from("travel_offers")
+        .upsert(chunk, { onConflict: "source,source_id,offer_type" });
+      if (error) throw error;
+    }
 
-    if (upsertError) throw upsertError;
-
-    const { error: deactivateError } = await supabaseClient
+    await supabaseClient
       .from("travel_offers")
       .update({ is_active: false })
       .lt("last_seen_at", executionTimestamp)
       .eq("source", "viajandocomdesconto");
-
-    if (deactivateError) throw deactivateError;
 
     await supabaseClient.from("travel_sync_logs").insert({
       source: "viajandocomdesconto",
