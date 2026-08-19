@@ -8985,21 +8985,26 @@ Regras OBRIGATÓRIAS:
       const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || 
                            (collectedData && (collectedData._quotation_triggered === true || collectedData._quotation_triggered === "true"));
       
-      // VALIDATION: Only trigger if we have all mandatory concrete data
-      const hasMandatoryData = newCollectedData.destino && 
-                              newCollectedData.origem && 
-                              newCollectedData.data_ida && 
-                              newCollectedData.data_volta &&
-                              /^\d{4}-\d{2}-\d{2}$/.test(newCollectedData.data_ida) &&
-                              /^\d{4}-\d{2}-\d{2}$/.test(newCollectedData.data_volta);
+      // VALIDATION: Priority to data inside the [COTAR_VIAGEM] tag, then fallback to collected_data
+      const effectiveData = {
+        destino: quotationData?.destino || newCollectedData.destino,
+        origem: quotationData?.origem || newCollectedData.origem,
+        data_ida: quotationData?.data_ida || newCollectedData.data_ida,
+        data_volta: quotationData?.data_volta || newCollectedData.data_volta
+      };
+
+      const hasMandatoryData = effectiveData.destino && 
+                              effectiveData.origem && 
+                              effectiveData.data_ida && 
+                              effectiveData.data_volta &&
+                              /^\d{4}-\d{2}-\d{2}$/.test(effectiveData.data_ida) &&
+                              /^\d{4}-\d{2}-\d{2}$/.test(effectiveData.data_volta);
 
       if (quotationData && !alreadyQuoted) {
         if (!hasMandatoryData) {
-          console.log("[VALIDATION] Quotation tag ignored - missing mandatory data:", {
-            destino: newCollectedData.destino,
-            origem: newCollectedData.origem,
-            data_ida: newCollectedData.data_ida,
-            data_volta: newCollectedData.data_volta
+          console.log("[VALIDATION] Quotation tag ignored - missing or invalid mandatory data:", {
+            effectiveData,
+            sourceTag: quotationData
           });
           // AI will naturally ask for what's missing in the clean response
         } else {
