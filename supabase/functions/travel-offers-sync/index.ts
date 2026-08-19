@@ -22,8 +22,7 @@ serve(async (req) => {
     
     return new Response(JSON.stringify({
       html_length: html.length,
-      html_start: html.substring(0, 3000),
-      html_end: html.substring(html.length - 2000)
+      html_start: html.substring(0, 4000)
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err: any) {
