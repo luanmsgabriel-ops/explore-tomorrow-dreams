@@ -2028,6 +2028,27 @@ function extractCollectedData(aiResponse: string, existingData: Record<string, a
   const newData = { ...existingData };
   let status: string | null = null;
 
+  // Limpeza de dados corrompidos (legado de parsers antigos)
+  // Se destino ou origem contiverem "=", tratamos como corrompido e tentamos extrair novamente
+  for (const key of ['destino', 'origem']) {
+    const val = newData[key];
+    if (typeof val === 'string' && (val.includes('=') || (val.match(/,/g) || []).length > 2)) {
+      console.log(`[PARSER] Detectada corrupção no campo ${key}: "${val}". Limpando e reprocessando...`);
+      delete newData[key];
+      
+      // Tenta reprocessar o conteúdo corrompido como se fosse uma tag DADOS
+      const parts = val.split(/,\s*/);
+      parts.forEach(part => {
+        const subMatch = part.match(/(\w+)=(.+)/);
+        if (subMatch) {
+          const k = subMatch[1].trim();
+          const v = subMatch[2].trim();
+          newData[k] = v;
+        }
+      });
+    }
+  }
+
   // Enhanced regex to capture keys and values, handling multiple pairs in one tag if needed
   const tagMatches = aiResponse.matchAll(/\[DADOS:([^\]]+)\]/g);
   for (const tagMatch of tagMatches) {
