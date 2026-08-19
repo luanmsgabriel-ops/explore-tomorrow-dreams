@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,81 +11,185 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
   try {
-    const body = await req.json().catch(() => ({}));
-    const dryRun = body.dry_run === true;
-    
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
     const targetUrl = "https://viajandocomdesconto.com/";
     const res = await fetch(targetUrl, {
-        headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        },
-        signal: AbortSignal.timeout(20000)
+      headers: {
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      signal: AbortSignal.timeout(30000)
     });
     const html = await res.text();
-    
-    if (dryRun) {
-      // 1. Localizar o início do objeto PAYLOAD
-      const pIdx = html.indexOf("const PAYLOAD = {");
-      if (pIdx === -1) {
-        return new Response(JSON.stringify({ status: "error", message: "PAYLOAD not found" }), { status: 200, headers: corsHeaders });
+    const executionTimestamp = new Date().toISOString();
+
+    if (html.length < 1000) {
+      throw new Error(`HTML muito curto (${html.length} bytes). Status: ${res.status}`);
+    }
+
+    const findJSON = (marker: string) => {
+      const startIdx = html.indexOf(marker);
+      if (startIdx === -1) return null;
+      const dataStart = html.indexOf("{", startIdx);
+      const arrayStart = html.indexOf("[", startIdx);
+      
+      const realStart = (dataStart !== -1 && (arrayStart === -1 || dataStart < arrayStart)) ? dataStart : arrayStart;
+      if (realStart === -1) return null;
+      
+      const firstChar = html[realStart];
+      const lastChar = firstChar === "{" ? "}" : "]";
+      
+      let braceCount = 0;
+      let endIdx = -1;
+      for (let i = realStart; i < html.length; i++) {
+        if (html[i] === firstChar) braceCount++;
+        else if (html[i] === lastChar) braceCount--;
+        
+        if (braceCount === 0) {
+          endIdx = i + 1;
+          break;
+        }
       }
+      if (endIdx === -1) return null;
+      try {
+        return JSON.parse(html.substring(realStart, endIdx));
+      } catch {
+        return null;
+      }
+    };
 
-      // 2. Extrair um bloco grande (150kb) para garantir que pegamos o mapa (que é gigante)
-      const payloadBlock = html.substring(pIdx, pIdx + 150000);
+    const payload = findJSON("__PVOO_PAYLOAD =");
+    const snapshot = findJSON("PV_SNAPSHOT =");
 
-      // 3. Extrair chaves usando regex
-      const mapaMatch = payloadBlock.match(/mapa\s*:\s*({[\s\S]*?}),\s*usd/i);
-      const blobMatch = payloadBlock.match(/blob\s*:\s*[`"']([\s\S]*?)[`"']/i);
-      const usdMatch = payloadBlock.match(/usd\s*:\s*([\d.]+)/i);
-
-      // 4. Estatísticas do Snapshot
-      const snapshotIdx = html.indexOf("PV_SNAPSHOT = [");
-      const snapshotBlock = snapshotIdx !== -1 ? html.substring(snapshotIdx, snapshotIdx + 30000) : "";
-      const backupCount = (snapshotBlock.match(/['"]fonte['"]\s*:\s*['"]backup['"]/g) || []).length;
-      const others = [...snapshotBlock.matchAll(/['"]fonte['"]\s*:\s*['"](?!backup)([^'"]+)['"]/g)].map(m => m[1]);
-
-      const dataRefMatch = html.match(/var\s+DATA_REF\s*=\s*['"]([^'"]+)['"]/);
-
+    if (!payload || !snapshot) {
       return new Response(JSON.stringify({
-        status: "dry_run_payload_discovery",
-        data_reference: dataRefMatch ? dataRefMatch[1] : "not_found",
-        usd_value: usdMatch ? usdMatch[1] : "not_found",
-        snapshot_stats: {
-          backup: backupCount,
-          others_count: others.length,
-          other_values_unique: [...new Set(others)]
-        },
-        // Enviar os dados brutos solicitados
-        mapa_sample: mapaMatch ? mapaMatch[1].substring(0, 5000) : "not_found",
-        blob_sample: blobMatch ? blobMatch[1].substring(0, 3000) : "not_found",
-        blob_total_length: blobMatch ? blobMatch[1].length : 0,
-        snapshot_sample: snapshotBlock.substring(0, 3000)
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        message: "Nenhum dado encontrado no HTML. Abortando.",
+        status: "aborted",
+        html_length: html.length,
+        has_payload: !!payload,
+        has_snapshot: !!snapshot
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const { blob, mapa } = payload;
+    if (!blob || !mapa) {
+      throw new Error("Estrutura do PAYLOAD inválida (blob ou mapa ausente).");
+    }
+
+    const lines = blob.split("\n").filter((l: string) => l.trim().length > 0);
+    const parsedOffers = [];
+    let mapErrors = 0;
+
+    const convertDate = (aammdd: string) => {
+      if (!aammdd || aammdd.length !== 6) return null;
+      return `20${aammdd.substring(0, 2)}-${aammdd.substring(2, 4)}-${aammdd.substring(4, 6)}`;
+    };
+
+    const convertTime = (hhmm: string) => {
+      if (!hhmm || hhmm.length !== 4) return null;
+      return `${hhmm.substring(0, 2)}:${hhmm.substring(2, 4)}`;
+    };
+
+    const getSimpleId = (cols: string[]) => {
+      return `${cols[0]}-${cols[1]}-${cols[2]}-${cols[3]}-${cols[15]}-${cols[6]}`.substring(0, 64);
+    };
+
+    for (const line of lines) {
+      const cols = line.split("|");
+      if (cols.length < 16) continue;
+
+      const originIata = cols[0];
+      const destinationIata = cols[1];
+      const originName = mapa[originIata] ? mapa[originIata][0] : originIata;
+      const destinationName = mapa[destinationIata] ? mapa[destinationIata][1] : destinationIata;
+
+      if (!mapa[originIata] || !mapa[destinationIata]) mapErrors++;
+
+      parsedOffers.push({
+        source: "viajandocomdesconto",
+        source_id: getSimpleId(cols),
+        offer_type: "bloqueio_aereo",
+        origin_iata: originIata,
+        origin_city: originName,
+        destination_iata: destinationIata,
+        destination_name: destinationName,
+        departure_date: convertDate(cols[2]),
+        return_date: convertDate(cols[3]),
+        price_per_person: parseFloat(cols[6]),
+        currency: cols[7] === "0" ? "BRL" : "USD",
+        airline: cols[15],
+        boarding_tax: parseFloat(cols[13]) || 0,
+        nights: parseInt(cols[4]) || 0,
+        available_seats: parseInt(cols[5]) || 0,
+        issue_deadline: convertDate(cols[8]),
+        outbound_departure_time: convertTime(cols[9]),
+        outbound_arrival_time: convertTime(cols[10]),
+        return_departure_time: convertTime(cols[11]),
+        return_arrival_time: convertTime(cols[12]),
+        last_seen_at: executionTimestamp,
+        active: true
       });
     }
 
-    const executionTimestamp = new Date().toISOString();
-    const hasData = html.includes("PV_SNAPSHOT") || html.includes("__PVOO_PAYLOAD");
-    
-    if (!hasData) {
-      return new Response(JSON.stringify({ 
-        status: "aborted", 
-        message: "Nenhum dado encontrado no HTML. Abortando para evitar desativação em massa." 
-      }), { status: 200, headers: corsHeaders });
+    if (Array.isArray(snapshot)) {
+      for (const item of snapshot) {
+        parsedOffers.push({
+          source: "viajandocomdesconto",
+          source_id: `pkg-${item.nome}-${item.origem_iata}-${item.destino}-${item.por}`.substring(0, 64),
+          offer_type: "pacote",
+          destination_name: item.destino,
+          origin_iata: item.origem_iata,
+          origin_city: item.origem_cidade,
+          departure_date: item.ida ? convertDate(item.ida.replace(/\//g, "").substring(2, 8)) : null,
+          return_date: item.volta ? convertDate(item.volta.replace(/\//g, "").substring(2, 8)) : null,
+          price_per_person: parseFloat(String(item.por).replace(/[^0-9.]/g, "")),
+          currency: "BRL",
+          boarding_tax: parseFloat(item.taxa) || 0,
+          last_seen_at: executionTimestamp,
+          active: true,
+          raw_data: { title: item.nome }
+        });
+      }
     }
 
-    return new Response(JSON.stringify({ 
-      status: "dry_run_active",
-      execution_timestamp: executionTimestamp,
-      message: "Pronto para o parser. Aguardando validação do dump."
-    }), { status: 200, headers: corsHeaders });
+    // Deduplicate in memory before upserting to avoid Supabase errors
+    const uniqueOffers = new Map();
+    for (const offer of parsedOffers) {
+      uniqueOffers.set(`${offer.source_id}-${offer.offer_type}`, offer);
+    }
+    const finalOffers = Array.from(uniqueOffers.values());
+
+    const CHUNK_SIZE = 300;
+    for (let i = 0; i < finalOffers.length; i += CHUNK_SIZE) {
+      const chunk = finalOffers.slice(i, i + CHUNK_SIZE);
+      const { error } = await supabaseClient
+        .from("travel_offers")
+        .upsert(chunk, { onConflict: "source,source_id,offer_type" });
+      if (error) throw error;
+    }
+
+    await supabaseClient
+      .from("travel_offers")
+      .update({ active: false })
+      .lt("last_seen_at", executionTimestamp)
+      .eq("source", "viajandocomdesconto");
+
+    await supabaseClient.from("travel_sync_logs").insert({
+      status: "success",
+      offers_found: finalOffers.length,
+      finished_at: new Date().toISOString()
+    });
+
+    return new Response(JSON.stringify({
+      status: "success",
+      total_offers: finalOffers.length,
+      map_errors: mapErrors
+    }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message }), {
