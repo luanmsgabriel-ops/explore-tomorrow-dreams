@@ -159,7 +159,7 @@ serve(async (req) => {
         return_departure_time: convertTime(cols[11]),
         return_arrival_time: convertTime(cols[12]),
         last_seen_at: executionTimestamp,
-        is_active: true
+        active: true
       });
     }
 
@@ -251,7 +251,7 @@ serve(async (req) => {
 
     const { data: deactivatedData } = await supabaseClient
       .from("travel_offers")
-      .update({ is_active: false })
+      .update({ active: false })
       .lt("last_seen_at", executionTimestamp)
       .eq("source", "viajandocomdesconto")
       .select("id");
