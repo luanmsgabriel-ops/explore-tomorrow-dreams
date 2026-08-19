@@ -8943,7 +8943,8 @@ Regras OBRIGATÓRIAS:
       }
 
       // Handle quotation if triggered and not already in progress
-      const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || !!collectedData._quotation_triggered;
+      const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || 
+                           (collectedData && (collectedData._quotation_triggered === true || collectedData._quotation_triggered === "true"));
       if (quotationData && !alreadyQuoted) {
         console.log("AI triggered quotation request:", JSON.stringify(quotationData));
         
