@@ -1376,6 +1376,27 @@ export type Database = {
         }
         Relationships: []
       }
+      travel_iata_map: {
+        Row: {
+          code: string
+          destination_name: string
+          origin_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          code: string
+          destination_name: string
+          origin_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string
+          destination_name?: string
+          origin_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       travel_offers: {
         Row: {
           active: boolean | null
