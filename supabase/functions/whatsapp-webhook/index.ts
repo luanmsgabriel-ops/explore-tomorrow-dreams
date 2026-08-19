@@ -2027,26 +2027,20 @@ function extractCollectedData(aiResponse: string, existingData: Record<string, a
   const newData = { ...existingData };
   let status: string | null = null;
 
-  // Optimized regex to capture keys and values independently, avoiding concatenation
-  const dataMatches = aiResponse.matchAll(/\[DADOS:(\w+)=([^\]]+)\]/g);
-  for (const match of dataMatches) {
-    const key = match[1];
-    const rawValue = match[2];
+  // Enhanced regex to capture keys and values, handling multiple pairs in one tag if needed
+  const tagMatches = aiResponse.matchAll(/\[DADOS:([^\]]+)\]/g);
+  for (const tagMatch of tagMatches) {
+    const content = tagMatch[1];
     
-    // Safety check: if the value contains other keys (hallucination or bad parsing), split it
-    if (rawValue.includes("=") || rawValue.includes(",")) {
-      const parts = rawValue.split(/,\s*/);
-      parts.forEach(part => {
-        const subMatch = part.match(/(\w+)=(.+)/);
-        if (subMatch) {
-          newData[subMatch[1].trim()] = subMatch[2].trim();
-        } else if (part.trim() && key === "destino") {
-          // If no "=" but it's part of the comma-split destination, it might be the actual destination
-          newData[key] = part.trim();
-        }
-      });
-    } else {
-      newData[key] = rawValue.trim();
+    // Split by comma to handle multiple pairs like [DADOS:origem=SP, destino=RJ]
+    const pairs = content.split(/,\s*/);
+    for (const pair of pairs) {
+      const parts = pair.split("=");
+      if (parts.length >= 2) {
+        const key = parts[0].trim();
+        const value = parts.slice(1).join("=").trim(); // Handle values containing '='
+        newData[key] = value;
+      }
     }
   }
 
