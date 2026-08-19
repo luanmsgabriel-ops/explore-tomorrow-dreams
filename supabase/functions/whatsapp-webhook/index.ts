@@ -1154,7 +1154,7 @@ Cliente quer falar com humano:
    - REMOVIDO_BLOCO_ANTERIOR: 
 
 - Mantenha foco na cotação validada.
-   "Nosso sistema de cotação automática está passando por uma atualização pra ficar ainda melhor! 🚀
+   - DATA: AAAA-MM-DD
    
    Mas fique tranquilo(a), {nome}! Já registrei todos os seus dados e um dos nossos agentes especializados vai retornar com a cotação personalizada pra você em breve! 😊✈️
    
