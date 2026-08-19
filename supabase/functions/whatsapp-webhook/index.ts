@@ -9151,7 +9151,10 @@ Regras OBRIGATÓRIAS:
       } else if (!quotationData) {
         // ONLY send the standard message if a quotation was NOT triggered.
         // If quotation was triggered, the "cleanResponse" and "searchingMsg" were already sent above.
-        await sendWhatsAppMessage(phoneNumber, cleanResponse);
+        // ALSO: only send if cleanResponse is not empty (it might have been cleared by quotation logic)
+        if (cleanResponse && cleanResponse.trim()) {
+          await sendWhatsAppMessage(phoneNumber, cleanResponse);
+        }
       }
 
       // Update client memory after response (fire-and-forget)
