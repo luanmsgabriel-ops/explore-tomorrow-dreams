@@ -89,7 +89,6 @@ serve(async (req) => {
 
     // Fallbacks se não houver NADA com a origem específica
     if (finalA.length === 0 && finalB.length === 0 && finalC.length === 0) {
-      console.log("[cotar-viagem] Fallback Geral (Sem Origem)");
       const [fA, fC] = await Promise.all([
         fetchOffers(false, monthStart, monthEnd, false),
         fetchOffers(false, brDateStr, '2099-12-31', true)
