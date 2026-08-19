@@ -1053,7 +1053,7 @@ FLUXO DE ATENDIMENTO:
    - Após o cliente confirmar, você deve informar que encaminhou o pedido para um consultor e que enquanto isso vai buscar ofertas promocionais em datas próximas.
    - Use suas próprias palavras, não copie um texto fixo. Exemplo: "Sensacional! Já encaminhei seu pedido para um de nossos consultores especializados..."
    - OBRIGATÓRIO: No final da mensagem de handover, emita a tag [STATUS:awaiting_quotation].
-   - OPCIONAL: Você pode incluir a tag [COTAR_VIAGEM:{"origem":"...","destino":"...","data_ida":"AAAA-MM-DD","data_volta":"AAAA-MM-DD","adultos":N,"criancas":N,"idades_criancas":[]}] se desejar ser mais específico, mas o sistema usará os dados já coletados se a tag faltar.
+   - IMPORTANTE: Se o cliente repetir o pedido ou confirmar algo que já foi pedido recentemente, apenas confirme que a busca já está em andamento ou mostre as opções se o sistema já tiver retornado.
 
 ⚠️ PROIBIÇÃO ABSOLUTA DE INVENTAR OFERTA:
 - Você NUNCA pode apresentar voo, hotel, preço, companhia, avaliação ou prazo que não tenha vindo do resultado real da busca.
@@ -1061,7 +1061,10 @@ FLUXO DE ATENDIMENTO:
 - Se não houver resultado, o cliente apenas aguardará o consultor.
 
 5. RESULTADOS (PROCESSADOS POR CÓDIGO):
-- Você NÃO escreve o bloco de ofertas. O sistema inserirá o resultado da busca na conversa.
+- O sistema inserirá o resultado da busca na conversa.
+- MENSAGEM FINAL: Após os resultados, pare imediatamente após perguntar qual opção o cliente prefere. NÃO envie dicas turísticas ou roteiros a menos que o cliente peça especificamente.
+- URGÊNCIA: Use o prazo de emissão (que é uma DATA, nunca horas) para mostrar urgência legítima. Ex: "Você tem até o dia DD/MM para decidir essa oferta".
+- ASSENTOS: Dê destaque se houver poucos assentos (ex: 3 ou menos). Mencione como um ponto de decisão.
 
 REGRA DE ANO: O ano atual é 2026. Use 2026 para meses à frente, ou 2027 se o mês já passou.
 
@@ -2389,17 +2392,23 @@ function formatQuotationResults(data: any): string {
     formatted += `👤 Valor por pessoa: *R$ ${pp}*\n`;
     formatted += `⚓ Taxa de embarque: R$ ${taxa}\n`;
     formatted += `💎 *Total do grupo: R$ ${total}*\n`;
-    formatted += `💺 Assentos: ${r.assentos_disponiveis}\n`;
+    
+    const seats = Number(r.assentos_disponiveis || 0);
+    if (seats <= 3) {
+      formatted += `⚠️ *APENAS ${seats} ASSENTOS RESTANTES!*\n`;
+    } else {
+      formatted += `💺 Assentos disponíveis: ${seats}\n`;
+    }
     
     if (r.prazo_emissao) {
       const prazo = new Date(r.prazo_emissao.split('T')[0] + "T12:00:00").toLocaleDateString("pt-BR");
-      formatted += `⏳ Prazo de emissão: ${prazo}\n`;
+      formatted += `⏳ Prazo de emissão: *até ${prazo}*\n`;
     }
 
     formatted += "\n━━━━━━━━━━━━━━━━━━\n\n";
   });
 
-  formatted += "Qual dessas opções faz mais sentido para você? Ou prefere aguardar o consultor com as datas exatas? 😊";
+  formatted += "Qual dessas opções faz mais sentido para você? 😊";
   return formatted.trim();
 }
 
@@ -2673,7 +2682,7 @@ serve(async (req) => {
           // Call Cativa/Infotravel API directly
           const quotationResult = await requestQuotation(quotationData);
 
-          let quotationMsg: string;
+          let quotationMsg = "";
 
           if (quotationResult.status === "success" && quotationResult.data?.resultados?.length > 0) {
             quotationMsg = formatQuotationResults(quotationResult.data);
@@ -2739,33 +2748,8 @@ serve(async (req) => {
             console.error("[ASYNC-QUOTATION] Error updating conversation:", histErr);
           }
 
-          // Generate travel tips (non-blocking, delayed)
-          try {
-            const tipsResponse = await getAiResponse([
-              { role: "user", content: `Você é o Téo, assistente de viagens divertido e humano da Tomorrow Travel. Gere uma mensagem para o cliente ${clientName || ''} com exatamente 5 dicas incríveis sobre ${quotationData.destino} (passeios, comidas, curiosidades, experiências). Seja divertido, use emojis, tom leve e descontraído. Uma dica por linha numerada. Comece com algo como "${clientName ? clientName + ', e' : 'E'}nquanto isso, bora conhecer um pouco mais sobre ${quotationData.destino}? 🗺️✨" e depois as 5 dicas. No FINAL da mensagem, adicione uma quebra de linha e pergunte de forma divertida e natural se o cliente sabia que você (o Téo) também pode montar um roteiro personalizado dia a dia pra viagem dele. Algo como: "Ah, e sabia que eu também posso montar um roteiro completinho dia a dia pra sua viagem? 🗓️✨ Quer que eu prepare um pra você?" Seja criativo e mantenha o tom do Téo!` }
-            ]);
-            const cleanTips = cleanAiResponse(tipsResponse);
-            if (cleanTips && cleanTips.length > 20) {
-              await new Promise(r => setTimeout(r, 30000));
-              await sendWhatsAppMessage(phone, cleanTips);
-
-              // Save tips to history
-              const { data: convAfterTips } = await supabase
-                .from("whatsapp_conversations")
-                .select("id, messages_history")
-                .eq("id", conversationId)
-                .single();
-              if (convAfterTips) {
-                const updH = [
-                  ...((convAfterTips.messages_history as any[]) || []),
-                  { role: "assistant", content: cleanTips, timestamp: new Date().toISOString() },
-                ];
-                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterTips.id);
-              }
-            }
-          } catch (tipErr) {
-            console.error("[ASYNC-QUOTATION] Tips error:", tipErr);
-          }
+          // Auto travel tips removed per user request to avoid competing with quotation options.
+          console.log(`[ASYNC-QUOTATION] Done for ${phone}`);
 
           console.log(`[ASYNC-QUOTATION] Done for ${phone}`);
         }
@@ -8827,7 +8811,7 @@ Regras OBRIGATÓRIAS:
 
       // Handle quotation if triggered
       // We check if it was already triggered in PREVIOUS turns to avoid duplication
-      const alreadyQuotedInDB = (conversation.collected_data as any)?._quotation_triggered === true || 
+      let alreadyQuotedInDB = (conversation.collected_data as any)?._quotation_triggered === true || 
                                 (conversation.collected_data as any)?._quotation_triggered === "true";
       
       // DISPARE A BUSCA A PARTIR DO COLLECTED_DATA SE [STATUS:awaiting_quotation] ESTIVER PRESENTE
@@ -8868,84 +8852,132 @@ Regras OBRIGATÓRIAS:
             effectiveData: effectiveQuotationData
           });
         } else {
-          console.log("Quotation request triggered:", JSON.stringify(effectiveQuotationData));
-          
-          if (cleanResponse) {
-            await sendWhatsAppMessage(phoneNumber, cleanResponse);
-            cleanResponse = ""; 
+          // CHECK FOR DUPLICATE RECENT REQUEST (LAST 24H)
+          const { data: existingReq } = await supabase
+            .from("travel_quote_requests")
+            .select("id, status, processing_details")
+            .eq("phone_number", phoneNumber)
+            .eq("destination", effectiveQuotationData.destino)
+            .eq("departure_date", effectiveQuotationData.data_ida)
+            .eq("return_date", effectiveQuotationData.data_volta)
+            .gt("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (existingReq) {
+            console.log("[QUOTATION] Found existing recent request:", existingReq.id);
+            alreadyQuotedInDB = true;
+            
+            if (cleanResponse) {
+              const alreadySentMsg = `Seu pedido para *${effectiveQuotationData.destino}* já foi encaminhado aos nossos consultores! 🚀`;
+              let resultsMsg = "";
+              if (existingReq.status === "completed" && existingReq.processing_details) {
+                resultsMsg = formatQuotationResults(existingReq.processing_details);
+              } else {
+                resultsMsg = "Eles já estão verificando as melhores opções para você. Assim que eu tiver os detalhes, te aviso por aqui! ✈️";
+              }
+              
+              await sendWhatsAppMessage(phoneNumber, alreadySentMsg);
+              await sendWhatsAppMessage(phoneNumber, resultsMsg);
+
+              // Update history and return
+              const updatedHistory = [
+                ...(conversation.messages_history as any[] || []),
+                { role: "assistant", content: alreadySentMsg, timestamp: new Date().toISOString() },
+                { role: "assistant", content: resultsMsg, timestamp: new Date().toISOString() },
+              ];
+
+              await supabase
+                .from("whatsapp_conversations")
+                .update({
+                  collected_data: newCollectedData,
+                  messages_history: updatedHistory,
+                  conversation_state: existingReq.status === "completed" ? "quotation_sent" : "awaiting_quotation"
+                })
+                .eq("id", conversation.id);
+
+              return new Response(JSON.stringify({ status: "ok", duplicate: true }), {
+                status: 200,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
           }
 
-          const saveResult = await saveQuotationRequest(
-            effectiveQuotationData,
-            phoneNumber,
-            newCollectedData.nome || conversation.client_name || contactName,
-            newCollectedData.preferencias || newCollectedData.tipo_viagem || null
-          );
-
-          if (saveResult.success && saveResult.id) {
-            // Mark quotation as triggered ONLY IF save was successful and returned an ID
-            newCollectedData._last_quote_id = saveResult.id;
-            newCollectedData._quotation_triggered = true;
+          if (!alreadyQuotedInDB) {
+            console.log("Quotation request triggered:", JSON.stringify(effectiveQuotationData));
             
-            // IMPORTANT: Also update the conversation record in the database IMMEDIATELY to prevent race conditions
-            await supabase
-              .from("whatsapp_conversations")
-              .update({ 
-                collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
-                conversation_state: "awaiting_quotation"
-              })
-              .eq("id", conversation.id);
+            if (cleanResponse) {
+              await sendWhatsAppMessage(phoneNumber, cleanResponse);
+              cleanResponse = ""; 
+            }
 
-            // No longer sending searchingMsg here. Handover message is now part of the AI's cleanResponse.
-            
-            // Update conversation state immediately
-            const updatedHistory = [
-              ...(conversation.messages_history as any[] || []),
-              { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
-            ];
+            const saveResult = await saveQuotationRequest(
+              effectiveQuotationData,
+              phoneNumber,
+              newCollectedData.nome || conversation.client_name || contactName,
+              newCollectedData.preferencias || newCollectedData.tipo_viagem || null
+            );
 
-            await supabase
-              .from("whatsapp_conversations")
-              .update({
-                client_name: newCollectedData.nome || conversation.client_name || contactName,
-                conversation_state: "awaiting_quotation",
-                collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
-                messages_history: updatedHistory,
-                is_ai_active: true,
-              })
-              .eq("id", conversation.id);
+            if (saveResult.success && saveResult.id) {
+              // Mark quotation as triggered ONLY IF save was successful and returned an ID
+              newCollectedData._last_quote_id = saveResult.id;
+              newCollectedData._quotation_triggered = true;
+              
+              // IMPORTANT: Also update the conversation record in the database IMMEDIATELY to prevent race conditions
+              await supabase
+                .from("whatsapp_conversations")
+                .update({ 
+                  collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
+                  conversation_state: "awaiting_quotation"
+                })
+                .eq("id", conversation.id);
+              
+              // Update conversation state immediately
+              const updatedHistory = [
+                ...(conversation.messages_history as any[] || []),
+                { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
+              ];
 
-            // Process quotation via self-invocation
-            const selfUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
-            const processPromise = fetch(selfUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-              },
-              body: JSON.stringify({
-                action: "process_quotation",
-                phone_number: phoneNumber,
-                quotation_data: effectiveQuotationData,
-                save_result_id: saveResult.id,
-                conversation_id: conversation.id,
-                client_name: newCollectedData.nome || conversation.client_name || contactName || "",
-                collected_data: newCollectedData,
-              }),
-            });
+              await supabase
+                .from("whatsapp_conversations")
+                .update({
+                  client_name: newCollectedData.nome || conversation.client_name || contactName,
+                  conversation_state: "awaiting_quotation",
+                  collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
+                  messages_history: updatedHistory,
+                  is_ai_active: true,
+                })
+                .eq("id", conversation.id);
 
-            // Ensure the process is awaited or scheduled so it doesn't die when the response is sent
-            // In Deno Edge Functions, we must await any promise that we want to finish before the response
-            await processPromise.catch(err => console.error("Error in async quotation:", err));
+              // Process quotation via self-invocation
+              const selfUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
+              const processPromise = fetch(selfUrl, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                },
+                body: JSON.stringify({
+                  action: "process_quotation",
+                  phone_number: phoneNumber,
+                  quotation_data: effectiveQuotationData,
+                  save_result_id: saveResult.id,
+                  conversation_id: conversation.id,
+                  client_name: newCollectedData.nome || conversation.client_name || contactName || "",
+                  collected_data: newCollectedData,
+                }),
+              });
 
-            // Return immediately to Meta webhook (fast response)
-            return new Response(JSON.stringify({ status: "ok", quotation: true, async: true }), {
-              status: 200,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          } else {
-            console.error("[VALIDATION] Failed to save quotation request. Not marking as triggered.");
-            // We don't return early here, so it continues to standard message sending
+              await processPromise.catch(err => console.error("Error in async quotation:", err));
+
+              return new Response(JSON.stringify({ status: "ok", quotation: true, async: true }), {
+                status: 200,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            } else {
+              console.error("[VALIDATION] Failed to save quotation request. Not marking as triggered.");
+            }
           }
         }
       }
