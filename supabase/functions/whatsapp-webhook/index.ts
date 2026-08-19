@@ -2883,7 +2883,7 @@ serve(async (req) => {
 
           } else {
             // No results or API error — fallback to human specialist
-            quotationMsg = `${clientName || 'Amigo(a)'}! 👋\n\nNão encontrei opções automáticas para ${quotationData.destino} nessas datas, mas isso não é problema! 🌴\n\nVou encaminhar seu pedido para um especialista do destino que vai encontrar o pacote perfeito pra você! ✈️\n\nUm consultor da Tomorrow Travel entra em contato em breve! 😊`;
+            quotationMsg = "✈️ *Resultado da cotação:*\n\nOlha, tô terminando de conferir os melhores preços com nossos parceiros! ✈️✨\n\nComo quero te entregar a melhor opção de todas, passei seu pedido pra um de nossos consultores especialistas. Ele vai finalizar os detalhes e te chama rapidinho por aqui, beleza? 😊";
 
             if (saveResultId) {
               await supabase.from("travel_quote_requests").update({
