@@ -349,7 +349,7 @@ async function executeAdminAction(action: any): Promise<any> {
           
           // Send results via WhatsApp if phone available
           if (quote.phone_number) {
-            const msg = formatQuotationResults(result.data);
+            const msg = formatQuotationResults(result.data, quote.departure_date);
             await sendWhatsAppMessage(quote.phone_number, msg);
           }
         } else {
