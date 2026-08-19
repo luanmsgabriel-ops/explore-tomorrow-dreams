@@ -1150,7 +1150,7 @@ Cliente quer falar com humano:
 --LIMPO--
 
    --LIMPO_2--
-   - REMOVIDO_BLOCO_ANTERIOR: 
+   --LIMPO_3-- 
 
 - Mantenha foco na cotação validada.
    - DATA: AAAA-MM-DD
