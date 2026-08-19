@@ -29,7 +29,7 @@ serve(async (req) => {
       });
     }
 
-    const targetUrl = "https://www.viajandocomdesconto.com.br/";
+    const targetUrl = "https://viajandocomdesconto.com.br/site/login";
     const response = await fetch(targetUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -41,13 +41,10 @@ serve(async (req) => {
     const html = await response.text();
     
     if (dry_run) {
-        console.log("HTML Length:", html.length);
-        console.log("Snippet:", html.substring(0, 500));
-        // If still failing, return enough info to debug
         if (!html.includes("__PVOO_PAYLOAD")) {
              return new Response(JSON.stringify({ 
                 error: "Structure changed", 
-                html_preview: html.substring(0, 2000),
+                html_preview: html.substring(0, 5000),
                 url_used: targetUrl
             }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
