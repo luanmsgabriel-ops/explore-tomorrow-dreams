@@ -1155,7 +1155,7 @@ Cliente quer falar com humano:
 --LIMPO_4--
    --LIMPO_5--
    
-   - AGUARDE CONFIRMAÇÃO
+   --LIMPO_6--
    
    - SEM MENSAGEM DE MANUTENÇÃO
    
