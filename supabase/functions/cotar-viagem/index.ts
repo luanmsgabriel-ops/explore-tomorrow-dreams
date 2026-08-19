@@ -113,13 +113,16 @@ serve(async (req) => {
       })[0];
     }
 
-    // proxima_data:
+    // proxima_data (estritamente posterior à ida pedida):
     let offerB = null;
-    if (!offerA) {
-      const futureOffers = [...allEligible].sort((a, b) => a.departure_date.localeCompare(b.departure_date));
-      if (futureOffers.length > 0) {
-        offerB = futureOffers[0];
-      }
+    const futureOffers = allEligible
+      .filter(o => o.departure_date > baseDate)
+      .sort((a, b) => a.departure_date.localeCompare(b.departure_date));
+    
+    if (futureOffers.length > 0) {
+      offerB = futureOffers[0];
+      // Se offerA e offerB forem a mesma (o que não deve ocorrer pelo filtro >), removemos offerB
+      if (offerA && offerB.id === offerA.id) offerB = null;
     }
 
     // melhor_preco:
