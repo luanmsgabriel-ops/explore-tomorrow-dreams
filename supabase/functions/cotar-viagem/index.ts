@@ -75,8 +75,9 @@ serve(async (req) => {
       .from("travel_offers")
       .select("*")
       .eq("active", true)
-      .gte("issue_deadline", brDateStr)
-      .gte("available_seats", totalPassageiros)
+      .or(`issue_deadline.gte.${brDateStr},issue_deadline.is.null`)
+      .or(`available_seats.gte.${totalPassageiros},available_seats.is.null`)
+
       .gt("price_per_person", 0);
 
     // Destination and Origin filters
