@@ -1934,7 +1934,9 @@ function extractCollectedData(aiResponse: string, existingData: Record<string, a
 
   // Enhanced regex to capture keys and values, handling multiple pairs in one tag if needed
   const tagMatches = aiResponse.matchAll(/\[DADOS:([^\]]+)\]/g);
+  let tagFound = false;
   for (const tagMatch of tagMatches) {
+    tagFound = true;
     const content = tagMatch[1];
     
     // Split by comma to handle multiple pairs like [DADOS:origem=SP, destino=RJ]
@@ -1947,6 +1949,29 @@ function extractCollectedData(aiResponse: string, existingData: Record<string, a
         newData[key] = value;
       }
     }
+  }
+
+  // Fallback: If no [DADOS] tag found but [STATUS:awaiting_quotation] is present, 
+  // try to extract from plain text patterns
+  if (!tagFound && (aiResponse.includes("[STATUS:awaiting_quotation]") || aiResponse.match(/Confirm[ao] pra mim/i))) {
+    console.log("[PARSER] Nenhuma tag [DADOS] encontrada, tentando extração de texto plano...");
+    
+    const destMatch = aiResponse.match(/Destino:\s*([^\n\r\|]+)/i) || 
+                     aiResponse.match(/para\s+([A-Z][a-zà-ú]+(?:\s+[A-Z][a-zà-ú]+)*)/);
+    if (destMatch && !newData.destino) newData.destino = destMatch[1].trim();
+    
+    const originMatch = aiResponse.match(/Origem:\s*([^\n\r\|]+)/i) || 
+                       aiResponse.match(/saindo\s+de\s+([A-Z][a-zà-ú]+(?:\s+[A-Z][a-zà-ú]+)*)/);
+    if (originMatch && !newData.origem) newData.origem = originMatch[1].trim();
+
+    const dateMatches = aiResponse.match(/(\d{2}\/\d{2}\/\d{4})/g);
+    if (dateMatches && dateMatches.length >= 2) {
+      if (!newData.data_ida) newData.data_ida = dateMatches[0].split('/').reverse().join('-');
+      if (!newData.data_volta) newData.data_volta = dateMatches[1].split('/').reverse().join('-');
+    }
+
+    const paxMatch = aiResponse.match(/(\d+)\s*adultos/i);
+    if (paxMatch && !newData.adultos) newData.adultos = paxMatch[1];
   }
 
   const statusMatch = aiResponse.match(/\[STATUS:(\w+)\]/);
