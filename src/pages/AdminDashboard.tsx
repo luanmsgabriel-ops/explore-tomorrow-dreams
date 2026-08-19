@@ -1066,7 +1066,16 @@ const AdminDashboard = () => {
                     <PromotionalOffersManager />
                   )}
 
-{activeTab === 'quotes' && (() => {
+                  {activeTab === 'offer-sync' && (
+                    <div className="space-y-6">
+                      <h1 className="font-serif text-3xl font-bold text-foreground">
+                        Coletor de Ofertas
+                      </h1>
+                      <OfferSyncManager />
+                    </div>
+                  )}
+
+                  {activeTab === 'quotes' && (() => {
                     // Filter quotes based on current filters
                     const filteredQuotes = quotes.filter(quote => {
                       // Search filter
