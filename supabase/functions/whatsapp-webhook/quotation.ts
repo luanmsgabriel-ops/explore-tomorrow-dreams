@@ -36,8 +36,11 @@ export async function handleQuotationFlow(
     triggeredSearch: false,
   };
 
-  // 4. TRAVA CONTRA LOOP: Mensagens do assistente não disparam busca nem extraem dados
+  // O gatilho de processamento é sempre uma mensagem recebida do cliente.
+  // A extração SEMPRE lê a resposta que o modelo acabou de gerar no turno atual.
+  // A trava anti-loop impede apenas que mensagens ANTIGAS ou do HISTÓRICO disparem novas buscas.
   if (isAssistantMessage) {
+    console.log("[QUOTATION-MODULE] Assistant message in history, skipping extraction.");
     return result;
   }
 

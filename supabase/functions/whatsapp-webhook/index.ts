@@ -8830,7 +8830,7 @@ Regras OBRIGATÓRIAS:
         collectedData,
         phoneNumber,
         conversation.id,
-        false // this is coming from the client processing flow
+        false // Turno atual: processamos a resposta que o modelo ACABOU de gerar
       );
 
       // Clean response (remove all tags)
