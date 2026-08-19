@@ -71,6 +71,9 @@ serve(async (req) => {
     const destCodes = await resolveLocation(destino, 'destination');
 
     // 2. Build Query
+    const destFuzzy = destino.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const originFuzzy = origem.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
     let query = supabaseClient
       .from("travel_offers")
       .select("*")
@@ -79,26 +82,28 @@ serve(async (req) => {
       .or(`issue_deadline.gte.${brDateStr},issue_deadline.is.null`)
       .or(`available_seats.gte.${totalPassageiros},available_seats.is.null`);
 
-
-    // Destination and Origin filters
-    const destFuzzy = destino.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    
-    // We combine destination (IATA or Name) AND Origin (IATA or City Name)
+    // Destination filters
     if (destCodes.length > 0) {
       query = query.or(`destination_iata.in.(${destCodes.join(",")}),destination_name.ilike.%${destFuzzy}%`);
     } else {
       query = query.ilike("destination_name", `%${destFuzzy}%`);
     }
     
+    // Origin filters - PostgREST .or() can't be called twice for different groups easily 
+    // without nesting or raw filters if they are independent.
+    // However, Supabase-js appends filters. If we want (A or B) AND (C or D), 
+    // we need to be careful with .or(). 
+    // Since we already used .or() for deadline and seats, let's use a simpler approach:
     if (originCodes.length > 0) {
-      query = query.or(`origin_iata.in.(${originCodes.join(",")}),origin_city.ilike.%${origem.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}%`);
+      // Use .in for IATA and a separate .or check if possible, or just .in since IATA is precise
+      query = query.in("origin_iata", originCodes);
     } else {
-      query = query.ilike("origin_city", `%${origem.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}%`);
+      query = query.ilike("origin_city", `%${originFuzzy}%`);
     }
 
-    // 3. Date handling (Fixed window +/- 7 days or full month)
+    // 3. Date handling
     const targetDep = new Date(data_ida + "T12:00:00");
-    const isOnlyMonth = data_ida.length <= 7; // "2024-10"
+    const isOnlyMonth = data_ida.length <= 7;
 
     if (isOnlyMonth) {
       const [year, month] = data_ida.split("-");
@@ -115,19 +120,18 @@ serve(async (req) => {
                    .lte("departure_date", dMax.toISOString().split("T")[0]);
     }
 
-      console.log(`Final Query: ${query.url.toString()}`);
-      const { data: offers, error } = await query;
-      console.log(`Found ${offers?.length || 0} raw offers`);
-
-
+    console.log(`Executing query for ${origem}->${destino} (${data_ida})`);
+    const { data: offers, error } = await query;
     if (error) throw error;
 
-    // 4. Sort and format (Proximity to date then Price)
+    console.log(`Found ${offers?.length || 0} results`);
+
+    // 4. Sort and format
     const formattedResults = (offers || [])
       .map(o => {
         const diff = Math.abs(new Date(o.departure_date + "T12:00:00").getTime() - targetDep.getTime());
         const totalPass = (passageiros.adultos || 1) + (passageiros.criancas || 0);
-        const totalPrice = (o.price_per_person + (o.boarding_tax || 0)) * totalPass;
+        const totalPrice = (Number(o.price_per_person) + Number(o.boarding_tax || 0)) * totalPass;
 
         return {
           ...o,
@@ -138,12 +142,12 @@ serve(async (req) => {
       .sort((a, b) => a.dateDiff - b.dateDiff || a.total_price - b.total_price)
       .slice(0, 5)
       .map(o => ({
-        companhia: o.airline || "Pacote",
+        companhia: o.airline || (o.offer_type === 'pacote' ? 'Pacote' : 'Aéreo'),
         voo_ida: o.outbound_departure_time ? `Voo às ${o.outbound_departure_time}` : (o.departure_date || "Consultar"),
         voo_volta: o.return_departure_time ? `Voo às ${o.return_departure_time}` : (o.return_date || "Consultar"),
         noites: o.nights || 0,
-        preco_por_pessoa: o.price_per_person,
-        taxa_embarque: o.boarding_tax || 0,
+        preco_por_pessoa: Number(o.price_per_person),
+        taxa_embarque: Number(o.boarding_tax || 0),
         preco: o.total_price,
         assentos_disponiveis: o.available_seats,
         prazo_emissao: o.issue_deadline,
