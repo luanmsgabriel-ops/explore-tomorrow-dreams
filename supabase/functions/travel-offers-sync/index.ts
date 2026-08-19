@@ -200,7 +200,7 @@ serve(async (req) => {
           currency: "BRL",
           boarding_tax: parseFloat(item.taxa) || 0,
           last_seen_at: executionTimestamp,
-          is_active: true,
+          active: true,
           alternative_dates: item.outras || null,
           raw_data: { 
             title: name,
