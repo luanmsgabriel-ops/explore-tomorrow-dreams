@@ -18,6 +18,23 @@ const EXTERNAL_API_URL = "http://212.85.21.28:5000/cotar_viagem";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+// Cache para desduplicação de mensagens do WhatsApp (em memória, reinicia com a Edge Function)
+const processedMessages = new Set<string>();
+const MAX_CACHE_SIZE = 500;
+
+function isDuplicateMessage(messageId: string): boolean {
+  if (!messageId) return false;
+  if (processedMessages.has(messageId)) return true;
+  
+  processedMessages.add(messageId);
+  // Mantém o cache sob controle
+  if (processedMessages.size > MAX_CACHE_SIZE) {
+    const firstItem = processedMessages.values().next().value;
+    processedMessages.delete(firstItem);
+  }
+  return false;
+}
+
 const ADMIN_PHONE_NUMBER = "5515998389220";
 
 // Spam filter removed per user request. Restore original behavior of first contact.
@@ -1105,29 +1122,23 @@ Quando identificar uma info, adicione no final:
 
 Campos: nome, destino, datas, num_viajantes, tipo_viagem, orcamento, preferencias, aeroporto
 
-⚠️ AVISO IMPORTANTE — SISTEMA DE COTAÇÃO EM MANUTENÇÃO:
-O sistema de cotação automática está passando por atualizações neste momento.
-NUNCA dispare [COTAR_VIAGEM]. Em vez disso, quando o cliente pedir cotação ou confirmar os dados para cotar:
-1. Colete os dados normalmente (destino, datas, passageiros, origem)
-2. Após a confirmação, envie uma mensagem como:
-   "Nosso sistema de cotação automática está passando por uma atualização pra ficar ainda melhor! 🚀
+⚠️ REGRAS DE COTAÇÃO:
+1. Quando o cliente pedir cotação ou confirmar os dados para cotar:
+   - CONFIRME os dados em formato de resumo.
+   - Converta datas vagas (ex: "início de dezembro", "meados de junho") em datas concretas AAAA-MM-DD. 
+     Exemplo: "início de dezembro de 2026" vira 2026-12-01 a 2026-12-07 (se for 7 dias).
+     Pergunte: "Pode ser nessas datas?"
+   - SÓ dispare a cotação com datas concretas AAAA-MM-DD nos campos data_ida e data_volta.
    
-   Mas fique tranquilo(a), {nome}! Já registrei todos os seus dados e um dos nossos agentes especializados vai retornar com a cotação personalizada pra você em breve! 😊✈️
-   
-   Agradecemos a compreensão! 🙏
-   
-   Enquanto isso, que tal explorar outros recursos do Téo? 👇
-   
-   🌍 *Modo Tradutor* — Tradução instantânea de textos, áudios e fotos em +20 idiomas. Perfeito pra se preparar pro destino! Mande *tradutor*
-   
-   👥 *Modo Galera* — Planeje viagem em grupo! Crie um grupo, convide amigos e descubra o destino ideal pra todos. Mande *criar grupo*
-   
-   🍽️ *Modo Chef* — Descubra a gastronomia do destino, restaurantes imperdíveis e receitas típicas! Mande *chef*
-   
-   🗺️ *Roteiro* — Gero um roteiro dia-a-dia personalizado pro seu destino com dicas de locais reais! Mande *roteiro [destino]*"
-3. Depois disso, dispare [STATUS:completed] para registrar o lead
+2. Dispare a tag estruturada abaixo quando TUDO estiver confirmado:
+   [COTAR_VIAGEM:{"origem":"Cidade","destino":"Destino","data_ida":"AAAA-MM-DD","data_volta":"AAAA-MM-DD","adultos":N,"criancas":N,"idades_criancas":[idades]}]
 
-IMPORTANTE: Datas como "do dia 15 a 22 de junho" → data_ida="15/06/2026", data_volta="22/06/2026".
+3. IMPORTANTE:
+   - Se o cliente informar aeroportos como São Paulo, lembre que podemos buscar opções em aeroportos próximos (ex: VCP).
+   - O preço é por pessoa, não garantido até a emissão e depende de disponibilidade.
+   - O prazo de emissão para bloqueios aéreos costuma ser curto (algumas horas).
+
+IMPORTANTE: Datas como "do dia 15 a 22 de junho" → data_ida="2026-06-15", data_volta="2026-06-22".
 REGRA CRÍTICA DE ANO: O ano atual é ${new Date().getFullYear()}. Se o cliente NÃO especificar o ano, SEMPRE use ${new Date().getFullYear()}. NUNCA use 2024 ou 2025. Exemplo: "junho" = "junho de ${new Date().getFullYear()}".
 
 Tudo coletado e confirmado:
@@ -1135,6 +1146,9 @@ Tudo coletado e confirmado:
 
 Cliente quer falar com humano:
 [STATUS:human_takeover]
+
+
+
 
 COMANDOS ESPECIAIS (instruir o cliente a usar pelo WhatsApp):
 - "criar grupo" → Inicia o Modo Galera para viagem em grupo
@@ -2327,19 +2341,24 @@ async function saveQuotationRequest(
     return d;
   };
 
+  const adults = Number(quotationData.adultos) || 1;
+  const children = Number(quotationData.criancas) || 0;
+
   const insertPayload = {
     phone_number: phoneNumber,
     origin: quotationData.origem,
     destination: quotationData.destino,
     departure_date: parseDate(quotationData.data_ida),
     return_date: parseDate(quotationData.data_volta),
-    adults: quotationData.adultos || 1,
-    children: quotationData.criancas || 0,
+    adults: adults,
+    children: children,
+    num_people: adults + children,
     children_ages: quotationData.idades_criancas || [],
     customer_name: clientName || null,
     preferences: preferences || null,
     status: "pending",
     raw_request: quotationData,
+    source_channel: "whatsapp_teo",
   };
 
   console.log("[DEBUG] Salvando cotação no travel_quote_requests:", JSON.stringify(insertPayload));
@@ -2365,18 +2384,22 @@ async function requestQuotation(quotationData: Record<string, any>): Promise<{ s
     destino: quotationData.destino,
     data_ida: quotationData.data_ida,
     data_volta: quotationData.data_volta,
-    adultos: quotationData.adultos || 1,
-    criancas: quotationData.criancas || 0,
-    idades_criancas: quotationData.idades_criancas || [],
+    passageiros: {
+      adultos: quotationData.adultos || 1,
+      criancas: quotationData.criancas || 0,
+      idades_criancas: quotationData.idades_criancas || [],
+    }
   };
 
-  console.log("[QUOTATION] Calling cativa-quotation API:", JSON.stringify(payload));
+  console.log("[QUOTATION] Calling cotar-viagem API:", JSON.stringify(payload));
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout (API is fast now)
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
   try {
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/cativa-quotation`, {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/cotar-viagem`, {
+
+
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -2972,6 +2995,16 @@ serve(async (req) => {
       }
 
       const message = value.messages[0];
+      const messageId = message.id;
+
+      if (isDuplicateMessage(messageId)) {
+        console.log(`[DEDUPLICATION] Skipping duplicate message ID: ${messageId}`);
+        return new Response(JSON.stringify({ status: "ok", duplicate: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const phoneNumber = message.from;
       // Variantes do número p/ casar com cadastros (com/sem DDI 55, com/sem 9 extra)
       const phoneVariants = (() => {
