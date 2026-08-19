@@ -29,41 +29,36 @@ serve(async (req) => {
     const html = await res.text();
     
     if (dryRun) {
-      const getLiteralDump = (s: string, length = 2000) => {
+      const getLiteralDump = (s: string, length = 10000) => {
         const idx = html.indexOf(s);
         if (idx === -1) return "NOT_FOUND";
         return html.substring(idx, idx + length);
       };
 
-      const dumpPayload = getLiteralDump("__PVOO_PAYLOAD", 3000);
-      const dumpSnapshot = getLiteralDump("PV_SNAPSHOT", 3000);
-      const dumpPromos = getLiteralDump("DADOS.promos", 3000);
+      const dumpPayloadFull = getLiteralDump("__PVOO_PAYLOAD", 20000); // Pegar mais para achar o mapa
+      
+      // Tentar extrair PAYLOAD.mapa completo
+      let mapaJson = "not_extracted";
+      const mapaMatch = dumpPayloadFull.match(/PAYLOAD\.mapa\s*=\s*({[\s\S]+?});/);
+      if (mapaMatch) mapaJson = mapaMatch[1];
 
-      // Extração rudimentar de PAYLOAD.usd e mapa para inspeção
-      let payloadUsd = "unknown";
-      const usdMatch = dumpPayload.match(/usd\s*:\s*([\d.]+)/);
-      if (usdMatch) payloadUsd = usdMatch[1];
+      // Tentar extrair o blob (pelo menos as primeiras linhas)
+      let blobSnippet = "not_extracted";
+      const blobMatch = dumpPayloadFull.match(/blob\s*:\s*[`"']([\s\S]+?)[`"']/);
+      if (blobMatch) blobSnippet = blobMatch[1].substring(0, 2000);
 
-      let mapaSnippet = "unknown";
-      const mapaMatch = dumpPayload.match(/mapa\s*:\s*({[^}]+})/);
-      if (mapaMatch) mapaSnippet = mapaMatch[1];
-
-      // Verificação de Atualidade (Item 7)
       const dataRefMatch = html.match(/var\s+DATA_REF\s*=\s*['"]([^'"]+)['"]/);
       const dataRef = dataRefMatch ? dataRefMatch[1] : "not_found";
-      
-      const backupCount = (dumpSnapshot.match(/fonte\s*:\s*['"]backup['"]/g) || []).length;
 
       return new Response(JSON.stringify({
-        status: "dry_run_literal_dump",
+        status: "dry_run_detailed_discovery",
         data_reference: dataRef,
-        payload_usd: payloadUsd,
-        mapa_snippet: mapaSnippet,
-        backup_source_count: backupCount,
+        mapa_bruto: mapaJson,
+        blob_amostra: blobSnippet,
+        // Dumps originais para segurança
         dumps: {
-          __PVOO_PAYLOAD: dumpPayload,
-          PV_SNAPSHOT: dumpSnapshot,
-          "DADOS.promos": dumpPromos
+          __PVOO_PAYLOAD: dumpPayloadFull.substring(0, 5000),
+          PV_SNAPSHOT: getLiteralDump("PV_SNAPSHOT", 5000)
         }
       }), {
         status: 200,
