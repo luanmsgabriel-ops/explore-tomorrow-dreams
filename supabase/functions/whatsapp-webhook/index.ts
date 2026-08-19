@@ -2382,18 +2382,20 @@ async function requestQuotation(quotationData: Record<string, any>): Promise<{ s
     destino: quotationData.destino,
     data_ida: quotationData.data_ida,
     data_volta: quotationData.data_volta,
-    adultos: quotationData.adultos || 1,
-    criancas: quotationData.criancas || 0,
-    idades_criancas: quotationData.idades_criancas || [],
+    passageiros: {
+      adultos: quotationData.adultos || 1,
+      criancas: quotationData.criancas || 0,
+      idades_criancas: quotationData.idades_criancas || [],
+    }
   };
 
-  console.log("[QUOTATION] Calling cativa-quotation API:", JSON.stringify(payload));
+  console.log("[QUOTATION] Calling cotar-viagem API:", JSON.stringify(payload));
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout (API is fast now)
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
   try {
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/cativa-quotation`, {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/cotar-viagem`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
