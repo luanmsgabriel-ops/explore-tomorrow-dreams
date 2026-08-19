@@ -1157,7 +1157,7 @@ Cliente quer falar com humano:
    
    --LIMPO_6--
    
-   - SEM MENSAGEM DE MANUTENÇÃO
+   --LIMPO_7--
    
    - DISPARE COTAR_VIAGEM
    
