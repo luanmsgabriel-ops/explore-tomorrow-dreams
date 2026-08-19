@@ -99,10 +99,12 @@ serve(async (req) => {
     const monthOffers = allEligible.filter(o => o.departure_date.startsWith(targetMonth));
     
     if (monthOffers.length > 0) {
-      const targetTime = new Date(baseDate + "T12:00:00").getTime();
+      const targetTime = new Date(baseDate + "T00:00:00").getTime();
       offerA = [...monthOffers].sort((a, b) => {
-        const distA = Math.abs(new Date(a.departure_date + "T12:00:00").getTime() - targetTime);
-        const distB = Math.abs(new Date(b.departure_date + "T12:00:00").getTime() - targetTime);
+        const timeA = new Date(a.departure_date + "T00:00:00").getTime();
+        const timeB = new Date(b.departure_date + "T00:00:00").getTime();
+        const distA = Math.abs(timeA - targetTime);
+        const distB = Math.abs(timeB - targetTime);
         if (distA !== distB) return distA - distB;
         return getCost(a) - getCost(b);
       })[0];
