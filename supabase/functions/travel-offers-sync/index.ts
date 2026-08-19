@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,9 +10,6 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const body = await req.json().catch(() => ({}));
-  const dryRun = body.dry_run === true;
-
   try {
     const targetUrl = "https://viajandocomdesconto.com/";
     const res = await fetch(targetUrl, {
@@ -24,23 +20,8 @@ serve(async (req) => {
     });
     const html = await res.text();
     
-    // Devolver trechos do HTML para inspeção
-    const snippets: Record<string, string> = {};
-    const keys = ["PAYLOAD", "__PVOO_PAYLOAD", "PV_SNAPSHOT", "DADOS.promos"];
-    
-    keys.forEach(key => {
-        const idx = html.indexOf(key);
-        if (idx !== -1) {
-            snippets[key] = html.substring(idx, idx + 500);
-        } else {
-            snippets[key] = "NOT FOUND";
-        }
-    });
-
     return new Response(JSON.stringify({
-      status: "inspecting",
-      html_length: html.length,
-      snippets
+      html_sample: html.substring(0, 5000)
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err: any) {
