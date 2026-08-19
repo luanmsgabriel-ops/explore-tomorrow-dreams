@@ -8828,7 +8828,7 @@ Regras OBRIGATÓRIAS:
       }
 
       // Handle quotation if triggered
-      // We check if it was already triggered in PREVIOUS turns to avoid duplication
+      console.log("[QUOTATION-DEBUG] Starting trigger logic for " + phoneNumber + " status: " + conversationStatus + " alreadyQuotedInDB: " + alreadyQuotedInDB);      // We check if it was already triggered in PREVIOUS turns to avoid duplication
       const alreadyQuotedInDB = (conversation.collected_data as any)?._quotation_triggered === true || 
                                 (conversation.collected_data as any)?._quotation_triggered === "true";
       
