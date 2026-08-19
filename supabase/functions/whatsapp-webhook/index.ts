@@ -2500,6 +2500,7 @@ async function requestQuotation(quotationData: Record<string, any>): Promise<{ s
     console.log("[QUOTATION] Response (first 2000):", responseText.substring(0, 2000));
 
     if (!response.ok) {
+      console.error("[QUOTATION] API error:", response.status, responseText);
       return { status: "error", data: null };
     }
 
@@ -2517,7 +2518,7 @@ async function requestQuotation(quotationData: Record<string, any>): Promise<{ s
     return { status: "success", data: responseData };
   } catch (err) {
     clearTimeout(timeoutId);
-    console.error("[QUOTATION] Error:", err);
+    console.error("[QUOTATION] Fetch error:", err);
     return { status: "error", data: null };
   }
 }
@@ -2595,17 +2596,17 @@ function formatQuotationResults(data: any): string {
 async function createQuoteRequest(phoneNumber: string, collectedData: Record<string, any>) {
   const { data, error } = await supabase.from("quote_requests").insert({
     client_name: collectedData.nome || null,
-    email: `whatsapp_${phoneNumber}@placeholder.com`,
     whatsapp: phoneNumber,
     destination_name: collectedData.destino || null,
     travel_date: collectedData.datas || null,
-    num_people: collectedData.num_viajantes || null,
+    num_people: String(collectedData.num_viajantes || ""),
     travel_type: collectedData.tipo_viagem || null,
     preferred_airport: collectedData.aeroporto || null,
     special_requests: collectedData.preferencias || null,
-    source_channel: "whatsapp",
+    source_channel: "whatsapp_teo",
     notes: `Orçamento: ${collectedData.orcamento || "Não informado"}`,
     status: "pending",
+    follow_up_enabled: false,
   }).select("id").single();
 
   if (error) {
@@ -2882,7 +2883,7 @@ serve(async (req) => {
 
           } else {
             // No results or API error — fallback to human specialist
-            quotationMsg = `${clientName || 'Amigo(a)'}! 👋\n\nNão encontrei opções automáticas para ${quotationData.destino} nessas datas, mas isso não é problema! 🌴\n\nVou encaminhar seu pedido para um especialista do destino que vai encontrar o pacote perfeito pra você! ✈️\n\nUm consultor da Tomorrow Travel entra em contato em breve! 😊`;
+            quotationMsg = "✈️ *Resultado da cotação:*\n\nOlha, tô terminando de conferir os melhores preços com nossos parceiros! ✈️✨\n\nComo quero te entregar a melhor opção de todas, passei seu pedido pra um de nossos consultores especialistas. Ele vai finalizar os detalhes e te chama rapidinho por aqui, beleza? 😊";
 
             if (saveResultId) {
               await supabase.from("travel_quote_requests").update({
