@@ -29,45 +29,23 @@ serve(async (req) => {
     const html = await res.text();
     
     if (dryRun) {
-      const getLiteralDump = (s: string, length = 60000) => {
-        const idx = html.indexOf(s);
-        if (idx === -1) return "NOT_FOUND";
-        return html.substring(idx, idx + length);
-      };
-
-      // Tentar localizar a definição exata do objeto PAYLOAD
-      let payloadBlock = "not_found";
-      const payloadStartIdx = html.indexOf("const PAYLOAD = {");
-      if (payloadStartIdx !== -1) {
-        // Capturar um bloco grande para garantir que pegamos o mapa e o blob
-        payloadBlock = html.substring(payloadStartIdx, payloadStartIdx + 120000);
+      // Pedaços aleatórios do HTML para encontrar a declaração do PAYLOAD
+      const parts = [];
+      const step = 50000;
+      for (let i = 0; i < html.length; i += step) {
+        const chunk = html.substring(i, i + 10000);
+        if (chunk.includes("PAYLOAD") || chunk.includes("mapa") || chunk.includes("blob")) {
+          parts.push({ offset: i, content: chunk });
+        }
       }
 
-      // Tentar extrair chaves específicas para facilitar a leitura no log
-      const mapaMatch = payloadBlock.match(/mapa\s*:\s*({[\s\S]*?}),\s*usd/i);
-      const blobMatch = payloadBlock.match(/blob\s*:\s*[`"']([\s\S]*?)[`"']/i);
-      const usdMatch = payloadBlock.match(/usd\s*:\s*([\d.]+)/i);
-
       const dataRefMatch = html.match(/var\s+DATA_REF\s*=\s*['"]([^'"]+)['"]/);
-      
-      const snapshotLiteral = getLiteralDump("PV_SNAPSHOT", 20000);
-      const backupCount = (snapshotLiteral.match(/['"]fonte['"]\s*:\s*['"]backup['"]/g) || []).length;
-      const others = [...snapshotLiteral.matchAll(/['"]fonte['"]\s*:\s*['"](?!backup)([^'"]+)['"]/g)].map(m => m[1]);
 
       return new Response(JSON.stringify({
-        status: "dry_run_full_payload_extraction",
+        status: "dry_run_html_scanning",
+        html_length: html.length,
         data_reference: dataRefMatch ? dataRefMatch[1] : "not_found",
-        usd_value: usdMatch ? usdMatch[1] : "not_found",
-        snapshot_stats: {
-          backup: backupCount,
-          others_count: others.length,
-          other_values_unique: [...new Set(others)]
-        },
-        // Enviar pedaços do bloco para não estourar limite de log mas ver o conteúdo
-        payload_mapa_start: mapaMatch ? mapaMatch[1].substring(0, 5000) : "mapa_not_captured",
-        payload_blob_start: blobMatch ? blobMatch[1].substring(0, 5000) : "blob_not_captured",
-        payload_blob_total_length: blobMatch ? blobMatch[1].length : 0,
-        full_payload_header: payloadBlock.substring(0, 2000)
+        found_parts: parts
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
