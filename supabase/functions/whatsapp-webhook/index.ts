@@ -2510,8 +2510,14 @@ function formatQuotationResults(data: any): string {
       if (r.categoria || r.category || r.estrelas) {
         formatted += `⭐ Categoria: ${r.categoria || r.category || r.estrelas}\n`;
       }
-      if (r.voo_ida || r.flight_out) formatted += `🛫 Ida: ${r.voo_ida || r.flight_out}\n`;
-      if (r.voo_volta || r.flight_back) formatted += `🛬 Volta: ${r.voo_volta || r.flight_back}\n`;
+      
+      const originStr = r.origem_cidade ? `${r.origem_cidade}${r.origem_iata ? ` (${r.origem_iata})` : ""}` : (r.voo_ida || r.flight_out);
+      const destStr = r.destino_cidade ? `${r.destino_cidade}${r.destino_iata ? ` (${r.destino_iata})` : ""}` : (r.voo_volta || r.flight_back);
+      
+      if (r.voo_ida || r.flight_out || r.origem_cidade) formatted += `🛫 Ida: ${originStr}\n`;
+      if (r.voo_volta || r.flight_back || r.destino_cidade) formatted += `🛬 Volta: ${destStr}\n`;
+      if (r.data_partida) formatted += `📅 Partida: ${r.data_partida}\n`;
+      if (r.data_retorno) formatted += `📅 Retorno: ${r.data_retorno}\n`;
       if (r.paradas !== undefined) formatted += `🔄 Paradas: ${r.paradas}\n`;
       if (r.duracao || r.duration) formatted += `⏱️ Duração: ${r.duracao || r.duration}\n`;
       if (r.noites || r.nights) formatted += `🌙 Noites: ${r.noites || r.nights}\n`;
@@ -2524,11 +2530,18 @@ function formatQuotationResults(data: any): string {
         const ppFormatado = Number(r.preco_por_pessoa || r.valor_por_pessoa || r.price_per_person).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
         formatted += `👤 Por pessoa: R$ ${ppFormatado}\n`;
       }
+      if (r.taxa_embarque !== undefined) {
+        const taxaFormatada = Number(r.taxa_embarque).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+        formatted += `⚓ Taxa de embarque: R$ ${taxaFormatada}\n`;
+      }
       if (r.parcelas || r.installments) {
         formatted += `💳 ${r.parcelas || r.installments}x no cartão\n`;
       }
       if (r.prazo_emissao) {
-        formatted += `⏳ Prazo de emissão: ${r.prazo_emissao}\n`;
+        formatted += `⏳ Prazo de emissão: *${r.prazo_emissao}*\n`;
+      }
+      if (r.assentos_disponiveis !== undefined) {
+        formatted += `💺 Assentos disponíveis: *${r.assentos_disponiveis}*\n`;
       }
 
       formatted += "\n━━━━━━━━━━━━━━━━━━\n\n";
@@ -9013,6 +9026,8 @@ Regras OBRIGATÓRIAS:
           // Send the clean message first
           if (cleanResponse) {
             await sendWhatsAppMessage(phoneNumber, cleanResponse);
+            // Deduplication: remove cleanResponse so it's not sent again at the end of the script
+            cleanResponse = ""; 
           }
 
           // Save quotation request to table for tracking
@@ -9059,9 +9074,9 @@ Regras OBRIGATÓRIAS:
               })
               .eq("id", conversation.id);
 
-            // Fire-and-forget: process quotation asynchronously via self-invocation
+            // Process quotation via self-invocation
             const selfUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
-            fetch(selfUrl, {
+            const processPromise = fetch(selfUrl, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -9076,7 +9091,11 @@ Regras OBRIGATÓRIAS:
                 client_name: newCollectedData.nome || conversation.client_name || contactName || "",
                 collected_data: newCollectedData,
               }),
-            }).catch(err => console.error("Error scheduling async quotation:", err));
+            });
+
+            // Ensure the process is awaited or scheduled so it doesn't die when the response is sent
+            // In Deno Edge Functions, we must await any promise that we want to finish before the response
+            await processPromise.catch(err => console.error("Error in async quotation:", err));
 
             // Return immediately to Meta webhook (fast response)
             return new Response(JSON.stringify({ status: "ok", quotation: true, async: true }), {
@@ -9235,7 +9254,9 @@ Regras OBRIGATÓRIAS:
       } else if (isLikelyItineraryText(cleanResponse)) {
         // Never send long itinerary text, only card
         await sendWhatsAppMessage(phoneNumber, "Estou preparando seu card de roteiro 🎨 Pode me pedir de novo com o destino para eu gerar certinho.");
-      } else {
+      } else if (!quotationData) {
+        // ONLY send the standard message if a quotation was NOT triggered.
+        // If quotation was triggered, the "cleanResponse" and "searchingMsg" were already sent above.
         await sendWhatsAppMessage(phoneNumber, cleanResponse);
       }
 
