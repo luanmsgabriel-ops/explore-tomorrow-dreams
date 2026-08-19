@@ -110,55 +110,56 @@ export function formatQuotationResults(data: any): string {
   const results = data.resultados || data.results || data.cotacoes || data.opcoes || data.options || (Array.isArray(data) ? data : null);
   
   if (Array.isArray(results) && results.length > 0) {
-    let formatted = '✈️ **Cotações encontradas:**\n\n';
+    let formatted = '✈️ **Possibilidades encontradas na base:**\n\n';
     results.forEach((r: any, i: number) => {
-      const name = r.hotel || r.operadora || r.companhia || r.nome || r.name || 'Opção';
-      formatted += `**${i + 1}. ${name}**\n`;
+      const name = r.companhia || r.operadora || r.hotel || 'Opção';
+      const label = r.papel === 'data_pedida' ? ' (Data Solicitada)' : 
+                   r.papel === 'proxima_data' ? ' (Próxima Saída)' : 
+                   r.papel === 'melhor_preco' ? ' (Melhor Preço)' : '';
       
-      if (r.hotel_stars || r.categoria) {
-        formatted += `⭐ ${r.hotel_stars ? r.hotel_stars + ' estrelas' : r.categoria}\n`;
-      }
-      if (r.regime) formatted += `🍽️ Regime: ${r.regime}\n`;
-      if (r.quarto_tipo) formatted += `🛏️ Quarto: ${r.quarto_tipo}\n`;
+      formatted += `**${i + 1}. ${name}${label}**\n`;
+      formatted += `📍 De ${r.origem} para ${r.destino}\n`;
       
-      const price = r.preco || r.valor || r.price || r.total || r.valor_total;
-      if (price) {
-        const num = typeof price === 'number' ? price : parseFloat(String(price).replace(/[^\d.,]/g, '').replace(',', '.'));
-        if (!isNaN(num)) {
-          formatted += `💰 Valor Total: R$ ${num.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
-        } else {
-          formatted += `💰 Valor: ${price}\n`;
-        }
-      }
+      if (r.tipo) formatted += `🏷️ Tipo: ${r.tipo === 'aereo' ? 'Bloqueio Aéreo' : 'Pacote'}\n`;
+      
       if (r.preco_por_pessoa) {
         formatted += `👤 Por pessoa: R$ ${Number(r.preco_por_pessoa).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
       }
+      
+      if (r.taxa_embarque > 0) {
+        formatted += `🎟️ Taxa de embarque: R$ ${Number(r.taxa_embarque).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+      }
+
+      const num = typeof r.preco === 'number' ? r.preco : parseFloat(String(r.preco).replace(/[^\d.,]/g, '').replace(',', '.'));
+      if (!isNaN(num)) {
+        formatted += `💰 Valor Total do Grupo: R$ ${num.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+      }
+
+      if (r.economia_por_pessoa > 0) {
+        formatted += `✨ **ECONOMIA: R$ ${Number(r.economia_por_pessoa).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} por pessoa!**\n`;
+      }
+      
       if (r.voo_ida) formatted += `🛫 Ida: ${r.voo_ida}\n`;
       if (r.voo_volta) formatted += `🛬 Volta: ${r.voo_volta}\n`;
       if (r.noites) formatted += `🌙 ${r.noites} noites\n`;
-      if (r.taxa_embarque > 0) formatted += `🎟️ Taxa de embarque: R$ ${Number(r.taxa_embarque).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+      
       if (r.assentos_disponiveis > 0) formatted += `🪑 Assentos disponíveis: ${r.assentos_disponiveis}\n`;
+      
       if (r.prazo_emissao) {
-        const [y, m, d] = r.prazo_emissao.split('-');
-        formatted += `⏰ Data limite para emitir a passagem: ${d}/${m}/${y}\n`;
+        const parts = r.prazo_emissao.split('-');
+        if (parts.length === 3) {
+          formatted += `⏰ Data limite de emissão: ${parts[2]}/${parts[1]}/${parts[0]}\n`;
+        }
       }
-      if (r.operadora) formatted += `📌 Operadora: ${r.operadora}\n`;
-
+      
       formatted += '\n';
     });
     return formatted;
   }
   
   if (Array.isArray(results) && results.length === 0) {
-    return '😕 Nenhuma cotação encontrada para essas datas.';
+    return '😕 Não encontramos bloqueios específicos para essa data na nossa base agora.';
   }
 
-  // Handle message-only responses
-  if (data.message || data.mensagem || data.msg) {
-    const msg = data.message || data.mensagem || data.msg;
-    return `📋 ${msg}`;
-  }
-
-  // Fallback - Just a polite message instead of JSON
   return '✈️ **Resultado da cotação:**\n\nNossos especialistas estão finalizando os detalhes para você. Em breve, enviaremos a cotação completa com os melhores preços! 🌟';
 }

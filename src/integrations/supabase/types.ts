@@ -1992,6 +1992,54 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      search_travel_offers: {
+        Args: {
+          p_dest_term: string
+          p_max_date: string
+          p_min_date: string
+          p_order_by_price: boolean
+          p_origin_term: string
+          p_total_passengers: number
+        }
+        Returns: {
+          active: boolean | null
+          airline: string | null
+          alternative_dates: string | null
+          available_seats: number | null
+          boarding_tax: number | null
+          created_at: string | null
+          currency: string | null
+          departure_date: string | null
+          destination_iata: string | null
+          destination_name: string | null
+          id: string
+          issue_deadline: string | null
+          last_seen_at: string | null
+          nights: number | null
+          offer_type: string
+          origin_city: string | null
+          origin_iata: string | null
+          outbound_arrival_time: string | null
+          outbound_departure_time: string | null
+          price_per_person: number | null
+          raw_data: Json | null
+          return_arrival_time: string | null
+          return_date: string | null
+          return_departure_time: string | null
+          source: string
+          source_id: string
+          source_type: string | null
+          source_url: string | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "travel_offers"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "user"

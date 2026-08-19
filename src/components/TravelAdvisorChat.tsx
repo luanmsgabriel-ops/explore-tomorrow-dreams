@@ -370,10 +370,28 @@ Me conta aí! 👇`
           return newMessages;
         });
 
+        // Record the quote request IMMEDIATELY after confirmation
+        if (userWhatsapp) {
+          supabase.from('quote_requests').insert({
+            client_name: userName || 'Cliente Téo Advisor',
+            whatsapp: userWhatsapp,
+            destination_name: quotationData.destino,
+            travel_date: quotationData.data_ida,
+            num_people: String((quotationData.passageiros.adultos || 1) + (quotationData.passageiros.criancas || 0)),
+            notes: `Cotação solicitada via Téo Advisor. Volta: ${quotationData.data_volta}. Adultos: ${quotationData.passageiros.adultos}, Crianças: ${quotationData.passageiros.criancas}${quotationData.passageiros.idades_criancas?.length ? ` (Idades: ${quotationData.passageiros.idades_criancas.join(', ')})` : ''}.`,
+            status: 'pending',
+            source_channel: 'website',
+            follow_up_enabled: false
+          }).then(({ error }) => {
+            if (error) console.error('Error recording quote request:', error);
+          });
+        }
+
         const quotResult = await quotation.requestQuotation(quotationData);
         if (quotResult.status === 'success' && quotResult.data && !quotResult.data.error) {
           const formatted = formatQuotationResults(quotResult.data);
           setMessages((prev) => [...prev, { role: 'assistant', content: formatted }]);
+          
           // Fire-and-forget: generate visual quote card
           supabase.functions.invoke('generate-quote-visual', {
             body: {
@@ -389,35 +407,13 @@ Me conta aí! 👇`
             }
           }).catch(() => {/* non-blocking */});
         } else {
-          // Failure handling: friendly message and record the request
-          if (userWhatsapp) {
+          // Failure handling: friendly message
+          if (!userWhatsapp) {
             setMessages((prev) => [
               ...prev, 
               { 
                 role: 'assistant', 
-                content: `Olha, tô terminando de conferir os melhores preços pra **${quotationData.destino}** com nossos parceiros! ✈️✨\n\nComo quero te entregar a melhor opção de todas, passei seu pedido pra um de nossos consultores especialistas. Ele vai finalizar os detalhes e te chama rapidinho no WhatsApp, beleza? 😊` 
-              }
-            ]);
-
-            supabase.from('quote_requests').insert({
-              client_name: userName || 'Cliente Téo Advisor',
-              whatsapp: userWhatsapp,
-              destination_name: quotationData.destino,
-              travel_date: quotationData.data_ida,
-              num_people: String((quotationData.passageiros.adultos || 1) + (quotationData.passageiros.criancas || 0)),
-              notes: `Cotação solicitada via Téo Advisor. Volta: ${quotationData.data_volta}. Adultos: ${quotationData.passageiros.adultos}, Crianças: ${quotationData.passageiros.criancas}${quotationData.passageiros.idades_criancas?.length ? ` (Idades: ${quotationData.passageiros.idades_criancas.join(', ')})` : ''}.`,
-              status: 'pending',
-              source_channel: 'website',
-              follow_up_enabled: false
-            }).then(({ error }) => {
-              if (error) console.error('Error recording failed quote:', error);
-            });
-          } else {
-            setMessages((prev) => [
-              ...prev, 
-              { 
-                role: 'assistant', 
-                content: `Olha, tô terminando de conferir os melhores preços pra **${quotationData.destino}** com nossos parceiros! ✈️✨\n\nEu adoraria te mandar essa cotação, mas ainda não tenho seu WhatsApp. Me passa seu número com DDD pra eu te enviar tudo por lá? Ou, se preferir, pode chamar a gente direto clicando no botão do WhatsApp ali no canto! 😊` 
+                content: `Olha, tô terminando de conferir os melhores preços pra **${quotationData.destino}** com nossos parceiros! ✈️✨\n\nEu adoraria te mandar essa cotação, mas ainda não tenho seu WhatsApp. Me passa seu número com DDD pra eu te enviar tudo por lá? 😊` 
               }
             ]);
             setPendingQuote(quotationData);
