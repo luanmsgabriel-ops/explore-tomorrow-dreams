@@ -18,8 +18,9 @@ import { ReviewManager } from '@/components/admin/ReviewManager';
 import { AudioManager } from '@/components/admin/AudioManager';
 import { ConciergeManager } from '@/components/admin/ConciergeManager';
 import { ScheduledMessagesManager } from '@/components/admin/ScheduledMessagesManager';
+import { OfferSyncManager } from '@/components/admin/OfferSyncManager';
 import { QuotesFilter, QuotesFilterValues } from '@/components/admin/QuotesFilter';
-import { Volume2, Navigation } from 'lucide-react';
+import { Volume2, Navigation, RefreshCw } from 'lucide-react';
 import { Edit } from 'lucide-react';
 import { 
   LayoutDashboard, 
@@ -54,7 +55,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabType = 'overview' | 'analytics' | 'sales' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'clients' | 'trips' | 'checklist' | 'banner-generator' | 'whatsapp' | 'reviews' | 'audio' | 'concierge' | 'scheduled-messages';
+type TabType = 'overview' | 'analytics' | 'sales' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'offer-sync' | 'clients' | 'trips' | 'checklist' | 'banner-generator' | 'whatsapp' | 'reviews' | 'audio' | 'concierge' | 'scheduled-messages';
 
 interface QuoteRequest {
   id: string;
