@@ -1139,7 +1139,8 @@ Campos: nome, destino, datas, num_viajantes, tipo_viagem, orcamento, preferencia
    - O prazo de emissão para bloqueios aéreos costuma ser curto (algumas horas).
 
 IMPORTANTE: Datas como "do dia 15 a 22 de junho" → data_ida="2026-06-15", data_volta="2026-06-22".
-REGRA CRÍTICA DE ANO: O ano atual é ${new Date().getFullYear()}. Se o cliente NÃO especificar o ano, SEMPRE use ${new Date().getFullYear()}. NUNCA use 2024 ou 2025. Exemplo: "junho" = "junho de ${new Date().getFullYear()}".
+REGRA CRÍTICA DE ANO: O ano atual é 2026. Se o cliente NÃO especificar o ano, SEMPRE use 2026 para meses à frente, ou 2027 se o mês já passou. NUNCA use 2024 ou 2025. Exemplo: "junho" = "junho de 2027".
+REGRA DE DATAS CONCRETAS: Se o cliente disser "Outubro", proponha "01/10/2026 a 07/10/2026" (7 dias padrão). Peça confirmação antes de cotar.
 
 Tudo coletado e confirmado:
 [STATUS:completed]
@@ -6350,7 +6351,8 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
 
       // ========== TÉO SCHOOL: Language Learning for Tourism (EN/ES) ==========
       {
-        const lowerMsgSchool = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        const lowerMsgSchool = (messageText || "").toLowerCase().trim();
+        const normalizedMsgSchool = lowerMsgSchool.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const schoolActivateRegex = /^(escola|school|teo school|téo school|aprender ingles|aprender espanhol|aprender inglês|learn english|learn spanish|aula de ingles|aula de espanhol|ingles para viagem|espanhol para viagem)$/i;
 
         // Check if school mode is active first
