@@ -46,43 +46,11 @@ serve(async (req) => {
     const html = await response.text();
     
     if (dryRun) {
-      // 1. Extract __PVOO_PAYLOAD
-      const pvooMatch = html.match(/var\s+__PVOO_PAYLOAD\s*=\s*({.*?});/s) || html.match(/__PVOO_PAYLOAD\s*=\s*({.*?});/s);
-      
-      // 2. Extract PACOTES
-      const pacotesMatch = html.match(/var\s+PACOTES\s*=\s*(\[.*?\]);/s) || html.match(/PACOTES\s*=\s*(\[.*?\]);/s);
-      const pacotes = pacotesMatch ? JSON.parse(pacotesMatch[1]) : null;
-
-      let pvooInfo = { 
-        error: "__PVOO_PAYLOAD not found", 
-        html_preview: html.substring(0, 2000),
-        includes_pvoo_string: html.includes("__PVOO_PAYLOAD") 
-      };
-
-      if (pvooMatch) {
-        const pvooData = JSON.parse(pvooMatch[1]);
-        pvooInfo = {
-          cols: pvooData.cols || "No 'cols' found",
-          rows_sample: (pvooData.rows || []).slice(0, 3),
-          total_rows: (pvooData.rows || []).length,
-          html_preview: "Payload found, hiding raw HTML"
-        };
-      }
-
-      let pacotesInfo = { error: "PACOTES not found" };
-      if (pacotes && pacotes.length > 0) {
-        pacotesInfo = {
-          first_entry: pacotes[0],
-          keys: Object.keys(pacotes[0]),
-          total: pacotes.length
-        };
-      }
-
       return new Response(JSON.stringify({
-        status: "dry_run_discovery",
+        status: "dry_run_html",
         url_used: targetUrl,
-        pvoo: pvooInfo,
-        pacotes: pacotesInfo
+        html_length: html.length,
+        html_sample: html.substring(0, 10000)
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
