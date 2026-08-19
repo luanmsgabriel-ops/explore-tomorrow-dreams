@@ -1158,7 +1158,7 @@ Cliente quer falar com humano:
    
    - AGUARDE CONFIRMAÇÃO
    
-   Agradecemos a compreensão! 🙏
+   - SEM MENSAGEM DE MANUTENÇÃO
    
    Enquanto isso, que tal explorar outros recursos do Téo? 👇
    
