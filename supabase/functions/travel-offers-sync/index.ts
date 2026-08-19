@@ -19,7 +19,8 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const dryRun = body.dry_run === true;
     
-    const targetUrl = "https://www.viajandocomdesconto.com.br/pacotes";
+    // Attempting a common subdirectory for this CMS
+    const targetUrl = "https://www.viajandocomdesconto.com.br/hotsite/bloqueios";
     const res = await fetch(targetUrl, {
         headers: {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -27,14 +28,13 @@ serve(async (req) => {
         signal: AbortSignal.timeout(20000)
     });
     const html = await res.text();
-
+    
     if (dryRun) {
-      // Find where 'tsx_pacotes_lista' or similar is defined
       const allDataMatches = html.match(/tsx_[a-zA-Z0-9_]+\.data = \[[\s\S]*?\];/g) || [];
-      
       return new Response(JSON.stringify({
-        status: "dry_run_discovery",
+        status: "dry_run_hotsite_discovery",
         url: targetUrl,
+        http_status: res.status,
         total_data_blocks: allDataMatches.length,
         largest_data_block_sample: allDataMatches.sort((a,b) => b.length - a.length)[0]?.substring(0, 5000) || "none"
       }), {
