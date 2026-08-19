@@ -20,25 +20,30 @@ serve(async (req) => {
     });
     const html = await res.text();
     
-    // Verificando se o objeto PAYLOAD está presente em algum lugar, independentemente de ser var/const
-    const regex1 = /PAYLOAD\s*=\s*{[\s\S]*?}/i;
-    const regex2 = /__PVOO_PAYLOAD\s*=\s*{[\s\S]*?}/i;
-    
-    const match1 = html.match(regex1);
-    const match2 = html.match(regex2);
+    // Procura por variáveis globais sem scripts
+    const payloadMatch = html.match(/PAYLOAD\s*=\s*{[\s\S]*?}/i);
+    const pvooMatch = html.match(/__PVOO_PAYLOAD\s*=\s*{[\s\S]*?}/i);
+    const snapshotMatch = html.match(/PV_SNAPSHOT\s*=\s*\[[\s\S]*?\]/i);
 
     return new Response(JSON.stringify({
       html_length: html.length,
-      payload_found: !!match1,
-      pvoo_found: !!match2,
-      payload_sample: match1 ? match1[0].substring(0, 1000) : "not_found",
-      pvoo_sample: match2 ? match2[0].substring(0, 1000) : "not_found",
-      // Pegar 5 blocos de 10k do HTML em intervalos
+      payload_found: !!payloadMatch,
+      pvoo_found: !!pvooMatch,
+      snapshot_found: !!snapshotMatch,
+      payload_sample: payloadMatch ? payloadMatch[0].substring(0, 1000) : "not_found",
+      pvoo_sample: pvooMatch ? pvooMatch[0].substring(0, 1000) : "not_found",
+      snapshot_snippet: snapshotMatch ? snapshotMatch[0].substring(0, 1000) : "not_found",
+      // Retorna 10 blocos de 10k do HTML em intervalos
       part1: html.substring(0, 10000),
-      part2: html.substring(100000, 110000),
-      part3: html.substring(500000, 510000),
-      part4: html.substring(1000000, 1010000),
-      part5: html.substring(html.length - 10000)
+      part2: html.substring(20000, 30000),
+      part3: html.substring(40000, 50000),
+      part4: html.substring(60000, 70000),
+      part5: html.substring(80000, 90000),
+      part6: html.substring(100000, 110000),
+      part7: html.substring(120000, 130000),
+      part8: html.substring(140000, 150000),
+      part9: html.substring(160000, 170000),
+      part10: html.substring(180000, 190000)
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err: any) {
