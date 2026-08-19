@@ -92,7 +92,8 @@ serve(async (req) => {
 
     // data_pedida:
     let offerA = null;
-    const targetMonth = baseDate.substring(0, 7);
+    const [yPed, mPed, dPed] = baseDate.split('-');
+    const targetMonth = `${yPed}-${mPed}`;
     const monthOffers = allEligible.filter(o => o.departure_date.startsWith(targetMonth));
     
     if (monthOffers.length > 0) {
