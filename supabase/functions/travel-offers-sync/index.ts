@@ -86,7 +86,7 @@ serve(async (req) => {
     }
 
     // Save sample HTML
-    if (!dry_run) {
+    if (!dryRun) {
       const fileName = `sync-samples/${new Date().toISOString().split('T')[0]}_viajando.html`;
       await supabase.storage.from("admin-assets").upload(fileName, html, { contentType: "text/html", upsert: true });
     }
