@@ -2599,7 +2599,7 @@ async function createQuoteRequest(phoneNumber: string, collectedData: Record<str
     whatsapp: phoneNumber,
     destination_name: collectedData.destino || null,
     travel_date: collectedData.datas || null,
-    num_people: String(collectedData.num_viajantes || ""),
+    num_people: collectedData.num_viajantes ? String(collectedData.num_viajantes) : null,
     travel_type: collectedData.tipo_viagem || null,
     preferred_airport: collectedData.aeroporto || null,
     special_requests: collectedData.preferencias || null,
@@ -2883,7 +2883,7 @@ serve(async (req) => {
 
           } else {
             // No results or API error — fallback to human specialist
-            quotationMsg = "✈️ *Resultado da cotação:*\n\nOlha, tô terminando de conferir os melhores preços com nossos parceiros! ✈️✨\n\nComo quero te entregar a melhor opção de todas, passei seu pedido pra um de nossos consultores especialistas. Ele vai finalizar os detalhes e te chama rapidinho por aqui, beleza? 😊";
+            quotationMsg = `Oi ${clientName || 'amigo(a)'}! 👋\n\nOlha, tô terminando de conferir os melhores preços pra **${quotationData.destino}** com nossos parceiros! ✈️✨\n\nComo quero te entregar a melhor opção de todas, passei seu pedido pra um de nossos consultores especialistas. Ele vai finalizar os detalhes e te chama rapidinho por aqui, beleza? 😊`;
 
             if (saveResultId) {
               await supabase.from("travel_quote_requests").update({
