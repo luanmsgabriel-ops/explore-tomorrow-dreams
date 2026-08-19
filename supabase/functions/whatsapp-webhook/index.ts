@@ -9004,20 +9004,33 @@ Regras OBRIGATÓRIAS:
               status: 200,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
-          } else {
-            console.error("[VALIDATION] Failed to save quotation request. Not marking as triggered.");
+            const selfUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
+            const processPromise = fetch(selfUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              },
+              body: JSON.stringify({
+                action: "process_quotation",
+                phone_number: phoneNumber,
+                quotation_data: effectiveQuotationData,
+                save_result_id: saveResult.id,
+                conversation_id: conversation.id,
+                client_name: newCollectedData.nome || conversation.client_name || contactName || "",
+                collected_data: newCollectedData,
+              }),
+            });
+
+            await processPromise.catch(err => console.error("Error in async quotation:", err));
+
+            return new Response(JSON.stringify({ status: "ok", quotation: true, async: true }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
           }
         }
       } else if (isExactDuplicate) {
-        // Just send the AI response and exit
-        if (cleanResponse) {
-          await sendWhatsAppMessage(phoneNumber, cleanResponse);
-        }
-        return new Response(JSON.stringify({ status: "ok", duplicate_skip: true }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
 
       // Check for change request tag from AI
       const changeRequest = parseChangeRequestTag(aiResponse);
