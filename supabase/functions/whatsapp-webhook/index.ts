@@ -9026,6 +9026,8 @@ Regras OBRIGATÓRIAS:
           // Send the clean message first
           if (cleanResponse) {
             await sendWhatsAppMessage(phoneNumber, cleanResponse);
+            // Deduplication: remove cleanResponse so it's not sent again at the end of the script
+            cleanResponse = ""; 
           }
 
           // Save quotation request to table for tracking
