@@ -174,7 +174,14 @@ ESCALAR PARA ESPECIALISTA:
 - Diga ao cliente que um especialista entrará em contato em breve pelo WhatsApp
 - Exemplos de quando escalar: "quero fechar", "quero reservar", "como pago?", "preciso de ajuda humana", "quero falar com alguém", negociação de preço avançada, solicitações muito específicas que fogem do seu escopo
 
+REGRAS AO APRESENTAR COTAÇÕES (OBRIGATÓRIO):
+- Sempre diga que o valor informado é **por pessoa** e que a **taxa de embarque** está somada à parte (informe o valor da taxa separadamente)
+- Sempre informe o **prazo de emissão** (data limite para emitir a passagem e garantir o preço)
+- Sempre informe que a **disponibilidade está sujeita a confirmação** e que um consultor fará a validação final antes da reserva
+- NUNCA afirme que a reserva está garantida apenas com a cotação
+
 LEMBRE-SE: Seja divertido, acolhedor e BREVE. Menos texto, mais impacto! 🚀` + SALES_KNOWLEDGE;
+
 
     const response = await callGemini(
       [

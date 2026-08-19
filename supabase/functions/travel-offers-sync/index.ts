@@ -92,6 +92,28 @@ serve(async (req) => {
       throw new Error("Estrutura do PAYLOAD inválida (blob ou mapa ausente).");
     }
 
+    // Sync travel_iata_map table
+    const iataEntries = Object.entries(mapa).map(([code, names]) => ({
+      code,
+      origin_name: (names as string[])[0],
+      destination_name: (names as string[])[1],
+      updated_at: executionTimestamp
+    }));
+
+    if (iataEntries.length > 0) {
+      console.log(`Syncing ${iataEntries.length} IATA entries...`);
+      const { error: iataError } = await supabaseClient
+        .from("travel_iata_map")
+        .upsert(iataEntries, { onConflict: "code" });
+      if (iataError) {
+        console.error("Error syncing travel_iata_map:", iataError);
+      } else {
+        console.log("travel_iata_map synced successfully");
+      }
+    }
+
+
+
     const lines = blob.split("\n").filter((l: string) => l.trim().length > 0);
     const parsedOffers = [];
     let mapErrors = 0;
