@@ -2398,6 +2398,7 @@ async function requestQuotation(quotationData: Record<string, any>): Promise<{ s
 
   try {
     const response = await fetch(`${SUPABASE_URL}/functions/v1/cotar-viagem`, {
+
       method: "POST",
       headers: {
         "Content-Type": "application/json",
