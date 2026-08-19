@@ -19,7 +19,7 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const dryRun = body.dry_run === true;
     
-    // We'll search the root URL which reported has_pacotes: true
+    // We'll target the main domain again but search for DIFFERENT data markers
     const targetUrl = "https://viajandocomdesconto.com.br/";
     const res = await fetch(targetUrl, {
         headers: {
@@ -30,19 +30,22 @@ serve(async (req) => {
     const html = await res.text();
     
     if (dryRun) {
-      // Return targeted info from the root
-      const tsxMatches = html.match(/tsx_[a-zA-Z0-9_]+\.attribute = \{[^}]+\}/g) || [];
-      const dataMatches = html.match(/tsx_[a-zA-Z0-9_]+\.data = \[[\s\S]*?\];/g) || [];
+      // Find where 'tsx_pacotes_lista' or similar is defined
+      const listMatches = html.match(/tsx_[a-zA-Z0-9_]+lista[a-zA-Z0-9_]*\.data = \[[\s\S]*?\];/gi) || [];
+      const offerMatches = html.match(/tsx_[a-zA-Z0-9_]+oferta[a-zA-Z0-9_]*\.data = \[[\s\S]*?\];/gi) || [];
+      const bannerMatches = html.match(/tsx_[a-zA-Z0-9_]+banner[a-zA-Z0-9_]*\.data = \[[\s\S]*?\];/gi) || [];
+      
+      // Look for any large data structures
+      const allDataMatches = html.match(/tsx_[a-zA-Z0-9_]+\.data = \[[\s\S]*?\];/g) || [];
       
       return new Response(JSON.stringify({
-        status: "dry_run_root_discovery",
+        status: "dry_run_data_discovery",
         url: targetUrl,
-        tsx_matches: tsxMatches.slice(0, 50),
-        data_matches_count: dataMatches.length,
-        data_sample: dataMatches.length > 0 ? dataMatches[0].substring(0, 2000) : "no data matches found",
-        html_contains_rows: html.includes("rows"),
-        html_contains_cols: html.includes("cols"),
-        html_contains_pvoo: html.includes("__PVOO_PAYLOAD")
+        list_matches: listMatches.map(m => m.substring(0, 1000)),
+        offer_matches: offerMatches.map(m => m.substring(0, 1000)),
+        banner_matches: bannerMatches.map(m => m.substring(0, 1000)),
+        total_data_blocks: allDataMatches.length,
+        largest_data_block_sample: allDataMatches.sort((a,b) => b.length - a.length)[0]?.substring(0, 3000) || "none"
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
