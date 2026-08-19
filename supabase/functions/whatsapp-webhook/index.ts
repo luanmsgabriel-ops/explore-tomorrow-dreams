@@ -9114,6 +9114,43 @@ Regras OBRIGATÓRIAS:
         clientMemory
       ).catch((err) => console.error("[MEMORY] Background update error:", err));
 
+      // Handle scheduled messages processing
+      if (body.action === "process_scheduled_messages") {
+        try {
+          const { data: pendingMsgs } = await supabase
+            .from("whatsapp_scheduled_messages")
+            .select("*")
+            .is("sent_at", null)
+            .lte("send_after", new Date().toISOString());
+
+          if (pendingMsgs && pendingMsgs.length > 0) {
+            console.log(`[SCHEDULED] Processing ${pendingMsgs.length} messages...`);
+            for (const msg of pendingMsgs) {
+              await sendWhatsAppMessage(msg.phone_number, msg.message_text);
+              await supabase
+                .from("whatsapp_scheduled_messages")
+                .update({ sent_at: new Date().toISOString() })
+                .eq("id", msg.id);
+            }
+          }
+        } catch (err) {
+          console.error("[SCHEDULED] Error processing messages:", err);
+        }
+        return new Response(JSON.stringify({ status: "ok", processed: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // If user replies, cancel any scheduled messages for this phone
+      if (messageText && !body.action) {
+        await supabase
+          .from("whatsapp_scheduled_messages")
+          .update({ sent_at: new Date().toISOString() }) // Mark as "sent" to cancel
+          .eq("phone_number", phoneNumber)
+          .is("sent_at", null);
+      }
+
       // Schedule follow-up quote if no quotation was triggered yet
       if (newState !== "completed" && newState !== "human_takeover" && !newCollectedData._quotation_triggered && !conversation.quote_request_id) {
         try {
