@@ -2344,19 +2344,24 @@ async function saveQuotationRequest(
     return d;
   };
 
+  const adults = Number(quotationData.adultos) || 1;
+  const children = Number(quotationData.criancas) || 0;
+
   const insertPayload = {
     phone_number: phoneNumber,
     origin: quotationData.origem,
     destination: quotationData.destino,
     departure_date: parseDate(quotationData.data_ida),
     return_date: parseDate(quotationData.data_volta),
-    adults: quotationData.adultos || 1,
-    children: quotationData.criancas || 0,
+    adults: adults,
+    children: children,
+    num_people: adults + children,
     children_ages: quotationData.idades_criancas || [],
     customer_name: clientName || null,
     preferences: preferences || null,
     status: "pending",
     raw_request: quotationData,
+    source_channel: "whatsapp_teo",
   };
 
   console.log("[DEBUG] Salvando cotação no travel_quote_requests:", JSON.stringify(insertPayload));
