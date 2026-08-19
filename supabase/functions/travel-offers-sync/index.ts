@@ -18,7 +18,8 @@ serve(async (req) => {
   const logId = crypto.randomUUID();
   
   try {
-    const { dry_run = false } = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
+    const dry_run = body.dry_run === true;
     console.log(`Starting travel offers sync (dry_run: ${dry_run})...`);
     
     if (!dry_run) {
