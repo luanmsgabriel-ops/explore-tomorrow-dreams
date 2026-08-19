@@ -8885,14 +8885,12 @@ Regras OBRIGATÓRIAS:
         const changeMsg = `Entendi que você gostaria de personalizar sua viagem! 😊\n\nPara garantir que montemos o pacote perfeito para você, vou encaminhar sua solicitação para um de nossos especialistas no destino.\n\nEm breve, um consultor da Tomorrow Travel entrará em contato para criar uma experiência sob medida para sua viagem! ✈️🏖️\n\nAguarde nosso retorno!`;
 
         // Save change request to travel_quote_requests if we have one
-        if (conversation.quote_request_id || collectedData._last_quote_id) {
-          const quoteId = collectedData._last_quote_id || null;
-          if (quoteId) {
-            await supabase
-              .from("travel_quote_requests")
-              .update({ change_request: changeRequest })
-              .eq("id", quoteId);
-          }
+        const quoteId = newCollectedData._last_quote_id || null;
+        if (quoteId) {
+          await supabase
+            .from("travel_quote_requests")
+            .update({ change_request: changeRequest })
+            .eq("id", quoteId);
         }
 
         // Also save to quote_requests for team visibility
@@ -8925,7 +8923,7 @@ Regras OBRIGATÓRIAS:
               data: {
                 client_name: newCollectedData.nome || conversation.client_name || contactName,
                 phone_number: phoneNumber,
-                destination: newCollectedData.destino || collectedData.destino || "Não informado",
+                destination: newCollectedData.destino || "Não informado",
                 change_description: changeRequest,
                 original_message: messageText,
               },
@@ -8951,6 +8949,13 @@ Regras OBRIGATÓRIAS:
           .eq("id", conversation.id);
 
         await sendWhatsAppMessage(phoneNumber, changeMsg);
+
+        return new Response(JSON.stringify({ status: "ok", change_request: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
 
       // Standard flow (no quotation)
       const updatedHistory = [
