@@ -2682,7 +2682,7 @@ serve(async (req) => {
           // Call Cativa/Infotravel API directly
           const quotationResult = await requestQuotation(quotationData);
 
-          let quotationMsg: string;
+          let quotationMsg = "";
 
           if (quotationResult.status === "success" && quotationResult.data?.resultados?.length > 0) {
             quotationMsg = formatQuotationResults(quotationResult.data);
