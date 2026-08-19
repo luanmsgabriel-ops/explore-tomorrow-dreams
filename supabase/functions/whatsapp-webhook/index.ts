@@ -8956,7 +8956,7 @@ Regras OBRIGATÓRIAS:
           if (saveResult.success && saveResult.id) {
             // Mark quotation as triggered ONLY IF save was successful and returned an ID
             newCollectedData._last_quote_id = saveResult.id;
-            // Removed _quotation_triggered = true here to avoid the early exit in process_quotation if it checks the DB immediately
+            newCollectedData._quotation_triggered = true;
             
             // No longer updating _quotation_triggered here to let process_quotation handle it
             // and the search results sending. 
