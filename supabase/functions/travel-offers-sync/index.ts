@@ -20,14 +20,9 @@ serve(async (req) => {
     });
     const html = await res.text();
     
-    // Procura por qualquer atribuição a variável que contenha "mapa" e "blob"
-    const blobIdx = html.indexOf("|260"); // Tentativa de achar o blob por dados reais (ano 2026)
-    
     return new Response(JSON.stringify({
       html_length: html.length,
-      html_sample: html.substring(0, 5000),
-      blob_idx: blobIdx,
-      blob_context: blobIdx !== -1 ? html.substring(blobIdx - 100, blobIdx + 200) : "not_found"
+      html_start: html.substring(0, 10000)
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err: any) {
