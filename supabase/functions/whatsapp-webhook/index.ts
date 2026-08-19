@@ -2397,11 +2397,30 @@ function formatQuotationResults(data: any, requestedDate?: string): string {
 
   results.forEach((r: any, i: number) => {
     let papel = "";
-    if (r.papel === "data_pedida") papel = "📅 *Data solicitada*";
-    else if (r.papel === "proxima_data") papel = "🔜 *Próxima data disponível*";
-    else papel = "💰 *Melhor preço*";
+    let disclaimer = "";
+    
+    if (requestedDate) {
+      const depDateTime = new Date(r.data_ida + "T12:00:00").getTime();
+      const reqDateTime = new Date(requestedDate + "T12:00:00").getTime();
+      const diffDays = (depDateTime - reqDateTime) / (1000 * 60 * 60 * 24);
+      
+      if (Math.abs(diffDays) <= 3) {
+        papel = "📅 *Data solicitada*";
+      } else if (diffDays > 3) {
+        papel = "🔜 *Próxima data disponível*";
+        disclaimer = "_⚠️ Não há bloqueios na data exata, esta é a opção mais próxima._\n";
+      } else if (diffDays < -3) {
+        papel = "💰 *Data alternativa mais econômica*";
+        disclaimer = "_💡 Opção antes do período solicitado com excelente economia!_\n";
+      }
+    } else {
+      if (r.papel === "data_pedida") papel = "📅 *Data solicitada*";
+      else if (r.papel === "proxima_data") papel = "🔜 *Próxima data disponível*";
+      else papel = "💰 *Melhor preço*";
+    }
     
     formatted += `${papel}\n`;
+    if (disclaimer) formatted += disclaimer;
     formatted += `✈️ *${r.origem}* ➔ *${r.destino}*\n`;
     formatted += `📅 Ida: ${new Date(r.data_ida + "T12:00:00").toLocaleDateString("pt-BR")}\n`;
     formatted += `📅 Volta: ${new Date(r.data_volta + "T12:00:00").toLocaleDateString("pt-BR")}\n`;
@@ -2414,11 +2433,17 @@ function formatQuotationResults(data: any, requestedDate?: string): string {
     formatted += `👤 Valor por pessoa: *R$ ${pp}*\n`;
     formatted += `⚓ Taxa de embarque: R$ ${taxa}\n`;
     formatted += `💎 *Total do grupo: R$ ${total}*\n`;
-    formatted += `💺 Assentos: ${r.assentos_disponiveis}\n`;
+    
+    const seats = Number(r.assentos_disponiveis);
+    formatted += `💺 Assentos: ${seats}${seats <= 3 ? " ⚠️ *ÚLTIMOS ASSENTOS!*" : ""}\n`;
     
     if (r.prazo_emissao) {
       const prazo = new Date(r.prazo_emissao.split('T')[0] + "T12:00:00").toLocaleDateString("pt-BR");
       formatted += `⏳ Prazo de emissão: ${prazo}\n`;
+    }
+
+    if (r.economia_total > 0) {
+      formatted += `\n💵 *Economia total: R$ ${Number(r.economia_total).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}* em relação à data solicitada!\n`;
     }
 
     formatted += "\n━━━━━━━━━━━━━━━━━━\n\n";
