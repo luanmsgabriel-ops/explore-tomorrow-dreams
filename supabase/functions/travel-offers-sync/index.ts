@@ -29,47 +29,41 @@ serve(async (req) => {
     const html = await res.text();
     
     if (dryRun) {
-      const getLiteralDump = (s: string, length = 15000) => {
+      const getLiteralDump = (s: string, length = 30000) => {
         const idx = html.indexOf(s);
         if (idx === -1) return "NOT_FOUND";
         return html.substring(idx, idx + length);
       };
 
-      const dumpPayloadFull = getLiteralDump("__PVOO_PAYLOAD", 25000);
+      const rawContent = html;
       
-      // Tentar extrair PAYLOAD.mapa completo buscando o objeto no JS
-      let mapaJson = "not_extracted";
-      const mapaRegex = /PAYLOAD\s*=\s*{[\s\S]*?mapa\s*:\s*({[\s\S]*?}),\s*usd/i;
-      const mapaMatch = html.match(mapaRegex);
-      if (mapaMatch) mapaJson = mapaMatch[1];
-
-      // Tentar extrair o blob
-      let blobSnippet = "not_extracted";
-      const blobRegex = /blob\s*:\s*[`"']([\s\S]*?)[`"']/i;
-      const blobMatch = html.match(blobRegex);
-      if (blobMatch) blobSnippet = blobMatch[1].substring(0, 3000);
+      // Busca literal do objeto PAYLOAD no HTML
+      let payloadLiteral = "not_found";
+      const pIdx = rawContent.indexOf("const PAYLOAD = {");
+      if (pIdx !== -1) {
+        // Tentar encontrar o fechamento do objeto (aproximado)
+        payloadLiteral = rawContent.substring(pIdx, pIdx + 30000);
+      }
 
       const dataRefMatch = html.match(/var\s+DATA_REF\s*=\s*['"]([^'"]+)['"]/);
       const dataRef = dataRefMatch ? dataRefMatch[1] : "not_found";
 
-      // Contagem de fontes no PV_SNAPSHOT
-      const dumpSnapshotFull = getLiteralDump("PV_SNAPSHOT", 15000);
-      const backupCount = (dumpSnapshotFull.match(/['"]fonte['"]\s*:\s*['"]backup['"]/g) || []).length;
-      const otherCount = (dumpSnapshotFull.match(/['"]fonte['"]\s*:\s*['"](?!backup)[^'"]+['"]/g) || []).length;
+      const snapshotLiteral = getLiteralDump("PV_SNAPSHOT", 15000);
+      const backupCount = (snapshotLiteral.match(/['"]fonte['"]\s*:\s*['"]backup['"]/g) || []).length;
+      const othersMatch = snapshotLiteral.match(/['"]fonte['"]\s*:\s*['"](?!backup)([^'"]+)['"]/g) || [];
 
       return new Response(JSON.stringify({
-        status: "dry_run_detailed_discovery",
+        status: "dry_run_raw_payload_extraction",
         data_reference: dataRef,
-        mapa_bruto: mapaJson,
-        blob_amostra: blobSnippet,
         snapshot_stats: {
           backup: backupCount,
-          others: otherCount
+          others: othersMatch.length,
+          first_other: othersMatch[0] || null
         },
-        dumps: {
-          __PVOO_PAYLOAD: dumpPayloadFull.substring(0, 3000),
-          PV_SNAPSHOT: dumpSnapshotFull.substring(0, 3000)
-        }
+        payload_literal_start: payloadLiteral.substring(0, 5000),
+        payload_literal_middle: payloadLiteral.substring(10000, 15000),
+        payload_literal_end: payloadLiteral.substring(25000, 30000),
+        snapshot_dump: snapshotLiteral.substring(0, 5000)
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
