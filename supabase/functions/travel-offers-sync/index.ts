@@ -234,7 +234,7 @@ serve(async (req) => {
         status: "error",
         error_message: err.message,
         finished_at: new Date().toISOString()
-      }).eq("id", logId).catch(() => {});
+      }).eq("id", logId);
     }
 
     return new Response(JSON.stringify({ error: err.message }), {
