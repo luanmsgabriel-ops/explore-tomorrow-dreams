@@ -8973,7 +8973,7 @@ Regras OBRIGATÓRIAS:
               .update({
                 client_name: newCollectedData.nome || conversation.client_name || contactName,
                 conversation_state: "awaiting_quotation",
-                collected_data: { ...newCollectedData, _last_quote_id: saveResult.id },
+                collected_data: { ...newCollectedData, _quotation_triggered: true, _last_quote_id: saveResult.id },
                 messages_history: updatedHistory,
                 is_ai_active: true,
               })
