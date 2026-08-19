@@ -18,8 +18,9 @@ import { ReviewManager } from '@/components/admin/ReviewManager';
 import { AudioManager } from '@/components/admin/AudioManager';
 import { ConciergeManager } from '@/components/admin/ConciergeManager';
 import { ScheduledMessagesManager } from '@/components/admin/ScheduledMessagesManager';
+import { OfferSyncManager } from '@/components/admin/OfferSyncManager';
 import { QuotesFilter, QuotesFilterValues } from '@/components/admin/QuotesFilter';
-import { Volume2, Navigation } from 'lucide-react';
+import { Volume2, Navigation, RefreshCw } from 'lucide-react';
 import { Edit } from 'lucide-react';
 import { 
   LayoutDashboard, 
@@ -54,7 +55,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabType = 'overview' | 'analytics' | 'sales' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'clients' | 'trips' | 'checklist' | 'banner-generator' | 'whatsapp' | 'reviews' | 'audio' | 'concierge' | 'scheduled-messages';
+type TabType = 'overview' | 'analytics' | 'sales' | 'quotes' | 'itineraries' | 'images' | 'users' | 'destinations' | 'conversations' | 'offers' | 'offer-sync' | 'clients' | 'trips' | 'checklist' | 'banner-generator' | 'whatsapp' | 'reviews' | 'audio' | 'concierge' | 'scheduled-messages';
 
 interface QuoteRequest {
   id: string;
@@ -581,6 +582,7 @@ const AdminDashboard = () => {
     { id: 'checklist' as TabType, label: 'Checklist Padrão', icon: ListChecks },
     { id: 'destinations' as TabType, label: 'Destinos', icon: Globe },
     { id: 'offers' as TabType, label: 'Ofertas', icon: Tag },
+    { id: 'offer-sync' as TabType, label: 'Coletor', icon: RefreshCw },
     { id: 'banner-generator' as TabType, label: 'Gerar Banner', icon: Image },
     { id: 'quotes' as TabType, label: 'Cotações', icon: FileText },
     { id: 'itineraries' as TabType, label: 'Roteiros IA', icon: Map },
@@ -1064,7 +1066,16 @@ const AdminDashboard = () => {
                     <PromotionalOffersManager />
                   )}
 
-{activeTab === 'quotes' && (() => {
+                  {activeTab === 'offer-sync' && (
+                    <div className="space-y-6">
+                      <h1 className="font-serif text-3xl font-bold text-foreground">
+                        Coletor de Ofertas
+                      </h1>
+                      <OfferSyncManager />
+                    </div>
+                  )}
+
+                  {activeTab === 'quotes' && (() => {
                     // Filter quotes based on current filters
                     const filteredQuotes = quotes.filter(quote => {
                       // Search filter

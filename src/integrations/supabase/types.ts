@@ -1376,6 +1376,96 @@ export type Database = {
         }
         Relationships: []
       }
+      travel_offers: {
+        Row: {
+          active: boolean | null
+          airline: string | null
+          available_seats: number | null
+          boarding_tax: number | null
+          created_at: string | null
+          currency: string | null
+          departure_date: string | null
+          destination_iata: string | null
+          destination_name: string | null
+          id: string
+          issue_deadline: string | null
+          last_seen_at: string | null
+          nights: number | null
+          offer_type: string
+          origin_city: string | null
+          origin_iata: string | null
+          outbound_arrival_time: string | null
+          outbound_departure_time: string | null
+          price_per_person: number | null
+          raw_data: Json | null
+          return_arrival_time: string | null
+          return_date: string | null
+          return_departure_time: string | null
+          source: string
+          source_id: string
+          source_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          airline?: string | null
+          available_seats?: number | null
+          boarding_tax?: number | null
+          created_at?: string | null
+          currency?: string | null
+          departure_date?: string | null
+          destination_iata?: string | null
+          destination_name?: string | null
+          id?: string
+          issue_deadline?: string | null
+          last_seen_at?: string | null
+          nights?: number | null
+          offer_type: string
+          origin_city?: string | null
+          origin_iata?: string | null
+          outbound_arrival_time?: string | null
+          outbound_departure_time?: string | null
+          price_per_person?: number | null
+          raw_data?: Json | null
+          return_arrival_time?: string | null
+          return_date?: string | null
+          return_departure_time?: string | null
+          source: string
+          source_id: string
+          source_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          airline?: string | null
+          available_seats?: number | null
+          boarding_tax?: number | null
+          created_at?: string | null
+          currency?: string | null
+          departure_date?: string | null
+          destination_iata?: string | null
+          destination_name?: string | null
+          id?: string
+          issue_deadline?: string | null
+          last_seen_at?: string | null
+          nights?: number | null
+          offer_type?: string
+          origin_city?: string | null
+          origin_iata?: string | null
+          outbound_arrival_time?: string | null
+          outbound_departure_time?: string | null
+          price_per_person?: number | null
+          raw_data?: Json | null
+          return_arrival_time?: string | null
+          return_date?: string | null
+          return_departure_time?: string | null
+          source?: string
+          source_id?: string
+          source_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       travel_quote_requests: {
         Row: {
           adults: number
@@ -1509,6 +1599,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      travel_sync_logs: {
+        Row: {
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          offers_created: number | null
+          offers_deactivated: number | null
+          offers_found: number | null
+          offers_updated: number | null
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          offers_created?: number | null
+          offers_deactivated?: number | null
+          offers_found?: number | null
+          offers_updated?: number | null
+          started_at?: string | null
+          status: string
+        }
+        Update: {
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          offers_created?: number | null
+          offers_deactivated?: number | null
+          offers_found?: number | null
+          offers_updated?: number | null
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: []
       }
       trip_checklist: {
         Row: {
