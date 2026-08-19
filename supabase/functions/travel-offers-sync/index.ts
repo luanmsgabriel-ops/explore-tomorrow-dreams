@@ -20,9 +20,15 @@ serve(async (req) => {
     });
     const html = await res.text();
     
+    // Procura por variáveis globais em qualquer script
+    const scripts = html.match(/<script[\s\S]*?<\/script>/gi) || [];
+    const scriptSamples = scripts.slice(0, 10).map(s => s.substring(0, 500));
+    
     return new Response(JSON.stringify({
       html_length: html.length,
-      html_start: html.substring(0, 15000)
+      scripts_count: scripts.length,
+      script_samples: scriptSamples,
+      html_start: html.substring(0, 5000)
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err: any) {
