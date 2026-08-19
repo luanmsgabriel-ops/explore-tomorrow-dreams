@@ -36,13 +36,26 @@ serve(async (req) => {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
         "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-        "Cache-Control": "no-cache",
-        "Pragma": "no-cache"
       },
       signal: AbortSignal.timeout(30000)
     });
 
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    if (!response.ok) {
+        console.error(`Fetch failed with status ${response.status} for ${targetUrl}`);
+        // Log 404/422 as success in dry_run to see the error in body if possible
+        if (dryRun) {
+            return new Response(JSON.stringify({ 
+                status: "dry_run_error", 
+                url_used: targetUrl, 
+                http_status: response.status,
+                text: await response.text().catch(() => "could not read body")
+            }), { 
+                status: 200, 
+                headers: { ...corsHeaders, "Content-Type": "application/json" } 
+            });
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
     const html = await response.text();
     
     if (dryRun) {
