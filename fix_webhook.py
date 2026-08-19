@@ -2,78 +2,16 @@ file_path = "supabase/functions/whatsapp-webhook/index.ts"
 with open(file_path, "r") as f:
     content = f.read()
 
-# Target start and end for prompt
-prompt_start = "4. CONFIRMAÇÃO E HANDOVER:"
-prompt_end = "se a tag faltar."
-new_prompt = """4. CONFIRMAÇÃO E HANDOVER:
-   - Após o cliente confirmar, você deve informar que encaminhou o pedido para um consultor e que enquanto isso vai buscar ofertas promocionais em datas próximas.
-   - Use suas próprias palavras, não copie um texto fixo. Exemplo: "Sensacional! Já encaminhei seu pedido para um de nossos consultores especializados..."
-   - OBRIGATÓRIO: No final da mensagem de handover, emita a tag [STATUS:awaiting_quotation].
-   - OPCIONAL: Você pode incluir a tag [COTAR_VIAGEM:{"origem":"...","destino":"...","data_ida":"AAAA-MM-DD","data_volta":"AAAA-MM-DD","adultos":N,"criancas":N,"idades_criancas":[]}] se desejar ser mais específico, mas o sistema usará os dados já coletados se a tag faltar."""
+# The logic I applied in the previous step might have been placed inside a conditional block that was skipped
+# because AI response was handled before it, or because of a logic flow issue.
+# Let's ensure the trigger logic for quotation is robust.
 
-s = content.find(prompt_start)
-e = content.find(prompt_end, s)
-if s != -1 and e != -1:
-    content = content[:s] + new_prompt + content[e + len(prompt_end):]
+# Find the start of the message processing section (standard flow)
+search_text = 'const aiResponse = await processMessageWithAI('
+insertion_point = content.find(search_text)
 
-# Target start and end for trigger logic
-trigger_start = "// Handle quotation if triggered and not already in progress"
-trigger_end = "const saveResult = await saveQuotationRequest("
-new_trigger = """// Handle quotation if triggered and not already in progress
-      const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || 
-                           (newCollectedData && (newCollectedData._quotation_triggered === true || newCollectedData._quotation_triggered === "true"));
-      
-      // DISPARE A BUSCA A PARTIR DO COLLECTED_DATA SE [STATUS:awaiting_quotation] ESTIVER PRESENTE
-      let effectiveQuotationData = quotationData;
-      if (!effectiveQuotationData && conversationStatus === "awaiting_quotation") {
-        console.log("[QUOTATION] Tag [COTAR_VIAGEM] missing, but [STATUS:awaiting_quotation] detected. Using newCollectedData.");
-        
-        const hasMandatory = newCollectedData.destino && 
-                            newCollectedData.origem && 
-                            newCollectedData.data_ida && 
-                            newCollectedData.data_volta;
+# Find where cleanResponse is sent for the first time
+send_text = 'if (cleanResponse) {'
+trigger_search = content.find(send_text, insertion_point)
 
-        if (hasMandatory) {
-          effectiveQuotationData = {
-            origem: newCollectedData.origem,
-            destino: newCollectedData.destino,
-            data_ida: newCollectedData.data_ida,
-            data_volta: newCollectedData.data_volta,
-            adultos: Number(newCollectedData.adultos || newCollectedData.num_viajantes || 2),
-            criancas: Number(newCollectedData.criancas || 0),
-            idades_criancas: newCollectedData.idades_criancas || []
-          };
-          console.log("[QUOTATION] Payload mounted from newCollectedData:", effectiveQuotationData);
-        }
-      }
-
-      const hasMandatoryData = effectiveQuotationData && 
-                              effectiveQuotationData.destino && 
-                              effectiveQuotationData.origem && 
-                              effectiveQuotationData.data_ida && 
-                              effectiveQuotationData.data_volta &&
-                              /^\\d{4}-\\d{2}-\\d{2}$/.test(effectiveQuotationData.data_ida) &&
-                              /^\\d{4}-\\d{2}-\\d{2}$/.test(effectiveQuotationData.data_volta);
-
-      if (effectiveQuotationData && !alreadyQuoted) {
-        if (!hasMandatoryData) {
-          console.log("[VALIDATION] Quotation ignored - missing or invalid mandatory data:", {
-            effectiveData: effectiveQuotationData
-          });
-        } else {
-          console.log("Quotation request triggered:", JSON.stringify(effectiveQuotationData));
-          
-          if (cleanResponse) {
-            await sendWhatsAppMessage(phoneNumber, cleanResponse);
-            cleanResponse = ""; 
-          }
-
-          const saveResult = await saveQuotationRequest("""
-
-s = content.find(trigger_start)
-e = content.find(trigger_end, s)
-if s != -1 and e != -1:
-    content = content[:s] + new_trigger + content[e + len(trigger_end):]
-
-with open(file_path, "w") as f:
-    f.write(content)
+# Let's re-read the context around the trigger again to be absolutely sure where it is.
