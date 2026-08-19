@@ -9109,7 +9109,7 @@ Regras OBRIGATÓRIAS:
         .from("whatsapp_conversations")
         .update({
           client_name: newCollectedData.nome || conversation.client_name || contactName,
-          conversation_state: newState,
+          conversation_state: newState === "awaiting_quotation" ? "chatting" : newState,
           collected_data: newCollectedData,
           messages_history: updatedHistory,
           quote_request_id: quoteRequestId,
