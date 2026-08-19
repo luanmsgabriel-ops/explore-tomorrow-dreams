@@ -25,9 +25,9 @@ payload = {
                         "messages": [
                             {
                                 "from": "5515991825285",
-                                "id": "TEST_MSG_FULL_" + str(os.getpid()),
+                                "id": "TEST_FINAL_" + str(os.getpid()),
                                 "timestamp": "1724080000",
-                                "text": {"body": "Quero cotar Maceió saindo de São Paulo de 01/10/2026 a 07/10/2026 para 2 adultos."},
+                                "text": {"body": "Sim, tudo certo, pode buscar as ofertas!"},
                                 "type": "text"
                             }
                         ]
@@ -39,16 +39,7 @@ payload = {
     ]
 }
 
-print(f"Feeding full data for Maceió...")
+print(f"Final confirmation test for Maceió...")
 response = requests.post(url, headers=headers, json=payload)
-print(f"Status: {response.status_code}")
-
-# Now confirm
-payload_confirm = payload.copy()
-payload_confirm["entry"][0]["changes"][0]["value"]["messages"][0]["id"] = "TEST_MSG_CONFIRM_" + str(os.getpid())
-payload_confirm["entry"][0]["changes"][0]["value"]["messages"][0]["text"]["body"] = "Sim, pode buscar!"
-
-print(f"Confirming search...")
-response = requests.post(url, headers=headers, json=payload_confirm)
 print(f"Status: {response.status_code}")
 print(f"Body: {response.text}")
