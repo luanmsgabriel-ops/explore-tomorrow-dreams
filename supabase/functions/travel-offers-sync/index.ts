@@ -95,8 +95,6 @@ serve(async (req) => {
       return `${hhmm.substring(0, 2)}:${hhmm.substring(2, 4)}`;
     };
 
-    // Use synchronous hash to save memory/CPU if possible, or just simpler string concat for source_id
-    // Deterministic ID without async crypto to save resources
     const getSimpleId = (cols: string[]) => {
       return `${cols[0]}-${cols[1]}-${cols[2]}-${cols[3]}-${cols[15]}-${cols[6]}`.substring(0, 64);
     };
@@ -124,7 +122,7 @@ serve(async (req) => {
         return_date: convertDate(cols[3]),
         price: parseFloat(cols[6]),
         currency: cols[7] === "0" ? "BRL" : "USD",
-        airline: airline = cols[15],
+        airline: cols[15],
         tax: parseFloat(cols[13]) || 0,
         nights: parseInt(cols[4]) || 0,
         seats_available: parseInt(cols[5]) || 0,
@@ -157,7 +155,6 @@ serve(async (req) => {
       }
     }
 
-    // Upsert in smaller chunks to avoid memory limit
     const CHUNK_SIZE = 500;
     for (let i = 0; i < parsedOffers.length; i += CHUNK_SIZE) {
       const chunk = parsedOffers.slice(i, i + CHUNK_SIZE);
