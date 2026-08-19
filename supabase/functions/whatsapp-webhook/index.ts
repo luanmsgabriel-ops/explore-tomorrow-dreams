@@ -8830,27 +8830,24 @@ Regras OBRIGATÓRIAS:
       const alreadyQuotedInDB = (conversation.collected_data as any)?._quotation_triggered === true || 
                                 (conversation.collected_data as any)?._quotation_triggered === "true";
       
-      // DISPARE A BUSCA A PARTIR DO COLLECTED_DATA SE [STATUS:awaiting_quotation] ESTIVER PRESENTE
-      let effectiveQuotationData = quotationData;
-      if (!effectiveQuotationData && conversationStatus === "awaiting_quotation") {
-        console.log("[QUOTATION] Tag [COTAR_VIAGEM] missing, but [STATUS:awaiting_quotation] detected. Using newCollectedData.");
+      // Check for deduplication of the exact same trip (24h limit)
+      let isExactDuplicate = false;
+      if (effectiveQuotationData && !alreadyQuotedInDB) {
+        const { data: recentSameQuote } = await supabase
+          .from("travel_quote_requests")
+          .select("id")
+          .eq("phone_number", phoneNumber)
+          .eq("origin", effectiveQuotationData.origem)
+          .eq("destination", effectiveQuotationData.destino)
+          .eq("departure_date", effectiveQuotationData.data_ida)
+          .eq("status", "completed")
+          .gt("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+          .limit(1)
+          .maybeSingle();
         
-        const hasMandatory = newCollectedData.destino && 
-                            newCollectedData.origem && 
-                            newCollectedData.data_ida && 
-                            newCollectedData.data_volta;
-
-        if (hasMandatory) {
-          effectiveQuotationData = {
-            origem: newCollectedData.origem,
-            destino: newCollectedData.destino,
-            data_ida: newCollectedData.data_ida,
-            data_volta: newCollectedData.data_volta,
-            adultos: Number(newCollectedData.adultos || newCollectedData.num_viajantes || 2),
-            criancas: Number(newCollectedData.criancas || 0),
-            idades_criancas: newCollectedData.idades_criancas || []
-          };
-          console.log("[QUOTATION] Payload mounted from newCollectedData:", effectiveQuotationData);
+        if (recentSameQuote) {
+          console.log("[QUOTATION] Exact duplicate quote found in last 24h. Skipping search.");
+          isExactDuplicate = true;
         }
       }
 
@@ -8862,7 +8859,7 @@ Regras OBRIGATÓRIAS:
                               /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_ida) &&
                               /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_volta);
 
-      if (effectiveQuotationData && !alreadyQuotedInDB) {
+      if (effectiveQuotationData && !alreadyQuotedInDB && !isExactDuplicate) {
         if (!hasMandatoryData) {
           console.log("[VALIDATION] Quotation ignored - missing or invalid mandatory data:", {
             effectiveData: effectiveQuotationData
@@ -8896,8 +8893,6 @@ Regras OBRIGATÓRIAS:
               })
               .eq("id", conversation.id);
 
-            // No longer sending searchingMsg here. Handover message is now part of the AI's cleanResponse.
-            
             // Update conversation state immediately
             const updatedHistory = [
               ...(conversation.messages_history as any[] || []),
@@ -8934,20 +8929,25 @@ Regras OBRIGATÓRIAS:
               }),
             });
 
-            // Ensure the process is awaited or scheduled so it doesn't die when the response is sent
-            // In Deno Edge Functions, we must await any promise that we want to finish before the response
             await processPromise.catch(err => console.error("Error in async quotation:", err));
 
-            // Return immediately to Meta webhook (fast response)
             return new Response(JSON.stringify({ status: "ok", quotation: true, async: true }), {
               status: 200,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           } else {
             console.error("[VALIDATION] Failed to save quotation request. Not marking as triggered.");
-            // We don't return early here, so it continues to standard message sending
           }
         }
+      } else if (isExactDuplicate) {
+        // Just send the AI response and exit
+        if (cleanResponse) {
+          await sendWhatsAppMessage(phoneNumber, cleanResponse);
+        }
+        return new Response(JSON.stringify({ status: "ok", duplicate_skip: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       // Check for change request tag from AI
