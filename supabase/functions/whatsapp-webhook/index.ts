@@ -8659,6 +8659,14 @@ Regras OBRIGATÓRIAS:
           { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
         ];
 
+        // 1. INSTRUMENTE A ENTRADA DO WEBHOOK
+        await supabase.from("teo_debug_log").insert({
+          phone_number: phoneNumber,
+          tags_encontradas: "ENTRADA_WEBHOOK",
+          raw_ai_response: cleanResponse,
+          collected_data_antes: conversation.collected_data
+        }).catch(e => console.error("[DEBUG] Error saving ENTRADA_WEBHOOK:", e));
+
         await supabase
           .from("whatsapp_conversations")
           .update({
@@ -8825,6 +8833,22 @@ Regras OBRIGATÓRIAS:
       console.log("[DEBUG_RAW_AI_RESPONSE] Full response:", aiResponse);
 
       // 1. ISOLATED QUOTATION FLOW
+      // TEO_DEBUG_LOG: ANTES_QUOTATION
+      await supabase.from("teo_debug_log").insert({
+        phone_number: phoneNumber,
+        tags_encontradas: "ANTES_QUOTATION",
+        raw_ai_response: aiResponse,
+        collected_data_antes: collectedData
+      }).catch(e => console.error("[DEBUG] Error saving ANTES_QUOTATION:", e));
+
+      // TEO_DEBUG_LOG: ANTES_QUOTATION
+      await supabase.from("teo_debug_log").insert({
+        phone_number: phoneNumber,
+        tags_encontradas: "ANTES_QUOTATION",
+        raw_ai_response: aiResponse,
+        collected_data_antes: collectedData
+      }).catch(e => console.error("[DEBUG] Error saving ANTES_QUOTATION:", e));
+
       const { newCollectedData, additionalMessage, triggeredSearch } = await handleQuotationFlow(
         aiResponse,
         collectedData,

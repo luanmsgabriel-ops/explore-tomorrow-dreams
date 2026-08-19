@@ -36,14 +36,13 @@ export async function handleQuotationFlow(
     triggeredSearch: false,
   };
 
-  // TEO_DEBUG_LOG: Instrumentação solicitada
-  const logEntry = {
+  // TEO_DEBUG_LOG: DENTRO_QUOTATION
+  await supabase.from("teo_debug_log").insert({
     phone_number: phoneNumber,
     raw_ai_response: aiResponse,
     collected_data_antes: currentCollectedData,
-    collected_data_depois: null as any,
-    tags_encontradas: "nenhuma"
-  };
+    tags_encontradas: "DENTRO_QUOTATION"
+  }).catch(e => console.error("[QUOTATION-MODULE] Error saving DENTRO_QUOTATION log:", e));
 
   try {
 
@@ -255,10 +254,6 @@ export async function handleQuotationFlow(
     }
   } catch (err) {
     console.error("[QUOTATION-MODULE] Fetch error:", err);
-  } finally {
-    // Grava o log antes de retornar
-    logEntry.collected_data_depois = result.newCollectedData;
-    await supabase.from("teo_debug_log").insert(logEntry).catch(e => console.error("[QUOTATION-MODULE] Error saving debug log:", e));
   }
 
   return result;
