@@ -6350,7 +6350,8 @@ _O oráculo se despede... até a próxima consulta! 🌙✨_`;
 
       // ========== TÉO SCHOOL: Language Learning for Tourism (EN/ES) ==========
       {
-        const lowerMsgSchool = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        const lowerMsgSchool = (messageText || "").toLowerCase().trim();
+        const normalizedMsgSchool = lowerMsgSchool.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const schoolActivateRegex = /^(escola|school|teo school|téo school|aprender ingles|aprender espanhol|aprender inglês|learn english|learn spanish|aula de ingles|aula de espanhol|ingles para viagem|espanhol para viagem)$/i;
 
         // Check if school mode is active first
