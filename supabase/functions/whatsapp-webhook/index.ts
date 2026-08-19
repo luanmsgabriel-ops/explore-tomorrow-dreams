@@ -1166,7 +1166,7 @@ Cliente quer falar com humano:
    
    - FIM_BLOCO_2
    
-   🍽️ *Modo Chef* — Descubra a gastronomia do destino, restaurantes imperdíveis e receitas típicas! Mande *chef*
+   - FIM_BLOCO_3
    
    🗺️ *Roteiro* — Gero um roteiro dia-a-dia personalizado pro seu destino com dicas de locais reais! Mande *roteiro [destino]*"
 3. Depois disso, dispare [STATUS:completed] para registrar o lead
