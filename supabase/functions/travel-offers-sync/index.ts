@@ -20,21 +20,10 @@ serve(async (req) => {
     });
     const html = await res.text();
     
-    // Devolver trechos do HTML para inspeção usando Regex para encontrar os objetos
-    // Removendo o escape do \s para facilitar a leitura se necessário
-    const payloadMatch = html.match(/PAYLOAD\s*=\s*{[\s\S]*?}/i);
-    const pvooMatch = html.match(/__PVOO_PAYLOAD\s*=\s*{[\s\S]*?}/i);
-    const snapshotMatch = html.match(/PV_SNAPSHOT\s*=\s*\[[\s\S]*?\]/i);
-
     return new Response(JSON.stringify({
       html_length: html.length,
-      payload_found: !!payloadMatch,
-      pvoo_found: !!pvooMatch,
-      snapshot_found: !!snapshotMatch,
-      payload_snippet: payloadMatch ? payloadMatch[0].substring(0, 1000) : "not_found",
-      pvoo_snippet: pvooMatch ? pvooMatch[0].substring(0, 1000) : "not_found",
-      snapshot_snippet: snapshotMatch ? snapshotMatch[0].substring(0, 1000) : "not_found",
-      html_start: html.substring(0, 3000)
+      html_start: html.substring(0, 3000),
+      html_end: html.substring(html.length - 2000)
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err: any) {
