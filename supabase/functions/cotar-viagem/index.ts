@@ -79,6 +79,12 @@ serve(async (req) => {
 
     if (error) throw error;
 
+    // Log para depuração interna
+    console.log(`[cotar-viagem] Conjunto elegível: ${eligibleOffers?.length || 0} ofertas encontradas.`);
+    if (eligibleOffers && eligibleOffers.length > 0) {
+      console.log(`[cotar-viagem] Primeira oferta elegível: ${eligibleOffers[0].departure_date} em ${eligibleOffers[0].origin_iata}`);
+    }
+
     const allEligible = eligibleOffers || [];
     
     // 4. SELEÇÃO DOS TRÊS PAPÉIS (EM MEMÓRIA)
