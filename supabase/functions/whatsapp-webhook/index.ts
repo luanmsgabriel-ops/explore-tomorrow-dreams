@@ -1148,8 +1148,7 @@ Cliente quer falar com humano:
 [STATUS:human_takeover]
 
 --REMOVIDO--
-O sistema de cotação automática está passando por atualizações neste momento.
-NUNCA dispare [COTAR_VIAGEM]. Em vez disso, quando o cliente pedir cotação ou confirmar os dados para cotar:
+   - Mantenha o foco na cotação validada.
 1. Colete os dados normalmente (destino, datas, passageiros, origem)
 2. Após a confirmação, envie uma mensagem como:
    "Nosso sistema de cotação automática está passando por uma atualização pra ficar ainda melhor! 🚀
