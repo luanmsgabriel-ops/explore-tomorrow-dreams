@@ -51,9 +51,9 @@ serve(async (req) => {
       const cleanTerm = term.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       const { data } = await supabaseClient
         .from('travel_iata_map')
-        .select('iata_code')
-        .or(`city_name.ilike.%${cleanTerm}%,iata_code.ilike.%${cleanTerm}%`);
-      const list = (data || []).map(i => i.iata_code.toUpperCase());
+        .select('code')
+        .or(`origin_name.ilike.%${cleanTerm}%,destination_name.ilike.%${cleanTerm}%,code.ilike.%${cleanTerm}%`);
+      const list = (data || []).map(i => i.code.toUpperCase());
       if (cleanTerm.length === 3) list.push(cleanTerm.toUpperCase());
       return [...new Set(list)];
     };
