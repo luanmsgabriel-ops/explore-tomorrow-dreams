@@ -480,6 +480,31 @@ async function executeAdminAction(action: any): Promise<any> {
       return { success: true, message: `Acompanhamento do voo ${flightIata} desativado.` };
     }
 
+    if (action.type === "process_scheduled_messages") {
+      try {
+        const { data: pendingMsgs } = await supabase
+          .from("whatsapp_scheduled_messages")
+          .select("*")
+          .is("sent_at", null)
+          .lte("send_after", new Date().toISOString());
+
+        if (pendingMsgs && pendingMsgs.length > 0) {
+          console.log(`[SCHEDULED] Processing ${pendingMsgs.length} messages...`);
+          for (const msg of pendingMsgs) {
+            await sendWhatsAppMessage(msg.phone_number, msg.message_text);
+            await supabase
+              .from("whatsapp_scheduled_messages")
+              .update({ sent_at: new Date().toISOString() })
+              .eq("id", msg.id);
+          }
+        }
+        return { success: true, count: pendingMsgs?.length || 0 };
+      } catch (err) {
+        console.error("[SCHEDULED] Action error:", err);
+        return { error: String(err) };
+      }
+    }
+
     return { error: "Tipo de ação não suportado: " + action.type };
   } catch (e) {
     return { error: String(e) };
