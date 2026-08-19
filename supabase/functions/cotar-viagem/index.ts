@@ -29,8 +29,8 @@ serve(async (req) => {
       day: '2-digit'
     }).format(nowUtc);
 
-    const destFuzzy = destino.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const originFuzzy = origem.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const destFuzzy = destino.trim(); // No normalization here for query
+    const originFuzzy = origem.trim();
 
     const targetDep = new Date(data_ida + "T12:00:00");
     const dMin = new Date(targetDep);
@@ -38,38 +38,44 @@ serve(async (req) => {
     const dMax = new Date(targetDep);
     dMax.setDate(dMax.getDate() + 7);
 
-    const sql = `
-      SELECT * FROM travel_offers 
-      WHERE active = true 
-      AND price_per_person > 0
-      AND (issue_deadline >= $1 OR issue_deadline IS NULL)
-      AND (available_seats >= $2 OR available_seats IS NULL)
-      AND (destination_name ILIKE $3 OR destination_iata = $4)
-      AND (origin_city ILIKE $5 OR origin_iata = $6)
-      AND departure_date BETWEEN $7 AND $8
-      ORDER BY ABS(EXTRACT(EPOCH FROM (departure_date::timestamp - $9::timestamp))) ASC, price_per_person ASC
-      LIMIT 5
-    `;
+    // 1. Resolve IATA
+    const resolveIATA = async (input: string) => {
+      const clean = input.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+      const { data } = await supabaseClient.from("travel_iata_map").select("code").eq("code", clean).single();
+      if (data) return [data.code];
+      const iataMatch = clean.match(/\(([A-Z]{3})\)/);
+      if (iataMatch) return [iataMatch[1]];
+      return [];
+    };
 
-    console.log(`Searching SQL: ${origem} -> ${destino} around ${data_ida}`);
-    
-    // We can't run raw SQL via supabase-js easily without a function or RPC.
-    // Let's use RPC if available, or just fallback to fixed .or structure.
-    // Actually, I can use .or() with a single string to bypass the builder limitations:
-    
-    const query = supabaseClient
+    const originCodes = await resolveIATA(origem);
+    const destCodes = await resolveIATA(destino);
+
+    let query = supabaseClient
       .from("travel_offers")
       .select("*")
       .eq("active", true)
       .gt("price_per_person", 0)
       .or(`issue_deadline.gte.${brDateStr},issue_deadline.is.null`)
       .or(`available_seats.gte.${totalPassageiros},available_seats.is.null`)
-      .or(`destination_name.ilike.%${destFuzzy}%,destination_iata.ilike.%${destFuzzy}%`)
-      .or(`origin_city.ilike.%${originFuzzy}%,origin_iata.ilike.%${originFuzzy}%`)
       .gte("departure_date", dMin.toISOString().split("T")[0])
-      .lte("departure_date", dMax.toISOString().split("T")[0])
-      .limit(20);
+      .lte("departure_date", dMax.toISOString().split("T")[0]);
 
+    // Destination filters
+    if (destCodes.length > 0) {
+      query = query.or(`destination_iata.in.(${destCodes.join(",")}),destination_name.ilike.%${destFuzzy}%`);
+    } else {
+      query = query.ilike("destination_name", `%${destFuzzy}%`);
+    }
+    
+    // Origin filters
+    if (originCodes.length > 0) {
+      query = query.or(`origin_iata.in.(${originCodes.join(",")}),origin_city.ilike.%${originFuzzy}%`);
+    } else {
+      query = query.ilike("origin_city", `%${originFuzzy}%`);
+    }
+
+    console.log(`Searching for ${origem} -> ${destino}`);
     const { data: offers, error } = await query;
     if (error) throw error;
 
