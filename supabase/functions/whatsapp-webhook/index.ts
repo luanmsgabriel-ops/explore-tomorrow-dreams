@@ -1171,7 +1171,7 @@ Cliente quer falar com humano:
    - FIM_BLOCO_4
 - FIM_BLOCO_5
 
-IMPORTANTE: Datas como "do dia 15 a 22 de junho" → data_ida="15/06/2026", data_volta="22/06/2026".
+- USE YYYY-MM-DD
 REGRA CRÍTICA DE ANO: O ano atual é ${new Date().getFullYear()}. Se o cliente NÃO especificar o ano, SEMPRE use ${new Date().getFullYear()}. NUNCA use 2024 ou 2025. Exemplo: "junho" = "junho de ${new Date().getFullYear()}".
 
 Tudo coletado e confirmado:
