@@ -8843,10 +8843,6 @@ Regras OBRIGATÓRIAS:
                                     !msgLowerForReset.includes(currentDestInDB);
 
       if (mentionsNewDestination) {
-        // Se o que foi extraído agora veio vazio (modelo não pegou o destino novo ainda),
-        // NÃO limpamos tudo, apenas marcamos que precisamos de dados novos.
-        // Se o que foi extraído agora TROUXE um destino diferente do que estava no banco,
-        // aí sim limpamos o lixo antigo (origem, datas do pedido anterior).
         const extractedDest = (newCollectedData.destino || "").toLowerCase();
         
         if (extractedDest && extractedDest !== currentDestInDB) {
@@ -8855,6 +8851,7 @@ Regras OBRIGATÓRIAS:
           const cleanedCd = { ...newCollectedData };
           // Remove campos do pedido ANTERIOR que não foram sobrescritos pelo novo
           ["origem", "data_ida", "data_volta", "adultos", "criancas", "idades_criancas", "_quotation_triggered", "_last_quote_id"].forEach(key => {
+            // Só deletamos se o valor for IDENTICO ao que estava no banco, significando que o extrator não pegou dado novo
             if (newCollectedData[key] === collectedData[key]) {
               delete cleanedCd[key];
             }
