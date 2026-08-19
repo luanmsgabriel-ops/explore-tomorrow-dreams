@@ -115,7 +115,10 @@ serve(async (req) => {
                    .lte("departure_date", dMax.toISOString().split("T")[0]);
     }
 
-    const { data: offers, error } = await query;
+      console.log(`Final Query: ${query.url.toString()}`);
+      const { data: offers, error } = await query;
+      console.log(`Found ${offers?.length || 0} raw offers`);
+
 
     if (error) throw error;
 
