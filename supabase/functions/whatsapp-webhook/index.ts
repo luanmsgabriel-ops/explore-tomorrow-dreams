@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SALES_KNOWLEDGE } from "../_shared/sales-knowledge.ts";
 import { fetchClientMemory, formatMemoryForPrompt, MEMORY_RULE, updateClientMemory } from "../_shared/client-memory.ts";
+import { handleQuotationFlow } from "./quotation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
