@@ -20,15 +20,13 @@ serve(async (req) => {
     });
     const html = await res.text();
     
-    // Attempt to return raw text to see if markers are there but JSON.parse fails
-    const payloadIndex = html.indexOf("__PVOO_PAYLOAD =");
-    const snapshotIndex = html.indexOf("PV_SNAPSHOT =");
+    // We add a COMPLETELY NEW marker to ensure we bypass any potential stale caches
+    const cacheBuster = "VERSION_9999_UNIQUE";
     
     return new Response(JSON.stringify({
+      ver: cacheBuster,
       html_length: html.length,
-      payloadIndex,
-      snapshotIndex,
-      html_sample: html.substring(Math.max(0, payloadIndex), payloadIndex + 500)
+      html_start: html.substring(0, 1000)
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err: any) {
