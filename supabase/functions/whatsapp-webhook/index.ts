@@ -9094,7 +9094,8 @@ Regras OBRIGATÓRIAS:
         { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
       ];
 
-      let newState = conversationStatus === "completed" ? "completed"
+      let newState = conversationStatus === "awaiting_quotation" ? "awaiting_quotation"
+        : conversationStatus === "completed" ? "completed"
         : conversationStatus === "human_takeover" ? "human_takeover"
         : determineConversationState(newCollectedData);
 
