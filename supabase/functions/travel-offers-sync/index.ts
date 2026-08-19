@@ -47,14 +47,14 @@ serve(async (req) => {
     }
 
     // 1. Extract __PVOO_PAYLOAD
-    const pvooMatch = html.match(/var\s+__PVOO_PAYLOAD\s*=\s*({.*?});/s);
+    const pvooMatch = html.match(/var\s+__PVOO_PAYLOAD\s*=\s*({.*?});/s) || html.match(/__PVOO_PAYLOAD\s*=\s*({.*?});/s);
     
     // 2. Extract PACOTES
-    const pacotesMatch = html.match(/var\s+PACOTES\s*=\s*(\[.*?\]);/s);
+    const pacotesMatch = html.match(/var\s+PACOTES\s*=\s*(\[.*?\]);/s) || html.match(/PACOTES\s*=\s*(\[.*?\]);/s);
     const pacotes = pacotesMatch ? JSON.parse(pacotesMatch[1]) : null;
 
     if (dry_run) {
-      let pvooInfo = { error: "__PVOO_PAYLOAD not found" };
+      let pvooInfo = { error: "__PVOO_PAYLOAD not found", raw_match_preview: html.substring(0, 1000).includes("__PVOO_PAYLOAD") ? "Found string but no match" : "String not found in first 1000 chars" };
       if (pvooMatch) {
         const pvooData = JSON.parse(pvooMatch[1]);
         pvooInfo = {
@@ -63,6 +63,13 @@ serve(async (req) => {
           total_rows: (pvooData.rows || []).length
         };
       }
+      
+      // Fallback: look for ANY JSON-like structure if named ones fail
+      if (!pvooMatch && html.includes("__PVOO_PAYLOAD")) {
+        const start = html.indexOf("__PVOO_PAYLOAD");
+        pvooInfo.raw_context = html.substring(start, start + 500);
+      }
+
 
       let pacotesInfo = { error: "PACOTES not found" };
       if (pacotes && pacotes.length > 0) {
