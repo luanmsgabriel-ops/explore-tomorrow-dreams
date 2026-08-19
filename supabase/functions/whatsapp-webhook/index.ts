@@ -3023,15 +3023,6 @@ serve(async (req) => {
         });
       }
 
-      /* 
-      if (to === "5515991833448") {
-        console.warn("Ignoring production flow for test phone number to avoid WhatsApp API errors.");
-        return new Response(JSON.stringify({ status: "ok", test_phone: true }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      */
       // Variantes do número p/ casar com cadastros (com/sem DDI 55, com/sem 9 extra)
       const phoneVariants = (() => {
         const set = new Set<string>();
