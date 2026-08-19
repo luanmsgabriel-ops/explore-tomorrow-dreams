@@ -1147,9 +1147,8 @@ Tudo coletado e confirmado:
 Cliente quer falar com humano:
 [STATUS:human_takeover]
 
---REMOVIDO--
-   - Mantenha o foco na cotação validada.
-   - Use datas concretas AAAA-MM-DD.
+--LIMPO--
+
    - Confirme o resumo antes de cotar.
    - REMOVIDO_BLOCO_ANTERIOR: 
 
