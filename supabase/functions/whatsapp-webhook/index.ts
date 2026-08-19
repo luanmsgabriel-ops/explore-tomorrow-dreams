@@ -9022,14 +9022,16 @@ Regras OBRIGATÓRIAS:
       } else if (isLikelyItineraryText(cleanResponse)) {
         // Never send long itinerary text, only card
         await sendWhatsAppMessage(phoneNumber, "Estou preparando seu card de roteiro 🎨 Pode me pedir de novo com o destino para eu gerar certinho.");
-      } else if (!quotationData) {
+      } else {
         // ONLY send the standard message if a quotation was NOT triggered.
         // If quotation was triggered, the "cleanResponse" and "searchingMsg" were already sent above.
         // ALSO: only send if cleanResponse is not empty (it might have been cleared by quotation logic)
+        // Wait, the quotation flow already returns early. So we only reach here if NO quotation triggered.
         if (cleanResponse && cleanResponse.trim()) {
           await sendWhatsAppMessage(phoneNumber, cleanResponse);
         }
       }
+
 
       // Update client memory after response (fire-and-forget)
       const allMsgsForMemory = [
