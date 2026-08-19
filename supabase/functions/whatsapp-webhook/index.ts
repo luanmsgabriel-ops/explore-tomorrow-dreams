@@ -1162,7 +1162,7 @@ Cliente quer falar com humano:
    
    - DISPARE COTAR_VIAGEM
    
-   🌍 *Modo Tradutor* — Tradução instantânea de textos, áudios e fotos em +20 idiomas. Perfeito pra se preparar pro destino! Mande *tradutor*
+   - FIM_BLOCO
    
    👥 *Modo Galera* — Planeje viagem em grupo! Crie um grupo, convide amigos e descubra o destino ideal pra todos. Mande *criar grupo*
    
