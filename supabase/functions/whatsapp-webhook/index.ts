@@ -1164,7 +1164,7 @@ Cliente quer falar com humano:
    
    - FIM_BLOCO
    
-   👥 *Modo Galera* — Planeje viagem em grupo! Crie um grupo, convide amigos e descubra o destino ideal pra todos. Mande *criar grupo*
+   - FIM_BLOCO_2
    
    🍽️ *Modo Chef* — Descubra a gastronomia do destino, restaurantes imperdíveis e receitas típicas! Mande *chef*
    
