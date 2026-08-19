@@ -75,10 +75,10 @@ serve(async (req) => {
       .from("travel_offers")
       .select("*")
       .eq("active", true)
+      .gt("price_per_person", 0)
       .or(`issue_deadline.gte.${brDateStr},issue_deadline.is.null`)
-      .or(`available_seats.gte.${totalPassageiros},available_seats.is.null`)
+      .or(`available_seats.gte.${totalPassageiros},available_seats.is.null`);
 
-      .gt("price_per_person", 0);
 
     // Destination and Origin filters
     const destFuzzy = destino.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
