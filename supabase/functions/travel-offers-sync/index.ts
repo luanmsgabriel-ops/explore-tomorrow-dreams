@@ -230,13 +230,16 @@ serve(async (req) => {
 
   } catch (err) {
     console.error("Sync error:", err);
-    if (dry_run === false) {
-      await supabase.from("travel_sync_logs").update({
-        status: "error",
-        error_message: err.message,
-        finished_at: new Date().toISOString()
-      }).eq("id", logId);
-    }
+    try {
+        const body = await req.json().catch(() => ({}));
+        if (body.dry_run !== true) {
+            await supabase.from("travel_sync_logs").update({
+                status: "error",
+                error_message: err.message,
+                finished_at: new Date().toISOString()
+            }).eq("id", logId);
+        }
+    } catch (e) {}
 
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
