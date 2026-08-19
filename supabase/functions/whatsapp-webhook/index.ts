@@ -2386,7 +2386,7 @@ async function requestQuotation(quotationData: Record<string, any>): Promise<{ s
   }
 }
 
-function formatQuotationResults(data: any): string {
+function formatQuotationResults(data: any, requestedDate?: string): string {
   if (!data) return "";
 
   const results = data.resultados || data.results || (Array.isArray(data) ? data : null);
