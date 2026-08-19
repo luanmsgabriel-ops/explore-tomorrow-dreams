@@ -110,7 +110,7 @@ serve(async (req) => {
     // 2. REGRAS DE SELEÇÃO DENTRO DO CONJUNTO
 
     // DATA PEDIDA: Mês da data pedida, menor distância, desempate preço total
-    const monthOffers = finalSet.filter(o => o.departure_date.startsWith(targetMonth));
+    const monthOffers = finalSet.filter(o => o.departure_date.startsWith(targetMonth) && o.departure_date >= baseDate);
     let offerA = null;
     if (monthOffers.length > 0) {
       const targetTime = new Date(baseDate + "T12:00:00").getTime();
@@ -141,6 +141,7 @@ serve(async (req) => {
     }
 
     // MELHOR PREÇO: Menor custo total (tarifa + taxa). Não repete A ou B.
+    // Regra 2: Deve aparecer também quando o item principal for proxima_data (offerB)
     const referenceOffer = offerA || offerB;
     let offerC = null;
     if (referenceOffer) {
@@ -153,7 +154,7 @@ serve(async (req) => {
       });
 
       offerC = sortedByPrice.find(o => {
-        if (o.id === referenceOffer.id) return false;
+        if (referenceOffer && o.id === referenceOffer.id) return false;
         const currentTotal = Number(o.price_per_person) + Number(o.boarding_tax || 0);
         return currentTotal < refTotal;
       });
@@ -165,11 +166,15 @@ serve(async (req) => {
       const tax = Number(o.boarding_tax || 0);
       const personTotal = personPrice + tax;
       const totalPrice = personTotal * totalPassageiros;
+
+      // Regra 4: Origem explícita (Nome + IATA)
+      const originName = o.origin_city || "Desconhecida";
+      const originIata = o.origin_iata ? `(${o.origin_iata.toUpperCase()})` : "";
       
       const res: any = {
         id: o.id,
         tipo: "aereo",
-        origem: o.origin_city || o.origin_iata,
+        origem: `${originName} ${originIata}`.trim(),
         destino: o.destination_name || o.destination_iata,
         data_ida: o.departure_date,
         data_volta: o.return_date,
