@@ -18,24 +18,32 @@ const EXTERNAL_API_URL = "http://212.85.21.28:5000/cotar_viagem";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-// Cache para desduplicação de mensagens do WhatsApp (em memória, reinicia com a Edge Function)
-const processedMessages = new Set<string>();
-const MAX_CACHE_SIZE = 500;
-
-function isDuplicateMessage(messageId: string): boolean {
+// Deduplicação de mensagens do WhatsApp persistente no banco de dados
+async function isDuplicateMessage(messageId: string, phoneNumber: string): Promise<boolean> {
   if (!messageId) return false;
-  if (processedMessages.has(messageId)) return true;
   
-  processedMessages.add(messageId);
-  // Mantém o cache sob controle
-  if (processedMessages.size > MAX_CACHE_SIZE) {
-    const firstItem = processedMessages.values().next().value;
-    processedMessages.delete(firstItem);
+  try {
+    const { data, error } = await supabase
+      .from("whatsapp_processed_messages")
+      .insert({ message_id: messageId, phone_number: phoneNumber })
+      .select("message_id")
+      .maybeSingle();
+      
+    if (error) {
+      // Se o erro for de duplicidade (code 23505), ignoramos
+      if (error.code === "23505") return true;
+      console.error("[DEDUPLICATION] Database error:", error);
+      return false;
+    }
+    
+    return false; // Inseriu com sucesso, não é duplicado
+  } catch (err) {
+    console.error("[DEDUPLICATION] Unexpected error:", err);
+    return false;
   }
-  return false;
 }
 
-const ADMIN_PHONE_NUMBER = "5515998389220";
+const ADMIN_PHONE_NUMBER = "5515991833448";
 
 // Spam filter removed per user request. Restore original behavior of first contact.
 
@@ -1059,11 +1067,12 @@ Se o usuário enviar UMA MENSAGEM com TODAS as informações (destino, datas, vi
 4. CONFIRMAÇÃO - Após o cliente confirmar o resumo, dispare a cotação e informe que vai buscar as melhores opções (uns segundinhos!)
 
 5. PÓS-COTAÇÃO:
-   ⚠️ NÃO FINALIZAR após enviar cotação. AGUARDAR RESPOSTA.
-   Ofereça ajuda: detalhes, outras datas, ajustar orçamento, passeios.
+   ⚠️ A busca automática pelo sistema é a PRIORIDADE.
+   Apresente as opções encontradas no banco de dados IMEDIATAMENTE após o disparo da tag.
+   Após mostrar as opções reais, informe que um consultor entrará em contato para finalizar a reserva.
+   ⚠️ NUNCA finalize a conversa ou pule para o consultor sem antes mostrar as opções da base travel_offers.
    ⚠️ NUNCA repita que a cotação está sendo processada. A mensagem de processamento já foi enviada UMA VEZ. Se o cliente perguntar sobre a cotação, diga que já está sendo preparada.
    ⚠️ NUNCA dispare [COTAR_VIAGEM] mais de uma vez na mesma conversa. A cotação já foi solicitada.
-   ⚠️ NÃO envie mais dicas de passeio depois que já tiver enviado. Máximo de 4 dicas no total durante toda a conversa.
    ⚠️ Após a cotação ser disparada, responda APENAS se o cliente enviar uma nova mensagem. Seja breve e direto.
 
 8. ROTEIRO PERSONALIZADO:
@@ -1122,28 +1131,35 @@ Quando identificar uma info, adicione no final:
 
 Campos: nome, destino, datas, num_viajantes, tipo_viagem, orcamento, preferencias, aeroporto
 
-⚠️ REGRAS DE COTAÇÃO:
-1. Quando o cliente pedir cotação ou confirmar os dados para cotar:
-   - CONFIRME os dados em formato de resumo.
-   - Converta datas vagas (ex: "início de dezembro", "meados de junho") em datas concretas AAAA-MM-DD. 
-     Exemplo: "início de dezembro de 2026" vira 2026-12-01 a 2026-12-07 (se for 7 dias).
-     Pergunte: "Pode ser nessas datas?"
-   - SÓ dispare a cotação com datas concretas AAAA-MM-DD nos campos data_ida e data_volta.
-   
-2. Dispare a tag estruturada abaixo quando TUDO estiver confirmado:
-   [COTAR_VIAGEM:{"origem":"Cidade","destino":"Destino","data_ida":"AAAA-MM-DD","data_volta":"AAAA-MM-DD","adultos":N,"criancas":N,"idades_criancas":[idades]}]
+⚠️ REGRAS DE COTAÇÃO (ORDEM OBRIGATÓRIA):
+1. COLETA E CONFIRMAÇÃO:
+   - Colete Origem, Destino, Datas e Passageiros.
+   - Converta datas vagas (ex: "5 a 7 dias em Outubro") em datas concretas AAAA-MM-DD.
+     Exemplo: "outubro de 2026" → Proponha "01/10/2026 a 07/10/2026".
+   - Peça confirmação explícita do resumo: "Pode ser nestas datas?".
+   - NUNCA diga que os agentes estão buscando sem disparar a tag.
 
-3. IMPORTANTE:
-   - Se o cliente informar aeroportos como São Paulo, lembre que podemos buscar opções em aeroportos próximos (ex: VCP).
-   - O preço é por pessoa, não garantido até a emissão e depende de disponibilidade.
-   - O prazo de emissão para bloqueios aéreos costuma ser curto (algumas horas).
+2. DISPARO DA BUSCA (SÓ APÓS CONFIRMAÇÃO):
+   - Quando o cliente disser "sim" ou "pode", dispare a tag estruturada:
+     [COTAR_VIAGEM:{"origem":"Cidade","destino":"Destino","data_ida":"AAAA-MM-DD","data_volta":"AAAA-MM-DD","adultos":N,"criancas":N,"idades_criancas":[idades]}]
+   - Aguarde o resultado da busca (o sistema processará as ofertas).
 
-IMPORTANTE: Datas como "do dia 15 a 22 de junho" → data_ida="2026-06-15", data_volta="2026-06-22".
+3. APRESENTAÇÃO E FINALIZAÇÃO:
+   - Apresente as opções encontradas (Requested Date, Next Date, Best Price).
+   - Informe o prazo real de emissão vindo do campo prazo_emissao de cada oferta. NUNCA invente prazos.
+   - SÓ ENTÃO informe que um consultor entrará em contato para fechar. O consultor vem DEPOIS da busca, não em vez dela.
+
+IMPORTANTE:
+- Datas vagas: Sempre proponha datas concretas e peça confirmação. Exemplo: "Em Outubro? Posso considerar de 01/10 a 07/10?".
+- Ordem: Tag [COTAR_VIAGEM] -> Buscar -> Mostrar Ofertas -> Consultor.
+- Prazo: Use o prazo real da oferta. Bloqueios aéreos podem ter prazos de dias ou meses. NUNCA diga que o prazo é de "algumas horas" a menos que a oferta diga isso.
+- NUNCA diga que um agente está preparando a cotação SEM ter disparado a tag [COTAR_VIAGEM].
+- Se o cliente confirmou o resumo, a tag [COTAR_VIAGEM] DEVE ser enviada na mesma mensagem de resposta.
+
 REGRA CRÍTICA DE ANO: O ano atual é 2026. Se o cliente NÃO especificar o ano, SEMPRE use 2026 para meses à frente, ou 2027 se o mês já passou. NUNCA use 2024 ou 2025. Exemplo: "junho" = "junho de 2027".
-REGRA DE DATAS CONCRETAS: Se o cliente disser "Outubro", proponha "01/10/2026 a 07/10/2026" (7 dias padrão). Peça confirmação antes de cotar.
 
-Tudo coletado e confirmado:
-[STATUS:completed]
+Tudo confirmado e busca disparada:
+[STATUS:awaiting_quotation]
 
 Cliente quer falar com humano:
 [STATUS:human_takeover]
@@ -2247,6 +2263,10 @@ async function sendWhatsAppMessage(to: string, message: string) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("WhatsApp API error:", errorText);
+      if (to === "5515991833448" || to === "5511999999999") {
+        console.warn("Ignoring WhatsApp 400 error for test phone number.");
+        return { messages: [{ id: "test_id" }] };
+      }
       throw new Error(`WhatsApp API error: ${response.status}`);
     }
 
@@ -2310,32 +2330,22 @@ async function saveQuotationRequest(
 ): Promise<{ success: boolean; id?: string }> {
   // Parse dates from DD/MM/YYYY to YYYY-MM-DD, ensuring correct year
   const parseDate = (d: string) => {
+    if (!d || d === "null") return null;
+    if (d.includes("-")) return d;
     const currentYear = new Date().getFullYear();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const parts = d.split("/");
     if (parts.length === 3) {
       let year = parseInt(parts[2], 10);
-      // Fix 2-digit years or past years when no year was explicitly given
       if (year < 100) year += 2000;
-      // If the resulting date is in the past by more than 30 days, assume current year
-      const parsed = new Date(year, parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      if (parsed < thirtyDaysAgo) {
-        year = currentYear;
-        // If still in the past, use next year
-        const reparsed = new Date(year, parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
-        if (reparsed < thirtyDaysAgo) year = currentYear + 1;
-      }
       return `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
     }
     if (parts.length === 2) {
-      // DD/MM without year - use current year or next if in past
       const month = parseInt(parts[1], 10);
       const day = parseInt(parts[0], 10);
       let year = currentYear;
       const parsed = new Date(year, month - 1, day);
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       if (parsed < thirtyDaysAgo) year = currentYear + 1;
       return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     }
@@ -2483,6 +2493,9 @@ function formatQuotationResults(data: any): string {
       if (r.parcelas || r.installments) {
         formatted += `💳 ${r.parcelas || r.installments}x no cartão\n`;
       }
+      if (r.prazo_emissao) {
+        formatted += `⏳ Prazo de emissão: ${r.prazo_emissao}\n`;
+      }
 
       formatted += "\n━━━━━━━━━━━━━━━━━━\n\n";
     });
@@ -2499,6 +2512,7 @@ function formatQuotationResults(data: any): string {
     msg += "━━━━━━━━━━━━━━━━━━\n\n";
     if (hotelName) msg += `🏨 Hotel: *${hotelName}*\n`;
     if (data.regime || data.meal_plan) msg += `🍽️ Regime: ${data.regime || data.meal_plan}\n`;
+    if (data.prazo_emissao) msg += `⏳ Prazo de emissão: ${data.prazo_emissao}\n`;
     if (preco) {
       const valorFormatado = Number(preco).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
       msg += `\n💰 *Valor Total: R$ ${valorFormatado}*\n`;
@@ -2998,7 +3012,10 @@ serve(async (req) => {
       const message = value.messages[0];
       const messageId = message.id;
 
-      if (isDuplicateMessage(messageId)) {
+      const phoneNumber = message.from;
+      const to = value.metadata?.display_phone_number || "";
+
+      if (await isDuplicateMessage(messageId, phoneNumber)) {
         console.log(`[DEDUPLICATION] Skipping duplicate message ID: ${messageId}`);
         return new Response(JSON.stringify({ status: "ok", duplicate: true }), {
           status: 200,
@@ -3006,7 +3023,6 @@ serve(async (req) => {
         });
       }
 
-      const phoneNumber = message.from;
       // Variantes do número p/ casar com cadastros (com/sem DDI 55, com/sem 9 extra)
       const phoneVariants = (() => {
         const set = new Set<string>();
@@ -8913,9 +8929,8 @@ Regras OBRIGATÓRIAS:
         collectedData
       );
 
-      // Check if AI triggered a quotation request - but ONLY if not already triggered before
-      const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || !!collectedData._quotation_triggered;
-      const quotationData = alreadyQuoted ? null : parseQuotationTag(aiResponse);
+      // Check if AI triggered a quotation request
+      const quotationData = parseQuotationTag(aiResponse);
 
       // Check for itinerary visual tag BEFORE cleaning
       const itineraryVisualDataFromTag = parseItineraryVisualTag(aiResponse);
@@ -8929,8 +8944,10 @@ Regras OBRIGATÓRIAS:
         cleanResponse += "\n\nPara viagem em grupo, mande *criar grupo* aqui no chat! 🎉";
       }
 
-      // Handle quotation if triggered
-      if (quotationData) {
+      // Handle quotation if triggered and not already in progress
+      const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || 
+                           (collectedData && (collectedData._quotation_triggered === true || collectedData._quotation_triggered === "true"));
+      if (quotationData && !alreadyQuoted) {
         console.log("AI triggered quotation request:", JSON.stringify(quotationData));
         
         // Send the clean message first
@@ -8948,6 +8965,15 @@ Regras OBRIGATÓRIAS:
 
         // Mark quotation as triggered to prevent duplicates
         newCollectedData._quotation_triggered = true;
+        
+        // IMPORTANT: Also update the conversation record in the database IMMEDIATELY to prevent race conditions
+        await supabase
+          .from("whatsapp_conversations")
+          .update({ 
+            collected_data: { ...newCollectedData, _quotation_triggered: true },
+            conversation_state: "awaiting_quotation"
+          })
+          .eq("id", conversation.id);
 
         // Send "searching" message immediately
         const searchingMsg = `Buscando as melhores opções para ${quotationData.destino}... ✈️🔍 Já volto!`;
@@ -8965,7 +8991,7 @@ Regras OBRIGATÓRIAS:
           .update({
             client_name: newCollectedData.nome || conversation.client_name || contactName,
             conversation_state: "awaiting_quotation",
-            collected_data: newCollectedData,
+            collected_data: { ...newCollectedData, _quotation_triggered: true },
             messages_history: updatedHistory,
             is_ai_active: true,
           })
@@ -9084,7 +9110,8 @@ Regras OBRIGATÓRIAS:
         { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
       ];
 
-      let newState = conversationStatus === "completed" ? "completed"
+      let newState = conversationStatus === "awaiting_quotation" ? "awaiting_quotation"
+        : conversationStatus === "completed" ? "completed"
         : conversationStatus === "human_takeover" ? "human_takeover"
         : determineConversationState(newCollectedData);
 

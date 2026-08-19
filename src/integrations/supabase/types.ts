@@ -1937,6 +1937,24 @@ export type Database = {
           },
         ]
       }
+      whatsapp_processed_messages: {
+        Row: {
+          created_at: string | null
+          message_id: string
+          phone_number: string
+        }
+        Insert: {
+          created_at?: string | null
+          message_id: string
+          phone_number: string
+        }
+        Update: {
+          created_at?: string | null
+          message_id?: string
+          phone_number?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       analytics_daily_stats: {
