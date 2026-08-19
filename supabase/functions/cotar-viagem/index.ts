@@ -44,7 +44,7 @@ serve(async (req) => {
       // FILTRO DE SEGURANÇA: 
       // 1. Apenas bloqueio_aereo (conforme regra 3)
       // 2. departure_date não nulo (conforme regra 2)
-      // 3. Assentos disponíveis >= passageiros (conforme regra 1 - aplicado a todos os ramos)
+      // 3. Assentos disponíveis >= passageiros (conforme regra 1)
       return (data || []).filter((o: any) => 
         o.offer_type === 'bloqueio_aereo' && 
         o.departure_date && 
@@ -77,7 +77,6 @@ serve(async (req) => {
     // 2. Próxima Data (Somente se Data Pedida estiver vazia. POSTERIOR à data base)
     let finalB: any[] = [];
     if (dataA.length === 0) {
-      // Busca a partir de AMANHÃ em relação à baseDate até o futuro
       const nextDay = new Date(new Date(baseDate + "T12:00:00").getTime() + 86400000)
         .toISOString().split('T')[0];
       finalB = await fetchOffers(true, nextDay, '2099-12-31', false);
@@ -105,7 +104,6 @@ serve(async (req) => {
       }
       finalC = fC;
     }
-    }
 
     const findClosest = (list: any[], targetStr: string) => {
       if (!list || list.length === 0) return null;
@@ -118,13 +116,11 @@ serve(async (req) => {
     };
 
     const offerA = findClosest(finalA, baseDate);
-    // B: primeira saída POSTERIOR à baseDate que não seja A
     const offerB = finalB.find((o: any) => 
       (!offerA || o.id !== offerA.id) && 
       o.departure_date > baseDate
     );
     
-    // C: Melhor preço (pelo custo total) que seja menor que A (ou B se A não existir)
     const referenceOffer = offerA || offerB;
     let offerC = null;
     if (referenceOffer) {
@@ -145,13 +141,13 @@ serve(async (req) => {
       
       const res: any = {
         id: o.id,
-        tipo: o.offer_type === "bloqueio_aereo" ? "aereo" : "pacote",
+        tipo: "aereo",
         origem: o.origin_city || o.origin_iata,
         destino: o.destination_name || o.destination_iata,
         data_ida: o.departure_date,
         data_volta: o.return_date,
         noites: o.nights || 0,
-        companhia: o.airline || (o.offer_type === 'pacote' ? 'Pacote' : 'Aéreo'),
+        companhia: o.airline || 'Aéreo',
         preco_por_pessoa: personPrice,
         taxa_embarque: tax,
         preco: totalPrice,
