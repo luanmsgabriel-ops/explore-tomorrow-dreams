@@ -66,7 +66,6 @@ serve(async (req) => {
     ]);
 
     // 3. CONSULTA AO CONJUNTO ELEGÍVEL
-    // SELECT * FROM travel_offers WHERE ... departure_date >= :data_ida_pedida
     const { data: eligibleOffers, error } = await supabaseClient
       .from('travel_offers')
       .select('*')
@@ -80,7 +79,6 @@ serve(async (req) => {
 
     if (error) throw error;
     
-    // Filtro adicional de issue_deadline em memória (comparando apenas data YYYY-MM-DD)
     const allEligible = (eligibleOffers || []).filter(o => {
       if (!o.issue_deadline) return true;
       const deadline = o.issue_deadline.split('T')[0];
