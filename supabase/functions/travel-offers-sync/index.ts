@@ -19,7 +19,7 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const dryRun = body.dry_run === true;
     
-    const targetUrl = "https://viajandocomdesconto.com.br/";
+    const targetUrl = "https://www.viajandocomdesconto.com.br/pacotes";
     const res = await fetch(targetUrl, {
         headers: {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -27,21 +27,16 @@ serve(async (req) => {
         signal: AbortSignal.timeout(20000)
     });
     const html = await res.text();
-    
+
     if (dryRun) {
-      // Return a targeted slice of the HTML to find the data structure
-      // We'll search for 'tsx_' which seems to be the object prefix
-      const tsxMatches = html.match(/tsx_[a-zA-Z0-9_]+\.attribute = \{[^}]+\}/g) || [];
-      const dataMatches = html.match(/tsx_[a-zA-Z0-9_]+\.data = \[[\s\S]*?\];/g) || [];
+      // Find where 'tsx_pacotes_lista' or similar is defined
+      const allDataMatches = html.match(/tsx_[a-zA-Z0-9_]+\.data = \[[\s\S]*?\];/g) || [];
       
       return new Response(JSON.stringify({
         status: "dry_run_discovery",
         url: targetUrl,
-        tsx_matches: tsxMatches.slice(0, 50),
-        data_matches_count: dataMatches.length,
-        html_contains_bloqueios: html.toLowerCase().includes("bloqueio"),
-        html_contains_pacotes: html.toLowerCase().includes("pacote"),
-        html_head: html.substring(0, 2000)
+        total_data_blocks: allDataMatches.length,
+        largest_data_block_sample: allDataMatches.sort((a,b) => b.length - a.length)[0]?.substring(0, 5000) || "none"
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
