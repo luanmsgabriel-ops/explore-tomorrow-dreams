@@ -2027,9 +2027,21 @@ function extractCollectedData(aiResponse: string, existingData: Record<string, a
   const newData = { ...existingData };
   let status: string | null = null;
 
-  const dataMatches = aiResponse.matchAll(/\[DADOS:(\w+)=(.+?)\]/g);
-  for (const match of dataMatches) {
-    newData[match[1]] = match[2];
+  // Enhanced regex to capture keys and values, handling multiple pairs in one tag if needed
+  const tagMatches = aiResponse.matchAll(/\[DADOS:([^\]]+)\]/g);
+  for (const tagMatch of tagMatches) {
+    const content = tagMatch[1];
+    
+    // Split by comma to handle multiple pairs like [DADOS:origem=SP, destino=RJ]
+    const pairs = content.split(/,\s*/);
+    for (const pair of pairs) {
+      const parts = pair.split("=");
+      if (parts.length >= 2) {
+        const key = parts[0].trim();
+        const value = parts.slice(1).join("=").trim(); // Handle values containing '='
+        newData[key] = value;
+      }
+    }
   }
 
   const statusMatch = aiResponse.match(/\[STATUS:(\w+)\]/);
@@ -8947,80 +8959,104 @@ Regras OBRIGATÓRIAS:
       // Handle quotation if triggered and not already in progress
       const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || 
                            (collectedData && (collectedData._quotation_triggered === true || collectedData._quotation_triggered === "true"));
+      
+      // VALIDATION: Only trigger if we have all mandatory concrete data
+      const hasMandatoryData = newCollectedData.destino && 
+                              newCollectedData.origem && 
+                              newCollectedData.data_ida && 
+                              newCollectedData.data_volta &&
+                              /^\d{4}-\d{2}-\d{2}$/.test(newCollectedData.data_ida) &&
+                              /^\d{4}-\d{2}-\d{2}$/.test(newCollectedData.data_volta);
+
       if (quotationData && !alreadyQuoted) {
-        console.log("AI triggered quotation request:", JSON.stringify(quotationData));
-        
-        // Send the clean message first
-        if (cleanResponse) {
-          await sendWhatsAppMessage(phoneNumber, cleanResponse);
+        if (!hasMandatoryData) {
+          console.log("[VALIDATION] Quotation tag ignored - missing mandatory data:", {
+            destino: newCollectedData.destino,
+            origem: newCollectedData.origem,
+            data_ida: newCollectedData.data_ida,
+            data_volta: newCollectedData.data_volta
+          });
+          // AI will naturally ask for what's missing in the clean response
+        } else {
+          console.log("AI triggered quotation request:", JSON.stringify(quotationData));
+          
+          // Send the clean message first
+          if (cleanResponse) {
+            await sendWhatsAppMessage(phoneNumber, cleanResponse);
+          }
+
+          // Save quotation request to table for tracking
+          const saveResult = await saveQuotationRequest(
+            quotationData,
+            phoneNumber,
+            newCollectedData.nome || conversation.client_name || contactName,
+            newCollectedData.preferencias || newCollectedData.tipo_viagem || null
+          );
+
+          if (saveResult.success) {
+            // Mark quotation as triggered ONLY IF save was successful
+            newCollectedData._quotation_triggered = true;
+            
+            // IMPORTANT: Also update the conversation record in the database IMMEDIATELY to prevent race conditions
+            await supabase
+              .from("whatsapp_conversations")
+              .update({ 
+                collected_data: { ...newCollectedData, _quotation_triggered: true },
+                conversation_state: "awaiting_quotation"
+              })
+              .eq("id", conversation.id);
+
+            // Send "searching" message immediately
+            const searchingMsg = `Buscando as melhores opções para ${quotationData.destino}... ✈️🔍 Já volto!`;
+            await sendWhatsAppMessage(phoneNumber, searchingMsg);
+
+            // Update conversation state immediately
+            const updatedHistory = [
+              ...(conversation.messages_history as any[] || []),
+              { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
+              { role: "assistant", content: searchingMsg, timestamp: new Date().toISOString() },
+            ];
+
+            await supabase
+              .from("whatsapp_conversations")
+              .update({
+                client_name: newCollectedData.nome || conversation.client_name || contactName,
+                conversation_state: "awaiting_quotation",
+                collected_data: { ...newCollectedData, _quotation_triggered: true },
+                messages_history: updatedHistory,
+                is_ai_active: true,
+              })
+              .eq("id", conversation.id);
+
+            // Fire-and-forget: process quotation asynchronously via self-invocation
+            const selfUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
+            fetch(selfUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              },
+              body: JSON.stringify({
+                action: "process_quotation",
+                phone_number: phoneNumber,
+                quotation_data: quotationData,
+                save_result_id: saveResult.id,
+                conversation_id: conversation.id,
+                client_name: newCollectedData.nome || conversation.client_name || contactName || "",
+                collected_data: newCollectedData,
+              }),
+            }).catch(err => console.error("Error scheduling async quotation:", err));
+
+            // Return immediately to Meta webhook (fast response)
+            return new Response(JSON.stringify({ status: "ok", quotation: true, async: true }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          } else {
+            console.error("[VALIDATION] Failed to save quotation request. Not marking as triggered.");
+            // We don't return early here, so it continues to standard message sending
+          }
         }
-
-        // Save quotation request to table for tracking
-        const saveResult = await saveQuotationRequest(
-          quotationData,
-          phoneNumber,
-          newCollectedData.nome || conversation.client_name || contactName,
-          newCollectedData.preferencias || newCollectedData.tipo_viagem || null
-        );
-
-        // Mark quotation as triggered to prevent duplicates
-        newCollectedData._quotation_triggered = true;
-        
-        // IMPORTANT: Also update the conversation record in the database IMMEDIATELY to prevent race conditions
-        await supabase
-          .from("whatsapp_conversations")
-          .update({ 
-            collected_data: { ...newCollectedData, _quotation_triggered: true },
-            conversation_state: "awaiting_quotation"
-          })
-          .eq("id", conversation.id);
-
-        // Send "searching" message immediately
-        const searchingMsg = `Buscando as melhores opções para ${quotationData.destino}... ✈️🔍 Já volto!`;
-        await sendWhatsAppMessage(phoneNumber, searchingMsg);
-
-        // Update conversation state immediately
-        const updatedHistory = [
-          ...(conversation.messages_history as any[] || []),
-          { role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() },
-          { role: "assistant", content: searchingMsg, timestamp: new Date().toISOString() },
-        ];
-
-        await supabase
-          .from("whatsapp_conversations")
-          .update({
-            client_name: newCollectedData.nome || conversation.client_name || contactName,
-            conversation_state: "awaiting_quotation",
-            collected_data: { ...newCollectedData, _quotation_triggered: true },
-            messages_history: updatedHistory,
-            is_ai_active: true,
-          })
-          .eq("id", conversation.id);
-
-        // Fire-and-forget: process quotation asynchronously via self-invocation
-        const selfUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
-        fetch(selfUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          },
-          body: JSON.stringify({
-            action: "process_quotation",
-            phone_number: phoneNumber,
-            quotation_data: quotationData,
-            save_result_id: saveResult.success ? saveResult.id : null,
-            conversation_id: conversation.id,
-            client_name: newCollectedData.nome || conversation.client_name || contactName || "",
-            collected_data: newCollectedData,
-          }),
-        }).catch(err => console.error("Error scheduling async quotation:", err));
-
-        // Return immediately to Meta webhook (fast response)
-        return new Response(JSON.stringify({ status: "ok", quotation: true, async: true }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
       }
 
       // Check for change request tag from AI
