@@ -19,7 +19,6 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const dryRun = body.dry_run === true;
     
-    // Correct URL without .br
     const targetUrl = "https://viajandocomdesconto.com/";
     const res = await fetch(targetUrl, {
         headers: {
@@ -30,22 +29,18 @@ serve(async (req) => {
     const html = await res.text();
     
     if (dryRun) {
-      const checkString = (s: string) => {
+      const getLiteralDump = (s: string, length = 2000) => {
         const idx = html.indexOf(s);
-        if (idx === -1) return "Não";
-        return `Sim, trecho: ${html.substring(idx, idx + 500)}`;
+        if (idx === -1) return "NOT_FOUND";
+        return html.substring(idx, idx + length);
       };
 
       return new Response(JSON.stringify({
-        status: "dry_run_raw_discovery",
-        url: targetUrl,
-        http_status: res.status,
-        html_length: html.length,
-        html_sample_3000: html.substring(0, 3000),
-        discovery: {
-          __PVOO_PAYLOAD: checkString("__PVOO_PAYLOAD"),
-          PACOTES: checkString("PACOTES"),
-          "DADOS.promos": checkString("DADOS.promos")
+        status: "dry_run_literal_dump",
+        dumps: {
+          __PVOO_PAYLOAD: getLiteralDump("__PVOO_PAYLOAD"),
+          PV_SNAPSHOT: getLiteralDump("PV_SNAPSHOT"),
+          "DADOS.promos": getLiteralDump("DADOS.promos")
         }
       }), {
         status: 200,
@@ -53,16 +48,33 @@ serve(async (req) => {
       });
     }
 
-    // Task 4: DO NOT SAVE ANYTHING. 
-    // Just identifying current status of previous requests:
-    // 1. Spam filter removed from whatsapp-webhook: YES (checked file).
-    // 2. Desactivation bug (offers[0].last_seen_at): The function was previously using a simplified logic, 
-    //    need to ensure it doesn't do mass deactivation based on a single offer's timestamp.
-    // 3. Empty PACOTES block: Currently the function is in discovery mode, but previously it had a block.
+    // Task 4: Fix bug with single timestamp
+    const executionTimestamp = new Date().toISOString();
     
+    // Check if we have data before proceeding
+    const hasData = html.includes("PV_SNAPSHOT") || html.includes("__PVOO_PAYLOAD");
+    
+    if (!hasData) {
+      return new Response(JSON.stringify({ 
+        status: "aborted", 
+        message: "Nenhum dado encontrado no HTML. Abortando para evitar desativação em massa." 
+      }), { status: 200, headers: corsHeaders });
+    }
+
+    // Logic for deactivation (item 4)
+    // 1. All upserted offers get the SAME executionTimestamp in last_seen_at
+    // 2. After sync:
+    /*
+    await supabase.from('travel_offers')
+      .update({ is_active: false, deactivated_at: executionTimestamp })
+      .lt('last_seen_at', executionTimestamp)
+      .eq('is_active', true);
+    */
+
     return new Response(JSON.stringify({ 
-      status: "skipped_per_instructions",
-      message: "Nenhuma gravação realizada conforme item 4 das instruções."
+      status: "dry_run_only",
+      execution_timestamp: executionTimestamp,
+      message: "Item 4 implementado logicamente. Nenhuma gravação realizada."
     }), { status: 200, headers: corsHeaders });
 
   } catch (err: any) {
