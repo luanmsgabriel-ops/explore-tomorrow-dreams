@@ -66,6 +66,7 @@ serve(async (req) => {
     ]);
 
     // 3. CONSULTA AO CONJUNTO ELEGÍVEL
+    // SELECT * FROM travel_offers WHERE ... departure_date >= :data_ida_pedida
     const { data: eligibleOffers, error } = await supabaseClient
       .from('travel_offers')
       .select('*')
@@ -79,7 +80,7 @@ serve(async (req) => {
 
     if (error) throw error;
     
-    // Filtro adicional de issue_deadline em memória para garantir consistência com o fuso local
+    // Filtro adicional de issue_deadline em memória (comparando apenas data YYYY-MM-DD)
     const allEligible = (eligibleOffers || []).filter(o => {
       if (!o.issue_deadline) return true;
       const deadline = o.issue_deadline.split('T')[0];
@@ -95,10 +96,10 @@ serve(async (req) => {
     const monthOffers = allEligible.filter(o => o.departure_date.startsWith(targetMonth));
     
     if (monthOffers.length > 0) {
-      const targetTime = new Date(baseDate + "T00:00:00").getTime();
+      const targetTime = new Date(baseDate + "T12:00:00").getTime();
       offerA = [...monthOffers].sort((a, b) => {
-        const timeA = new Date(a.departure_date + "T00:00:00").getTime();
-        const timeB = new Date(b.departure_date + "T00:00:00").getTime();
+        const timeA = new Date(a.departure_date + "T12:00:00").getTime();
+        const timeB = new Date(b.departure_date + "T12:00:00").getTime();
         const distA = Math.abs(timeA - targetTime);
         const distB = Math.abs(timeB - targetTime);
         if (distA !== distB) return distA - distB;
