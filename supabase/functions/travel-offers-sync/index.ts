@@ -30,202 +30,52 @@ serve(async (req) => {
       });
     }
 
-    const targetUrl = "https://www.viajandocomdesconto.com.br/site/login";
-    const response = await fetch(targetUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-      },
-      signal: AbortSignal.timeout(30000)
-    });
+    // Attempting various likely URLs for the engine/data
+    const urlsToTry = [
+        "https://viajandocomdesconto.com.br/",
+        "https://www.viajandocomdesconto.com.br/bloqueios",
+        "https://www.viajandocomdesconto.com.br/pacotes"
+    ];
 
-    if (!response.ok) {
-        console.error(`Fetch failed with status ${response.status} for ${targetUrl}`);
-        // Log 404/422 as success in dry_run to see the error in body if possible
-        if (dryRun) {
-            return new Response(JSON.stringify({ 
-                status: "dry_run_error", 
-                url_used: targetUrl, 
-                http_status: response.status,
-                text: await response.text().catch(() => "could not read body")
-            }), { 
-                status: 200, 
-                headers: { ...corsHeaders, "Content-Type": "application/json" } 
+    let results = [];
+
+    for (const url of urlsToTry) {
+        try {
+            const res = await fetch(url, {
+                headers: {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                },
+                signal: AbortSignal.timeout(10000)
             });
+            const text = await res.text();
+            results.push({
+                url,
+                status: res.status,
+                length: text.length,
+                has_pvoo: text.includes("__PVOO_PAYLOAD"),
+                has_pacotes: text.includes("PACOTES"),
+                sample: text.substring(0, 500)
+            });
+        } catch (e) {
+            results.push({ url, error: e.message });
         }
-        throw new Error(`HTTP error! status: ${response.status}`);
     }
-    const html = await response.text();
-    
+
     if (dryRun) {
       return new Response(JSON.stringify({
-        status: "dry_run_html",
-        url_used: targetUrl,
-        html_length: html.length,
-        html_sample: html.substring(0, 10000)
+        status: "dry_run_multi_discovery",
+        results
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Save sample HTML
-    if (!dryRun) {
-      const fileName = `sync-samples/${new Date().toISOString().split('T')[0]}_viajando.html`;
-      await supabase.storage.from("admin-assets").upload(fileName, html, { contentType: "text/html", upsert: true });
-    }
-
-    // 1. Extract __PVOO_PAYLOAD
-    const pvooMatch = html.match(/var\s+__PVOO_PAYLOAD\s*=\s*({.*?});/s) || html.match(/__PVOO_PAYLOAD\s*=\s*({.*?});/s);
-    
-    // 2. Extract PACOTES
-    const pacotesMatch = html.match(/var\s+PACOTES\s*=\s*(\[.*?\]);/s) || html.match(/PACOTES\s*=\s*(\[.*?\]);/s);
-    const pacotes = pacotesMatch ? JSON.parse(pacotesMatch[1]) : null;
-
-    if (!pvooMatch) {
-      await supabase.from("travel_sync_logs").update({
-        status: "structure_changed",
-        error_message: "__PVOO_PAYLOAD not found in HTML",
-        finished_at: new Date().toISOString()
-      }).eq("id", logId);
-      return new Response(JSON.stringify({ error: "Structure changed" }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    const pvooData = JSON.parse(pvooMatch[1]);
-    const { rows } = pvooData;
-    
-    const executionTimestamp = new Date().toISOString();
-
-    const offers = (rows || []).map((row: any[]) => {
-      const priceStr = String(row[10] || "0");
-      const price = parseFloat(priceStr.replace(/\./g, '').replace(',', '.'));
-      const taxStr = String(row[11] || "0");
-      const tax = parseFloat(taxStr.replace(/\./g, '').replace(',', '.'));
-
-      const parseDate = (d: string) => {
-        if (!d) return null;
-        const parts = d.split('/');
-        if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
-        return null;
-      };
-
-      return {
-        source: "viajandocomdesconto",
-        source_id: String(row[0]),
-        offer_type: "bloqueio_aereo",
-        origin_city: row[2],
-        origin_iata: row[3],
-        destination_name: row[4],
-        destination_iata: row[5],
-        departure_date: parseDate(row[6]),
-        return_date: parseDate(row[7]),
-        nights: parseInt(row[8]) || 0,
-        airline: row[1],
-        outbound_departure_time: row[13],
-        outbound_arrival_time: row[14],
-        return_departure_time: row[15],
-        return_arrival_time: row[16],
-        available_seats: parseInt(row[9]) || 0,
-        price_per_person: price,
-        boarding_tax: tax,
-        active: true,
-        last_seen_at: executionTimestamp,
-        raw_data: row
-      };
-    }).filter((o: any) => o.departure_date && o.price_per_person > 0);
-
-    // Safety Check: Low Yield
-    const { data: lastLog } = await supabase
-      .from("travel_sync_logs")
-      .select("offers_found")
-      .eq("status", "success")
-      .order("started_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (lastLog && offers.length < (lastLog.offers_found * 0.5)) {
-      await supabase.from("travel_sync_logs").update({
-        status: "aborted_low_yield",
-        offers_found: offers.length,
-        error_message: `Yield too low: found ${offers.length}, expected at least ${Math.floor(lastLog.offers_found * 0.5)}`,
-        finished_at: new Date().toISOString()
-      }).eq("id", logId);
-      return new Response(JSON.stringify({ error: "Low yield" }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    if (offers.length === 0) {
-      await supabase.from("travel_sync_logs").update({
-        status: "success",
-        offers_found: 0,
-        error_message: "No offers found in source",
-        finished_at: new Date().toISOString()
-      }).eq("id", logId);
-      return new Response(JSON.stringify({ status: "success", found: 0 }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    // Upsert offers
-    let created = 0;
-    let updated = 0;
-
-    for (const offer of offers) {
-      const { data: existing } = await supabase
-        .from("travel_offers")
-        .select("id")
-        .eq("source", offer.source)
-        .eq("source_id", offer.source_id)
-        .eq("offer_type", offer.offer_type)
-        .maybeSingle();
-
-      const { error: upsertError } = await supabase
-        .from("travel_offers")
-        .upsert(offer, { onConflict: 'source,source_id,offer_type' });
-
-      if (!upsertError) {
-        if (existing) updated++;
-        else created++;
-      }
-    }
-
-    // Deactivate missing offers using the execution timestamp
-    const { error: deactivateError } = await supabase
-      .from("travel_offers")
-      .update({ active: false })
-      .eq("source", "viajandocomdesconto")
-      .neq("last_seen_at", executionTimestamp);
-
-    await supabase.from("travel_sync_logs").update({
-      status: "success",
-      offers_found: offers.length,
-      offers_created: created,
-      offers_updated: updated,
-      offers_deactivated: deactivateError ? 0 : "check travel_offers",
-      finished_at: new Date().toISOString()
-    }).eq("id", logId);
-
-    return new Response(JSON.stringify({ 
-      status: "success", 
-      found: offers.length,
-      created,
-      updated
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // For non-dry-run, just use the main discovery logic (simplified for now to avoid crashes)
+    return new Response(JSON.stringify({ status: "not_implemented_for_real_run" }), { status: 501, headers: corsHeaders });
 
   } catch (err) {
     console.error("Sync error:", err);
-    try {
-        const body = await req.json().catch(() => ({}));
-        if (body.dry_run !== true) {
-            await supabase.from("travel_sync_logs").update({
-                status: "error",
-                error_message: err.message,
-                finished_at: new Date().toISOString()
-            }).eq("id", logId);
-        }
-    } catch (e) {}
-
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
