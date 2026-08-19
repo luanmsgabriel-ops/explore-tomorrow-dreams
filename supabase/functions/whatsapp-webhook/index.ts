@@ -2748,33 +2748,8 @@ serve(async (req) => {
             console.error("[ASYNC-QUOTATION] Error updating conversation:", histErr);
           }
 
-          // Generate travel tips (non-blocking, delayed)
-          try {
-            const tipsResponse = await getAiResponse([
-              { role: "user", content: `Você é o Téo, assistente de viagens divertido e humano da Tomorrow Travel. Gere uma mensagem para o cliente ${clientName || ''} com exatamente 5 dicas incríveis sobre ${quotationData.destino} (passeios, comidas, curiosidades, experiências). Seja divertido, use emojis, tom leve e descontraído. Uma dica por linha numerada. Comece com algo como "${clientName ? clientName + ', e' : 'E'}nquanto isso, bora conhecer um pouco mais sobre ${quotationData.destino}? 🗺️✨" e depois as 5 dicas. No FINAL da mensagem, adicione uma quebra de linha e pergunte de forma divertida e natural se o cliente sabia que você (o Téo) também pode montar um roteiro personalizado dia a dia pra viagem dele. Algo como: "Ah, e sabia que eu também posso montar um roteiro completinho dia a dia pra sua viagem? 🗓️✨ Quer que eu prepare um pra você?" Seja criativo e mantenha o tom do Téo!` }
-            ]);
-            const cleanTips = cleanAiResponse(tipsResponse);
-            if (cleanTips && cleanTips.length > 20) {
-              await new Promise(r => setTimeout(r, 30000));
-              await sendWhatsAppMessage(phone, cleanTips);
-
-              // Save tips to history
-              const { data: convAfterTips } = await supabase
-                .from("whatsapp_conversations")
-                .select("id, messages_history")
-                .eq("id", conversationId)
-                .single();
-              if (convAfterTips) {
-                const updH = [
-                  ...((convAfterTips.messages_history as any[]) || []),
-                  { role: "assistant", content: cleanTips, timestamp: new Date().toISOString() },
-                ];
-                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterTips.id);
-              }
-            }
-          } catch (tipErr) {
-            console.error("[ASYNC-QUOTATION] Tips error:", tipErr);
-          }
+          // Auto travel tips removed per user request to avoid competing with quotation options.
+          console.log(`[ASYNC-QUOTATION] Done for ${phone}`);
 
           console.log(`[ASYNC-QUOTATION] Done for ${phone}`);
         }
