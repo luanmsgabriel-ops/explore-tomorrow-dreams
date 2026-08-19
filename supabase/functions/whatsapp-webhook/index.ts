@@ -8825,6 +8825,30 @@ Regras OBRIGATÓRIAS:
         cleanResponse += "\n\nPara viagem em grupo, mande *criar grupo* aqui no chat! 🎉";
       }
 
+      // DISPARE A BUSCA A PARTIR DO COLLECTED_DATA SE [STATUS:awaiting_quotation] ESTIVER PRESENTE
+      let effectiveQuotationData = quotationData;
+      if (!effectiveQuotationData && conversationStatus === "awaiting_quotation") {
+        console.log("[QUOTATION] Tag [COTAR_VIAGEM] missing, but [STATUS:awaiting_quotation] detected. Using newCollectedData.");
+        
+        const hasMandatory = newCollectedData.destino && 
+                            newCollectedData.origem && 
+                            newCollectedData.data_ida && 
+                            newCollectedData.data_volta;
+
+        if (hasMandatory) {
+          effectiveQuotationData = {
+            origem: newCollectedData.origem,
+            destino: newCollectedData.destino,
+            data_ida: newCollectedData.data_ida,
+            data_volta: newCollectedData.data_volta,
+            adultos: Number(newCollectedData.adultos || newCollectedData.num_viajantes || 2),
+            criancas: Number(newCollectedData.criancas || 0),
+            idades_criancas: newCollectedData.idades_criancas || []
+          };
+          console.log("[QUOTATION] Payload mounted from newCollectedData:", effectiveQuotationData);
+        }
+      }
+
       // Handle quotation if triggered
       // We check if it was already triggered in PREVIOUS turns to avoid duplication
       const alreadyQuotedInDB = (conversation.collected_data as any)?._quotation_triggered === true || 
