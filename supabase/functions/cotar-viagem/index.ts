@@ -36,8 +36,20 @@ serve(async (req) => {
         p_total_passengers: totalPassageiros,
         p_order_by_price: orderByPrice
       });
-      if (error) console.error("[cotar-viagem] RPC Error:", error);
-      return data || [];
+      if (error) {
+        console.error("[cotar-viagem] RPC Error:", error);
+        return [];
+      }
+      
+      // FILTRO DE SEGURANÇA: 
+      // 1. Apenas bloqueio_aereo (conforme regra 3)
+      // 2. departure_date não nulo (conforme regra 2)
+      // 3. Assentos disponíveis >= passageiros (conforme regra 1)
+      return (data || []).filter((o: any) => 
+        o.offer_type === 'bloqueio_aereo' && 
+        o.departure_date && 
+        Number(o.available_seats || 0) >= totalPassageiros
+      );
     };
 
     let targetDepStr = data_ida;
@@ -59,27 +71,36 @@ serve(async (req) => {
     const monthStart = `${targetMonth}-01`;
     const monthEnd = `${targetMonth}-31`;
 
-    // 1. Data Pedida (Mês alvo, respeitando origem)
+    // 1. Data Pedida (Mês alvo)
     const dataA = await fetchOffers(true, monthStart, monthEnd, false);
-    // 2. Próxima Data (Qualquer data futura, respeitando origem)
-    const dataB = await fetchOffers(true, '1900-01-01', '2099-12-31', false);
-    // 3. Melhor Preço (Qualquer data futura, respeitando origem)
-    const dataC = await fetchOffers(true, '1900-01-01', '2099-12-31', true);
+    
+    // 2. Próxima Data (Somente se Data Pedida estiver vazia. POSTERIOR à data base)
+    let finalB: any[] = [];
+    if (dataA.length === 0) {
+      const nextDay = new Date(new Date(baseDate + "T12:00:00").getTime() + 86400000)
+        .toISOString().split('T')[0];
+      finalB = await fetchOffers(true, nextDay, '2099-12-31', false);
+    }
+
+    // 3. Melhor Preço (Sempre busca no futuro todo, a partir de hoje)
+    const finalC = await fetchOffers(true, brDateStr, '2099-12-31', true);
 
     let finalA = dataA;
-    let finalB = dataB;
-    let finalC = dataC;
 
-    // Fallbacks massivos se não houver NADA com a origem específica
-    if (finalB.length === 0) {
-      console.log("[cotar-viagem] Fallback Geral (Sem Origem)");
-      const [fA, fB, fC] = await Promise.all([
+    // Fallbacks se não houver NADA com a origem específica
+    if (finalA.length === 0 && finalB.length === 0 && finalC.length === 0) {
+      const [fA, fC] = await Promise.all([
         fetchOffers(false, monthStart, monthEnd, false),
-        fetchOffers(false, '1900-01-01', '2099-12-31', false),
-        fetchOffers(false, '1900-01-01', '2099-12-31', true)
+        fetchOffers(false, brDateStr, '2099-12-31', true)
       ]);
       finalA = fA;
-      finalB = fB;
+      if (finalA.length === 0) {
+        const nextDay = new Date(new Date(baseDate + "T12:00:00").getTime() + 86400000)
+          .toISOString().split('T')[0];
+        finalB = await fetchOffers(false, nextDay, '2099-12-31', false);
+      } else {
+        finalB = [];
+      }
       finalC = fC;
     }
 
@@ -94,25 +115,37 @@ serve(async (req) => {
     };
 
     const offerA = findClosest(finalA, baseDate);
-    const offerB = finalB.find((o: any) => !offerA || o.id !== offerA.id);
-    const offerC = finalC.find((o: any) => 
-      (!offerA || o.id !== offerA.id) && 
-      (!offerB || o.id !== offerB.id)
-    );
+    const offerB = finalB.length > 0 ? findClosest(finalB, baseDate) : null;
+    
+    const referenceOffer = offerA || offerB;
+    let offerC = null;
+    if (referenceOffer) {
+      const refTotal = Number(referenceOffer.price_per_person) + Number(referenceOffer.boarding_tax || 0);
+      offerC = finalC.find((o: any) => {
+        if (o.id === referenceOffer.id) return false;
+        if (offerB && o.id === offerB.id) return false;
+        const currentTotal = Number(o.price_per_person) + Number(o.boarding_tax || 0);
+        return currentTotal < refTotal;
+      });
+    }
 
-    const format = (o: any, role: string) => {
-      const totalPrice = (Number(o.price_per_person) + Number(o.boarding_tax || 0)) * totalPassageiros;
-      return {
+    const format = (o: any, role: string, referenceTotal?: number) => {
+      const personPrice = Number(o.price_per_person);
+      const tax = Number(o.boarding_tax || 0);
+      const personTotal = personPrice + tax;
+      const totalPrice = personTotal * totalPassageiros;
+      
+      const res: any = {
         id: o.id,
-        tipo: o.offer_type === "bloqueio_aereo" ? "aereo" : "pacote",
+        tipo: "aereo",
         origem: o.origin_city || o.origin_iata,
         destino: o.destination_name || o.destination_iata,
         data_ida: o.departure_date,
         data_volta: o.return_date,
         noites: o.nights || 0,
-        companhia: o.airline || (o.offer_type === 'pacote' ? 'Pacote' : 'Aéreo'),
-        preco_por_pessoa: Number(o.price_per_person),
-        taxa_embarque: Number(o.boarding_tax || 0),
+        companhia: o.airline || 'Aéreo',
+        preco_por_pessoa: personPrice,
+        taxa_embarque: tax,
         preco: totalPrice,
         assentos_disponiveis: o.available_seats,
         prazo_emissao: o.issue_deadline,
@@ -121,18 +154,22 @@ serve(async (req) => {
         voo_ida: o.outbound_departure_time ? `Voo às ${o.outbound_departure_time}` : (o.departure_date || "Consultar"),
         voo_volta: o.return_departure_time ? `Voo às ${o.return_departure_time}` : (o.return_date || "Consultar"),
       };
+
+      if (referenceTotal && personTotal < referenceTotal) {
+        const economiaIndividual = referenceTotal - personTotal;
+        res.economia = economiaIndividual;
+        res.economia_total = economiaIndividual * totalPassageiros;
+      }
+
+      return res;
     };
 
     const resultados: any[] = [];
     if (offerA) resultados.push(format(offerA, "data_pedida"));
     if (offerB) resultados.push(format(offerB, "proxima_data"));
     if (offerC) {
-      const formattedC = format(offerC, "melhor_preco");
-      const ref = offerA || offerB;
-      if (ref && Number(offerC.price_per_person) < Number(ref.price_per_person)) {
-        formattedC.economia_por_pessoa = Number(ref.price_per_person) - Number(offerC.price_per_person);
-      }
-      resultados.push(formattedC);
+      const refTotal = Number(referenceOffer.price_per_person) + Number(referenceOffer.boarding_tax || 0);
+      resultados.push(format(offerC, "melhor_preco", refTotal));
     }
 
     return new Response(JSON.stringify({ resultados }), {
