@@ -1160,7 +1160,7 @@ Cliente quer falar com humano:
    
    - SEM MENSAGEM DE MANUTENÇÃO
    
-   Enquanto isso, que tal explorar outros recursos do Téo? 👇
+   - DISPARE COTAR_VIAGEM
    
    🌍 *Modo Tradutor* — Tradução instantânea de textos, áudios e fotos em +20 idiomas. Perfeito pra se preparar pro destino! Mande *tradutor*
    
