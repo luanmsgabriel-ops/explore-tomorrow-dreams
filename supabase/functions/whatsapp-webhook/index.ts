@@ -2281,8 +2281,7 @@ async function saveQuotationRequest(
     customer_name: clientName || null,
     preferences: preferences || null,
     status: "pending",
-    raw_request: quotationData,
-    source_channel: "whatsapp_teo",
+    raw_request: quotationData
   };
 
   console.log("[DEBUG] Salvando cotação no travel_quote_requests table:", JSON.stringify(insertPayload));
