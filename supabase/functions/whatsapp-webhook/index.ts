@@ -2392,17 +2392,23 @@ function formatQuotationResults(data: any): string {
     formatted += `👤 Valor por pessoa: *R$ ${pp}*\n`;
     formatted += `⚓ Taxa de embarque: R$ ${taxa}\n`;
     formatted += `💎 *Total do grupo: R$ ${total}*\n`;
-    formatted += `💺 Assentos: ${r.assentos_disponiveis}\n`;
+    
+    const seats = Number(r.assentos_disponiveis || 0);
+    if (seats <= 3) {
+      formatted += `⚠️ *APENAS ${seats} ASSENTOS RESTANTES!*\n`;
+    } else {
+      formatted += `💺 Assentos disponíveis: ${seats}\n`;
+    }
     
     if (r.prazo_emissao) {
       const prazo = new Date(r.prazo_emissao.split('T')[0] + "T12:00:00").toLocaleDateString("pt-BR");
-      formatted += `⏳ Prazo de emissão: ${prazo}\n`;
+      formatted += `⏳ Prazo de emissão: *até ${prazo}*\n`;
     }
 
     formatted += "\n━━━━━━━━━━━━━━━━━━\n\n";
   });
 
-  formatted += "Qual dessas opções faz mais sentido para você? Ou prefere aguardar o consultor com as datas exatas? 😊";
+  formatted += "Qual dessas opções faz mais sentido para você? 😊";
   return formatted.trim();
 }
 
