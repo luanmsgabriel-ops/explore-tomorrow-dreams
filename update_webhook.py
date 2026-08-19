@@ -56,9 +56,12 @@ REGRA DE ANO: O ano atual é 2026. Use 2026 para meses à frente, ou 2027 se o m
 
 DADOS: [DADOS:nome=valor, destino=valor, origem=valor, data_ida=AAAA-MM-DD, data_volta=AAAA-MM-DD, adultos=N, criancas=N, idades_criancas=[idades]]"""
 
-content = re.sub(r'const TEO_SYSTEM_PROMPT = `.*?`;', f'const TEO_SYSTEM_PROMPT = `{new_prompt}`;', content, flags=re.DOTALL)
+content = content.replace("Você é o Téo, assistente virtual da Tomorrow Travel, especializado em viagens personalizadas e inesquecíveis! 🌍", new_prompt.split("\n", 1)[0]) # Just a marker to find the prompt start
+# Find the prompt end by looking for the next const definition or similar
+prompt_pattern = r'const TEO_SYSTEM_PROMPT = `.*?`;'
+content = re.sub(prompt_pattern, f'const TEO_SYSTEM_PROMPT = `{new_prompt}`;', content, flags=re.DOTALL)
 
-# 2. Update formatQuotationResults (Portuguese labels and detail visibility)
+# 2. Update formatQuotationResults
 new_formatter = """function formatQuotationResults(data: any): string {
   if (!data) return "";
 
@@ -100,12 +103,53 @@ new_formatter = """function formatQuotationResults(data: any): string {
   formatted += "Qual dessas opções faz mais sentido para você? Ou prefere aguardar o consultor com as datas exatas? 😊";
   return formatted.trim();
 }"""
-
 content = re.sub(r'function formatQuotationResults\(data: any\): string \{.*?\}', new_formatter, content, flags=re.DOTALL)
 
-# 3. Trigger logic update
-trigger_block = r"""
-      // Handle quotation if triggered and not already in progress
+# 3. Trigger logic - simple string replacement for key parts
+old_validation_part = """      const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || 
+                           (collectedData && (collectedData._quotation_triggered === true || collectedData._quotation_triggered === "true"));
+      
+      // VALIDATION: Priority to data inside the [COTAR_VIAGEM] tag, then fallback to collected_data
+      const effectiveData = {
+        destino: quotationData?.destino || newCollectedData.destino,
+        origem: quotationData?.origem || newCollectedData.origem,
+        data_ida: quotationData?.data_ida || newCollectedData.data_ida,
+        data_volta: quotationData?.data_volta || newCollectedData.data_volta
+      };
+
+      const hasMandatoryData = effectiveData.destino && 
+                              effectiveData.origem && 
+                              effectiveData.data_ida && 
+                              effectiveData.data_volta &&
+                              /^\\d{4}-\\d{2}-\\d{2}$/.test(effectiveData.data_ida) &&
+                              /^\\d{4}-\\d{2}-\\d{2}$/.test(effectiveData.data_volta);
+
+      if (quotationData && !alreadyQuoted) {
+        if (!hasMandatoryData) {
+          console.log("[VALIDATION] Quotation tag ignored - missing or invalid mandatory data:", {
+            effectiveData,
+            sourceTag: quotationData
+          });
+          // AI will naturally ask for what's missing in the clean response
+        } else {
+          console.log("AI triggered quotation request:", JSON.stringify(quotationData));
+          
+          // Send the clean message first
+          if (cleanResponse) {
+            await sendWhatsAppMessage(phoneNumber, cleanResponse);
+            // Deduplication: remove cleanResponse so it's not sent again at the end of the script
+            cleanResponse = ""; 
+          }
+
+          // Save quotation request to table for tracking
+          const saveResult = await saveQuotationRequest(
+            quotationData,
+            phoneNumber,
+            newCollectedData.nome || conversation.client_name || contactName,
+            newCollectedData.preferencias || newCollectedData.tipo_viagem || null
+          );"""
+
+new_validation_part = r"""      // Handle quotation if triggered and not already in progress
       const alreadyQuoted = conversation.conversation_state === "awaiting_quotation" || 
                            (collectedData && (collectedData._quotation_triggered === true || collectedData._quotation_triggered === "true"));
       
@@ -130,13 +174,6 @@ trigger_block = r"""
             idades_criancas: newCollectedData.idades_criancas || []
           };
           console.log("[QUOTATION] Payload mounted from collected_data:", effectiveQuotationData);
-        } else {
-          console.log("[QUOTATION] Cannot trigger from collected_data: missing fields", {
-            destino: !!newCollectedData.destino,
-            origem: !!newCollectedData.origem,
-            data_ida: !!newCollectedData.data_ida,
-            data_volta: !!newCollectedData.data_volta
-          });
         }
       }
 
@@ -166,25 +203,48 @@ trigger_block = r"""
             phoneNumber,
             newCollectedData.nome || conversation.client_name || contactName,
             newCollectedData.preferencias || newCollectedData.tipo_viagem || null
-          );
-"""
+          );"""
 
-# Pattern to replace
-old_block_pattern = r'// Handle quotation if triggered and not already in progress.*?const saveResult = await saveQuotationRequest\(.*?quotationData,.*?phoneNumber,.*?newCollectedData.nome \|\| conversation.client_name \|\| contactName,.*?newCollectedData.preferencias \|\| newCollectedData.tipo_viagem \|\| null.*?\);'
-content = re.sub(old_block_pattern, trigger_block, content, flags=re.DOTALL)
+content = content.replace(old_validation_part, new_validation_part)
 
-# 4. Update async invocation
+# Update self-invocation
 content = content.replace('quotation_data: quotationData,', 'quotation_data: effectiveQuotationData,')
 
-# 5. Skip second message if results are empty
+# Skip secondary message if empty
 content = content.replace('await sendWhatsAppMessage(phone, quotationMsg);', '// Send results to client ONLY if there are results\n          if (quotationMsg) await sendWhatsAppMessage(phone, quotationMsg);')
 
-# Also fix the fallback message in process_quotation to not send anything
-# Replacing the entire block for the "else" case in process_quotation
-content = re.sub(r'\} else \{\s+// No results or API error.*?await createQuoteRequest\(phone, collectedDataForQuote\);\s+\}\s+\}', '} else {\n          console.log("[QUOTATION] No results found for client " + phone + ". Skipping secondary message.");\n          if (saveResultId) {\n            await supabase.from("travel_quote_requests").update({\n              status: "failed",\n              error_message: "Nenhum resultado encontrado na API Infotravel",\n              processed_at: new Date().toISOString(),\n            }).eq("id", saveResultId);\n          }\n          try {\n            await createQuoteRequest(phone, collectedDataForQuote);\n          } catch (err) {\n            console.error("Error creating quote on failure:", err);\n          }\n        }', content, flags=re.DOTALL)
+# Fallback in process_quotation
+old_fallback = """            quotationMsg = `Oi ${clientName || 'amigo(a)'}! 👋\\n\\nOlha, tô terminando de conferir os melhores preços pra **${quotationData.destino}** com nossos parceiros! ✈️✨\\n\\nComo quero te entregar a melhor opção de todas, passei seu pedido pra um de nossos consultores especialistas. Ele vai finalizar os detalhes e te chama rapidinho por aqui, beleza? 😊`;
 
-# Final check for quotationMsg usage
-content = content.replace('if (quotationMsg) {', 'if (quotationMsg && quotationMsg.trim()) {')
+            if (saveResultId) {
+              await supabase.from("travel_quote_requests").update({
+                status: "failed",
+                error_message: "Nenhum resultado encontrado na API Infotravel",
+                processed_at: new Date().toISOString(),
+              }).eq("id", saveResultId);
+            }
+
+            // Create lead for human follow-up
+            try {
+              await createQuoteRequest(phone, collectedDataForQuote);
+            } catch (err) {
+              console.error("Error creating quote on failure:", err);
+            }"""
+
+new_fallback = """            console.log("[QUOTATION] No results found for client " + phone + ". Skipping secondary message.");
+            if (saveResultId) {
+              await supabase.from("travel_quote_requests").update({
+                status: "failed",
+                error_message: "Nenhum resultado encontrado na API Infotravel",
+                processed_at: new Date().toISOString(),
+              }).eq("id", saveResultId);
+            }
+            try {
+              await createQuoteRequest(phone, collectedDataForQuote);
+            } catch (err) {
+              console.error("Error creating quote on failure:", err);
+            }"""
+content = content.replace(old_fallback, new_fallback)
 
 with open(file_path, "w") as f:
     f.write(content)
