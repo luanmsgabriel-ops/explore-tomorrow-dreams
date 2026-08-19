@@ -71,7 +71,7 @@ serve(async (req) => {
     const destCodes = await resolveLocation(destino, 'destination');
 
 
-    console.log(`Searching from ${origem} (${originCodes}) to ${destino} (${destCodes}) for dates ${data_ida} to ${data_volta}`);
+    
 
 
     // 2. Build Query
