@@ -41,12 +41,20 @@ serve(async (req) => {
     const html = await response.text();
     
     if (dry_run) {
+        console.log("DRY RUN: returning HTML preview");
         return new Response(JSON.stringify({ 
             status: "discovery", 
             html_preview: html.substring(0, 8000),
             includes_pvoo: html.includes("__PVOO_PAYLOAD"),
             url_used: targetUrl
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }), { 
+          status: 200, 
+          headers: { 
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+            "Content-Type": "application/json" 
+          } 
+        });
     }
 
     // Save sample HTML
