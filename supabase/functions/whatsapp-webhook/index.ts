@@ -1153,7 +1153,7 @@ Cliente quer falar com humano:
    - Confirme o resumo antes de cotar.
    - REMOVIDO_BLOCO_ANTERIOR: 
 
-2. Após a confirmação, envie uma mensagem como:
+- Mantenha foco na cotação validada.
    "Nosso sistema de cotação automática está passando por uma atualização pra ficar ainda melhor! 🚀
    
    Mas fique tranquilo(a), {nome}! Já registrei todos os seus dados e um dos nossos agentes especializados vai retornar com a cotação personalizada pra você em breve! 😊✈️
