@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 20/08/2026 |
-| Estado geral | Arquitetura diagnosticada; pronta para a Etapa 1 |
-| Etapa atual | Etapa 1 — Contrato de dados e camada segura de consulta |
-| Último HEAD verificado | `50decc686b8db665abdb185a55238dc18d5f1d42` |
-| Próxima ação exata | Implementar uma Edge Function pública somente de leitura para catálogo/calendário, com DTO seguro, validação, paginação e filtros reais; não reutilizar a RPC pública atual |
+| Estado geral | Etapa 1 implementada e validada no código; implantação pendente |
+| Etapa atual | Etapa 1 — concluída no GitHub, ainda não implantada |
+| Último HEAD verificado | `5c047293c3f16e06d06661fcecc59b97f7801c3c` |
+| Próxima ação exata | Sincronizar o commit `5c047293c3f16e06d06661fcecc59b97f7801c3c` no Lovable Cloud, aplicar a migration, implantar `travel-offers-public` e validar o SHA e os 18 cenários contra a função remota |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -193,7 +193,7 @@ A rota atual `/ofertas` será preservada durante a construção. Redirecionament
 
 ### Etapa 1 — Contrato de dados e camada segura de consulta
 
-**Estado:** não iniciada
+**Estado:** concluída no código em 20/08/2026; implantação e validação remota pendentes
 
 **Objetivo:** preparar uma fonte consistente e segura para catálogo, calendário e Téo Live.
 
@@ -527,7 +527,7 @@ Qualidade observada:
 
 - bloqueios ativos possuem datas, preço, origem, destino e vagas;
 - pacotes não usam `available_seats`, portanto a interface não pode inventar vagas;
-- 109 pacotes internacionais não possuem `origin_iata`; o contrato deve aceitar origem terrestre/sem aéreo;
+- 209 pacotes internacionais ativos possuem valor inválido em `origin_iata` (nome de cidade em vez de IATA); o contrato normaliza esses valores para `null` sem inventar aeroporto;
 - um pacote internacional ativo não possui data de volta;
 - pacotes nacionais, internacionais e de evento trazem metadados em `raw_data`, incluindo imagens, hotéis, inclusões, preço aéreo, parcela, taxas e evento;
 - grupos guiados possuem estrutura de JSON diferente e precisam de normalizador próprio;
@@ -572,6 +572,20 @@ A RPC `search_travel_offers` existente não será usada pelo novo frontend. Ela 
 
 Nenhum arquivo do WhatsApp ou prompt do Téo está previsto para a Etapa 1.
 
+
+### 8.8 Contrato implementado na Etapa 1
+
+Endpoint público: `POST /functions/v1/travel-offers-public`, com corpo JSON `{ "action": "...", "params": { ... } }`.
+
+- `facets`: sem parâmetros; retorna tipos, subtipos, origens, aeroportos, destinos, categorias, intervalo de datas e faixas de preço das ofertas válidas.
+- `catalog`: aceita `search`, origem/IATA, destino/IATA, tipo, subtipo, categoria, período, passageiros, faixa de preço, somente ofertas com vagas, ordenação, página e tamanho; página padrão 20, máximo 50 e offset máximo 10.000.
+- `calendar`: exige origem ou IATA, destino ou IATA, `start_date`, `end_date` e passageiros; aceita tipo; intervalo máximo de 120 dias; agrupa por data e não publica preço quando não há opção válida.
+- `detail`: exige UUID; retorna somente o DTO permitido e usa normalizadores exclusivos para bloqueio, pacote nacional, pacote internacional, evento e grupo guiado.
+
+Uma oferta pública válida precisa ter `active = true`, data de saída não anterior à data atual de São Paulo, preço positivo e prazo de emissão ausente ou ainda vigente. Pacotes com vagas desconhecidas preservam `available_seats: null`; o filtro de passageiros elimina apenas estoques conhecidos e insuficientes.
+
+A função foi registrada com `verify_jwt = false` porque catálogo e calendário são públicos. Proteções compensatórias: origens CORS explícitas, apenas `POST`/`OPTIONS`, corpo máximo de 12 KB, ações e parâmetros em lista fechada, ordenação em mapa interno, paginação e intervalos limitados, cache de facetas, controle básico por IP/ação, Service Role apenas no servidor, seleção explícita de colunas e filtragem de links/tokens em textos públicos.
+
 ## 9. Decisões registradas
 
 | ID | Data | Decisão | Estado |
@@ -590,6 +604,8 @@ Nenhum arquivo do WhatsApp ou prompt do Téo está previsto para a Etapa 1.
 | D-012 | 20/08/2026 | Manter `cotar-viagem`, `travel-offers-sync` e o fluxo do WhatsApp isolados nesta etapa | aprovada |
 | D-013 | 20/08/2026 | Pacotes sem aéreo ou sem vagas explícitas devem ser apresentados sem inventar esses dados | aprovada |
 | D-014 | 20/08/2026 | Novas páginas usarão carregamento sob demanda para não ampliar o bundle inicial | aprovada |
+| D-015 | 20/08/2026 | Publicar a consulta por Edge Function com `verify_jwt = false` e proteções compensatórias explícitas | implementada; implantação pendente |
+| D-016 | 20/08/2026 | Considerar válida somente oferta ativa, futura, com preço positivo e prazo de emissão vigente | implementada |
 
 ## 10. Riscos conhecidos
 
@@ -612,6 +628,8 @@ Nenhum arquivo do WhatsApp ou prompt do Téo está previsto para a Etapa 1.
 | Bundle inicial crescer com novas páginas | rotas lazy, divisão de código e orçamento de performance |
 | Múltiplos lockfiles gerarem builds diferentes | definir gerenciador oficial antes de alterar dependências |
 | Arquivo `.env` versionado conter segredo | auditoria segura e rotação imediata caso algum segredo seja confirmado |
+| Controle de requisições em memória variar entre instâncias Edge | tratar como proteção básica; adotar rate limit distribuído se o volume público exigir |
+| Valores inválidos no campo `origin_iata` de pacotes internacionais | validar três letras e devolver `null`; corrigir a origem na sincronização em etapa futura |
 
 ## 11. Modelo de checkpoint
 
@@ -664,3 +682,20 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Riscos ou erros:** exposição potencial pela RPC atual, filtros ignorados, ausência de índices de consulta, JSON heterogêneo, bundle sem divisão de rotas, múltiplos lockfiles e `.env` versionado.
 - **Pendências:** implementar e testar a camada segura de consulta; executar verificações de segurança e performance após a migration; confirmar o gerenciador de pacotes oficial antes de adicionar dependências.
 - **Próxima ação exata:** criar `supabase/functions/travel-offers-public/index.ts` com operações `facets`, `catalog`, `calendar` e `detail`, mais a migration de índices, sem tocar no WhatsApp nem no prompt do Téo.
+
+### Checkpoint 2026-08-20 14:45 — Etapa 1 concluída no código
+
+- **Etapa:** 1 — Contrato de dados e camada segura de consulta
+- **Estado:** concluída no GitHub; implantação e validação remota pendentes
+- **Objetivo executado:** criar uma barreira pública somente de leitura para o inventário real de `travel_offers`, com operações `facets`, `catalog`, `calendar` e `detail`, DTO fechado, normalizadores por subtipo e limites de consulta.
+- **Arquivos alterados:** `supabase/functions/travel-offers-public/index.ts`; `supabase/functions/travel-offers-public/index_test.ts`; `supabase/config.toml`; `supabase/migrations/20260820173700_travel_offers_public_indexes.sql`; `docs/TOMORROW_LIVE_MASTER_PLAN.md`.
+- **SQL/migrations:** migration `20260820173700_travel_offers_public_indexes.sql` criada com cinco índices parciais e `IF NOT EXISTS`; não executada no banco. Foram executadas somente consultas `SELECT` de esquema, índices, formatos JSON, contagens, paginação, datas sem estoque e disponibilidade.
+- **Commits:** implementação `5c047293c3f16e06d06661fcecc59b97f7801c3c`; o commit documental imediatamente posterior é o HEAD da branch e deve ser conferido no chat de entrega.
+- **Testes realizados:** 20 testes de contrato/normalização; TypeScript 5.8.3 em modo estrito; inspeção dos cinco subtipos no banco; destino inexistente; data sem estoque; paginação sem sobreposição; limite de passageiros acima das vagas; pacotes sem vagas e sem aéreo; varredura de `raw_data`, `source_url` e tokens no DTO.
+- **Resultado dos testes:** 20/20 aprovados e typecheck aprovado. O banco mantém 10.254 ofertas ativas; após exigir prazo de emissão vigente, 10.187 estavam válidas no horário da conferência (9.142 bloqueios e 1.045 pacotes). Destino inexistente retornou zero; 23/08/2026 não tinha estoque; páginas de teste não se sobrepuseram; consulta acima de 86 vagas no caso GIG→POA retornou zero; os 1.045 pacotes ativos válidos estavam sem `available_seats`.
+- **Implantações e SHA:** nenhuma. Não foi enviado prompt ao agente do Lovable e nenhum SHA foi marcado como implantado.
+- **Decisões tomadas:** `verify_jwt = false` é necessário para o catálogo público e foi compensado por CORS restrito, métodos explícitos, validação fechada, limites, cache e controle básico por IP. O calendário aceita no máximo 120 dias. IATAs inválidos viram `null`. Imagens relativas ou URLs com credenciais não são publicadas.
+- **Riscos ou erros:** o rate limit em memória não é distribuído; 209 pacotes internacionais ativos tinham IATA inválido na conferência; os índices ainda não foram aplicados; a execução nativa do Deno não concluiu porque o ambiente de teste travou no download do pacote npm e encerrou com panic, embora a suíte equivalente e o typecheck tenham passado.
+- **Pendências:** sincronizar o repositório no Lovable Cloud; aplicar a migration; implantar a função; testar as quatro operações no endpoint real; validar dados contra o banco, logs, performance, advisors e SHA efetivamente implantado.
+- **Próxima ação exata:** enviar ao Lovable o prompt manual preparado no chat, depois conferir que o commit da implantação contém `5c047293c3f16e06d06661fcecc59b97f7801c3c`, executar a migration e repetir os 18 cenários obrigatórios na função remota antes de iniciar a Etapa 2.
+
