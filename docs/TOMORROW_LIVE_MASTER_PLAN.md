@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 20/08/2026 |
-| Estado geral | Etapas 1 e 2 concluídas; camada de dados operacional e design system pronto para integração |
-| Etapa atual | Etapa 2 — concluída no código e validada |
-| Último HEAD verificado | `9b9b8b603242fadae7a2aa204d43db58e03ab0d3` |
-| Próxima ação exata | Aguardar autorização expressa para a Etapa 3; quando recebida, reler este plano, conferir o HEAD e criar o catálogo usando exclusivamente `travel-offers-public` e os componentes de `src/components/opportunities` |
+| Estado geral | Etapas 1 e 2 concluídas; Etapa 3 concluída no código e validada localmente |
+| Etapa atual | Etapa 3 — catálogo pronto no GitHub; sincronização e validação publicada pendentes |
+| Último HEAD verificado | `3c0292cec4af7037f43e09fe5785bea760ab748f` |
+| Próxima ação exata | Sincronizar o SHA da Etapa 3 no Lovable, validar `/oportunidades/catalogo` no domínio publicado com dados reais e em viewport móvel e, somente depois, encerrar a implantação sem iniciar a Etapa 4 |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -246,7 +246,7 @@ A rota atual `/ofertas` será preservada durante a construção. Redirecionament
 
 ### Etapa 3 — Catálogo de oportunidades
 
-**Estado:** não iniciada
+**Estado:** concluída no código e validada localmente em 20/08/2026; sincronização e validação publicada pendentes
 
 **Objetivo:** disponibilizar a navegação convencional pelo inventário.
 
@@ -601,6 +601,24 @@ O design system foi criado de forma isolada em `src/components/opportunities`, s
 
 Os principais pares de cor alcançaram contraste entre 8,62:1 e 17,61:1; texto secundário sobre superfície alcançou 9,03:1. Todos superam WCAG AA para texto normal.
 
+### 8.10 Catálogo implementado na Etapa 3
+
+O catálogo público foi criado em `/oportunidades/catalogo` e a entrada `/oportunidades` redireciona para essa rota. A página nasce com carregamento sob demanda e não amplia diretamente o bundle inicial.
+
+- toda leitura passa exclusivamente pelas operações `facets` e `catalog` da Edge Function `travel-offers-public` por `supabase.functions.invoke`;
+- não existe consulta frontend direta a `travel_offers`, `promotional_offers` ou `search_travel_offers`;
+- facetas reais alimentam origens, destinos, categorias e contagens das cinco coleções editoriais;
+- busca, período, passageiros, preço, tipo, subtipo, categoria, vagas, ordenação e paginação seguem os nomes e limites do contrato implantado;
+- a paginação é executada no banco, com 18 itens por página e cache curto via TanStack Query;
+- bloqueios, pacotes, eventos e grupos guiados recebem tratamento visual distinto; pacotes sem vagas omitem a quantidade e pacotes sem aéreo informam claramente a ausência;
+- valores são rotulados por pessoa, taxas permanecem separadas e a moeda recebida no DTO é respeitada;
+- favoritos usam `localStorage`, limitados a 100 identificadores e sem exigir login;
+- os CTAs levam ao Téo com o `offer_id` na URL, sem alterar o prompt ou o fluxo atual do assistente;
+- estados de carregamento, vazio, erro, atualização e paginação possuem semântica acessível e controles adequados para toque e teclado;
+- o chat flutuante legado fica oculto apenas sob `/oportunidades` para não competir com a nova navegação.
+
+A página não implementa detalhe, comparação, calendário, Tomorrow Live, handoff para WhatsApp ou qualquer alteração no Téo; esses itens continuam reservados às etapas posteriores.
+
 ## 9. Decisões registradas
 
 | ID | Data | Decisão | Estado |
@@ -624,6 +642,9 @@ Os principais pares de cor alcançaram contraste entre 8,62:1 e 17,61:1; texto s
 | D-017 | 20/08/2026 | Preservar como migration canônica dos índices a versão `20260820181818` registrada no ledger do banco e remover do repositório somente o arquivo SQL redundante `20260820173700` | executada; índices preservados |
 | D-018 | 20/08/2026 | Isolar o novo design system sob `src/components/opportunities` e tokens escopados, sem modificar componentes ou páginas legadas | implementada |
 | D-019 | 20/08/2026 | Manter regras comerciais fora dos componentes visuais; badges de urgência serão informados pelo consumidor e campos nulos não serão inventados | implementada |
+| D-020 | 20/08/2026 | Consumir o inventário do catálogo exclusivamente por `travel-offers-public`, usando `facets` e `catalog`; nunca consultar tabela ou RPC legada no navegador | implementada |
+| D-021 | 20/08/2026 | Iniciar favoritos de forma local e anônima, limitados a 100 IDs; sincronização autenticada permanece decisão futura | implementada |
+| D-022 | 20/08/2026 | Paginar no banco com 18 itens por página e aplicar filtros somente após validação e ação explícita do usuário | implementada |
 
 ## 10. Riscos conhecidos
 
@@ -649,6 +670,8 @@ Os principais pares de cor alcançaram contraste entre 8,62:1 e 17,61:1; texto s
 | Controle de requisições em memória variar entre instâncias Edge | tratar como proteção básica; adotar rate limit distribuído se o volume público exigir |
 | Valores inválidos no campo `origin_iata` de pacotes internacionais | validar três letras e devolver `null`; corrigir a origem na sincronização em etapa futura |
 | Divergência futura entre migrations locais e ledger do banco | manter `20260820181818_f1b140d2-9b9c-4d14-8415-09603f243cc5.sql` como arquivo canônico; não alterar o ledger manualmente |
+| Preview do Lovable ser bloqueado pela allowlist CORS da função | validar o catálogo no domínio publicado permitido; não ampliar CORS apenas para facilitar preview temporário |
+| Favoritos locais serem perdidos ao limpar dados do navegador ou trocar de aparelho | comunicar natureza local; avaliar sincronização autenticada em etapa futura, sem bloquear o catálogo público |
 
 ## 11. Modelo de checkpoint
 
@@ -766,3 +789,19 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Riscos ou erros:** o typecheck global continua bloqueado por erro anterior em `src/components/admin/QuoteEditForm.tsx`; o lint global já possui 607 ocorrências fora do novo diretório, inclusive arquivos gerados; o build mantém avisos anteriores de `@import`, classe ambígua, PDF.js e chunks grandes. Nenhum desses arquivos foi alterado. Os três lockfiles continuam divergentes, e `npm ci` não pode ser usado até a reconciliação futura.
 - **Pendências:** nenhuma pendência de código da Etapa 2. A validação visual em páginas reais ocorrerá ao integrar o catálogo na Etapa 3.
 - **Próxima ação exata:** aguardar autorização expressa para a Etapa 3; no início, reler o plano, conferir o HEAD e montar `/oportunidades/catalogo` com carregamento sob demanda, sem tocar no Téo, WhatsApp ou calendário.
+
+### Checkpoint 2026-08-20 — Etapa 3 concluída no código
+
+- **Etapa:** 3 — Catálogo de oportunidades
+- **Estado:** concluída no código e validada localmente; sincronização e validação publicada pendentes
+- **Objetivo executado:** disponibilizar navegação pública, filtrável e paginada pelo inventário real, mantendo a Edge Function como única barreira de consulta.
+- **Arquivos alterados:** `src/App.tsx`; `src/components/opportunities/OpportunityCard.tsx`; `OpportunityFilters.tsx`; `OpportunityPagination.tsx`; `catalogFilterState.ts`; `index.ts`; `src/hooks/useOpportunityFavorites.ts`; `src/lib/travelOffersPublic.ts`; `travelOffersPublic.test.ts`; `src/pages/OpportunitiesCatalog.tsx`; `opportunitiesCatalog.test.tsx`; `docs/TOMORROW_LIVE_MASTER_PLAN.md`.
+- **SQL/migrations:** nenhuma operação SQL, nenhuma migration e nenhuma alteração de banco, RLS ou Edge Function.
+- **Commits:** implementação `3c0292cec4af7037f43e09fe5785bea760ab748f`; o SHA deste checkpoint documental será informado no chat após o commit.
+- **Testes realizados:** 15 testes Vitest na suíte completa; lint restrito aos arquivos da Etapa 3; build Vite de produção; typecheck global; busca estática por nomes de tabelas, RPC, campos internos e Service Role; `git diff --check`; comparação do commit com o HEAD anterior.
+- **Resultado dos testes:** 15/15 aprovados; lint do escopo sem erros ou avisos; build concluído com chunk lazy próprio de 43,42 kB (13,61 kB gzip); nenhum acesso direto ou campo interno encontrado; diff sem erro de whitespace; commit contém somente os 11 arquivos de código previstos. O typecheck global mantém exclusivamente o erro anterior em `src/components/admin/QuoteEditForm.tsx`, fora do escopo e sem alteração.
+- **Implantações e SHA:** nenhuma implantação marcada neste checkpoint. O código está no GitHub e ainda precisa ter o SHA final reconhecido pelo Lovable antes da validação publicada.
+- **Decisões tomadas:** filtros aplicados por ação explícita; paginação de 18 itens no banco; favoritos locais; CTA para `/teo` com `offer_id`; moeda do DTO respeitada; `/oportunidades` redireciona ao catálogo; nenhuma rota de detalhe foi criada.
+- **Riscos ou erros:** o domínio temporário de preview do Lovable não pertence à allowlist CORS intencionalmente restrita; a validação funcional deve ocorrer no domínio publicado. Permanecem os avisos anteriores do build e o erro global de `QuoteEditForm.tsx`.
+- **Pendências:** confirmar sincronização do SHA final no Lovable; validar carregamento real de `facets` e `catalog`, filtros, paginação, favoritos e layout móvel no domínio publicado; registrar o SHA efetivamente publicado.
+- **Próxima ação exata:** aguardar o Lovable reconhecer o commit documental, validar `/oportunidades/catalogo` no domínio publicado e atualizar este checkpoint com o SHA implantado, sem iniciar detalhe, comparação, calendário ou Tomorrow Live.
