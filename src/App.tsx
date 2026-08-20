@@ -28,6 +28,7 @@ import { AnalyticsProvider } from "./components/AnalyticsProvider";
 import { useLenis } from "./hooks/useLenis";
 
 const OpportunitiesCatalog = lazy(() => import("./pages/OpportunitiesCatalog"));
+const OpportunitiesCalendar = lazy(() => import("./pages/OpportunitiesCalendar"));
 const OpportunityDetail = lazy(() => import("./pages/OpportunityDetail"));
 const OpportunityCompare = lazy(() => import("./pages/OpportunityCompare"));
 
@@ -83,6 +84,14 @@ const App = () => (
             element={(
               <Suspense fallback={<div className="min-h-screen bg-[#041012]" aria-label="Carregando catálogo" />}>
                 <OpportunitiesCatalog />
+              </Suspense>
+            )}
+          />
+          <Route
+            path="/oportunidades/calendario"
+            element={(
+              <Suspense fallback={<div className="min-h-screen bg-[#041012]" aria-label="Carregando calendário" />}>
+                <OpportunitiesCalendar />
               </Suspense>
             )}
           />

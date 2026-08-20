@@ -19,6 +19,22 @@ export interface OpportunityHeaderProps {
   className?: string;
 }
 
+const calendarNavItem: OpportunityNavItem = {
+  label: "Calendário",
+  href: "/oportunidades/calendario",
+};
+
+function withCalendarNavigation(navItems: OpportunityNavItem[]) {
+  if (navItems.some((item) => item.href === calendarNavItem.href)) return navItems;
+  const compareIndex = navItems.findIndex((item) => item.href === "/oportunidades/comparar");
+  if (compareIndex === -1) return [...navItems, calendarNavItem];
+  return [
+    ...navItems.slice(0, compareIndex),
+    calendarNavItem,
+    ...navItems.slice(compareIndex),
+  ];
+}
+
 export function OpportunityHeader({
   activeHref,
   navItems,
@@ -29,6 +45,7 @@ export function OpportunityHeader({
 }: OpportunityHeaderProps) {
   const [open, setOpen] = useState(false);
   const mobileMenuId = useId();
+  const navigationItems = withCalendarNavigation(navItems);
 
   useEffect(() => {
     if (!open) return;
@@ -58,7 +75,7 @@ export function OpportunityHeader({
         </a>
 
         <nav aria-label="Navegação de oportunidades" className="hidden items-center gap-1 lg:flex">
-          {navItems.map((item) => {
+          {navigationItems.map((item) => {
             const active = item.href === activeHref;
             return (
               <a
@@ -99,7 +116,7 @@ export function OpportunityHeader({
       {open ? (
         <nav id={mobileMenuId} aria-label="Navegação móvel de oportunidades" className="border-t border-tomorrow-line px-4 pb-5 pt-3 lg:hidden">
           <div className="mx-auto grid w-full max-w-[90rem] gap-2">
-            {navItems.map((item) => {
+            {navigationItems.map((item) => {
               const active = item.href === activeHref;
               return (
                 <a
