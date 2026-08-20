@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 20/08/2026 |
-| Estado geral | Etapa 1 implementada e validada no código; implantação pendente |
-| Etapa atual | Etapa 1 — concluída no GitHub, ainda não implantada |
-| Último HEAD verificado | `5c047293c3f16e06d06661fcecc59b97f7801c3c` |
-| Próxima ação exata | Sincronizar o commit `5c047293c3f16e06d06661fcecc59b97f7801c3c` no Lovable Cloud, aplicar a migration, implantar `travel-offers-public` e validar o SHA e os 18 cenários contra a função remota |
+| Estado geral | Etapa 1 implantada, validada e operacional |
+| Etapa atual | Etapa 1 — concluída; aguardando autorização expressa para a Etapa 2 |
+| Último HEAD verificado | `6cbc214e80bbf595489457589ff86f9a3c9ccef3` |
+| Próxima ação exata | Aguardar autorização expressa para a Etapa 2; quando recebida, reler este plano, conferir o HEAD e reconciliar o histórico redundante das duas migrations de índices sem alterar os cinco índices ativos |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -193,7 +193,7 @@ A rota atual `/ofertas` será preservada durante a construção. Redirecionament
 
 ### Etapa 1 — Contrato de dados e camada segura de consulta
 
-**Estado:** concluída no código em 20/08/2026; implantação e validação remota pendentes
+**Estado:** concluída, implantada e validada em 20/08/2026
 
 **Objetivo:** preparar uma fonte consistente e segura para catálogo, calendário e Téo Live.
 
@@ -538,7 +538,7 @@ Qualidade observada:
 - `travel_offers` tem RLS ativa e não possui política pública de leitura direta.
 - A função SQL `search_travel_offers` atual é `SECURITY DEFINER`, pode ser executada por `PUBLIC`/`anon` e retorna a linha completa de `travel_offers`, incluindo `raw_data` e `source_url`.
 - Essa função ignora hoje `p_min_date`, `p_max_date` e `p_total_passengers`; portanto não serve para calendário, disponibilidade nem janela de datas.
-- A tabela possui somente chave primária e unicidade por fonte. Faltam índices voltados a status, datas, tipo, origem, destino e preço.
+- A tabela agora possui os cinco índices parciais da Etapa 1 para ofertas ativas, datas, tipo/subtipo, rotas, cidades e preço; todos foram verificados como ativos no banco em 20/08/2026.
 - Diversas Edge Functions estão com `verify_jwt = false`. Isso é aceitável apenas quando cada função implementa proteção própria e contrato público mínimo; deverá ser auditado por função.
 - `cotar-viagem` já contém normalização útil para bloqueios e pacotes, mas sua resposta e regras são específicas do WhatsApp.
 - `travel-offers-sync` é a fonte de sincronização e deve permanecer isolada do navegador.
@@ -604,7 +604,7 @@ A função foi registrada com `verify_jwt = false` porque catálogo e calendári
 | D-012 | 20/08/2026 | Manter `cotar-viagem`, `travel-offers-sync` e o fluxo do WhatsApp isolados nesta etapa | aprovada |
 | D-013 | 20/08/2026 | Pacotes sem aéreo ou sem vagas explícitas devem ser apresentados sem inventar esses dados | aprovada |
 | D-014 | 20/08/2026 | Novas páginas usarão carregamento sob demanda para não ampliar o bundle inicial | aprovada |
-| D-015 | 20/08/2026 | Publicar a consulta por Edge Function com `verify_jwt = false` e proteções compensatórias explícitas | implementada; implantação pendente |
+| D-015 | 20/08/2026 | Publicar a consulta por Edge Function com `verify_jwt = false` e proteções compensatórias explícitas | implantada e validada |
 | D-016 | 20/08/2026 | Considerar válida somente oferta ativa, futura, com preço positivo e prazo de emissão vigente | implementada |
 
 ## 10. Riscos conhecidos
@@ -621,15 +621,16 @@ A função foi registrada com `verify_jwt = false` porque catálogo e calendári
 | Mudanças do Lovable sobrescreverem trabalho | verificar HEAD antes de cada etapa |
 | Construção interrompida perder contexto | checkpoint obrigatório neste documento |
 | RPC pública devolver campos internos e ignorar filtros | não utilizá-la no frontend; criar API dedicada com DTO restrito |
-| Consultas lentas em calendário/catálogo | índices específicos, paginação e limites na Etapa 1 |
+| Consultas lentas em calendário/catálogo | cinco índices específicos aplicados; paginação e limites implantados; acompanhar métricas em produção |
 | Estruturas diferentes de JSON entre tipos de pacote | normalizadores separados e testes por subtipo |
 | Pacote internacional sem origem aérea ou data de volta | campos opcionais explícitos e UI sem informação inventada |
-| Funções públicas sem proteção suficiente | auditar autenticação, CORS, limites e abuso antes da publicação |
+| Funções públicas sem proteção suficiente | `travel-offers-public` validada com CORS restrito, métodos explícitos, DTO fechado e limites; manter monitoramento de abuso |
 | Bundle inicial crescer com novas páginas | rotas lazy, divisão de código e orçamento de performance |
 | Múltiplos lockfiles gerarem builds diferentes | definir gerenciador oficial antes de alterar dependências |
 | Arquivo `.env` versionado conter segredo | auditoria segura e rotação imediata caso algum segredo seja confirmado |
 | Controle de requisições em memória variar entre instâncias Edge | tratar como proteção básica; adotar rate limit distribuído se o volume público exigir |
 | Valores inválidos no campo `origin_iata` de pacotes internacionais | validar três letras e devolver `null`; corrigir a origem na sincronização em etapa futura |
+| Duas migrations de repositório contêm o mesmo SQL dos cinco índices | preservar o registro aplicado `20260820181818`; reconciliar o arquivo original antes da próxima etapa sem remover índices nem alterar o ledger do banco |
 
 ## 11. Modelo de checkpoint
 
@@ -699,3 +700,19 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Pendências:** sincronizar o repositório no Lovable Cloud; aplicar a migration; implantar a função; testar as quatro operações no endpoint real; validar dados contra o banco, logs, performance, advisors e SHA efetivamente implantado.
 - **Próxima ação exata:** enviar ao Lovable o prompt manual preparado no chat, depois conferir que o commit da implantação contém `5c047293c3f16e06d06661fcecc59b97f7801c3c`, executar a migration e repetir os 18 cenários obrigatórios na função remota antes de iniciar a Etapa 2.
 
+### Checkpoint 2026-08-20 18:19 UTC — Etapa 1 implantada e validada
+
+- **Etapa:** 1 — Contrato de dados e camada segura de consulta
+- **Estado:** implantada, validada e operacional
+- **Objetivo executado:** confirmar em produção a barreira pública somente de leitura de `travel_offers`, os quatro contratos, os limites, o DTO fechado e os índices de consulta.
+- **Arquivos da Etapa 1:** `supabase/functions/travel-offers-public/index.ts`; `supabase/functions/travel-offers-public/index_test.ts`; `supabase/config.toml`; `supabase/migrations/20260820173700_travel_offers_public_indexes.sql`; `docs/TOMORROW_LIVE_MASTER_PLAN.md`. Durante a implantação, o Lovable acrescentou `supabase/migrations/20260820181818_f1b140d2-9b9c-4d14-8415-09603f243cc5.sql`.
+- **SQL/migrations:** os cinco índices `idx_travel_offers_public_active_departure`, `idx_travel_offers_public_type_subtype_date`, `idx_travel_offers_public_route_calendar`, `idx_travel_offers_public_city_route_date` e `idx_travel_offers_public_price_date` foram aplicados e conferidos em `pg_indexes`. O ledger `supabase_migrations.schema_migrations` registra `20260820181818_f1b140d2-9b9c-4d14-8415-09603f243cc5`; seu SQL é igual ao arquivo original `20260820173700_travel_offers_public_indexes.sql`, exceto pela quebra de linha final. Não houve alteração de dados, RLS ou concessão pública à tabela.
+- **Commits/SHA:** implementação `5c047293c3f16e06d06661fcecc59b97f7801c3c`; baseline sincronizada e validada antes da implantação `c2a01d26f04c1e4c872a39209940947450290af0`; merge pós-implantação criado pelo Lovable `6cbc214e80bbf595489457589ff86f9a3c9ccef3`, atualmente reconhecido pelo projeto e contendo somente a migration equivalente.
+- **Testes realizados:** 18 cenários remotos: bloqueio aéreo; pacote nacional; pacote internacional sem origem aérea; evento com ingresso; grupo guiado; destino sem resultado; data sem disponibilidade; paginação; limite máximo; ação inválida; UUID inválido; tentativa de solicitar campo interno; ausência de `raw_data`; ausência de `source_url`; ausência de tokens/links internos; calendário com passageiros acima das vagas; pacote sem vagas; pacote sem aéreo.
+- **Resultado dos testes:** 18/18 aprovados com validação dos dados contra o banco. Foram confirmados: 10.254 ofertas ativas tanto na consulta direta quanto em `facets`; GOL e 5 vagas no bloqueio testado; pacote nacional com aéreo; internacional com `origin_iata: null` e sem aéreo; evento com ingresso; grupo guiado com normalização própria; paginação sem IDs repetidos; respostas sem campos internos; indisponibilidade corretamente aplicada a passageiros; vagas desconhecidas como `null`; pacote sem aéreo com preço aéreo `null`. Limites, ação e UUID inválidos retornaram HTTP 400.
+- **Implantações e SHA:** Edge Function `travel-offers-public` implantada em 20/08/2026 às 18:19 UTC, versão `5c047293`, com `verify_jwt = false`. O projeto Lovable foi verificado em estado `ready` no SHA `6cbc214e80bbf595489457589ff86f9a3c9ccef3`.
+- **Segurança e operação:** origens não autorizadas foram rejeitadas; somente `POST` e `OPTIONS` foram aceitos; logs permaneceram limpos e sem segredos; nenhuma resposta expôs `raw_data`, `source_url`, credencial ou link interno.
+- **Decisões tomadas:** considerar a Etapa 1 funcionalmente concluída; não iniciar interface, catálogo visual, calendário visual nem Etapa 2 sem autorização expressa.
+- **Riscos ou erros:** o rate limit em memória continua sendo proteção básica e não distribuída. O repositório contém duas migrations com o mesmo SQL, enquanto o ledger do banco registra apenas a versão `20260820181818`; como todas usam `IF NOT EXISTS`, não há índice físico duplicado, mas o histórico deve ser reconciliado antes da próxima etapa.
+- **Pendências:** nenhuma pendência funcional ou de implantação da Etapa 1. Resta somente reconciliar o histórico redundante das migrations em uma intervenção futura autorizada.
+- **Próxima ação exata:** aguardar autorização expressa para iniciar a Etapa 2; no início dessa intervenção, reler integralmente este documento, conferir o HEAD e decidir qual arquivo de migration preservar com base no ledger `20260820181818`, sem alterar os cinco índices ativos.
