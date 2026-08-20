@@ -1,6 +1,8 @@
 name: Stage 5 Validation
 
 on:
+  push:
+    branches: [stage-5-smart-calendar]
   pull_request:
     branches: [main]
     paths:
