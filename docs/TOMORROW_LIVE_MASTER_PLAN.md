@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 20/08/2026 |
-| Estado geral | Etapa 1 implantada, validada e operacional |
-| Etapa atual | Etapa 1 — concluída; aguardando autorização expressa para a Etapa 2 |
-| Último HEAD verificado | `6cbc214e80bbf595489457589ff86f9a3c9ccef3` |
-| Próxima ação exata | Aguardar autorização expressa para a Etapa 2; quando recebida, reler este plano, conferir o HEAD e reconciliar o histórico redundante das duas migrations de índices sem alterar os cinco índices ativos |
+| Estado geral | Etapa 1 operacional; Etapa 2 iniciada |
+| Etapa atual | Etapa 2 — design system da plataforma |
+| Último HEAD verificado | `379f559ba8615ba8ef77c89965af4a635ca99c9f` |
+| Próxima ação exata | Implementar tokens e componentes isolados do design system Tomorrow Live, sem criar páginas ou rotas, e validar build, testes, contraste, teclado e movimento reduzido |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -220,7 +220,7 @@ A rota atual `/ofertas` será preservada durante a construção. Redirecionament
 
 ### Etapa 2 — Design system da plataforma
 
-**Estado:** não iniciada
+**Estado:** iniciada em 20/08/2026
 
 **Objetivo:** transformar a identidade aprovada em componentes reutilizáveis.
 
@@ -606,6 +606,7 @@ A função foi registrada com `verify_jwt = false` porque catálogo e calendári
 | D-014 | 20/08/2026 | Novas páginas usarão carregamento sob demanda para não ampliar o bundle inicial | aprovada |
 | D-015 | 20/08/2026 | Publicar a consulta por Edge Function com `verify_jwt = false` e proteções compensatórias explícitas | implantada e validada |
 | D-016 | 20/08/2026 | Considerar válida somente oferta ativa, futura, com preço positivo e prazo de emissão vigente | implementada |
+| D-017 | 20/08/2026 | Preservar como migration canônica dos índices a versão `20260820181818` registrada no ledger do banco e remover do repositório somente o arquivo SQL redundante `20260820173700` | executada; índices preservados |
 
 ## 10. Riscos conhecidos
 
@@ -630,7 +631,7 @@ A função foi registrada com `verify_jwt = false` porque catálogo e calendári
 | Arquivo `.env` versionado conter segredo | auditoria segura e rotação imediata caso algum segredo seja confirmado |
 | Controle de requisições em memória variar entre instâncias Edge | tratar como proteção básica; adotar rate limit distribuído se o volume público exigir |
 | Valores inválidos no campo `origin_iata` de pacotes internacionais | validar três letras e devolver `null`; corrigir a origem na sincronização em etapa futura |
-| Duas migrations de repositório contêm o mesmo SQL dos cinco índices | preservar o registro aplicado `20260820181818`; reconciliar o arquivo original antes da próxima etapa sem remover índices nem alterar o ledger do banco |
+| Divergência futura entre migrations locais e ledger do banco | manter `20260820181818_f1b140d2-9b9c-4d14-8415-09603f243cc5.sql` como arquivo canônico; não alterar o ledger manualmente |
 
 ## 11. Modelo de checkpoint
 
@@ -716,3 +717,19 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Riscos ou erros:** o rate limit em memória continua sendo proteção básica e não distribuída. O repositório contém duas migrations com o mesmo SQL, enquanto o ledger do banco registra apenas a versão `20260820181818`; como todas usam `IF NOT EXISTS`, não há índice físico duplicado, mas o histórico deve ser reconciliado antes da próxima etapa.
 - **Pendências:** nenhuma pendência funcional ou de implantação da Etapa 1. Resta somente reconciliar o histórico redundante das migrations em uma intervenção futura autorizada.
 - **Próxima ação exata:** aguardar autorização expressa para iniciar a Etapa 2; no início dessa intervenção, reler integralmente este documento, conferir o HEAD e decidir qual arquivo de migration preservar com base no ledger `20260820181818`, sem alterar os cinco índices ativos.
+
+### Checkpoint 2026-08-20 — Etapa 2 iniciada
+
+- **Etapa:** 2 — Design system da plataforma
+- **Estado:** iniciada
+- **Objetivo executado:** validar a continuidade, confirmar o HEAD e abrir formalmente a construção dos componentes visuais reutilizáveis.
+- **Arquivos alterados:** `docs/TOMORROW_LIVE_MASTER_PLAN.md`; remoção de `supabase/migrations/20260820173700_travel_offers_public_indexes.sql` para reconciliar o histórico.
+- **SQL/migrations:** nenhuma operação SQL executada. O ledger foi consultado e registra somente `20260820181818_f1b140d2-9b9c-4d14-8415-09603f243cc5`; os cinco índices permanecem ativos.
+- **Commits:** HEAD inicial `379f559ba8615ba8ef77c89965af4a635ca99c9f`; SHA desta reconciliação será informado no checkpoint seguinte.
+- **Testes realizados:** comparação da `main` com o último checkpoint; verificação do SHA reconhecido pelo Lovable; conferência do ledger e dos cinco índices em `pg_indexes`.
+- **Resultado dos testes:** nenhuma alteração externa; Lovable em estado `ready`; migration canônica e cinco índices confirmados.
+- **Implantações e SHA:** nenhuma implantação nesta abertura de etapa.
+- **Decisões tomadas:** preservar o arquivo correspondente ao ledger e remover apenas a cópia redundante, recuperável pelo Git; criar o design system em diretório isolado, sem alterar páginas, rotas ou fluxos existentes.
+- **Riscos ou erros:** os três lockfiles permanecem divergentes; nenhuma dependência nova será adicionada nesta etapa.
+- **Pendências:** implementar tokens, cabeçalho/navegação, botões, campos, cards, badges, estados e testes responsivos/acessíveis.
+- **Próxima ação exata:** criar os componentes isolados em `src/components/opportunities`, estender tokens sem modificar o tema das páginas atuais e executar build, lint e testes.
