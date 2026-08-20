@@ -2063,7 +2063,7 @@ function sanitizeQuotationLocation(value: unknown): string {
     .replace(/\s+/g, " ")
     .trim();
 
-  const explicitDestination = cleaned.match(/(?:pedido\s+(?:é|e)\s*:?\s*|ent[aã]o\s+(?:é|e)\s+)([^,]+)$/i);
+  const explicitDestination = cleaned.match(/(?:pedido\s+(?:é|e)\s*:?\s*|ent[aã]o\s+(?:é|e)\s+|ent[aã]o\s*,\s*[^,]+\s*,\s*para\s+)([^,]+)$/i);
   if (explicitDestination?.[1]) {
     cleaned = explicitDestination[1].trim();
   }
@@ -9188,7 +9188,7 @@ Regras OBRIGATÓRIAS:
       // Check for deduplication of the exact same trip (24h limit)
       let isExactDuplicate = false;
       let duplicateQuotationMessage: string | null = null;
-      if (effectiveQuotationData) {
+      if (effectiveQuotationData && isQuotationConfirmation) {
         const { data: recentSameQuote } = await supabase
           .from("travel_quote_requests")
           .select("id, processing_details")
@@ -9220,7 +9220,7 @@ Regras OBRIGATÓRIAS:
                               /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_ida) &&
                               /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_volta);
 
-      if (effectiveQuotationData && !isExactDuplicate) {
+      if (effectiveQuotationData && isQuotationConfirmation && !isExactDuplicate) {
         if (!hasMandatoryData) {
           console.log("[VALIDATION] Quotation ignored - missing or invalid mandatory data:", {
             effectiveData: effectiveQuotationData
