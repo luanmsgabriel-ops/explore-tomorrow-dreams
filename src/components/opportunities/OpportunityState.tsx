@@ -9,6 +9,7 @@ export interface OpportunityStateProps {
   description?: string;
   actionLabel?: string;
   onAction?: () => void;
+  actionHref?: string;
   className?: string;
 }
 
@@ -33,6 +34,7 @@ export function OpportunityState({
   description = copy[state].description,
   actionLabel,
   onAction,
+  actionHref,
   className,
 }: OpportunityStateProps) {
   if (state === "loading") {
@@ -74,11 +76,17 @@ export function OpportunityState({
         <h2 className="font-editorial text-3xl text-tomorrow-text">{title}</h2>
         <p className="text-sm leading-relaxed text-tomorrow-muted">{description}</p>
       </div>
-      {actionLabel && onAction ? (
-        <OpportunityButton variant="outline" onClick={onAction}>
-          {isError ? <RotateCcw aria-hidden="true" /> : null}
-          {actionLabel}
-        </OpportunityButton>
+      {actionLabel && (onAction || actionHref) ? (
+        actionHref ? (
+          <OpportunityButton asChild variant="outline">
+            <a href={actionHref}>{actionLabel}</a>
+          </OpportunityButton>
+        ) : (
+          <OpportunityButton variant="outline" onClick={onAction}>
+            {isError ? <RotateCcw aria-hidden="true" /> : null}
+            {actionLabel}
+          </OpportunityButton>
+        )
       ) : null}
     </section>
   );

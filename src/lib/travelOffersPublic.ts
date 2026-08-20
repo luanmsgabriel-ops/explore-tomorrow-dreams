@@ -83,6 +83,110 @@ export interface TravelOffersCatalog {
   notice: string;
 }
 
+interface TravelOfferDetailBase {
+  id: string;
+  offer_type: PublicOfferType;
+  offer_subtype: PublicOfferSubtype;
+  origin: string | null;
+  origin_iata: string | null;
+  destination: string | null;
+  destination_iata: string | null;
+  departure_date: string | null;
+  return_date: string | null;
+  nights: number | null;
+  currency: string | null;
+  available_seats: number | null;
+  updated_at: string | null;
+  price_per_person: number;
+  tax_per_person: number | null;
+}
+
+export interface TravelOfferAirBlockDetail extends TravelOfferDetailBase {
+  kind: "air_block";
+  airline: string | null;
+  outbound_departure_time: string | null;
+  outbound_arrival_time: string | null;
+  return_departure_time: string | null;
+  return_arrival_time: string | null;
+  issue_deadline: string | null;
+}
+
+export interface TravelOfferHotelOption {
+  name: string;
+  meal_plan: string | null;
+  promotion: string | null;
+  installment: string | null;
+  price_per_person: number | null;
+  tax_per_person: number | null;
+}
+
+export interface TravelOfferTicketOption {
+  category: string;
+  price_per_person: number | null;
+  installment: string | null;
+}
+
+export interface TravelOfferPackageDetail extends TravelOfferDetailBase {
+  kind: "package";
+  name: string | null;
+  category: string | null;
+  hotel: string | null;
+  meal_plan: string | null;
+  inclusions: string[];
+  promotion: string | null;
+  installment: string | null;
+  other_accommodations: TravelOfferHotelOption[];
+  airfare_included: boolean;
+  airfare_price_per_person: number | null;
+  event_specific: boolean;
+  event_name: string | null;
+  ticket_included: boolean;
+  ticket_options: TravelOfferTicketOption[];
+  image_url: string | null;
+}
+
+export interface TravelOfferGuidedHotel {
+  city: string | null;
+  name: string;
+}
+
+export interface TravelOfferGuidedPriceOption {
+  label: string;
+  total: string | null;
+  installment: string | null;
+  featured: boolean;
+}
+
+export interface TravelOfferGuidedGroupDetail extends TravelOfferDetailBase {
+  kind: "guided_group";
+  name: string | null;
+  description: string | null;
+  category: string | null;
+  duration: string | null;
+  cities: string[];
+  hotels: TravelOfferGuidedHotel[];
+  inclusions: string[];
+  payment: string | null;
+  transport: string | null;
+  flight_notes: string[];
+  price_options: TravelOfferGuidedPriceOption[];
+  airfare_included: boolean;
+  airfare_price_per_person: null;
+  ticket_included: boolean;
+  image_url: string | null;
+}
+
+export type TravelOfferDetailItem =
+  | TravelOfferAirBlockDetail
+  | TravelOfferPackageDetail
+  | TravelOfferGuidedGroupDetail;
+
+export interface TravelOfferDetail {
+  item: TravelOfferDetailItem;
+  updated_at: string;
+  notice: string;
+}
+
 type FunctionErrorBody = {
   error?: { code?: string; message?: string };
   request_id?: string;
@@ -118,7 +222,7 @@ async function publicError(error: unknown) {
 }
 
 async function invokeTravelOffers<T>(
-  action: "facets" | "catalog",
+  action: "facets" | "catalog" | "detail",
   params: object,
   signal?: AbortSignal,
 ): Promise<T> {
@@ -141,3 +245,14 @@ export const fetchTravelOfferFacets = (signal?: AbortSignal) =>
 
 export const fetchTravelOfferCatalog = (params: CatalogParams, signal?: AbortSignal) =>
   invokeTravelOffers<TravelOffersCatalog>("catalog", params, signal);
+
+const PUBLIC_OFFER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export const isPublicOfferId = (value: string) => PUBLIC_OFFER_ID.test(value);
+
+export const fetchTravelOfferDetail = (id: string, signal?: AbortSignal) => {
+  if (!isPublicOfferId(id)) {
+    return Promise.reject(new TravelOffersPublicError("Identificador da oportunidade inválido.", "invalid_uuid"));
+  }
+  return invokeTravelOffers<TravelOfferDetail>("detail", { id }, signal);
+};

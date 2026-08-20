@@ -179,6 +179,23 @@ describe("Catálogo de oportunidades", () => {
     expect(window.localStorage.getItem("tomorrow-opportunity-favorites-v1")).toContain("b1652000");
   });
 
+  it("abre o detalhe pelo UUID e limita a seleção de comparação ao estado da página", async () => {
+    renderCatalog();
+    await screen.findByText("GOL");
+
+    expect(screen.getAllByRole("link", { name: /Ver detalhes:/ })[0]).toHaveAttribute(
+      "href",
+      "/oportunidades/oferta/b1652000-0000-4000-8000-000000000001",
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Adicionar à comparação" })[0]);
+    expect(screen.getByText("1 oportunidade selecionada")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Comparar agora" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("b1652000-0000-4000-8000-000000000001"),
+    );
+  });
+
   it("mantém limites e nomes exatos ao montar os parâmetros", () => {
     const invalid = validateCatalogFilters({
       ...DEFAULT_CATALOG_FILTERS,

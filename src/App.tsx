@@ -28,6 +28,8 @@ import { AnalyticsProvider } from "./components/AnalyticsProvider";
 import { useLenis } from "./hooks/useLenis";
 
 const OpportunitiesCatalog = lazy(() => import("./pages/OpportunitiesCatalog"));
+const OpportunityDetail = lazy(() => import("./pages/OpportunityDetail"));
+const OpportunityCompare = lazy(() => import("./pages/OpportunityCompare"));
 
 const queryClient = new QueryClient();
 
@@ -81,6 +83,22 @@ const App = () => (
             element={(
               <Suspense fallback={<div className="min-h-screen bg-[#041012]" aria-label="Carregando catálogo" />}>
                 <OpportunitiesCatalog />
+              </Suspense>
+            )}
+          />
+          <Route
+            path="/oportunidades/oferta/:id"
+            element={(
+              <Suspense fallback={<div className="min-h-screen bg-[#041012]" aria-label="Carregando oportunidade" />}>
+                <OpportunityDetail />
+              </Suspense>
+            )}
+          />
+          <Route
+            path="/oportunidades/comparar"
+            element={(
+              <Suspense fallback={<div className="min-h-screen bg-[#041012]" aria-label="Carregando comparação" />}>
+                <OpportunityCompare />
               </Suspense>
             )}
           />

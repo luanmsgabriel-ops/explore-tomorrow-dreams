@@ -6,7 +6,12 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: { functions: { invoke } },
 }));
 
-import { fetchTravelOfferCatalog, fetchTravelOfferFacets } from "./travelOffersPublic";
+import {
+  fetchTravelOfferCatalog,
+  fetchTravelOfferDetail,
+  fetchTravelOfferFacets,
+  isPublicOfferId,
+} from "./travelOffersPublic";
 
 describe("cliente público de ofertas", () => {
   beforeEach(() => invoke.mockReset());
@@ -50,5 +55,23 @@ describe("cliente público de ofertas", () => {
       signal: undefined,
       timeout: 15_000,
     });
+  });
+
+  it("consulta detail por UUID e rejeita identificador inválido antes da rede", async () => {
+    const id = "b1652000-0000-4000-8000-000000000001";
+    const response = { item: { id, kind: "air_block" }, notice: "Confirmação necessária" };
+    invoke.mockResolvedValue({ data: response, error: null });
+
+    expect(isPublicOfferId(id)).toBe(true);
+    await expect(fetchTravelOfferDetail(id)).resolves.toBe(response);
+    expect(invoke).toHaveBeenCalledWith("travel-offers-public", {
+      body: { action: "detail", params: { id } },
+      signal: undefined,
+      timeout: 15_000,
+    });
+
+    invoke.mockClear();
+    await expect(fetchTravelOfferDetail("raw_data")).rejects.toMatchObject({ code: "invalid_uuid" });
+    expect(invoke).not.toHaveBeenCalled();
   });
 });

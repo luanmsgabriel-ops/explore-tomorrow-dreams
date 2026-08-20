@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Heart, Radar, Sparkles } from "lucide-react";
+import { Heart, Radar, Scale, Sparkles, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
 import {
@@ -79,6 +79,7 @@ export default function OpportunitiesCatalog() {
   const [appliedFilters, setAppliedFilters] = useState<CatalogFilterValues>(DEFAULT_CATALOG_FILTERS);
   const [filterErrors, setFilterErrors] = useState<CatalogFilterErrors>({});
   const [page, setPage] = useState(1);
+  const [comparisonIds, setComparisonIds] = useState<string[]>([]);
   const resultsRef = useRef<HTMLElement>(null);
   const { favoriteCount, isFavorite, toggleFavorite } = useOpportunityFavorites();
 
@@ -131,6 +132,13 @@ export default function OpportunitiesCatalog() {
     resultsRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   };
 
+  const toggleComparison = (id: string) => {
+    setComparisonIds((current) => {
+      if (current.includes(id)) return current.filter((item) => item !== id);
+      return current.length < 3 ? [...current, id] : current;
+    });
+  };
+
   const total = catalogQuery.data?.total ?? 0;
   const notice = catalogQuery.data?.notice || facetsQuery.data?.notice || TRAVEL_OFFERS_NOTICE;
 
@@ -138,7 +146,10 @@ export default function OpportunitiesCatalog() {
     <div className="opportunities-theme min-h-screen bg-tomorrow-background text-tomorrow-text">
       <OpportunityHeader
         activeHref="/oportunidades/catalogo"
-        navItems={[{ label: "Catálogo", href: "/oportunidades/catalogo" }]}
+        navItems={[
+          { label: "Catálogo", href: "/oportunidades/catalogo" },
+          { label: "Comparar", href: "/oportunidades/comparar" },
+        ]}
         ctaHref="/teo"
       />
 
@@ -249,8 +260,10 @@ export default function OpportunitiesCatalog() {
                 <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                   {catalogQuery.data.items.map((item) => {
                     const favorite = isFavorite(item.id);
+                    const selectedForComparison = comparisonIds.includes(item.id);
+                    const comparisonLimitReached = comparisonIds.length >= 3 && !selectedForComparison;
                     return (
-                      <div key={item.id} className="relative">
+                      <div key={item.id} className="relative grid gap-3">
                         <OpportunityCard
                           id={item.id}
                           kind={item.kind === "air_block" ? "air_block" : "package"}
@@ -270,8 +283,8 @@ export default function OpportunitiesCatalog() {
                           imageUrl={item.image_url}
                           imageAlt={item.destination ? `Vista de ${item.destination}` : "Imagem pública da oportunidade"}
                           badges={badgesFor(item)}
-                          actionHref={`/teo?offer_id=${encodeURIComponent(item.id)}`}
-                          actionLabel="Conversar com o Téo"
+                          actionHref={`/oportunidades/oferta/${encodeURIComponent(item.id)}`}
+                          actionLabel="Ver detalhes"
                         />
                         <button
                           type="button"
@@ -282,10 +295,34 @@ export default function OpportunitiesCatalog() {
                         >
                           <Heart className="size-5" fill={favorite ? "currentColor" : "none"} aria-hidden="true" />
                         </button>
+                        <OpportunityButton
+                          variant={selectedForComparison ? "teal" : "ghost"}
+                          fullWidth
+                          disabled={comparisonLimitReached}
+                          aria-pressed={selectedForComparison}
+                          onClick={() => toggleComparison(item.id)}
+                        >
+                          {selectedForComparison ? <X aria-hidden="true" /> : <Scale aria-hidden="true" />}
+                          {selectedForComparison ? "Remover da comparação" : comparisonLimitReached ? "Limite de 3 opções" : "Adicionar à comparação"}
+                        </OpportunityButton>
                       </div>
                     );
                   })}
                 </div>
+                {comparisonIds.length ? (
+                  <aside className="opportunity-surface sticky bottom-4 z-20 mt-6 flex flex-col gap-4 rounded-tomorrow-lg border border-tomorrow-gold/45 bg-tomorrow-background/95 p-4 shadow-tomorrow-gold backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between" aria-live="polite">
+                    <div>
+                      <p className="font-semibold text-tomorrow-text">{comparisonIds.length} {comparisonIds.length === 1 ? "oportunidade selecionada" : "oportunidades selecionadas"}</p>
+                      <p className="mt-1 text-xs text-tomorrow-muted">Escolha até três opções para comparar dados reais lado a lado.</p>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <OpportunityButton variant="ghost" onClick={() => setComparisonIds([])}>Limpar</OpportunityButton>
+                      <OpportunityButton asChild>
+                        <a href={`/oportunidades/comparar?ids=${encodeURIComponent(comparisonIds.join(","))}`}><Scale aria-hidden="true" />Comparar agora</a>
+                      </OpportunityButton>
+                    </div>
+                  </aside>
+                ) : null}
                 <div className="mt-10">
                   <OpportunityPagination
                     page={catalogQuery.data.page}
