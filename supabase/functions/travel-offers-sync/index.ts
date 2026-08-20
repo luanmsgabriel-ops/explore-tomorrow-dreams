@@ -43,47 +43,74 @@ serve(async (req) => {
       throw new Error(`HTML muito curto (${html.length} bytes). Status: ${res.status}`);
     }
 
-    const findJSON = (marker: string) => {
-      const startIdx = html.indexOf(marker);
-      if (startIdx === -1) return null;
-      const dataStart = html.indexOf("{", startIdx);
-      const arrayStart = html.indexOf("[", startIdx);
-      
-      const realStart = (dataStart !== -1 && (arrayStart === -1 || dataStart < arrayStart)) ? dataStart : arrayStart;
+    const parseJSONAt = (searchFrom: number) => {
+      const objectStart = html.indexOf("{", searchFrom);
+      const arrayStart = html.indexOf("[", searchFrom);
+      const realStart = objectStart !== -1 && (arrayStart === -1 || objectStart < arrayStart)
+        ? objectStart
+        : arrayStart;
       if (realStart === -1) return null;
-      
-      const firstChar = html[realStart];
-      const lastChar = firstChar === "{" ? "}" : "]";
-      
-      let braceCount = 0;
-      let endIdx = -1;
+
+      const opening = html[realStart];
+      const closing = opening === "{" ? "}" : "]";
+      let depth = 0;
+      let inString = false;
+      let escaped = false;
+
       for (let i = realStart; i < html.length; i++) {
-        if (html[i] === firstChar) braceCount++;
-        else if (html[i] === lastChar) braceCount--;
-        
-        if (braceCount === 0) {
-          endIdx = i + 1;
-          break;
+        const char = html[i];
+        if (inString) {
+          if (escaped) escaped = false;
+          else if (char === "\\") escaped = true;
+          else if (char === '"') inString = false;
+          continue;
+        }
+
+        if (char === '"') {
+          inString = true;
+        } else if (char === opening) {
+          depth++;
+        } else if (char === closing) {
+          depth--;
+          if (depth === 0) {
+            try {
+              return JSON.parse(html.substring(realStart, i + 1));
+            } catch {
+              return null;
+            }
+          }
         }
       }
-      if (endIdx === -1) return null;
-      try {
-        return JSON.parse(html.substring(realStart, endIdx));
-      } catch {
-        return null;
-      }
+      return null;
+    };
+
+    const findJSON = (marker: string) => {
+      const markerIndex = html.indexOf(marker);
+      return markerIndex === -1 ? null : parseJSONAt(markerIndex + marker.length);
+    };
+
+    const findScriptJSON = (id: string) => {
+      const markerIndex = html.indexOf(`id="${id}"`);
+      if (markerIndex === -1) return null;
+      const tagEnd = html.indexOf(">", markerIndex);
+      return tagEnd === -1 ? null : parseJSONAt(tagEnd + 1);
     };
 
     const payload = findJSON("__PVOO_PAYLOAD =");
+    const fullPackages = findJSON("const PACOTES =");
     const snapshot = findJSON("PV_SNAPSHOT =");
+    const pageData = findScriptJSON("dados");
+    const groupDetails = findJSON("const GDET =");
+    const hasFullPackageCatalog = Array.isArray(fullPackages) && fullPackages.length > 0;
 
-    if (!payload || !snapshot) {
+    if (!payload || (!hasFullPackageCatalog && !Array.isArray(snapshot))) {
       return new Response(JSON.stringify({
         message: "Nenhum dado encontrado no HTML. Abortando.",
         status: "aborted",
         html_length: html.length,
         has_payload: !!payload,
-        has_snapshot: !!snapshot
+        has_full_packages: hasFullPackageCatalog,
+        has_snapshot: Array.isArray(snapshot)
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -126,6 +153,45 @@ serve(async (req) => {
     const convertTime = (hhmm: string) => {
       if (!hhmm || hhmm.length !== 4) return null;
       return `${hhmm.substring(0, 2)}:${hhmm.substring(2, 4)}`;
+    };
+
+    const parseBrDate = (value: any) => {
+      const match = String(value || "").match(/(\d{2})\/(\d{2})\/(\d{4})/);
+      return match ? `${match[3]}-${match[2]}-${match[1]}` : null;
+    };
+
+    const parseDateRange = (value: any) => {
+      const dates = String(value || "").match(/\d{2}\/\d{2}\/\d{4}/g) || [];
+      return {
+        departureDate: dates[0] ? parseBrDate(dates[0]) : null,
+        returnDate: dates[1] ? parseBrDate(dates[1]) : null
+      };
+    };
+
+    const parseBrCurrency = (value: any) => {
+      const match = String(value || "").match(/(?:R\$\s*)?([\d.]+(?:,\d{1,2})?)/);
+      if (!match) return 0;
+      return parseFloat(match[1].replace(/\./g, "").replace(",", ".")) || 0;
+    };
+
+    const parseFirstBrlAmount = (value: any) => {
+      const match = String(value || "").match(/R\$\s*([\d.]+(?:,\d{1,2})?)/);
+      return match ? parseBrCurrency(match[1]) : 0;
+    };
+
+    const addDays = (isoDate: string | null, days: number) => {
+      if (!isoDate || !Number.isFinite(days)) return null;
+      const date = new Date(`${isoDate}T00:00:00Z`);
+      date.setUTCDate(date.getUTCDate() + days);
+      return date.toISOString().slice(0, 10);
+    };
+
+    const getNights = (departureDate: string | null, returnDate: string | null) => {
+      if (!departureDate || !returnDate) return 0;
+      return Math.max(0, Math.round(
+        (new Date(`${returnDate}T00:00:00Z`).getTime() -
+          new Date(`${departureDate}T00:00:00Z`).getTime()) / 86400000
+      ));
     };
 
     // Helper for source_id generation (Crypto is available in Deno)
@@ -186,51 +252,81 @@ serve(async (req) => {
       });
     }
 
-    if (Array.isArray(snapshot)) {
-      const brToday = new Date(brDateStr + "T00:00:00");
-      for (const item of snapshot) {
-        let depDate: string | null = null;
-        let retDate: string | null = null;
-        
-        // Parse date "01/10/2026 a 07/10/2026"
-        if (item.data && typeof item.data === 'string') {
-          const parts = item.data.split(/\s+a\s+/);
-          if (parts.length === 2) {
-            const [d1, m1, y1] = parts[0].split('/');
-            const [d2, m2, y2] = parts[1].split('/');
-            if (d1 && m1 && y1) depDate = `${y1}-${m1}-${d1}`;
-            if (d2 && m2 && y2) retDate = `${y2}-${m2}-${d2}`;
-          }
-        }
+    let packageVariantsFound = 0;
+    let packagesIgnoredDueToPastDate = 0;
+    let guidedGroupsFound = 0;
 
-        // EXCLUSION RULE: discard packages whose departure date has passed
-        if (depDate && new Date(depDate + "T00:00:00") < brToday) {
+    if (hasFullPackageCatalog) {
+      for (const packageItem of fullPackages) {
+        const origins = Array.isArray(packageItem.origens) ? packageItem.origens : [];
+        const { origens: _origens, ...packageBaseData } = packageItem;
+
+        for (const origin of origins) {
+          const { departureDate, returnDate } = parseDateRange(origin.data);
+          packageVariantsFound++;
+
+          if (departureDate && departureDate < brDateStr) {
+            packagesIgnoredDueToPastDate++;
+            continue;
+          }
+
+          const hotels = Array.isArray(origin.hoteis) ? origin.hoteis : [];
+          const hotelPrices = hotels
+            .map((hotel: any) => parseBrCurrency(hotel.preco))
+            .filter((price: number) => price > 0);
+          const lowestHotelPrice = hotelPrices.length > 0 ? Math.min(...hotelPrices) : 0;
+          const installmentPrice = parseBrCurrency(origin.min_parcela);
+          const airPrice = parseBrCurrency(origin.por);
+          const packagePrice = lowestHotelPrice || (installmentPrice > 0 ? installmentPrice * 10 : 0) || airPrice;
+          const originIata = origin.iata || "";
+          const destination = packageItem.destino || packageItem.nome || "";
+          const packageKey = packageItem.slug || packageItem.nome || destination;
+          const idSource = `pkg|${packageKey}|${originIata}|${destination}|${departureDate}|${returnDate}`;
+
+          parsedOffers.push({
+            source: "viajandocomdesconto",
+            source_id: await generateId(idSource),
+            offer_type: "pacote",
+            destination_name: destination,
+            origin_iata: originIata,
+            origin_city: origin.cidade || "",
+            departure_date: departureDate,
+            return_date: returnDate,
+            nights: getNights(departureDate, returnDate),
+            price_per_person: packagePrice,
+            currency: "BRL",
+            boarding_tax: parseBrCurrency(origin.taxas),
+            source_url: origin.link || null,
+            last_seen_at: executionTimestamp,
+            active: true,
+            alternative_dates: origin.outras || null,
+            source_type: String(packageItem.categoria || "pacote").toLowerCase(),
+            raw_data: {
+              ...packageBaseData,
+              ...origin,
+              origin,
+              air_price_per_person: airPrice,
+              package_price_per_person: packagePrice,
+              source_entry: "PACOTES"
+            }
+          });
+        }
+      }
+    } else if (Array.isArray(snapshot)) {
+      for (const item of snapshot) {
+        const { departureDate, returnDate } = parseDateRange(item.data);
+        packageVariantsFound++;
+
+        if (departureDate && departureDate < brDateStr) {
+          packagesIgnoredDueToPastDate++;
           continue;
         }
 
-        // Helper for BR currency parsing: "R$ 1.159,00" -> 1159.00
-        const parseBrCurrency = (val: any) => {
-          if (!val) return 0;
-          const clean = String(val)
-            .replace(/R\$\s?/, "")
-            .replace(/\./g, "")
-            .replace(",", ".");
-          return parseFloat(clean) || 0;
-        };
-
         const price = parseBrCurrency(item.por);
-        const priceOld = parseBrCurrency(item.de);
-        const boardingTax = parseBrCurrency(item.taxas);
-
         const name = item.nome || "";
         const originIata = item.origem_iata || "";
         const destination = item.destino || "";
-
-        // Deterministic hash for packages
-        const idSource = `pkg|${name}|${originIata}|${destination}|${depDate}|${retDate}|${price}`;
-        
-        // Clean raw_data: everything except 'link'
-        const { link, ...cleanRawData } = item;
+        const idSource = `pkg|${name}|${originIata}|${destination}|${departureDate}|${returnDate}`;
 
         parsedOffers.push({
           source: "viajandocomdesconto",
@@ -239,17 +335,111 @@ serve(async (req) => {
           destination_name: destination,
           origin_iata: originIata,
           origin_city: item.origem_cidade,
-          departure_date: depDate,
-          return_date: retDate,
+          departure_date: departureDate,
+          return_date: returnDate,
+          nights: getNights(departureDate, returnDate),
           price_per_person: price,
           currency: "BRL",
-          boarding_tax: boardingTax,
+          boarding_tax: parseBrCurrency(item.taxas),
+          source_url: item.link || null,
           last_seen_at: executionTimestamp,
           active: true,
           alternative_dates: item.outras || null,
           source_type: item.fonte || null,
-          raw_data: cleanRawData
+          raw_data: {
+            ...item,
+            air_price_per_person: price,
+            source_entry: "PV_SNAPSHOT"
+          }
         });
+      }
+    }
+
+    const groupSummaries = [
+      ...(Array.isArray(pageData?.grupos?.nac) ? pageData.grupos.nac : []),
+      ...(Array.isArray(pageData?.grupos?.intl) ? pageData.grupos.intl : [])
+    ];
+
+    if (hasFullPackageCatalog && groupSummaries.length > 0) {
+      for (const summary of groupSummaries) {
+        const link = summary.link || "";
+        let slug = "";
+        try {
+          slug = new URL(link, targetUrl).pathname.split("/").filter(Boolean).pop() || "";
+        } catch {
+          slug = "";
+        }
+
+        const details = groupDetails?.[slug] || {};
+        const candidateDates = [...new Set([
+          details.saida,
+          ...(Array.isArray(summary.datas) ? summary.datas : [])
+        ]
+          .map((value: any) => parseBrDate(value))
+          .filter((value: string | null): value is string => !!value))]
+          .sort();
+        const departureDate = candidateDates.find((date: string) => date >= brDateStr) || candidateDates[0] || null;
+
+        if (departureDate && departureDate < brDateStr) {
+          packagesIgnoredDueToPastDate++;
+          continue;
+        }
+
+        const durationText = String(details.duracao || "");
+        const days = parseInt(durationText.match(/(\d+)\s*dias?/i)?.[1] || "0");
+        const nights = parseInt(durationText.match(/(\d+)\s*noites?/i)?.[1] || "0") || Math.max(0, days - 1);
+        const returnDate = addDays(departureDate, days > 0 ? days - 1 : nights);
+        const originText = String(details.origem || "");
+        const originMatch = originText.match(/^(.*?)\s*\(([A-Z]{3})\)\s*$/);
+        const normalizedOrigin = originText
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .trim();
+        const mappedOriginIata = Object.entries(mapa).find(([, names]) =>
+          String((names as string[])[0] || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .trim() === normalizedOrigin
+        )?.[0] || null;
+        const prices = Array.isArray(details.precos) ? details.precos : [];
+        const highlightedPrice = prices.find((price: any) => price.dest) ||
+          prices.find((price: any) => /R\$/.test(String(price.s || "")));
+        const taxPrice = prices.find((price: any) => /taxa/i.test(
+          `${price.n || ""} ${price.s || ""} ${price.v || ""}`
+        ));
+        const pricePerPerson = parseFirstBrlAmount(highlightedPrice?.s) ||
+          parseFirstBrlAmount(highlightedPrice?.v);
+        const destination = summary.sub || summary.titulo || details.nome || summary.nome || "Grupo com guia";
+        const idSource = `group|${slug || summary.nome || destination}`;
+
+        parsedOffers.push({
+          source: "viajandocomdesconto",
+          source_id: await generateId(idSource),
+          offer_type: "pacote",
+          destination_name: destination,
+          origin_iata: originMatch?.[2] || mappedOriginIata,
+          origin_city: originMatch?.[1]?.trim() || originText || null,
+          departure_date: departureDate,
+          return_date: returnDate,
+          nights,
+          price_per_person: pricePerPerson,
+          currency: "BRL",
+          boarding_tax: parseFirstBrlAmount(taxPrice?.s) || parseFirstBrlAmount(taxPrice?.v),
+          source_url: details.pdf || link || null,
+          last_seen_at: executionTimestamp,
+          active: true,
+          alternative_dates: candidateDates,
+          source_type: "grupo_guiado",
+          raw_data: {
+            ...details,
+            summary,
+            details,
+            source_entry: "DADOS.grupos/GDET"
+          }
+        });
+        guidedGroupsFound++;
       }
     }
 
@@ -291,24 +481,40 @@ serve(async (req) => {
       if (error) throw error;
     }
 
+    let deactivatedCount = 0;
+    const staleOfferTypes = hasFullPackageCatalog
+      ? ["bloqueio_aereo", "pacote"]
+      : ["bloqueio_aereo"];
+
     const { data: deactivatedData } = await supabaseClient
       .from("travel_offers")
       .update({ active: false })
       .lt("last_seen_at", executionTimestamp)
       .eq("source", "viajandocomdesconto")
+      .in("offer_type", staleOfferTypes)
       .select("id");
 
-    const deactivatedCount = deactivatedData?.length || 0;
+    deactivatedCount += deactivatedData?.length || 0;
+
+    if (!hasFullPackageCatalog) {
+      const { data: deactivatedSnapshotData } = await supabaseClient
+        .from("travel_offers")
+        .update({ active: false })
+        .lt("last_seen_at", executionTimestamp)
+        .eq("source", "viajandocomdesconto")
+        .eq("offer_type", "pacote")
+        .in("source_type", ["backup", "congelado"])
+        .select("id");
+
+      deactivatedCount += deactivatedSnapshotData?.length || 0;
+    }
 
     await supabaseClient.from("travel_sync_logs").insert({
-      source: "viajandocomdesconto",
       status: "success",
       offers_found: finalOffers.length,
       offers_created: created,
       offers_updated: updated,
       offers_deactivated: deactivatedCount,
-      map_errors: mapErrors,
-      offers_ignored: (Array.isArray(snapshot) ? snapshot.length : 0) + lines.length - parsedOffers.length,
       started_at: startTime,
       finished_at: new Date().toISOString()
     });
@@ -321,18 +527,12 @@ serve(async (req) => {
       deactivated: deactivatedCount,
       map_errors: mapErrors,
       raw_execution_info: {
+        package_source: hasFullPackageCatalog ? "PACOTES" : "PV_SNAPSHOT",
+        package_definitions: hasFullPackageCatalog ? fullPackages.length : 0,
+        package_variants: packageVariantsFound,
+        guided_groups: guidedGroupsFound,
         total_snapshot: Array.isArray(snapshot) ? snapshot.length : 0,
-        packages_no_date: Array.isArray(snapshot) ? snapshot.filter(i => !i.data).length : 0,
-        ignored_due_to_past_date: Array.isArray(snapshot) ? snapshot.filter(i => {
-          if (!i.data) return false;
-          const parts = i.data.split(/\s+a\s+/);
-          if (parts.length === 2) {
-            const [d1, m1, y1] = parts[0].split('/');
-            const date = `${y1}-${m1}-${d1}`;
-            return date < brDateStr;
-          }
-          return false;
-        }).length : 0
+        ignored_due_to_past_date: packagesIgnoredDueToPastDate
       }
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
@@ -342,7 +542,6 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     ).from("travel_sync_logs").insert({
-      source: "viajandocomdesconto",
       status: "error",
       error_message: err.message,
       started_at: startTime,
