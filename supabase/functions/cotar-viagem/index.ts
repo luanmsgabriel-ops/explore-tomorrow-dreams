@@ -215,6 +215,7 @@ serve(async (req) => {
       ["fortaleza", "jericoacoara"],
       ["foz do iguacu", "cataratas"],
       ["rio de janeiro", "buzios", "arraial do cabo"],
+      ["beto carrero", "penha", "navegantes", "balneario camboriu", "joinville", "florianopolis", "itajai"],
     ];
 
     const requestedDestination = normalizeText(destino);
@@ -223,7 +224,7 @@ serve(async (req) => {
     const getDestinationRank = (offer: any) => {
       const destinationName = normalizeText(offer.destination_name);
       const offerText = normalizeText(
-        `${offer.destination_name || ""} ${offer.raw_data?.nome || ""} ${offer.raw_data?.destino || ""}`
+        `${offer.destination_name || ""} ${offer.raw_data?.nome || ""} ${offer.raw_data?.destino || ""} ${offer.raw_data?.inclui || ""}`
       );
 
       if (
