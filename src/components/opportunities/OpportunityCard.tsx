@@ -3,10 +3,10 @@ import { ArrowRight, CalendarDays, MapPin, Plane, UsersRound } from "lucide-reac
 import { cn } from "@/lib/utils";
 import { OpportunityBadge, OpportunityButton, type OpportunityBadgeProps } from "./OpportunityPrimitives";
 
-const currencyFormatter = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
+function formatCurrency(value: number, currency?: string | null) {
+  const safeCurrency = currency && /^[A-Z]{3}$/.test(currency) ? currency : "BRL";
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: safeCurrency }).format(value);
+}
 
 export type OpportunityCardKind = "air_block" | "package";
 
@@ -28,6 +28,7 @@ export interface OpportunityCardProps {
   nights?: number | null;
   pricePerPerson?: number | null;
   taxPerPerson?: number | null;
+  currency?: string | null;
   availableSeats?: number | null;
   airfareIncluded?: boolean | null;
   imageUrl?: string | null;
@@ -56,6 +57,7 @@ export function OpportunityCard({
   nights,
   pricePerPerson,
   taxPerPerson,
+  currency,
   availableSeats,
   airfareIncluded,
   imageUrl,
@@ -153,9 +155,9 @@ export function OpportunityCard({
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-tomorrow-muted">Por pessoa</p>
             <p className="mt-1 font-editorial text-4xl leading-none text-tomorrow-gold-soft">
-              {safePrice !== null ? currencyFormatter.format(safePrice) : "—"}
+              {safePrice !== null ? formatCurrency(safePrice, currency) : "—"}
             </p>
-            {safeTax !== null ? <p className="mt-2 text-xs text-tomorrow-muted">Taxa: {currencyFormatter.format(safeTax)}</p> : null}
+            {safeTax !== null ? <p className="mt-2 text-xs text-tomorrow-muted">Taxa: {formatCurrency(safeTax, currency)}</p> : null}
           </div>
           <OpportunityButton asChild variant="outline" fullWidth>
             <a href={actionHref} aria-label={`${actionLabel}: ${routeLabel}`}>

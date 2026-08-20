@@ -2,7 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { BrowserRouter, Navigate, Routes, Route, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import Explorar from "./pages/Explorar";
 import Nacional from "./pages/Nacional";
@@ -26,6 +27,8 @@ import { TravelAdvisorChat } from "./components/TravelAdvisorChat";
 import { AnalyticsProvider } from "./components/AnalyticsProvider";
 import { useLenis } from "./hooks/useLenis";
 
+const OpportunitiesCatalog = lazy(() => import("./pages/OpportunitiesCatalog"));
+
 const queryClient = new QueryClient();
 
 const SmoothScroll = () => {
@@ -36,7 +39,7 @@ const SmoothScroll = () => {
 // Floating buttons that hide on client/admin areas
 const FloatingButtons = () => {
   const location = useLocation();
-  const hideOnRoutes = ['/cliente', '/minha-area', '/admin', '/admin/dashboard', '/avaliacao', '/experiencia'];
+  const hideOnRoutes = ['/cliente', '/minha-area', '/admin', '/admin/dashboard', '/avaliacao', '/experiencia', '/oportunidades'];
   const shouldHide = hideOnRoutes.some(route => location.pathname.startsWith(route));
   
   if (shouldHide) return null;
@@ -72,6 +75,15 @@ const App = () => (
           <Route path="/install" element={<Install />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/experiencia" element={<Experiencia />} />
+          <Route path="/oportunidades" element={<Navigate to="/oportunidades/catalogo" replace />} />
+          <Route
+            path="/oportunidades/catalogo"
+            element={(
+              <Suspense fallback={<div className="min-h-screen bg-[#041012]" aria-label="Carregando catálogo" />}>
+                <OpportunitiesCatalog />
+              </Suspense>
+            )}
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <AnalyticsProvider />
