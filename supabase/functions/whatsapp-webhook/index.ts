@@ -1979,6 +1979,111 @@ function extractCollectedData(aiResponse: string, existingData: Record<string, a
   return { data: newData, status };
 }
 
+function parseQuotationDateFromText(day: string, month: string, year?: string): string | null {
+  const d = Number(day);
+  const m = Number(month);
+  if (!d || !m || d > 31 || m > 12) return null;
+
+  const now = new Date();
+  let y = year ? Number(year) : now.getFullYear();
+  if (y < 100) y += 2000;
+
+  if (!year) {
+    const candidate = new Date(y, m - 1, d);
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    if (candidate < thirtyDaysAgo) y += 1;
+  }
+
+  const candidate = new Date(y, m - 1, d);
+  if (candidate.getFullYear() !== y || candidate.getMonth() !== m - 1 || candidate.getDate() !== d) {
+    return null;
+  }
+
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+function extractQuotationDataFromText(text: string): Record<string, any> {
+  const data: Record<string, any> = {};
+  const normalized = (text || "").replace(/\s+/g, " ").trim();
+  if (!normalized) return data;
+
+  const dates = [...normalized.matchAll(/\b(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?\b/g)]
+    .map((match) => parseQuotationDateFromText(match[1], match[2], match[3]))
+    .filter((date): date is string => !!date);
+  if (dates[0]) data.data_ida = dates[0];
+  if (dates[1]) data.data_volta = dates[1];
+
+  const originMatch = normalized.match(/(?:saindo|partindo|embarque)\s+(?:de|do|da)\s+(.+?)(?=,\s*(?:de\s+)?\d{1,2}[\/-]|,\s*\d{1,2}[\/-]|\s+(?:de\s+)?\d{1,2}[\/-]|$)/i);
+  if (originMatch?.[1]) data.origem = originMatch[1].replace(/[,.;]+$/, "").trim();
+
+  const destinationMatch = normalized.match(/(?:cota[cç][aã]o|or[cç]amento|viagem|pacote)\s+(?:para|pra)\s+(.+?)(?=,\s*(?:saindo|partindo)|\s+(?:saindo|partindo)|,\s*(?:de\s+)?\d{1,2}[\/-]|$)/i)
+    || normalized.match(/^(.+?)(?=,\s*(?:saindo|partindo)|\s+(?:saindo|partindo))/i);
+  if (destinationMatch?.[1]) {
+    data.destino = destinationMatch[1]
+      .replace(/^(?:cota[cç][aã]o|or[cç]amento|viagem|pacote)\s+(?:para|pra)\s+/i, "")
+      .replace(/[,.;]+$/, "")
+      .trim();
+  }
+
+  const adultsMatch = normalized.match(/\b(\d+)\s*adultos?\b/i);
+  const childrenMatch = normalized.match(/\b(\d+)\s*crian[cç]as?\b/i);
+  const peopleMatch = normalized.match(/\b(\d+)\s*(?:pessoas?|viajantes?|passageiros?)\b/i);
+  const wordPeopleMatch = normalized.match(/\b(um|uma|dois|duas|tres|tr[eê]s|quatro|cinco|seis|sete|oito|nove|dez)\s*(?:pessoas?|viajantes?|passageiros?)\b/i);
+  const numberWords: Record<string, number> = {
+    um: 1, uma: 1, dois: 2, duas: 2, tres: 3, "três": 3,
+    quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10,
+  };
+
+  if (adultsMatch) data.adultos = Number(adultsMatch[1]);
+  if (childrenMatch) data.criancas = Number(childrenMatch[1]);
+
+  const totalPeople = peopleMatch
+    ? Number(peopleMatch[1])
+    : wordPeopleMatch
+      ? numberWords[wordPeopleMatch[1].toLowerCase()]
+      : /\bcasal\b/i.test(normalized)
+        ? 2
+        : null;
+
+  if (!data.adultos && totalPeople) {
+    data.adultos = Math.max(1, totalPeople - Number(data.criancas || 0));
+  }
+  if (data.criancas === undefined && (data.adultos || totalPeople)) data.criancas = 0;
+  if (data.criancas !== undefined && !Array.isArray(data.idades_criancas)) data.idades_criancas = [];
+
+  return data;
+}
+
+function recoverQuotationDataFromHistory(
+  history: any[],
+  currentMessage: string,
+  existingData: Record<string, any>,
+): Record<string, any> {
+  const recovered: Record<string, any> = {};
+  const recentMessages = (history || []).slice(-16).reverse();
+  const texts = [
+    currentMessage,
+    ...recentMessages
+      .filter((message: any) => {
+        const content = String(message?.content || "");
+        return message?.role === "user" || (/saindo|partindo/i.test(content) && (content.match(/\d{1,2}[\/-]\d{1,2}/g) || []).length >= 2);
+      })
+      .map((message: any) => String(message.content || "")),
+  ];
+
+  for (const text of texts) {
+    const partial = extractQuotationDataFromText(text);
+    for (const [key, value] of Object.entries(partial)) {
+      if (recovered[key] === undefined && value !== undefined && value !== "") {
+        recovered[key] = value;
+      }
+    }
+  }
+
+  return { ...existingData, ...recovered };
+}
+
 function cleanAiResponse(response: string): string {
   let cleaned = response
     .replace(/\[ROTEIRO_VISUAL\][\s\S]*?\[\/ROTEIRO_VISUAL\]/g, "")
@@ -8416,6 +8521,19 @@ Regras OBRIGATÓRIAS:
 
       const collectedData = (conversation.collected_data as Record<string, any>) || {};
 
+      // A new quotation must never inherit trip data or transient flags from the previous cycle
+      const isNewQuotationRequest = /\b(?:nova|novo|outra|outro)\s+cota[cç][aã]o\b/i.test(messageText || "");
+      if (isNewQuotationRequest) {
+        for (const key of [
+          "destino", "origem", "data_ida", "data_volta", "datas",
+          "adultos", "criancas", "idades_criancas", "num_viajantes",
+          "preferencias", "tipo_viagem", "_quotation_triggered", "_last_quote_id",
+        ]) {
+          delete collectedData[key];
+        }
+        console.log("[QUOTATION] New quotation requested. Previous trip data and transient flags cleared.");
+      }
+
       // ========== WELCOME MESSAGE FOR NEW CONTACTS ==========
       // If conversation_state is "greeting" and no _teo_mode set and only 1 message (first contact)
       const isFirstContact = conversation.conversation_state === "greeting" && !collectedData._teo_welcome_sent;
@@ -8860,11 +8978,32 @@ Regras OBRIGATÓRIAS:
       // DEBUG: Log RAW AI Response before any processing
       console.log("[DEBUG_RAW_AI_RESPONSE] Full response:", aiResponse);
 
-      // Extract collected data and status
-      const { data: newCollectedData, status: conversationStatus } = extractCollectedData(
-        aiResponse,
-        collectedData
+      // Extract tagged data first, then recover quotation data deterministically from plain text/history
+      const extracted = extractCollectedData(aiResponse, collectedData);
+      const newCollectedData = recoverQuotationDataFromHistory(
+        conversation.messages_history as any[] || [],
+        messageText || "",
+        extracted.data,
       );
+
+      const hasRecoveredMandatoryData = !!(
+        newCollectedData.destino &&
+        newCollectedData.origem &&
+        newCollectedData.data_ida &&
+        newCollectedData.data_volta
+      );
+      const normalizedConfirmation = (messageText || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim()
+        .toLowerCase();
+      const isQuotationConfirmation = /^(?:sim|confirmo|confirmado|pode|pode buscar|pode cotar|ta bom|ok|certo|correto|isso|isso mesmo|perfeito)[!. ]*$/.test(normalizedConfirmation);
+      const conversationStatus = extracted.status ||
+        (isQuotationConfirmation && hasRecoveredMandatoryData ? "awaiting_quotation" : null);
+
+      if (!extracted.status && isQuotationConfirmation && hasRecoveredMandatoryData) {
+        console.log("[QUOTATION] Confirmation detected without AI tags. Using recovered conversation data.");
+      }
 
       // Check if AI triggered a quotation request
       const quotationData = parseQuotationTag(aiResponse);
