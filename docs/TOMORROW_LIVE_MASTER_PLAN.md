@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 20/08/2026 |
-| Estado geral | Planejamento |
-| Etapa atual | Etapa 0 — Diagnóstico e definição técnica |
-| Último HEAD verificado antes deste documento | `464223578a866786ff294de3d6a8307339e0f7da` |
-| Próxima ação exata | Auditar frontend, rotas, componentes, banco e Edge Functions sem alterar código funcional |
+| Estado geral | Arquitetura diagnosticada; pronta para a Etapa 1 |
+| Etapa atual | Etapa 1 — Contrato de dados e camada segura de consulta |
+| Último HEAD verificado | `50decc686b8db665abdb185a55238dc18d5f1d42` |
+| Próxima ação exata | Implementar uma Edge Function pública somente de leitura para catálogo/calendário, com DTO seguro, validação, paginação e filtros reais; não reutilizar a RPC pública atual |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -148,23 +148,25 @@ A plataforma deve reproduzir em componentes web responsivos a linguagem das refe
 
 ## 6. Estrutura funcional inicial
 
-Os nomes das rotas são provisórios até a auditoria da Etapa 0:
+As rotas ficam agrupadas sob `/oportunidades` para evitar conflito com páginas atuais e permitir implantação gradual:
 
-| Experiência | Rota provisória |
+| Experiência | Rota definida |
 |---|---|
 | Entrada da plataforma | `/oportunidades` |
-| Tomorrow Live | `/live` |
-| Calendário | `/calendario` |
-| Catálogo | `/catalogo` |
-| Detalhe da oferta | `/oferta/:id` |
-| Comparação | `/comparar` |
-| Gestão interna | rota protegida a definir |
+| Tomorrow Live | `/oportunidades/live` |
+| Calendário | `/oportunidades/calendario` |
+| Catálogo | `/oportunidades/catalogo` |
+| Detalhe da oferta | `/oportunidades/oferta/:id` |
+| Comparação | `/oportunidades/comparar` |
+| Gestão interna | manter `/admin/dashboard`, com módulo próprio protegido |
+
+A rota atual `/ofertas` será preservada durante a construção. Redirecionamento ou substituição só ocorrerá depois da validação do novo catálogo.
 
 ## 7. Etapas do projeto
 
 ### Etapa 0 — Diagnóstico e definição técnica
 
-**Estado:** em planejamento
+**Estado:** concluída em 20/08/2026
 
 **Objetivo:** compreender o projeto existente antes de criar qualquer tela ou estrutura.
 
@@ -468,15 +470,107 @@ Os nomes das rotas são provisórios até a auditoria da Etapa 0:
 - monitoramento ativo;
 - registro final atualizado neste documento.
 
-## 8. Estado técnico já conhecido
+## 8. Diagnóstico técnico concluído
 
-- Stack informada pelo repositório: Vite, React, TypeScript, Tailwind CSS e shadcn-ui.
-- Banco e backend: Lovable Cloud/Supabase.
-- A base possui bloqueios aéreos e pacotes promocionais sincronizados.
-- A consulta de ofertas utiliza janela de 60 dias antes e depois.
-- `travel-offers-sync`, `cotar-viagem` e `whatsapp-webhook` já participam do fluxo atual.
-- O fluxo atual do WhatsApp deve continuar funcionando durante a construção da nova plataforma.
-- Alterações recentes externas ao fluxo devem ser auditadas antes do início da implementação.
+### 8.1 Frontend e arquitetura atual
+
+- Stack confirmada: Vite 5, React 18, TypeScript, React Router 6, TanStack Query, Tailwind CSS, shadcn/Radix e Supabase JS.
+- O projeto já possui Framer Motion, GSAP, anime.js, Lenis e `react-day-picker`; não é necessário adicionar biblioteca de animação ou calendário na primeira implementação.
+- A identidade existente já usa verde-petróleo, turquesa, dourado, Montserrat, Playfair Display e Instrument Serif. Os tokens atuais podem ser estendidos na Etapa 2.
+- O PWA já está configurado. Consultas ao Supabase usam estratégia `NetworkOnly`.
+- Todas as páginas são importadas de forma imediata em `src/App.tsx`. Isso inclui páginas grandes como o painel administrativo e aumenta o pacote inicial; as novas rotas deverão nascer com carregamento sob demanda.
+- A responsividade usa utilitários Tailwind e menu móvel, mas a nova experiência ainda precisa de validação real em celular, tablet, teclado e preferência de movimento reduzido.
+- Existem múltiplos lockfiles (`bun.lock`, `bun.lockb` e `package-lock.json`), criando risco de instalações não determinísticas.
+- Existe um arquivo `.env` versionado. O conteúdo não foi lido nesta auditoria; a Etapa 10 deverá confirmar que contém apenas valores publicáveis, criar `.env.example` e remover qualquer segredo do histórico se necessário.
+- Não existe `.openai/hosting.json`; a hospedagem atual continua sendo a publicação do projeto Lovable.
+
+### 8.2 Rotas e componentes
+
+Rotas atuais preservadas: `/`, `/explorar`, `/nacional`, `/internacional`, `/destino/:id`, `/promocao/:id`, `/ofertas`, `/teo`, `/admin`, `/admin/dashboard`, `/cliente`, `/minha-area`, `/avaliacao/:id`, `/install`, `/blog` e `/experiencia`.
+
+Componentes reaproveitáveis:
+
+- `Header`, `Footer`, `DestinationSearch`, `QuoteFormChat` e `ItineraryGenerator`;
+- primitives de `src/components/ui`, inclusive calendário e cards;
+- padrões visuais/editoriais da landing page;
+- `TravelAdvisorChat` e `TeoChat` como referência de sessão e handoff, sem alterar o prompt existente;
+- utilitários de animação e os tokens do tema atual.
+
+Conflitos identificados:
+
+- `/ofertas` e `ActiveOffersCarousel` consultam a tabela legada `promotional_offers`, que não representa o inventário novo;
+- `/teo` é chat textual com mascote e não deve ser substituído antes do modo Live estar validado;
+- `/experiencia` já existe e não será reutilizada para evitar quebra;
+- os botões flutuantes atuais precisam ser avaliados nas novas rotas para não competir com o modo Live.
+
+### 8.3 Autenticação
+
+- Autenticação utiliza Supabase Auth com sessão persistida no navegador.
+- A área de cliente consulta `user_roles`, `profiles`, `account_shared_access` e `client_trips`.
+- O painel administrativo confirma a função `admin` antes de carregar dados.
+- O catálogo e o calendário serão públicos e não dependerão de login.
+- Favoritos podem começar locais; sincronização autenticada fica para decisão posterior.
+- Gestão e curadoria continuarão protegidas pelo papel `admin`.
+
+### 8.4 Inventário real no banco em 20/08/2026
+
+| Tipo | Subtipo | Ativas | Origens | Destinos | Período |
+|---|---:|---:|---:|---:|---|
+| Bloqueio aéreo | bloqueio | 9.209 | 45 | 41 | 24/08/2026 a 30/11/2027 |
+| Pacote | nacional | 766 | 34 | 39 | 20/08/2026 a 18/05/2027 |
+| Pacote | internacional | 215 | 13 | 111 | 25/08/2026 a 10/05/2027 |
+| Pacote | evento | 43 | 10 | 2 | 09/10/2026 a 04/12/2026 |
+| Pacote | grupo guiado | 21 | 2 | 21 | 09/09/2026 a 10/10/2027 |
+| **Total** |  | **10.254** |  |  |  |
+
+Qualidade observada:
+
+- bloqueios ativos possuem datas, preço, origem, destino e vagas;
+- pacotes não usam `available_seats`, portanto a interface não pode inventar vagas;
+- 109 pacotes internacionais não possuem `origin_iata`; o contrato deve aceitar origem terrestre/sem aéreo;
+- um pacote internacional ativo não possui data de volta;
+- pacotes nacionais, internacionais e de evento trazem metadados em `raw_data`, incluindo imagens, hotéis, inclusões, preço aéreo, parcela, taxas e evento;
+- grupos guiados possuem estrutura de JSON diferente e precisam de normalizador próprio;
+- a tabela legada `promotional_offers` possui 15 registros, nenhum ativo, e não deve alimentar a nova plataforma.
+
+### 8.5 Segurança e contrato atual
+
+- `travel_offers` tem RLS ativa e não possui política pública de leitura direta.
+- A função SQL `search_travel_offers` atual é `SECURITY DEFINER`, pode ser executada por `PUBLIC`/`anon` e retorna a linha completa de `travel_offers`, incluindo `raw_data` e `source_url`.
+- Essa função ignora hoje `p_min_date`, `p_max_date` e `p_total_passengers`; portanto não serve para calendário, disponibilidade nem janela de datas.
+- A tabela possui somente chave primária e unicidade por fonte. Faltam índices voltados a status, datas, tipo, origem, destino e preço.
+- Diversas Edge Functions estão com `verify_jwt = false`. Isso é aceitável apenas quando cada função implementa proteção própria e contrato público mínimo; deverá ser auditado por função.
+- `cotar-viagem` já contém normalização útil para bloqueios e pacotes, mas sua resposta e regras são específicas do WhatsApp.
+- `travel-offers-sync` é a fonte de sincronização e deve permanecer isolada do navegador.
+- O prompt atual do Téo não foi alterado e não será usado como contrato de dados.
+
+### 8.6 Arquitetura aprovada para a Etapa 1
+
+Criar uma Edge Function pública somente de leitura, separada do fluxo do WhatsApp, com os seguintes princípios:
+
+1. usar Service Role apenas dentro da função;
+2. validar ação, filtros, datas, paginação e limites;
+3. consultar apenas ofertas ativas e válidas;
+4. aplicar filtros reais de período, origem, destino, passageiros, tipo e categoria;
+5. devolver um DTO com campos permitidos, nunca `raw_data`, `source_url` ou tokens internos;
+6. normalizar separadamente bloqueio, pacote nacional/internacional/evento e grupo guiado;
+7. oferecer operações `facets`, `catalog`, `calendar` e `detail`;
+8. paginar catálogo e limitar resultados do calendário;
+9. incluir `updated_at`, regra de disponibilidade e aviso de confirmação;
+10. registrar erros sem dados pessoais e preparar controle de abuso.
+
+A RPC `search_travel_offers` existente não será usada pelo novo frontend. Ela será mantida temporariamente para evitar regressão em fluxos legados e revisada depois que consumidores forem identificados.
+
+### 8.7 Arquivos previstos para a Etapa 1
+
+- `supabase/functions/travel-offers-public/index.ts` — nova API pública de consulta;
+- `supabase/config.toml` — configuração explícita da nova função;
+- `supabase/migrations/<timestamp>_travel_offers_public_indexes.sql` — índices e permissões estritamente necessários;
+- `src/integrations/supabase/types.ts` — somente se a migration alterar tipos expostos;
+- `docs/TOMORROW_LIVE_MASTER_PLAN.md` — checkpoint e decisões;
+- testes da função no mesmo diretório ou em arquivo dedicado, conforme o padrão encontrado na implementação.
+
+Nenhum arquivo do WhatsApp ou prompt do Téo está previsto para a Etapa 1.
 
 ## 9. Decisões registradas
 
@@ -489,6 +583,13 @@ Os nomes das rotas são provisórios até a auditoria da Etapa 0:
 | D-005 | 20/08/2026 | Priorizar GitHub e Editor SQL; Lovable somente conforme regras operacionais | aprovada |
 | D-006 | 20/08/2026 | Construir por etapas pequenas e registrar cada checkpoint neste arquivo | aprovada |
 | D-007 | 20/08/2026 | Usar voz em tempo real da OpenAI com lógica de negócio protegida no servidor | prevista; depende de implementação e validação de custos |
+| D-008 | 20/08/2026 | Agrupar as novas rotas sob `/oportunidades` e preservar as rotas atuais durante a construção | aprovada |
+| D-009 | 20/08/2026 | Usar `travel_offers` como fonte do novo produto e não a tabela legada `promotional_offers` | aprovada |
+| D-010 | 20/08/2026 | Não expor nem reutilizar no frontend a RPC atual `search_travel_offers` | aprovada |
+| D-011 | 20/08/2026 | Criar Edge Function pública dedicada com DTO permitido e normalizadores por subtipo | aprovada |
+| D-012 | 20/08/2026 | Manter `cotar-viagem`, `travel-offers-sync` e o fluxo do WhatsApp isolados nesta etapa | aprovada |
+| D-013 | 20/08/2026 | Pacotes sem aéreo ou sem vagas explícitas devem ser apresentados sem inventar esses dados | aprovada |
+| D-014 | 20/08/2026 | Novas páginas usarão carregamento sob demanda para não ampliar o bundle inicial | aprovada |
 
 ## 10. Riscos conhecidos
 
@@ -503,6 +604,14 @@ Os nomes das rotas são provisórios até a auditoria da Etapa 0:
 | Planeta comprometer performance | níveis de qualidade e alternativa reduzida |
 | Mudanças do Lovable sobrescreverem trabalho | verificar HEAD antes de cada etapa |
 | Construção interrompida perder contexto | checkpoint obrigatório neste documento |
+| RPC pública devolver campos internos e ignorar filtros | não utilizá-la no frontend; criar API dedicada com DTO restrito |
+| Consultas lentas em calendário/catálogo | índices específicos, paginação e limites na Etapa 1 |
+| Estruturas diferentes de JSON entre tipos de pacote | normalizadores separados e testes por subtipo |
+| Pacote internacional sem origem aérea ou data de volta | campos opcionais explícitos e UI sem informação inventada |
+| Funções públicas sem proteção suficiente | auditar autenticação, CORS, limites e abuso antes da publicação |
+| Bundle inicial crescer com novas páginas | rotas lazy, divisão de código e orçamento de performance |
+| Múltiplos lockfiles gerarem builds diferentes | definir gerenciador oficial antes de alterar dependências |
+| Arquivo `.env` versionado conter segredo | auditoria segura e rotação imediata caso algum segredo seja confirmado |
 
 ## 11. Modelo de checkpoint
 
@@ -538,3 +647,20 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Riscos ou erros:** estrutura técnica do frontend ainda não auditada
 - **Pendências:** executar a Etapa 0
 - **Próxima ação exata:** auditar o repositório e atualizar as seções técnicas deste documento antes de qualquer implementação
+
+
+### Checkpoint 2026-08-20 14:09 — Etapa 0 concluída
+
+- **Etapa:** 0 — Diagnóstico e definição técnica
+- **Estado:** concluída
+- **Objetivo executado:** mapear frontend, rotas, componentes, autenticação, banco, migrations, Edge Functions, contrato atual, riscos e arquitetura da próxima etapa.
+- **Arquivos alterados:** `docs/TOMORROW_LIVE_MASTER_PLAN.md`
+- **SQL/migrations:** somente consultas `SELECT` de diagnóstico; nenhuma migration criada ou executada.
+- **Commits:** `50decc686b8db665abdb185a55238dc18d5f1d42` era o HEAD auditado; o SHA deste checkpoint deve ser registrado após o commit.
+- **Testes realizados:** leitura do projeto na branch `main`; conferência das rotas, dependências, autenticação e funções; contagem e validação de campos do inventário ativo; inspeção de RLS, privilégios, assinatura e definição da RPC de busca.
+- **Resultado dos testes:** inventário real disponível e utilizável, identidade visual reaproveitável e arquitetura viável; RPC pública atual considerada inadequada para o novo frontend.
+- **Implantações e SHA:** nenhuma implantação nesta etapa.
+- **Decisões tomadas:** novas rotas agrupadas em `/oportunidades`; nova Edge Function de leitura; DTO seguro; preservação dos fluxos atuais.
+- **Riscos ou erros:** exposição potencial pela RPC atual, filtros ignorados, ausência de índices de consulta, JSON heterogêneo, bundle sem divisão de rotas, múltiplos lockfiles e `.env` versionado.
+- **Pendências:** implementar e testar a camada segura de consulta; executar verificações de segurança e performance após a migration; confirmar o gerenciador de pacotes oficial antes de adicionar dependências.
+- **Próxima ação exata:** criar `supabase/functions/travel-offers-public/index.ts` com operações `facets`, `catalog`, `calendar` e `detail`, mais a migration de índices, sem tocar no WhatsApp nem no prompt do Téo.
