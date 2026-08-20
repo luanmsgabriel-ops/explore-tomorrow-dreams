@@ -2504,7 +2504,10 @@ function formatQuotationResults(data: any, requestedDate?: string): string {
     let papel = "";
     let disclaimer = "";
     
-    if (requestedDate) {
+    if (r.papel === "melhor_preco") {
+      papel = "💰 *Data alternativa mais econômica*";
+      disclaimer = "_💡 A data muda, mas esta opção entrega o menor valor encontrado._\n";
+    } else if (requestedDate) {
       const depDateTime = new Date(r.data_ida + "T12:00:00").getTime();
       const reqDateTime = new Date(requestedDate + "T12:00:00").getTime();
       const diffDays = (depDateTime - reqDateTime) / (1000 * 60 * 60 * 24);
@@ -2513,15 +2516,15 @@ function formatQuotationResults(data: any, requestedDate?: string): string {
         papel = "📅 *Data solicitada*";
       } else if (diffDays > 3) {
         papel = "🔜 *Próxima data disponível*";
-        disclaimer = "_⚠️ Não há bloqueios na data exata, esta é a opção mais próxima._\n";
-      } else if (diffDays < -3) {
-        papel = "💰 *Data alternativa mais econômica*";
-        disclaimer = "_💡 Opção antes do período solicitado com excelente economia!_\n";
+        disclaimer = "_⚠️ Não há bloqueios na data exata; esta é a opção mais próxima._\n";
+      } else {
+        papel = "🗓️ *Data alternativa disponível*";
+        disclaimer = "_💡 Esta opção parte antes do período solicitado._\n";
       }
     } else {
       if (r.papel === "data_pedida") papel = "📅 *Data solicitada*";
       else if (r.papel === "proxima_data") papel = "🔜 *Próxima data disponível*";
-      else papel = "💰 *Melhor preço*";
+      else papel = "💰 *Data alternativa mais econômica*";
     }
     
     formatted += `${papel}\n`;
@@ -2831,7 +2834,7 @@ serve(async (req) => {
           let quotationMsg: string;
 
           if (quotationResult.status === "success" && quotationResult.data?.resultados?.length > 0) {
-            quotationMsg = formatQuotationResults(quotationResult.data);
+            quotationMsg = formatQuotationResults(quotationResult.data, quotationData.data_ida);
 
             // Update travel_quote_requests with results
             if (saveResultId) {
@@ -2842,9 +2845,8 @@ serve(async (req) => {
               }).eq("id", saveResultId);
             }
 
-            // Generate quote visual card (fire-and-forget)
-            generateAndSendQuoteVisual(phone, quotationData, quotationResult.data)
-              .catch(err => console.error("[QUOTE-VISUAL] Fire-and-forget error:", err));
+            // Quote visual card temporarily disabled
+            console.log("[QUOTE-VISUAL] Automatic quote image disabled.");
 
           } else {
             // No promotional results or API error — keep the human quotation active and always reply
@@ -2900,32 +2902,29 @@ serve(async (req) => {
             console.error("[ASYNC-QUOTATION] Error updating conversation:", histErr);
           }
 
-          // Generate travel tips (non-blocking, delayed)
-          try {
-            const tipsResponse = await getAiResponse([
-              { role: "user", content: `Você é o Téo, assistente de viagens divertido e humano da Tomorrow Travel. Gere uma mensagem para o cliente ${clientName || ''} com exatamente 5 dicas incríveis sobre ${quotationData.destino} (passeios, comidas, curiosidades, experiências). Seja divertido, use emojis, tom leve e descontraído. Uma dica por linha numerada. Comece com algo como "${clientName ? clientName + ', e' : 'E'}nquanto isso, bora conhecer um pouco mais sobre ${quotationData.destino}? 🗺️✨" e depois as 5 dicas. No FINAL da mensagem, adicione uma quebra de linha e pergunte de forma divertida e natural se o cliente sabia que você (o Téo) também pode montar um roteiro personalizado dia a dia pra viagem dele. Algo como: "Ah, e sabia que eu também posso montar um roteiro completinho dia a dia pra sua viagem? 🗓️✨ Quer que eu prepare um pra você?" Seja criativo e mantenha o tom do Téo!` }
-            ]);
-            const cleanTips = cleanAiResponse(tipsResponse);
-            if (cleanTips && cleanTips.length > 20) {
-              await new Promise(r => setTimeout(r, 30000));
-              await sendWhatsAppMessage(phone, cleanTips);
+          // Generate destination tips only when offers were found and schedule them for 20 minutes later
+          if (quotationResult.status === "success" && quotationResult.data?.resultados?.length > 0) {
+            try {
+              const tipsResponse = await getAiResponse([
+                { role: "user", content: `Você é o Téo, assistente de viagens divertido e humano da Tomorrow Travel. Gere uma mensagem para o cliente ${clientName || ''} com exatamente 5 dicas incríveis sobre ${quotationData.destino} (passeios, comidas, curiosidades, experiências). Seja divertido, use emojis, tom leve e descontraído. Uma dica por linha numerada. Comece com algo como "${clientName ? clientName + ', e' : 'E'}nquanto isso, bora conhecer um pouco mais sobre ${quotationData.destino}? 🗺️✨" e depois as 5 dicas. No FINAL da mensagem, adicione uma quebra de linha e pergunte de forma divertida e natural se o cliente sabia que você (o Téo) também pode montar um roteiro personalizado dia a dia pra viagem dele. Algo como: "Ah, e sabia que eu também posso montar um roteiro completinho dia a dia pra sua viagem? 🗓️✨ Quer que eu prepare um pra você?" Seja criativo e mantenha o tom do Téo!` }
+              ]);
+              const cleanTips = cleanAiResponse(tipsResponse);
+              if (cleanTips && cleanTips.length > 20) {
+                const sendAfter = new Date(Date.now() + 20 * 60 * 1000).toISOString();
+                const { error: scheduleError } = await supabase
+                  .from("whatsapp_scheduled_messages")
+                  .insert({
+                    phone_number: phone,
+                    message_text: cleanTips,
+                    send_after: sendAfter,
+                  });
 
-              // Save tips to history
-              const { data: convAfterTips } = await supabase
-                .from("whatsapp_conversations")
-                .select("id, messages_history")
-                .eq("id", conversationId)
-                .single();
-              if (convAfterTips) {
-                const updH = [
-                  ...((convAfterTips.messages_history as any[]) || []),
-                  { role: "assistant", content: cleanTips, timestamp: new Date().toISOString() },
-                ];
-                await supabase.from("whatsapp_conversations").update({ messages_history: updH }).eq("id", convAfterTips.id);
+                if (scheduleError) throw scheduleError;
+                console.log(`[ASYNC-QUOTATION] Destination tips scheduled for ${sendAfter}`);
               }
+            } catch (tipErr) {
+              console.error("[ASYNC-QUOTATION] Tips scheduling error:", tipErr);
             }
-          } catch (tipErr) {
-            console.error("[ASYNC-QUOTATION] Tips error:", tipErr);
           }
 
           console.log(`[ASYNC-QUOTATION] Done for ${phone}`);
@@ -9336,6 +9335,25 @@ Regras OBRIGATÓRIAS:
             console.log(`[SCHEDULED] Processing ${pendingMsgs.length} messages...`);
             for (const msg of pendingMsgs) {
               await sendWhatsAppMessage(msg.phone_number, msg.message_text);
+
+              const { data: scheduledConv } = await supabase
+                .from("whatsapp_conversations")
+                .select("id, messages_history")
+                .eq("phone_number", msg.phone_number)
+                .order("updated_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              if (scheduledConv) {
+                const scheduledHistory = [
+                  ...((scheduledConv.messages_history as any[]) || []),
+                  { role: "assistant", content: msg.message_text, timestamp: new Date().toISOString() },
+                ];
+                await supabase
+                  .from("whatsapp_conversations")
+                  .update({ messages_history: scheduledHistory })
+                  .eq("id", scheduledConv.id);
+              }
+
               await supabase
                 .from("whatsapp_scheduled_messages")
                 .update({ sent_at: new Date().toISOString() })
@@ -9349,15 +9367,6 @@ Regras OBRIGATÓRIAS:
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
-      }
-
-      // If user replies, cancel any scheduled messages for this phone
-      if (messageText && !body.action) {
-        await supabase
-          .from("whatsapp_scheduled_messages")
-          .update({ sent_at: new Date().toISOString() }) // Mark as "sent" to cancel
-          .eq("phone_number", phoneNumber)
-          .is("sent_at", null);
       }
 
       // Schedule follow-up quote if no quotation was triggered yet
