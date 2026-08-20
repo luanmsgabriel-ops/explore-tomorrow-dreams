@@ -2777,12 +2777,13 @@ serve(async (req) => {
                 { role: "assistant", content: quotationMsg, timestamp: new Date().toISOString() },
               ];
               const updatedCd = { ...(conv.collected_data as Record<string, any> || {}), _last_quote_id: saveResultId };
+              delete updatedCd._quotation_triggered;
 
               await supabase.from("whatsapp_conversations").update({
                 messages_history: updatedHistory,
                 collected_data: updatedCd,
                 conversation_state: hasResults ? "quotation_sent" : "completed",
-                is_ai_active: hasResults,
+                is_ai_active: true,
               }).eq("id", conv.id);
             }
           } catch (histErr) {
@@ -8900,13 +8901,9 @@ Regras OBRIGATÓRIAS:
       }
 
       // Handle quotation if triggered
-      // We check if it was already triggered in PREVIOUS turns to avoid duplication
-      const alreadyQuotedInDB = (conversation.collected_data as any)?._quotation_triggered === true || 
-                                (conversation.collected_data as any)?._quotation_triggered === "true";
-      
       // Check for deduplication of the exact same trip (24h limit)
       let isExactDuplicate = false;
-      if (effectiveQuotationData && !alreadyQuotedInDB) {
+      if (effectiveQuotationData) {
         const { data: recentSameQuote } = await supabase
           .from("travel_quote_requests")
           .select("id")
@@ -8914,6 +8911,7 @@ Regras OBRIGATÓRIAS:
           .eq("origin", effectiveQuotationData.origem)
           .eq("destination", effectiveQuotationData.destino)
           .eq("departure_date", effectiveQuotationData.data_ida)
+          .eq("return_date", effectiveQuotationData.data_volta)
           .eq("status", "completed")
           .gt("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
           .limit(1)
@@ -8933,7 +8931,7 @@ Regras OBRIGATÓRIAS:
                               /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_ida) &&
                               /^\d{4}-\d{2}-\d{2}$/.test(effectiveQuotationData.data_volta);
 
-      if (effectiveQuotationData && !alreadyQuotedInDB && !isExactDuplicate) {
+      if (effectiveQuotationData && !isExactDuplicate) {
         if (!hasMandatoryData) {
           console.log("[VALIDATION] Quotation ignored - missing or invalid mandatory data:", {
             effectiveData: effectiveQuotationData
