@@ -2742,12 +2742,18 @@ serve(async (req) => {
               .catch(err => console.error("[QUOTE-VISUAL] Fire-and-forget error:", err));
 
           } else {
-            // No results or API error — fallback to human specialist
-            console.log("[QUOTATION] No results found for client " + phone + ". Skipping secondary message.");
+            // No promotional results or API error — keep the human quotation active and always reply
+            const apiFailed = quotationResult.status !== "success";
+            quotationMsg = apiFailed
+              ? `Não consegui consultar os bloqueios aéreos promocionais agora, mas sua cotação para as datas solicitadas já foi encaminhada ao nosso consultor especializado. Vou continuar por aqui caso queira acrescentar alguma preferência. 😊`
+              : `Não encontrei bloqueios aéreos promocionais para ${quotationData.destino} dentro da janela de 60 dias antes ou depois das datas informadas. Mas sua cotação para as datas solicitadas já foi encaminhada ao nosso consultor especializado, que seguirá buscando as melhores opções para você. 😊`;
+
+            console.log(`[QUOTATION] ${apiFailed ? "API error" : "No promotional results"} for client ${phone}. Sending fallback message.`);
             if (saveResultId) {
               await supabase.from("travel_quote_requests").update({
-                status: "failed",
-                error_message: "Nenhum resultado encontrado na API Infotravel",
+                status: apiFailed ? "failed" : "completed",
+                error_message: apiFailed ? "Falha ao consultar cotar-viagem" : null,
+                processing_details: apiFailed ? null : quotationResult.data,
                 processed_at: new Date().toISOString(),
               }).eq("id", saveResultId);
             }
@@ -2758,9 +2764,8 @@ serve(async (req) => {
             }
           }
 
-          // Send results to client
-          // Send results to client ONLY if there are results
-          if (quotationMsg) await sendWhatsAppMessage(phone, quotationMsg);
+          // Always send the quotation result or the appropriate fallback
+          await sendWhatsAppMessage(phone, quotationMsg);
 
           // Save to conversation history
           try {
