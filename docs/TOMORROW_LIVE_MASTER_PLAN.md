@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 20/08/2026 |
-| Estado geral | Etapas 1, 2 e 3 concluídas; catálogo público implantado, validado e operacional |
-| Etapa atual | Etapa 3 — concluída, implantada e validada em produção no SHA `9b95ca29602064cbfa84f78178d3e4c51d997eec` |
-| Último HEAD verificado | `9b95ca29602064cbfa84f78178d3e4c51d997eec` |
-| Próxima ação exata | Aguardar autorização expressa para iniciar a Etapa 4; não implementar detalhe, comparação, calendário ou Tomorrow Live antes dessa autorização |
+| Estado geral | Etapas 1, 2 e 3 concluídas e implantadas; Etapa 4 concluída no código e validada localmente |
+| Etapa atual | Etapa 4 — detalhe e comparação sincronizados no GitHub; implantação e validação pública pendentes |
+| Último HEAD verificado | `af6d090aae6cd2642cd475a9f188c7f8f414cb17` |
+| Próxima ação exata | Sincronizar e publicar o HEAD final da Etapa 4 no Lovable; validar detalhe e comparação no domínio principal; não iniciar a Etapa 5 |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -269,7 +269,7 @@ A rota atual `/ofertas` será preservada durante a construção. Redirecionament
 
 ### Etapa 4 — Página de detalhe e comparação
 
-**Estado:** não iniciada
+**Estado:** concluída no código e validada localmente; implantação pendente
 
 **Objetivo:** explicar cada oportunidade com transparência e permitir comparar escolhas.
 
@@ -619,6 +619,23 @@ O catálogo público foi criado em `/oportunidades/catalogo` e a entrada `/oport
 
 A página não implementa detalhe, comparação, calendário, Tomorrow Live, handoff para WhatsApp ou qualquer alteração no Téo; esses itens continuam reservados às etapas posteriores.
 
+### 8.11 Detalhe e comparação implementados na Etapa 4
+
+Foram criadas as rotas lazy `/oportunidades/oferta/:id` e `/oportunidades/comparar`, ambas consumindo exclusivamente a operação pública `detail` de `travel-offers-public` por `supabase.functions.invoke`.
+
+- o identificador da oferta é validado como UUID no cliente e novamente pela Edge Function; UUID inválido não dispara consulta;
+- o detalhe trata separadamente bloqueio aéreo, pacote e grupo guiado, respeitando os campos próprios de cada DTO;
+- preço e taxa permanecem separados; o total por pessoa só é calculado quando a taxa é conhecida;
+- vagas ausentes aparecem como quantidade não informada, e pacote sem aéreo informa explicitamente `Não` sem estimar valor aéreo;
+- evento, ingresso, hotel, regime, inclusões, outras hospedagens, prazo de emissão, horários e estrutura exclusiva de grupo guiado aparecem somente quando previstos pelo DTO;
+- o link compartilhável contém apenas a rota pública e o UUID da oferta;
+- o catálogo permite selecionar até três IDs e encaminha a seleção pela URL para uma tabela comparativa heterogênea;
+- a comparação cobre tipo, rota, datas, noites, preço, taxa, total, vagas, aéreo, hospedagem, regime, evento, ingresso e inclusões;
+- o handoff para o Téo preserva somente `offer_id` na URL, sem alterar prompt, fluxo do WhatsApp ou código do assistente;
+- não há consulta frontend direta a tabela, RPC legada, `raw_data`, `source_url`, credencial ou link interno.
+
+O calendário inteligente, as regras visuais de datas e o Tomorrow Live permanecem fora deste escopo.
+
 ## 9. Decisões registradas
 
 | ID | Data | Decisão | Estado |
@@ -646,6 +663,8 @@ A página não implementa detalhe, comparação, calendário, Tomorrow Live, han
 | D-021 | 20/08/2026 | Iniciar favoritos de forma local e anônima, limitados a 100 IDs; sincronização autenticada permanece decisão futura | implementada |
 | D-022 | 20/08/2026 | Paginar no banco com 18 itens por página e aplicar filtros somente após validação e ação explícita do usuário | implementada |
 | D-023 | 20/08/2026 | Considerar a Etapa 3 concluída somente após confirmar o SHA publicado, o deployment servido sem cache e o catálogo real no domínio principal | executada |
+| D-024 | 20/08/2026 | Consultar detalhe e comparação exclusivamente pela operação pública `detail`, validando UUIDs antes da chamada e limitando a comparação a três IDs | implementada |
+| D-025 | 20/08/2026 | Calcular total por pessoa somente quando preço e taxa estiverem disponíveis; campos ausentes permanecem explicitamente não informados | implementada |
 
 ## 10. Riscos conhecidos
 
@@ -673,6 +692,8 @@ A página não implementa detalhe, comparação, calendário, Tomorrow Live, han
 | Divergência futura entre migrations locais e ledger do banco | manter `20260820181818_f1b140d2-9b9c-4d14-8415-09603f243cc5.sql` como arquivo canônico; não alterar o ledger manualmente |
 | Preview do Lovable ser bloqueado pela allowlist CORS da função | validar o catálogo no domínio publicado permitido; não ampliar CORS apenas para facilitar preview temporário |
 | Favoritos locais serem perdidos ao limpar dados do navegador ou trocar de aparelho | comunicar natureza local; avaliar sincronização autenticada em etapa futura, sem bloquear o catálogo público |
+| Seleção da comparação ser perdida ao voltar ou recarregar o catálogo antes de abrir a URL comparativa | a URL da comparação é compartilhável e persistente; avaliar persistência local somente em etapa futura se houver demanda |
+| Clipboard não estar disponível fora de contexto seguro | o domínio principal usa HTTPS; a interface informa falha sem expor ou ampliar dados da oferta |
 
 ## 11. Modelo de checkpoint
 
@@ -841,3 +862,19 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Riscos ou erros:** os múltiplos lockfiles continuam podendo gerar instalações divergentes; a correção atualizou apenas `bun.lock`. Clientes com Service Worker muito antigo podem precisar receber a atualização do PWA antes de visualizar a rota nova; monitorar ocorrências.
 - **Pendências:** nenhuma pendência funcional ou de implantação da Etapa 3. A escolha do gerenciador de pacotes oficial permanece dívida técnica transversal, sem bloquear o catálogo.
 - **Próxima ação exata:** aguardar autorização expressa para iniciar a Etapa 4; quando autorizada, reler integralmente este documento, conferir o HEAD e implementar detalhe/comparação usando somente a operação pública `detail`, sem alterar Téo, WhatsApp ou calendário.
+
+### Checkpoint 2026-08-20 20:25 UTC — Etapa 4 concluída no código
+
+- **Etapa:** 4 — Página de detalhe e comparação
+- **Estado:** concluída no código, validada localmente e sincronizada no GitHub; implantação e validação pública pendentes.
+- **Objetivo executado:** explicar cada oportunidade conforme seu tipo, permitir comparar até três ofertas e preservar um handoff controlado para o Téo, sem inventar informações comerciais.
+- **Arquivos alterados:** `src/App.tsx`; `src/components/opportunities/OpportunityState.tsx`; novo `detailFormatters.ts`; novo `src/lib/opportunityComparison.ts`; `src/lib/travelOffersPublic.ts`; `travelOffersPublic.test.ts`; `src/pages/OpportunitiesCatalog.tsx`; `opportunitiesCatalog.test.tsx`; novos `OpportunityDetail.tsx`, `opportunityDetail.test.tsx`, `OpportunityCompare.tsx` e `opportunityCompare.test.tsx`; `docs/TOMORROW_LIVE_MASTER_PLAN.md` neste checkpoint.
+- **SQL/migrations:** nenhuma operação SQL, nenhuma migration e nenhuma alteração de banco, RLS, Edge Function ou `supabase/config.toml`.
+- **Commits:** implementação `af6d090aae6cd2642cd475a9f188c7f8f414cb17`; o SHA deste checkpoint documental será registrado no chat após o commit.
+- **Testes realizados:** suíte Vitest completa; typecheck global; ESLint restrito aos arquivos funcionais alterados; build Vite/PWA de produção; `git diff --check`; varredura estática por tabelas, RPC legada, campos internos, Service Role e tokens; comparação do commit com o HEAD anterior.
+- **Resultado dos testes:** 24/24 testes aprovados em seis arquivos; typecheck aprovado; lint do escopo sem avisos; build concluído com chunks lazy separados para catálogo, detalhe e comparação; nenhum acesso direto ou campo interno encontrado no novo código; diff sem erro de whitespace. Após o ciclo completo, a regex cliente foi alinhada de `[1-5]` para `[1-8]`, igualando a validação já implantada no servidor; uma repetição idêntica da automação foi bloqueada pelo limite operacional da ferramenta, sem nova alteração funcional além dessa paridade estática.
+- **Implantações e SHA:** nenhuma implantação executada ou marcada. Nenhum prompt foi enviado ao agente do Lovable.
+- **Decisões tomadas:** comparação limitada a três UUIDs; detalhes normalizados por tipo; totais somente com taxa conhecida; link compartilhável restrito ao UUID público; CTA preserva `offer_id`; seleção temporária do catálogo permanece apenas em memória até formar a URL comparativa.
+- **Riscos ou erros:** persistem os avisos anteriores do build sobre `@import`, classe de duração ambígua, PDF.js e chunk inicial grande; múltiplos lockfiles continuam como dívida técnica. Clientes com Service Worker antigo podem exigir atualização antes de enxergar as novas rotas. A cópia do link depende de Clipboard API em contexto seguro e possui estado de falha explícito.
+- **Pendências:** sincronizar/publicar o HEAD documental final; validar no domínio principal um bloqueio, pacote nacional, internacional sem aéreo, evento, grupo guiado, UUID inválido, comparação de três ofertas, remoção de item, responsividade, console/rede, CTA e ausência de campos internos; registrar SHA e deployment ID reais.
+- **Próxima ação exata:** enviar manualmente ao Lovable o prompt de sincronização e publicação preparado no chat; após o estado `ready`, confirmar o SHA servido e executar a validação pública da Etapa 4. Não iniciar calendário, Etapa 5 ou Tomorrow Live.
