@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 20/08/2026 |
-| Estado geral | Etapas 1 e 2 concluídas; Etapa 3 concluída no código, validada localmente e sincronizada no Lovable |
-| Etapa atual | Etapa 3 — implantação e validação no domínio público pendentes |
-| Último HEAD verificado | `135307e1146b18b55d65d936c44f090f1bf47a23` |
-| Próxima ação exata | Publicar o HEAD final sincronizado no Lovable e validar `/oportunidades/catalogo` no domínio público com dados reais e viewport móvel; não iniciar a Etapa 4 |
+| Estado geral | Etapas 1 e 2 concluídas; Etapa 3 implementada e validada tecnicamente, com validação pública reaberta por divergência de produção |
+| Etapa atual | Etapa 3 — pausada: implantação reportada no SHA `307b576f50fe406e4d527836954b9ffd2f2c1ef6`, mas verificação independente ainda retorna 404 |
+| Último HEAD verificado | `5f1cc7e60545767f6823911fbfe7d7c4e0f10932` |
+| Próxima ação exata | Reimplantar o HEAD final no domínio principal e validar em sessão limpa que `/oportunidades` redireciona e `/oportunidades/catalogo` carrega dados reais; não iniciar a Etapa 4 |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -246,7 +246,7 @@ A rota atual `/ofertas` será preservada durante a construção. Redirecionament
 
 ### Etapa 3 — Catálogo de oportunidades
 
-**Estado:** concluída no código, validada localmente e sincronizada em 20/08/2026; implantação e validação publicada pendentes
+**Estado:** concluída no código e validada tecnicamente em 20/08/2026; validação pública reaberta porque uma verificação independente posterior à implantação encontrou 404
 
 **Objetivo:** disponibilizar a navegação convencional pelo inventário.
 
@@ -805,3 +805,20 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Riscos ou erros:** o domínio temporário de preview do Lovable não pertence à allowlist CORS intencionalmente restrita e exige sessão para inspeção; a validação funcional deve ocorrer no domínio publicado. Permanecem os avisos anteriores do build e o erro global de `QuoteEditForm.tsx`.
 - **Pendências:** publicar o HEAD final; validar carregamento real de `facets` e `catalog`, filtros, paginação, favoritos e layout móvel no domínio público; registrar o SHA efetivamente publicado.
 - **Próxima ação exata:** enviar manualmente ao Lovable o prompt de publicação preparado no chat; depois conferir o SHA publicado e testar `/oportunidades/catalogo`, sem iniciar detalhe, comparação, calendário ou Tomorrow Live.
+
+### Checkpoint 2026-08-20 19:35 UTC — Etapa 3 implantada, com divergência pública reaberta
+
+- **Etapa:** 3 — Catálogo de oportunidades
+- **Estado:** pausada para correção/validação da publicação; implementação e contrato técnico aprovados, mas o fechamento público não pôde ser confirmado de forma independente.
+- **Objetivo executado:** registrar a implantação reportada, conferir o HEAD atual, analisar os commits posteriores gerados pelo Lovable e repetir a verificação da rota pública sem alterar código funcional.
+- **Arquivos alterados nesta intervenção:** somente `docs/TOMORROW_LIVE_MASTER_PLAN.md`.
+- **SQL/migrations:** nenhuma operação SQL, nenhuma migration e nenhuma alteração de banco, RLS ou Edge Function. A migration canônica e os cinco índices da Etapa 1 permanecem inalterados.
+- **Commits:** catálogo `3c0292cec4af7037f43e09fe5785bea760ab748f`; checkpoint `135307e1146b18b55d65d936c44f090f1bf47a23`; sincronização `307b576f50fe406e4d527836954b9ffd2f2c1ef6`; artefatos Lovable posteriores `1d0f7dc94b4a5a5c638ccf98ef2abbc642ca9f4f` e `5f1cc7e60545767f6823911fbfe7d7c4e0f10932`.
+- **Implantações e SHA:** foi reportada publicação do SHA `307b576f50fe406e4d527836954b9ffd2f2c1ef6` em 20/08/2026 às 19:35 UTC no domínio `https://tomorrowtravelbr.com.br`. Os dois commits posteriores alteram exclusivamente a revisão do precache de `index.html` em `dev-dist/sw.js`; não alteram fonte, rotas, catálogo, banco nem segurança.
+- **Testes reportados da implantação:** catálogo e redirecionamento; desktop em 1280 px; mobile em 390 px; persistência local de favoritos; bloqueio aéreo; pacote nacional; pacote internacional sem aéreo; evento com ingresso; grupo guiado; destino sem resultado; calendário com capacidade insuficiente; paginação; limites; ação, UUID e parâmetros inválidos; ausência de `raw_data`, `source_url`, tokens e credenciais; semântica separada de preço e taxa; logs sem vazamento.
+- **Resultado reportado:** todos os critérios acima foram informados como aprovados, incluindo a Edge Function `travel-offers-public` e os dados reais do inventário.
+- **Verificação independente posterior:** em sessão de navegador separada, tanto `https://tomorrowtravelbr.com.br/oportunidades/catalogo` quanto `/oportunidades` exibiram `404 — Oops! Page not found`. O resultado persistiu com parâmetro de cache-bust; o domínio `explore-tomorrow-dreams.lovable.app` redirecionou ao domínio principal e apresentou o mesmo 404.
+- **Decisões tomadas:** preservar como evidência os testes reportados, mas reabrir a validação pública conforme o protocolo que exige confirmar SHA e comportamento real antes do fechamento. Não foi alterado o Téo, WhatsApp, catálogo, Edge Function, banco ou qualquer componente visual.
+- **Riscos ou erros:** possível divergência entre a versão validada pelo executor e a versão efetivamente servida pelo domínio, ou atualização inconsistente de artefatos/cache de publicação. O rate limit em memória e os avisos técnicos anteriores permanecem riscos conhecidos, sem mudança nesta intervenção.
+- **Pendências:** reimplantar o HEAD final; confirmar o SHA servido; validar em sessão limpa o redirecionamento e o catálogo com dados reais em desktop e mobile; somente então marcar a Etapa 3 como concluída e implantada.
+- **Próxima ação exata:** enviar manualmente ao Lovable a solicitação de sincronização/republicação do HEAD final informado no chat; após o `ready`, abrir as duas rotas em sessão limpa, confirmar que não há 404 e registrar o SHA publicado. Não iniciar a Etapa 4.
