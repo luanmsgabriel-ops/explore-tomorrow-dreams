@@ -110,7 +110,7 @@ describe("Comparação de oportunidades", () => {
     expect(screen.getAllByText("Não calculável sem taxa").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Não incluído").length).toBeGreaterThan(0);
     expect(fetchDetail).toHaveBeenCalledTimes(2);
-    expect(screen.getAllByRole("link", { name: "Quero esta oportunidade", exact: true })).toHaveLength(2);
+    expect(screen.getAllByRole("link", { name: "Quero esta oportunidade" })).toHaveLength(2);
   });
 
   it("não consulta a função para link inválido", () => {
