@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.travel-offers-sync]
 verify_jwt = false
+
+[functions.travel-offers-public]
+verify_jwt = false
