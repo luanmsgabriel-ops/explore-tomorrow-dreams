@@ -1,100 +1,132 @@
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { TeoHeroConversation } from '@/components/landing/TeoHeroConversation';
-import { SocialProofStrip } from '@/components/landing/SocialProofStrip';
-import { TeoLiveDemo } from '@/components/landing/TeoLiveDemo';
-import { DestinationsCarousels } from '@/components/landing/DestinationsCarousels';
-import { HowItWorksTimeline } from '@/components/landing/HowItWorksTimeline';
-import { ComparisonTable } from '@/components/landing/ComparisonTable';
-import { ClosingCTA } from '@/components/landing/ClosingCTA';
-import { FloatingTeoButton } from '@/components/landing/FloatingTeoButton';
-import { ImmersiveVideoShowcase } from '@/components/landing/ImmersiveVideoShowcase';
-import { RealItinerariesShowcase } from '@/components/landing/RealItinerariesShowcase';
-import { CinematicDestinations } from '@/components/landing/CinematicDestinations';
-import { LandingFAQ } from '@/components/landing/LandingFAQ';
-import { ExploreTheWorld } from '@/components/landing/ExploreTheWorld';
-import { TrustBar } from '@/components/landing/TrustBar';
-import { RealStories } from '@/components/landing/RealStories';
-import { PostTravelCare } from '@/components/landing/PostTravelCare';
-import { GoogleReviews } from '@/components/landing/GoogleReviews';
-import { MetricsStrip } from '@/components/landing/MetricsStrip';
-
-const JourneyConnector = () => (
-  <div className="h-32 w-full flex justify-center items-center pointer-events-none relative overflow-hidden">
-    <div className="w-px h-full bg-gradient-to-b from-transparent via-gold/40 to-transparent relative">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-gold rounded-full blur-[2px] animate-pulse" />
-    </div>
-  </div>
-);
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-background relative selection:bg-gold/30">
       <Header />
       
-      <main>
-        {/* 1 — Hero: Téo as protagonist */}
-        <TeoHeroConversation />
+      <main className="container mx-auto py-20 px-4 text-left">
+        <div className="max-w-4xl mx-auto whitespace-pre-wrap font-mono text-sm opacity-90 text-foreground">
+          {`Quero continuar a validação e publicação controlada da Etapa 5 — Calendário Inteligente do projeto Tomorrow Travel.
 
-        {/* 2 — Trust Bar */}
-        <TrustBar />
+IMPORTANTE:
+Não faça alterações no código, banco de dados, Edge Functions, RLS, Téo, WhatsApp ou demais fluxos neste momento.
+Não use “Try to fix all”.
+Não ignore findings de segurança.
+Primeiro apenas atualize e analise o estado atual de segurança do projeto.
 
-        {/* 3 — Live Téo demo */}
-        <TeoLiveDemo />
+CONTEXTO ATUAL
 
-        <JourneyConnector />
+O main já contém:
 
-        {/* 4 — Social proof strip */}
-        <SocialProofStrip />
+1. Etapa 5 — Calendário Inteligente
+- rota /oportunidades/calendario
+- consulta somente pela Edge Function travel-offers-public
+- ação calendar
+- janela de 60 dias antes + 60 dias depois
+- menor preço real por data
+- filtro por passageiros
+- datas sem disponibilidade não exibem preço
+- aeroportos alternativos quando informados pelo inventário
+- seleção da ida
+- agrupamento das opções pela data de retorno
+- integração com detalhe e comparação
+- limite de 3 ofertas na comparação
 
-        {/* 5 — Real Stories (Trust Building) */}
-        <RealStories />
-        
-        {/* 6 — Real Metrics */}
-        <MetricsStrip />
+A implementação passou em:
+- Vitest
+- TypeScript typecheck
+- ESLint do escopo
+- build Vite/PWA de produção
 
-        <JourneyConnector />
+2. Hardening de segurança já realizado
 
-        {/* 7 — How it works */}
-        <HowItWorksTimeline />
+Foi aplicada uma migration de segurança que:
 
-        <JourneyConnector />
+- ativou RLS em public.travel_quote_requests
+- removeu policies públicas desnecessárias de public.travel_groups
+- removeu policies públicas desnecessárias de public.travel_group_members
+- removeu UPDATE público de public.travel_reviews
+- revogou EXECUTE de anon e authenticated da RPC legada public.search_travel_offers(...)
+- manteve service_role autorizado
 
-        {/* 8 — Cinematic Destinations Section */}
-        <CinematicDestinations />
+Validação já realizada:
 
-        <JourneyConnector />
+Como role anon:
+- travel_quote_requests = 0 registros visíveis
+- travel_groups = 0
+- travel_group_members = 0
+- travel_reviews = 0
 
-        {/* 9 — Real Itineraries Showcase */}
-        <RealItinerariesShowcase />
+Como service_role:
+- travel_quote_requests = 122
+- travel_groups = 2
+- travel_group_members = 4
+- travel_reviews = 6
 
-        {/* 10 — Post Travel Care (Emotional) */}
-        <PostTravelCare />
+Ou seja, o backend continua com acesso enquanto dados sensíveis deixaram de ficar disponíveis anonimamente.
 
-        <JourneyConnector />
+3. Dependency audit
 
-        {/* 11 — Comparison */}
-        <ComparisonTable />
+Foi executado:
 
-        {/* 12 — Immersive video showcase */}
-        <ImmersiveVideoShowcase />
+npm audit --omit=dev
 
-        {/* 13 — Google Reviews */}
-        <GoogleReviews />
+Resultado:
+- critical: 0
+- high: 17
+- moderate: 5
+- low: 1
 
-        {/* 14 — FAQ */}
-        <LandingFAQ />
-        
-        <JourneyConnector />
+Portanto, os “5 critical findings” anteriormente exibidos pelo Lovable não são vulnerabilidades críticas do dependency audit.
 
-        {/* 15 — Closing CTA */}
-        <ClosingCTA />
+TAREFA AGORA
+
+1. Atualize/reexecute os scanners da Security View usando o estado ATUAL do projeto.
+2. Não considere como atual um finding antigo sem verificar novamente.
+3. Liste exatamente todos os findings que permanecerem com severidade CRITICAL.
+4. Para cada critical finding, informe:
+   - nome/título
+   - arquivo, função, tabela ou recurso afetado
+   - motivo técnico
+   - risco real
+   - se é finding atual ou possivelmente stale
+   - correção mínima recomendada
+   - impacto provável da correção nos fluxos existentes
+5. NÃO aplique nenhuma correção ainda.
+6. NÃO publique o projeto ainda.
+7. NÃO altere funcionalidades existentes.
+8. NÃO modifique travel-offers-public.
+9. NÃO altere o Téo ou WhatsApp.
+10. NÃO comece a Etapa 6.
+
+Quero primeiro apenas o diagnóstico atualizado dos findings CRITICAL.
+
+Ao final, responda em formato objetivo:
+
+SECURITY SCAN ATUALIZADO
+
+Critical:
+High:
+Moderate:
+Low:
+
+CRITICAL FINDINGS:
+1. ...
+2. ...
+
+RECOMENDAÇÃO:
+...
+
+PUBLICAÇÃO:
+BLOQUEADA ou LIBERADA
+
+Não faça nenhuma outra alteração sem minha autorização.`}
+        </div>
       </main>
 
       <Footer />
-
-      {/* Floating Téo */}
-      <FloatingTeoButton />
     </div>
   );
 };
