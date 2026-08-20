@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
 
 export default {
   darkMode: ["class"],
@@ -81,6 +82,20 @@ export default {
           light: "hsl(35 60% 45%)",
           dark: "hsl(25 50% 25%)",
         },
+        tomorrow: {
+          background: "hsl(var(--op-background) / <alpha-value>)",
+          surface: "hsl(var(--op-surface) / <alpha-value>)",
+          "surface-elevated": "hsl(var(--op-surface-elevated) / <alpha-value>)",
+          teal: "hsl(var(--op-teal) / <alpha-value>)",
+          "teal-soft": "hsl(var(--op-teal-soft) / <alpha-value>)",
+          gold: "hsl(var(--op-gold) / <alpha-value>)",
+          "gold-soft": "hsl(var(--op-gold-soft) / <alpha-value>)",
+          text: "hsl(var(--op-text) / <alpha-value>)",
+          muted: "hsl(var(--op-muted) / <alpha-value>)",
+          line: "hsl(var(--op-line) / <alpha-value>)",
+          danger: "hsl(var(--op-danger) / <alpha-value>)",
+          success: "hsl(var(--op-success) / <alpha-value>)",
+        },
       },
       fontFamily: {
         sans: ['Montserrat', 'sans-serif'],
@@ -91,6 +106,13 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        tomorrow: "var(--op-radius-md)",
+        "tomorrow-lg": "var(--op-radius-lg)",
+      },
+      boxShadow: {
+        "tomorrow-surface": "var(--op-shadow-surface)",
+        "tomorrow-teal": "var(--op-shadow-teal)",
+        "tomorrow-gold": "var(--op-shadow-gold)",
       },
       keyframes: {
         "accordion-down": {
@@ -174,5 +196,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate],
 } satisfies Config;

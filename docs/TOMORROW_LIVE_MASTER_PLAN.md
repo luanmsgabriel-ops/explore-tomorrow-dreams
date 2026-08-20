@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 20/08/2026 |
-| Estado geral | Etapa 1 operacional; Etapa 2 iniciada |
-| Etapa atual | Etapa 2 — design system da plataforma |
-| Último HEAD verificado | `379f559ba8615ba8ef77c89965af4a635ca99c9f` |
-| Próxima ação exata | Implementar tokens e componentes isolados do design system Tomorrow Live, sem criar páginas ou rotas, e validar build, testes, contraste, teclado e movimento reduzido |
+| Estado geral | Etapas 1 e 2 concluídas; camada de dados operacional e design system pronto para integração |
+| Etapa atual | Etapa 2 — concluída no código e validada |
+| Último HEAD verificado | `9b9b8b603242fadae7a2aa204d43db58e03ab0d3` |
+| Próxima ação exata | Aguardar autorização expressa para a Etapa 3; quando recebida, reler este plano, conferir o HEAD e criar o catálogo usando exclusivamente `travel-offers-public` e os componentes de `src/components/opportunities` |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -220,7 +220,7 @@ A rota atual `/ofertas` será preservada durante a construção. Redirecionament
 
 ### Etapa 2 — Design system da plataforma
 
-**Estado:** iniciada em 20/08/2026
+**Estado:** concluída no código e validada em 20/08/2026
 
 **Objetivo:** transformar a identidade aprovada em componentes reutilizáveis.
 
@@ -586,6 +586,21 @@ Uma oferta pública válida precisa ter `active = true`, data de saída não ant
 
 A função foi registrada com `verify_jwt = false` porque catálogo e calendário são públicos. Proteções compensatórias: origens CORS explícitas, apenas `POST`/`OPTIONS`, corpo máximo de 12 KB, ações e parâmetros em lista fechada, ordenação em mapa interno, paginação e intervalos limitados, cache de facetas, controle básico por IP/ação, Service Role apenas no servidor, seleção explícita de colunas e filtragem de links/tokens em textos públicos.
 
+### 8.9 Design system implementado na Etapa 2
+
+O design system foi criado de forma isolada em `src/components/opportunities`, sem páginas, rotas, consulta de dados ou alteração dos fluxos atuais.
+
+- tokens próprios para fundo, superfícies, turquesa, dourado, texto, estados, raios, espaçamento, sombras e movimento;
+- `OpportunityHeader` com navegação responsiva, estado ativo, menu móvel e fechamento por `Escape`;
+- `OpportunityButton`, `OpportunityField` e `OpportunityBadge` com variantes e contratos acessíveis;
+- `OpportunityCard` para bloqueio ou pacote, sem inventar preço, vagas, aéreo, datas ou badges comerciais;
+- `OpportunityState` para carregamento, vazio e erro com anúncio semântico;
+- foco visível, alvos de toque mínimos, suporte a teclado e redução de animações por `prefers-reduced-motion`;
+- CSS inteiramente escopado por `opportunities-theme`, `opportunity-surface` ou `opportunity-scope`, preservando as páginas atuais;
+- exportações centralizadas e documentação de uso no diretório do design system.
+
+Os principais pares de cor alcançaram contraste entre 8,62:1 e 17,61:1; texto secundário sobre superfície alcançou 9,03:1. Todos superam WCAG AA para texto normal.
+
 ## 9. Decisões registradas
 
 | ID | Data | Decisão | Estado |
@@ -607,6 +622,8 @@ A função foi registrada com `verify_jwt = false` porque catálogo e calendári
 | D-015 | 20/08/2026 | Publicar a consulta por Edge Function com `verify_jwt = false` e proteções compensatórias explícitas | implantada e validada |
 | D-016 | 20/08/2026 | Considerar válida somente oferta ativa, futura, com preço positivo e prazo de emissão vigente | implementada |
 | D-017 | 20/08/2026 | Preservar como migration canônica dos índices a versão `20260820181818` registrada no ledger do banco e remover do repositório somente o arquivo SQL redundante `20260820173700` | executada; índices preservados |
+| D-018 | 20/08/2026 | Isolar o novo design system sob `src/components/opportunities` e tokens escopados, sem modificar componentes ou páginas legadas | implementada |
+| D-019 | 20/08/2026 | Manter regras comerciais fora dos componentes visuais; badges de urgência serão informados pelo consumidor e campos nulos não serão inventados | implementada |
 
 ## 10. Riscos conhecidos
 
@@ -733,3 +750,19 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Riscos ou erros:** os três lockfiles permanecem divergentes; nenhuma dependência nova será adicionada nesta etapa.
 - **Pendências:** implementar tokens, cabeçalho/navegação, botões, campos, cards, badges, estados e testes responsivos/acessíveis.
 - **Próxima ação exata:** criar os componentes isolados em `src/components/opportunities`, estender tokens sem modificar o tema das páginas atuais e executar build, lint e testes.
+
+### Checkpoint 2026-08-20 — Etapa 2 concluída no código
+
+- **Etapa:** 2 — Design system da plataforma
+- **Estado:** concluída no código e validada; sem implantação funcional necessária
+- **Objetivo executado:** transformar a identidade Tomorrow Live em tokens e componentes React reutilizáveis, responsivos e acessíveis, sem criar páginas, rotas ou consultas.
+- **Arquivos alterados:** `src/index.css`; `tailwind.config.ts`; `src/components/opportunities/OpportunityCard.tsx`; `OpportunityHeader.tsx`; `OpportunityPrimitives.tsx`; `OpportunityState.tsx`; `tokens.ts`; `variants.ts`; `index.ts`; `README.md`; `opportunities.test.tsx`; `docs/TOMORROW_LIVE_MASTER_PLAN.md`.
+- **SQL/migrations:** nenhuma operação SQL e nenhuma nova migration. A reconciliação anterior preservou como canônica `20260820181818_f1b140d2-9b9c-4d14-8415-09603f243cc5.sql`.
+- **Commits:** abertura e reconciliação `9b9b8b603242fadae7a2aa204d43db58e03ab0d3`; SHA da implementação final será informado no chat após o commit.
+- **Testes realizados:** 6 testes do design system; suíte completa de 7 testes; lint restrito aos componentes e ao Tailwind; typecheck isolado; build Vite de produção; cálculo independente de contraste; `git diff --check`.
+- **Resultado dos testes:** 6/6 e 7/7 aprovados; lint do escopo aprovado sem avisos; typecheck isolado aprovado; build concluído; todos os contrastes avaliados superam WCAG AA; diff sem erros de whitespace.
+- **Implantações e SHA:** nenhuma. Os componentes ainda não são importados por páginas e não alteram a experiência publicada.
+- **Decisões tomadas:** escopo visual próprio; nenhuma dependência adicionada; regras de estoque, prazo e categoria permanecem no contrato/consumidor; `null` não gera informação comercial; animações respeitam movimento reduzido.
+- **Riscos ou erros:** o typecheck global continua bloqueado por erro anterior em `src/components/admin/QuoteEditForm.tsx`; o lint global já possui 607 ocorrências fora do novo diretório, inclusive arquivos gerados; o build mantém avisos anteriores de `@import`, classe ambígua, PDF.js e chunks grandes. Nenhum desses arquivos foi alterado. Os três lockfiles continuam divergentes, e `npm ci` não pode ser usado até a reconciliação futura.
+- **Pendências:** nenhuma pendência de código da Etapa 2. A validação visual em páginas reais ocorrerá ao integrar o catálogo na Etapa 3.
+- **Próxima ação exata:** aguardar autorização expressa para a Etapa 3; no início, reler o plano, conferir o HEAD e montar `/oportunidades/catalogo` com carregamento sob demanda, sem tocar no Téo, WhatsApp ou calendário.
