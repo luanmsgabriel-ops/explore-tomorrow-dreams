@@ -2063,12 +2063,32 @@ function sanitizeQuotationLocation(value: unknown): string {
     .replace(/\s+/g, " ")
     .trim();
 
+  const labeledDestination = cleaned.match(/\bdestino\s+(?:é|e)\s*:?\s*([^,.;()]+?)(?=\s*\(|[,.;]|$)/i);
+  if (labeledDestination?.[1]) {
+    cleaned = labeledDestination[1].trim();
+  }
+
   const explicitDestination = cleaned.match(/(?:pedido\s+(?:é|e)\s*:?\s*|ent[aã]o\s+(?:é|e)\s+|ent[aã]o\s*,\s*[^,]+\s*,\s*para\s+)([^,]+)$/i);
   if (explicitDestination?.[1]) {
     cleaned = explicitDestination[1].trim();
   }
 
+  cleaned = cleaned.replace(/\s*\([^)]*(?:voo|aeroporto|geralmente)[^)]*\)\s*$/i, "").trim();
+
   return cleaned.replace(/^[,.;:\s]+|[,.;:\s]+$/g, "");
+}
+
+function stripUnverifiedQuotationResults(value: string): string {
+  const resultMarkers = [
+    /✈️\s*\*?Encontrei bloqueios aéreos promocionais/i,
+    /🏨✈️\s*\*?(?:Também\s+)?encontrei pacotes completos em promoção/i,
+  ];
+  const markerIndexes = resultMarkers
+    .map((pattern) => value.search(pattern))
+    .filter((index) => index >= 0);
+
+  if (markerIndexes.length === 0) return value;
+  return value.slice(0, Math.min(...markerIndexes)).trim();
 }
 
 function isNewQuotationResetText(text: string): boolean {
@@ -9266,6 +9286,7 @@ Regras OBRIGATÓRIAS:
 
       // Clean response (remove all tags)
       let cleanResponse = cleanAiResponse(aiResponse);
+      cleanResponse = stripUnverifiedQuotationResults(cleanResponse);
 
       // Safety: strip any remaining hallucinated external links
       if (/https?:\/\/[^\s]*(?:typeform|jotform|google.*form|forms\.gle|bit\.ly|tally|survey)/i.test(cleanResponse)) {
