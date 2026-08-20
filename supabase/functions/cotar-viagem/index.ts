@@ -39,169 +39,313 @@ serve(async (req) => {
     }
     const baseDate = (targetDepStr && targetDepStr >= brDateStr) ? targetDepStr : brDateStr;
 
-    // 2. BUSCA DE IATA EXPANSIONS
-    const getIatas = async (term: string) => {
+    // 2. NORMALIZAÇÃO E EXPANSÃO DE AEROPORTOS
+    const normalizeText = (value: any) => String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+
+    const parseBrCurrency = (value: any) => {
+      const match = String(value || "").match(/(?:R\$\s*)?([\d.]+(?:,\d{1,2})?)/);
+      if (!match) return 0;
+      return Number.parseFloat(match[1].replace(/\./g, "").replace(",", ".")) || 0;
+    };
+
+    const { data: iataMapRows, error: iataMapError } = await supabaseClient
+      .from("travel_iata_map")
+      .select("code, origin_name, destination_name");
+
+    if (iataMapError) throw iataMapError;
+
+    const getIatas = (term: string) => {
       if (!term) return [];
-      const cleanTerm = term.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      const { data } = await supabaseClient
-        .from('travel_iata_map')
-        .select('code')
-        .or(`origin_name.ilike.%${cleanTerm}%,destination_name.ilike.%${cleanTerm}%,code.ilike.%${cleanTerm}%`);
-      
-      const list = (data || []).map(i => i.code.toUpperCase());
-      
+      const cleanTerm = normalizeText(term);
+      const list = (iataMapRows || [])
+        .filter((item: any) => {
+          const code = normalizeText(item.code);
+          const originName = normalizeText(item.origin_name);
+          const destinationName = normalizeText(item.destination_name);
+          const canMatchName = cleanTerm.length >= 3;
+          return code === cleanTerm ||
+            (canMatchName && originName && (
+              originName.includes(cleanTerm) ||
+              cleanTerm.includes(originName)
+            )) ||
+            (canMatchName && destinationName && (
+              destinationName.includes(cleanTerm) ||
+              cleanTerm.includes(destinationName)
+            ));
+        })
+        .map((item: any) => item.code.toUpperCase());
+
       if (cleanTerm.includes("sao paulo") || cleanTerm === "sp") list.push("GRU", "CGH", "VCP");
       if (cleanTerm.includes("goiania") || cleanTerm === "gyn") list.push("GYN");
       if (cleanTerm.includes("porto alegre") || cleanTerm === "poa") list.push("POA");
       if (cleanTerm.includes("maceio") || cleanTerm === "mcz") list.push("MCZ");
       if (cleanTerm.includes("porto de galinhas") || cleanTerm.includes("recife")) list.push("REC");
-      
+
       if (cleanTerm.length === 3) list.push(cleanTerm.toUpperCase());
       return [...new Set(list)];
     };
 
-    const [originIatas, destIatas] = await Promise.all([
-      getIatas(origem),
-      getIatas(destino)
-    ]);
+    const originIatas = getIatas(origem);
+    const destIatas = getIatas(destino);
 
-    // 3. CONSULTA AO CONJUNTO ELEGÍVEL
-    const { data: eligibleOffers, error } = await supabaseClient
-      .from('travel_offers')
-      .select('*')
-      .eq('active', true)
-      .eq('offer_type', 'bloqueio_aereo')
-      .gt('price_per_person', 0)
-      .gte('available_seats', totalPassageiros)
-      .in('origin_iata', originIatas)
-      .in('destination_iata', destIatas);
+    const requestDateTime = new Date(baseDate + "T12:00:00").getTime();
+    const shiftDate = (isoDate: string, days: number) => {
+      const date = new Date(isoDate + "T00:00:00Z");
+      date.setUTCDate(date.getUTCDate() + days);
+      return date.toISOString().slice(0, 10);
+    };
+    const packageWindowStart = [shiftDate(baseDate, -60), brDateStr].sort().reverse()[0];
+    const packageWindowEnd = shiftDate(baseDate, 60);
+    const getDateDistance = (offer: any) => Math.abs(
+      new Date(offer.departure_date + "T12:00:00").getTime() - requestDateTime
+    ) / 86400000;
 
-    if (error) throw error;
-    
-    const allEligible = (eligibleOffers || []).filter(o => {
-      // 60 days before and 60 days after the requested date
-      const depDate = new Date(o.departure_date + "T12:00:00");
-      const reqDate = new Date(baseDate + "T12:00:00");
-      const diffDays = Math.abs(depDate.getTime() - reqDate.getTime()) / (1000 * 60 * 60 * 24);
-      
-      if (diffDays > 60) return false;
-      if (o.departure_date < brDateStr) return false;
+    // 3. BLOQUEIOS AÉREOS: ATÉ DUAS OPÇÕES
+    let allEligibleAirOffers: any[] = [];
 
-      if (!o.issue_deadline) return true;
-      const deadline = o.issue_deadline.split('T')[0];
-      return deadline >= brDateStr;
-    });
+    if (originIatas.length > 0 && destIatas.length > 0) {
+      const { data: airOffers, error: airError } = await supabaseClient
+        .from("travel_offers")
+        .select("*")
+        .eq("active", true)
+        .eq("offer_type", "bloqueio_aereo")
+        .gt("price_per_person", 0)
+        .gte("available_seats", totalPassageiros)
+        .in("origin_iata", originIatas)
+        .in("destination_iata", destIatas);
 
-    // 4. SELEÇÃO DOS TRÊS PAPÉIS (EM MEMÓRIA)
-    const getCost = (o: any) => Number(o.price_per_person) + Number(o.boarding_tax || 0);
+      if (airError) throw airError;
 
-    // data_pedida:
-    let offerA = null;
-    const [yPed, mPed, dPed] = baseDate.split('-');
-    const targetMonth = `${yPed}-${mPed}`;
-    const monthOffers = allEligible.filter(o => o.departure_date.startsWith(targetMonth));
-    
-    if (monthOffers.length > 0) {
-      const targetTime = new Date(baseDate + "T12:00:00").getTime();
-      offerA = [...monthOffers].sort((a, b) => {
-        const timeA = new Date(a.departure_date + "T12:00:00").getTime();
-        const timeB = new Date(b.departure_date + "T12:00:00").getTime();
-        const distA = Math.abs(timeA - targetTime);
-        const distB = Math.abs(timeB - targetTime);
-        if (distA !== distB) return distA - distB;
-        return getCost(a) - getCost(b);
-      })[0];
+      allEligibleAirOffers = (airOffers || []).filter((offer: any) => {
+        if (!offer.departure_date || offer.departure_date < brDateStr) return false;
+        if (getDateDistance(offer) > 60) return false;
+        if (!offer.issue_deadline) return true;
+        return offer.issue_deadline.split("T")[0] >= brDateStr;
+      });
     }
 
-    // proxima_data (estritamente posterior à ida pedida):
-    let offerB = null;
-    const futureOffers = allEligible
-      .filter(o => o.departure_date > baseDate)
-      .sort((a, b) => a.departure_date.localeCompare(b.departure_date));
-    
-    if (futureOffers.length > 0) {
-      offerB = futureOffers[0];
-      // Se offerA e offerB forem a mesma (o que não deve ocorrer pelo filtro >), removemos offerB
-      if (offerA && offerB.id === offerA.id) offerB = null;
-    }
+    const getAirCost = (offer: any) =>
+      Number(offer.price_per_person) + Number(offer.boarding_tax || 0);
 
-    // melhor_preco (menor custo total no conjunto elegível):
-    let offerC = null;
-    const sortedByPrice = [...allEligible].sort((a, b) => getCost(a) - getCost(b));
-    const cheapest = sortedByPrice[0];
-    
-    if (cheapest) {
-      const mainOffer = offerA || offerB;
-      if (!mainOffer || (cheapest.id !== mainOffer.id && getCost(cheapest) < getCost(mainOffer))) {
-        offerC = cheapest;
-      }
-    }
+    const closestAirOffer = [...allEligibleAirOffers].sort((a, b) => {
+      const distanceDifference = getDateDistance(a) - getDateDistance(b);
+      return distanceDifference !== 0 ? distanceDifference : getAirCost(a) - getAirCost(b);
+    })[0] || null;
 
-    // 5. FORMATAÇÃO FINAL
-    const format = (o: any, role: string, refTotal?: number) => {
-      const personPrice = Number(o.price_per_person);
-      const tax = Number(o.boarding_tax || 0);
-      const cost = personPrice + tax;
-      const totalGroup = cost * totalPassageiros;
-      
-      const depDate = o.departure_date;
-      const reqDate = baseDate;
-      
-      let label = "";
+    const cheapestAirCandidate = [...allEligibleAirOffers]
+      .sort((a, b) => getAirCost(a) - getAirCost(b))[0] || null;
+    const cheapestAirOffer = cheapestAirCandidate && cheapestAirCandidate.id !== closestAirOffer?.id
+      ? cheapestAirCandidate
+      : null;
+
+    const formatAirOffer = (offer: any, role: string) => {
+      const personPrice = Number(offer.price_per_person);
+      const tax = Number(offer.boarding_tax || 0);
+      const totalGroup = (personPrice + tax) * totalPassageiros;
+      const diffDays = (
+        new Date(offer.departure_date + "T12:00:00").getTime() - requestDateTime
+      ) / 86400000;
+
+      let label = role === "melhor_preco" ? "Menor preço" : "Data mais próxima";
       let disclaimer = "";
-      
-      const depDateTime = new Date(depDate + "T12:00:00").getTime();
-      const reqDateTime = new Date(reqDate + "T12:00:00").getTime();
-      const diffDays = (depDateTime - reqDateTime) / (1000 * 60 * 60 * 24);
-      
       if (Math.abs(diffDays) <= 3) {
         label = "Data solicitada";
       } else if (diffDays > 3) {
-        label = "Próxima data disponível";
-        disclaimer = "⚠️ Note que não há bloqueios exatamente na data que você pediu, então busquei a opção mais próxima disponível para garantir o melhor valor.";
+        disclaimer = "⚠️ Esta opção parte depois da data solicitada.";
       } else if (diffDays < -3) {
-        label = "Data alternativa mais econômica";
-        disclaimer = "💡 Esta opção é um pouco antes do período que você solicitou, mas oferece uma economia excelente!";
+        disclaimer = "💡 Esta opção parte antes da data solicitada.";
       }
 
-      const res: any = {
-        id: o.id,
+      return {
+        id: offer.id,
         tipo: "aereo",
-        origem: `${o.origin_city || "Desconhecida"} (${o.origin_iata?.toUpperCase()})`,
-        destino: o.destination_name || o.destination_iata,
-        data_ida: o.departure_date,
-        data_volta: o.return_date,
-        noites: o.nights || 0,
-        companhia: o.airline || 'Aéreo',
+        origem: `${offer.origin_city || "Desconhecida"} (${offer.origin_iata?.toUpperCase()})`,
+        destino: offer.destination_name || offer.destination_iata,
+        data_ida: offer.departure_date,
+        data_volta: offer.return_date,
+        noites: offer.nights || 0,
+        companhia: offer.airline || "Aéreo",
         preco_por_pessoa: personPrice,
         taxa_embarque: tax,
         preco: totalGroup,
-        assentos_disponiveis: o.available_seats,
-        prazo_emissao: o.issue_deadline,
-        operadora: o.source_type || "Direto",
+        assentos_disponiveis: offer.available_seats,
+        prazo_emissao: offer.issue_deadline,
+        operadora: offer.source_type || "Direto",
         papel: role,
         rotulo: label,
         observacao: disclaimer,
-        voo_ida: o.outbound_departure_time ? `Voo às ${o.outbound_departure_time}` : o.departure_date,
-        voo_volta: o.return_departure_time ? `Voo às ${o.return_departure_time}` : o.return_date,
+        voo_ida: offer.outbound_departure_time ? `Voo às ${offer.outbound_departure_time}` : offer.departure_date,
+        voo_volta: offer.return_departure_time ? `Voo às ${offer.return_departure_time}` : offer.return_date,
       };
-
-      if (refTotal && cost < refTotal) {
-        res.economia = refTotal - cost;
-        res.economia_total = res.economia * totalPassageiros;
-      }
-      return res;
     };
 
     const resultados: any[] = [];
-    if (offerA) resultados.push(format(offerA, "data_pedida"));
-    if (offerB) resultados.push(format(offerB, "proxima_data"));
-    if (offerC) {
-      const mainTotal = mainOffer ? getCost(mainOffer) : null;
-      resultados.push(format(offerC, "melhor_preco", mainTotal || undefined));
+    if (closestAirOffer) resultados.push(formatAirOffer(closestAirOffer, "data_mais_proxima"));
+    if (cheapestAirOffer) resultados.push(formatAirOffer(cheapestAirOffer, "melhor_preco"));
+
+    // 4. PACOTES COMPLETOS: ATÉ DUAS OPÇÕES
+    let packageQuery = supabaseClient
+      .from("travel_offers")
+      .select("id, origin_city, origin_iata, destination_name, departure_date, return_date, nights, price_per_person, boarding_tax, source_url, source_type, raw_data")
+      .eq("active", true)
+      .eq("offer_type", "pacote")
+      .in("source_type", ["nacional", "internacional", "evento"])
+      .gt("price_per_person", 0)
+      .gte("departure_date", packageWindowStart)
+      .lte("departure_date", packageWindowEnd);
+
+    if (originIatas.length > 0) {
+      packageQuery = packageQuery.in("origin_iata", originIatas);
     }
 
-    return new Response(JSON.stringify({ resultados, meta: { total_passengers: totalPassageiros } }), {
+    const { data: packageOffers, error: packageError } = await packageQuery;
+    if (packageError) throw packageError;
+
+    const destinationClusters = [
+      ["recife", "porto de galinhas", "carneiros"],
+      ["maceio", "barra de sao miguel", "maragogi", "sao miguel dos milagres"],
+      ["natal", "pipa"],
+      ["gramado", "canela", "serra gaucha"],
+      ["salvador", "praia do forte", "morro de sao paulo"],
+      ["fortaleza", "jericoacoara"],
+      ["foz do iguacu", "cataratas"],
+      ["rio de janeiro", "buzios", "arraial do cabo"],
+    ];
+
+    const requestedDestination = normalizeText(destino);
+    const requestedOrigin = normalizeText(origem);
+
+    const getDestinationRank = (offer: any) => {
+      const destinationName = normalizeText(offer.destination_name);
+      const offerText = normalizeText(
+        `${offer.destination_name || ""} ${offer.raw_data?.nome || ""} ${offer.raw_data?.destino || ""}`
+      );
+
+      if (
+        (requestedDestination && offerText.includes(requestedDestination)) ||
+        (destinationName && requestedDestination.includes(destinationName))
+      ) {
+        return 0;
+      }
+
+      const sameCluster = destinationClusters.some((cluster) =>
+        cluster.some((term) => requestedDestination.includes(term)) &&
+        cluster.some((term) => offerText.includes(term))
+      );
+      return sameCluster ? 1 : 99;
+    };
+
+    const packageCandidates = (packageOffers || []).filter((offer: any) => {
+      if (!offer.departure_date || getDateDistance(offer) > 60) return false;
+      if (!Array.isArray(offer.raw_data?.hoteis) || offer.raw_data.hoteis.length === 0) return false;
+
+      const offerIata = String(offer.origin_iata || "").toUpperCase();
+      const offerOrigin = normalizeText(offer.origin_city);
+      const originMatches =
+        (offerIata && originIatas.includes(offerIata)) ||
+        (requestedOrigin && (
+          offerOrigin.includes(requestedOrigin) ||
+          requestedOrigin.includes(offerOrigin)
+        ));
+
+      return originMatches && getDestinationRank(offer) < 99;
+    });
+
+    const getPackageDetails = (offer: any) => {
+      const rawData = offer.raw_data || {};
+      const hotels = Array.isArray(rawData.hoteis) ? rawData.hoteis : [];
+      const sortedHotels = [...hotels].sort(
+        (a: any, b: any) => parseBrCurrency(a.preco) - parseBrCurrency(b.preco)
+      );
+      const selectedHotel = sortedHotels.find((hotel: any) => parseBrCurrency(hotel.preco) > 0) || null;
+      const packagePrice = selectedHotel
+        ? parseBrCurrency(selectedHotel.preco)
+        : Number(offer.price_per_person);
+      const packageTax = selectedHotel
+        ? parseBrCurrency(selectedHotel.taxas)
+        : Number(offer.boarding_tax || 0);
+      const inclusions = (Array.isArray(rawData.inclui) ? rawData.inclui : [])
+        .map((item: any) => String(item || "").replace(/[\uE000-\uF8FF]/g, "").trim())
+        .filter(Boolean);
+
+      return {
+        selectedHotel,
+        packagePrice,
+        packageTax,
+        inclusions,
+        otherHotels: Math.max(0, hotels.length - (selectedHotel ? 1 : 0))
+      };
+    };
+
+    const getPackageCost = (offer: any) => {
+      const details = getPackageDetails(offer);
+      return details.packagePrice + details.packageTax;
+    };
+
+    const closestPackageOffer = [...packageCandidates].sort((a, b) => {
+      const rankDifference = getDestinationRank(a) - getDestinationRank(b);
+      if (rankDifference !== 0) return rankDifference;
+      const distanceDifference = getDateDistance(a) - getDateDistance(b);
+      return distanceDifference !== 0 ? distanceDifference : getPackageCost(a) - getPackageCost(b);
+    })[0] || null;
+
+    const cheapestPackageCandidate = [...packageCandidates]
+      .sort((a, b) => {
+        const rankDifference = getDestinationRank(a) - getDestinationRank(b);
+        return rankDifference !== 0 ? rankDifference : getPackageCost(a) - getPackageCost(b);
+      })[0] || null;
+    const cheapestPackageOffer = cheapestPackageCandidate &&
+      cheapestPackageCandidate.id !== closestPackageOffer?.id
+      ? cheapestPackageCandidate
+      : null;
+
+    const formatPackageOffer = (offer: any, role: string) => {
+      const details = getPackageDetails(offer);
+      const rawData = offer.raw_data || {};
+
+      return {
+        id: offer.id,
+        tipo: "pacote",
+        papel: role,
+        rotulo: role === "melhor_preco" ? "Menor preço" : "Data mais próxima",
+        nome: rawData.nome || offer.destination_name || "Pacote promocional",
+        origem: offer.origin_city || offer.origin_iata || "Origem não informada",
+        origem_iata: offer.origin_iata || null,
+        destino: offer.destination_name,
+        data_ida: offer.departure_date,
+        data_volta: offer.return_date,
+        noites: offer.nights || 0,
+        hotel: details.selectedHotel?.nome || null,
+        regime: details.selectedHotel?.regime || null,
+        promocao: details.selectedHotel?.promo || null,
+        preco_por_pessoa: details.packagePrice,
+        parcela: details.selectedHotel?.parcela || null,
+        taxa_por_pessoa: details.packageTax,
+        inclusoes: details.inclusions,
+        outras_hospedagens: details.otherHotels,
+        link: offer.source_url || null,
+      };
+    };
+
+    const pacotes: any[] = [];
+    if (closestPackageOffer) pacotes.push(formatPackageOffer(closestPackageOffer, "data_mais_proxima"));
+    if (cheapestPackageOffer) pacotes.push(formatPackageOffer(cheapestPackageOffer, "melhor_preco"));
+
+    return new Response(JSON.stringify({
+      resultados,
+      pacotes,
+      meta: {
+        total_passengers: totalPassageiros,
+        eligible_air_offers: allEligibleAirOffers.length,
+        eligible_packages: packageCandidates.length,
+        search_window_days: 60,
+      }
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });

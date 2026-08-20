@@ -2574,73 +2574,172 @@ async function requestQuotation(quotationData: Record<string, any>): Promise<{ s
   }
 }
 
-function formatQuotationResults(data: any, requestedDate?: string): string {
+function formatQuotationResults(
+  data: any,
+  requestedDate?: string,
+  includeCta = true
+): string {
   if (!data) return "";
 
   const results = data.resultados || data.results || (Array.isArray(data) ? data : null);
   if (!results || !Array.isArray(results) || results.length === 0) return "";
 
-  let formatted = "🌟 *Encontrei ofertas incríveis em datas próximas!* 🌟\n";
-  formatted += "_Estes são bloqueios aéreos exclusivos com valores promocionais:_\n\n";
+  let formatted = `✈️ *Encontrei bloqueios aéreos promocionais!*
 
-  results.forEach((r: any, i: number) => {
-    let papel = "";
-    let disclaimer = "";
-    
-    if (r.papel === "melhor_preco") {
-      papel = "💰 *Data alternativa mais econômica*";
-      disclaimer = "_💡 A data muda, mas esta opção entrega o menor valor encontrado._\n";
-    } else if (requestedDate) {
-      const depDateTime = new Date(r.data_ida + "T12:00:00").getTime();
-      const reqDateTime = new Date(requestedDate + "T12:00:00").getTime();
-      const diffDays = (depDateTime - reqDateTime) / (1000 * 60 * 60 * 24);
-      
-      if (Math.abs(diffDays) <= 3) {
-        papel = "📅 *Data solicitada*";
-      } else if (diffDays > 3) {
-        papel = "🔜 *Próxima data disponível*";
-        disclaimer = "_⚠️ Não há bloqueios na data exata; esta é a opção mais próxima._\n";
+`;
+
+  results.slice(0, 2).forEach((r: any, i: number) => {
+    const code = `A${i + 1}`;
+    let label = r.rotulo || "";
+    let disclaimer = r.observacao || "";
+
+    if (!label) {
+      if (r.papel === "melhor_preco") label = "Menor preço";
+      else if (requestedDate) {
+        const depDateTime = new Date(r.data_ida + "T12:00:00").getTime();
+        const reqDateTime = new Date(requestedDate + "T12:00:00").getTime();
+        label = Math.abs((depDateTime - reqDateTime) / 86400000) <= 3
+          ? "Data solicitada"
+          : "Data mais próxima";
       } else {
-        papel = "🗓️ *Data alternativa disponível*";
-        disclaimer = "_💡 Esta opção parte antes do período solicitado._\n";
+        label = "Data mais próxima";
       }
-    } else {
-      if (r.papel === "data_pedida") papel = "📅 *Data solicitada*";
-      else if (r.papel === "proxima_data") papel = "🔜 *Próxima data disponível*";
-      else papel = "💰 *Data alternativa mais econômica*";
     }
-    
-    formatted += `${papel}\n`;
-    if (disclaimer) formatted += disclaimer;
-    formatted += `✈️ *${r.origem}* ➔ *${r.destino}*\n`;
-    formatted += `📅 Ida: ${new Date(r.data_ida + "T12:00:00").toLocaleDateString("pt-BR")}\n`;
-    formatted += `📅 Volta: ${new Date(r.data_volta + "T12:00:00").toLocaleDateString("pt-BR")}\n`;
-    formatted += `🏢 Companhia: ${r.companhia}\n`;
-    
+
+    formatted += `*${code} — ${label}*
+`;
+    if (disclaimer) formatted += `_${disclaimer}_
+`;
+    formatted += `✈️ *${r.origem}* ➔ *${r.destino}*
+`;
+    formatted += `📅 Ida: ${new Date(r.data_ida + "T12:00:00").toLocaleDateString("pt-BR")}
+`;
+    formatted += `📅 Volta: ${new Date(r.data_volta + "T12:00:00").toLocaleDateString("pt-BR")}
+`;
+    formatted += `🏢 Companhia: ${r.companhia}
+`;
+
     const pp = Number(r.preco_por_pessoa).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
     const taxa = Number(r.taxa_embarque).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
     const total = Number(r.preco).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
-    
-    formatted += `👤 Valor por pessoa: *R$ ${pp}*\n`;
-    formatted += `⚓ Taxa de embarque: R$ ${taxa}\n`;
-    formatted += `💎 *Total do grupo: R$ ${total}*\n`;
-    
+
+    formatted += `👤 Valor por pessoa: *R$ ${pp}*
+`;
+    formatted += `⚓ Taxa de embarque: R$ ${taxa}
+`;
+    formatted += `💎 *Total do grupo: R$ ${total}*
+`;
+
     const seats = Number(r.assentos_disponiveis);
-    formatted += `💺 Assentos: ${seats}${seats <= 3 ? " ⚠️ *ÚLTIMOS ASSENTOS!*" : ""}\n`;
-    
+    formatted += `💺 Assentos: ${seats}${seats <= 3 ? " ⚠️ *ÚLTIMOS ASSENTOS!*" : ""}
+`;
+
     if (r.prazo_emissao) {
-      const prazo = new Date(r.prazo_emissao.split('T')[0] + "T12:00:00").toLocaleDateString("pt-BR");
-      formatted += `⏳ Prazo de emissão: ${prazo}\n`;
+      const prazo = new Date(r.prazo_emissao.split("T")[0] + "T12:00:00").toLocaleDateString("pt-BR");
+      formatted += `⏳ Prazo de emissão: ${prazo}
+`;
     }
 
-    if (r.economia_total > 0) {
-      formatted += `\n💵 *Economia total: R$ ${Number(r.economia_total).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}* em relação à data solicitada!\n`;
-    }
+    formatted += `
+━━━━━━━━━━━━━━━━━━
 
-    formatted += "\n━━━━━━━━━━━━━━━━━━\n\n";
+`;
   });
 
-  formatted += "Qual dessas opções faz mais sentido para você? Ou prefere aguardar o consultor com as datas exatas? 😊";
+  if (includeCta) {
+    const codes = results.slice(0, 2).map((_: any, index: number) => `A${index + 1}`).join(" ou ");
+    formatted += `Para avançar com uma dessas opções, responda *${codes}*. 😊`;
+  }
+
+  return formatted.trim();
+}
+
+function formatPackageResults(data: any, airResultCount = 0): string {
+  const packages = data?.pacotes;
+  if (!Array.isArray(packages) || packages.length === 0) return "";
+
+  const cleanText = (value: any) => String(value || "")
+    .replace(/[\uE000-\uF8FF]/g, "")
+    .trim();
+
+  let formatted = airResultCount > 0
+    ? `🏨✈️ *Também encontrei pacotes completos em promoção!*
+
+`
+    : `🏨✈️ *Encontrei pacotes completos em promoção!*
+
+`;
+
+  packages.slice(0, 2).forEach((pkg: any, index: number) => {
+    const code = `P${index + 1}`;
+    const label = pkg.rotulo || (pkg.papel === "melhor_preco" ? "Menor preço" : "Data mais próxima");
+    const origin = pkg.origem_iata ? `${pkg.origem} (${pkg.origem_iata})` : pkg.origem;
+
+    formatted += `*${code} — ${label}*
+`;
+    formatted += `*${cleanText(pkg.nome)}*
+`;
+    formatted += `📍 ${origin} ➔ ${pkg.destino}
+`;
+    formatted += `📅 ${new Date(pkg.data_ida + "T12:00:00").toLocaleDateString("pt-BR")} a ${new Date(pkg.data_volta + "T12:00:00").toLocaleDateString("pt-BR")}
+`;
+    if (Number(pkg.noites) > 0) formatted += `🌙 ${pkg.noites} noites
+`;
+
+    if (pkg.hotel) formatted += `🏨 ${cleanText(pkg.hotel)}
+`;
+    if (pkg.regime) formatted += `☕ ${cleanText(pkg.regime)}
+`;
+    if (pkg.promocao) formatted += `🎁 ${cleanText(pkg.promocao)}
+`;
+
+    const inclusions = (Array.isArray(pkg.inclusoes) ? pkg.inclusoes : [])
+      .map(cleanText)
+      .filter(Boolean)
+      .slice(0, 5);
+    if (inclusions.length > 0) {
+      formatted += `
+*O que está incluído:*
+`;
+      inclusions.forEach((item: string) => {
+        formatted += `✅ ${item}
+`;
+      });
+    }
+
+    formatted += `
+`;
+    if (pkg.parcela) formatted += `💳 *${cleanText(pkg.parcela)} por pessoa*
+`;
+    formatted += `💰 Total por pessoa: *R$ ${Number(pkg.preco_por_pessoa).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}*
+`;
+    if (Number(pkg.taxa_por_pessoa) > 0) {
+      formatted += `➕ Taxas por pessoa: R$ ${Number(pkg.taxa_por_pessoa).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+`;
+    }
+    formatted += `🛏️ Valor a partir de, por pessoa em apartamento duplo.
+`;
+
+    if (Number(pkg.outras_hospedagens) > 0) {
+      formatted += `🔎 Há mais ${pkg.outras_hospedagens} ${Number(pkg.outras_hospedagens) === 1 ? "opção" : "opções"} de hospedagem neste pacote.
+`;
+    }
+
+    formatted += `
+━━━━━━━━━━━━━━━━━━
+
+`;
+  });
+
+  const packageCodes = packages.slice(0, 2).map((_: any, index: number) => `P${index + 1}`).join(" ou ");
+  const airCodes = Array.from(
+    { length: Math.min(2, airResultCount) },
+    (_, index) => `A${index + 1}`
+  ).join(" ou ");
+  formatted += airResultCount > 0
+    ? `Qual opção você quer conhecer melhor? Responda *${airCodes}* para o aéreo ou *${packageCodes}* para o pacote. 😊`
+    : `Qual pacote você quer conhecer melhor? Responda *${packageCodes}*. 😊`;
+
   return formatted.trim();
 }
 
@@ -2962,12 +3061,32 @@ serve(async (req) => {
           // Call Cativa/Infotravel API directly
           const quotationResult = await requestQuotation(quotationData);
 
-          let quotationMsg: string;
+          const airResults = Array.isArray(quotationResult.data?.resultados)
+            ? quotationResult.data.resultados
+            : [];
+          const packageResults = Array.isArray(quotationResult.data?.pacotes)
+            ? quotationResult.data.pacotes
+            : [];
+          const hasAirResults = quotationResult.status === "success" && airResults.length > 0;
+          const hasPackageResults = quotationResult.status === "success" && packageResults.length > 0;
+          const hasResults = hasAirResults || hasPackageResults;
+          const quotationMessages: string[] = [];
 
-          if (quotationResult.status === "success" && quotationResult.data?.resultados?.length > 0) {
-            quotationMsg = formatQuotationResults(quotationResult.data, quotationData.data_ida);
+          if (hasResults) {
+            if (hasAirResults) {
+              const airMessage = formatQuotationResults(
+                quotationResult.data,
+                quotationData.data_ida,
+                !hasPackageResults
+              );
+              if (airMessage) quotationMessages.push(airMessage);
+            }
 
-            // Update travel_quote_requests with results
+            if (hasPackageResults) {
+              const packageMessage = formatPackageResults(quotationResult.data, airResults.length);
+              if (packageMessage) quotationMessages.push(packageMessage);
+            }
+
             if (saveResultId) {
               await supabase.from("travel_quote_requests").update({
                 status: "completed",
@@ -2978,13 +3097,12 @@ serve(async (req) => {
 
             // Quote visual card temporarily disabled
             console.log("[QUOTE-VISUAL] Automatic quote image disabled.");
-
           } else {
-            // No promotional results or API error — keep the human quotation active and always reply
             const apiFailed = quotationResult.status !== "success";
-            quotationMsg = apiFailed
-              ? `Não consegui consultar os bloqueios aéreos promocionais agora, mas sua cotação para as datas solicitadas já foi encaminhada ao nosso consultor especializado. Vou continuar por aqui caso queira acrescentar alguma preferência. 😊`
-              : `Não encontrei bloqueios aéreos promocionais para ${quotationData.destino} dentro da janela de 60 dias antes ou depois das datas informadas. Mas sua cotação para as datas solicitadas já foi encaminhada ao nosso consultor especializado, que seguirá buscando as melhores opções para você. 😊`;
+            const fallbackMessage = apiFailed
+              ? `Não consegui consultar as ofertas promocionais agora, mas sua cotação para as datas solicitadas já foi encaminhada ao nosso consultor especializado. Vou continuar por aqui caso queira acrescentar alguma preferência. 😊`
+              : `Não encontrei bloqueios aéreos ou pacotes promocionais para ${quotationData.destino} dentro da janela de 60 dias antes ou depois das datas informadas. Mas sua cotação para as datas solicitadas já foi encaminhada ao nosso consultor especializado, que seguirá buscando as melhores opções para você. 😊`;
+            quotationMessages.push(fallbackMessage);
 
             console.log(`[QUOTATION] ${apiFailed ? "API error" : "No promotional results"} for client ${phone}. Sending fallback message.`);
             if (saveResultId) {
@@ -3002,8 +3120,10 @@ serve(async (req) => {
             }
           }
 
-          // Always send the quotation result or the appropriate fallback
-          await sendWhatsAppMessage(phone, quotationMsg);
+          // Send air blocks and packages as separate messages
+          for (const message of quotationMessages) {
+            await sendWhatsAppMessage(phone, message);
+          }
 
           // Save to conversation history
           try {
@@ -3014,10 +3134,13 @@ serve(async (req) => {
               .single();
 
             if (conv) {
-              const hasResults = quotationResult.status === "success" && quotationResult.data?.resultados?.length > 0;
               const updatedHistory = [
                 ...((conv.messages_history as any[]) || []),
-                { role: "assistant", content: quotationMsg, timestamp: new Date().toISOString() },
+                ...quotationMessages.map((message) => ({
+                  role: "assistant",
+                  content: message,
+                  timestamp: new Date().toISOString(),
+                })),
               ];
               const updatedCd = { ...(conv.collected_data as Record<string, any> || {}), _last_quote_id: saveResultId };
               delete updatedCd._quotation_triggered;
@@ -3033,8 +3156,8 @@ serve(async (req) => {
             console.error("[ASYNC-QUOTATION] Error updating conversation:", histErr);
           }
 
-          // Generate destination tips only when offers were found and schedule them for 20 minutes later
-          if (quotationResult.status === "success" && quotationResult.data?.resultados?.length > 0) {
+          // Schedule destination guidance 20 minutes after the last commercial offer
+          if (hasResults) {
             try {
               const tipsResponse = await getAiResponse([
                 { role: "user", content: `Você é o Téo, assistente de viagens divertido e humano da Tomorrow Travel. Gere uma mensagem para o cliente ${clientName || ''} com exatamente 5 dicas incríveis sobre ${quotationData.destino} (passeios, comidas, curiosidades, experiências). Seja divertido, use emojis, tom leve e descontraído. Uma dica por linha numerada. Comece com algo como "${clientName ? clientName + ', e' : 'E'}nquanto isso, bora conhecer um pouco mais sobre ${quotationData.destino}? 🗺️✨" e depois as 5 dicas. No FINAL da mensagem, adicione uma quebra de linha e pergunte de forma divertida e natural se o cliente sabia que você (o Téo) também pode montar um roteiro personalizado dia a dia pra viagem dele. Algo como: "Ah, e sabia que eu também posso montar um roteiro completinho dia a dia pra sua viagem? 🗓️✨ Quer que eu prepare um pra você?" Seja criativo e mantenha o tom do Téo!` }
@@ -9187,7 +9310,7 @@ Regras OBRIGATÓRIAS:
       // Handle quotation if triggered
       // Check for deduplication of the exact same trip (24h limit)
       let isExactDuplicate = false;
-      let duplicateQuotationMessage: string | null = null;
+      let duplicateQuotationMessages: string[] = [];
       if (effectiveQuotationData && isQuotationConfirmation) {
         const { data: recentSameQuote } = await supabase
           .from("travel_quote_requests")
@@ -9206,8 +9329,28 @@ Regras OBRIGATÓRIAS:
           console.log("[QUOTATION] Exact duplicate quote found in last 24h. Reusing previous results.");
           isExactDuplicate = true;
           const previousDetails = recentSameQuote.processing_details as any;
-          if (previousDetails?.resultados?.length > 0) {
-            duplicateQuotationMessage = formatQuotationResults(previousDetails, effectiveQuotationData.data_ida);
+          const previousAirResults = Array.isArray(previousDetails?.resultados)
+            ? previousDetails.resultados
+            : [];
+          const previousPackageResults = Array.isArray(previousDetails?.pacotes)
+            ? previousDetails.pacotes
+            : [];
+
+          if (previousAirResults.length > 0) {
+            const previousAirMessage = formatQuotationResults(
+              previousDetails,
+              effectiveQuotationData.data_ida,
+              previousPackageResults.length === 0
+            );
+            if (previousAirMessage) duplicateQuotationMessages.push(previousAirMessage);
+          }
+
+          if (previousPackageResults.length > 0) {
+            const previousPackageMessage = formatPackageResults(
+              previousDetails,
+              previousAirResults.length
+            );
+            if (previousPackageMessage) duplicateQuotationMessages.push(previousPackageMessage);
           }
         }
       }
@@ -9299,14 +9442,24 @@ Regras OBRIGATÓRIAS:
           await sendWhatsAppMessage(phoneNumber, cleanResponse);
         }
 
-        const duplicateMsg = duplicateQuotationMessage
-          || "Essa mesma cotação já foi consultada nas últimas 24 horas. O pedido continua com nosso consultor especializado, e você pode me pedir novas datas ou outro destino quando quiser. 😊";
-        await sendWhatsAppMessage(phoneNumber, duplicateMsg);
+        if (duplicateQuotationMessages.length === 0) {
+          duplicateQuotationMessages = [
+            "Essa mesma cotação já foi consultada nas últimas 24 horas. O pedido continua com nosso consultor especializado, e você pode me pedir novas datas ou outro destino quando quiser. 😊"
+          ];
+        }
+
+        for (const duplicateMessage of duplicateQuotationMessages) {
+          await sendWhatsAppMessage(phoneNumber, duplicateMessage);
+        }
 
         const duplicateHistory = [
           ...(conversation.messages_history as any[] || []),
           ...(cleanResponse ? [{ role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() }] : []),
-          { role: "assistant", content: duplicateMsg, timestamp: new Date().toISOString() },
+          ...duplicateQuotationMessages.map((message) => ({
+            role: "assistant",
+            content: message,
+            timestamp: new Date().toISOString(),
+          })),
         ];
         const duplicateCollectedData = { ...newCollectedData };
         delete duplicateCollectedData._quotation_triggered;
