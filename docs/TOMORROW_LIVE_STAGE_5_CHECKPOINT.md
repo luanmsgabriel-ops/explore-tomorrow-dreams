@@ -4,10 +4,11 @@
 
 - **Data:** 20/08/2026
 - **Etapa:** 5 — Calendário inteligente
-- **Estado atual:** implementação inicial concluída em branch isolada; validação de build/typecheck e validação visual ainda pendentes
+- **Estado atual:** implementação funcional e validação técnica concluídas em branch isolada; validação visual em preview ainda pendente
 - **Branch:** `stage-5-smart-calendar`
 - **Base da etapa:** `0f7b0b81c29e057d195e1b5d49079dd4d2fd9833`
 - **Commit inicial da implementação:** `3f51609e627786eacfe9683415ad7271d93b06cd`
+- **SHA validado pelo CI com artefato de produção:** `feeaa552da6be2a2a7957601d08a0bb0cd34acec`
 - **Produção:** não alterada nesta etapa
 
 ## Objetivo
@@ -32,14 +33,19 @@ Criar o calendário público de oportunidades usando exclusivamente o contrato j
 14. Seleção de até três opções para encaminhamento à comparação existente.
 15. Moeda exibida no calendário somente quando as facetas indicam uma única moeda explícita; caso contrário, a confirmação fica para o detalhe da oferta.
 
-## Arquivos alterados
+## Arquivos funcionais alterados
 
 - `src/App.tsx`
 - `src/components/opportunities/OpportunityHeader.tsx`
 - `src/lib/opportunityCalendar.ts`
 - `src/lib/opportunityCalendar.test.ts`
 - `src/pages/OpportunitiesCalendar.tsx`
+
+Documento de continuidade:
+
 - `docs/TOMORROW_LIVE_STAGE_5_CHECKPOINT.md`
+
+O workflow `.github/workflows/stage5-validation.yml` foi criado apenas para validação temporária da branch e deve ser removido antes da integração ao `main`.
 
 ## Banco, migrations e Edge Functions
 
@@ -48,6 +54,7 @@ Criar o calendário público de oportunidades usando exclusivamente o contrato j
 - Nenhuma alteração de RLS.
 - Nenhuma alteração na Edge Function `travel-offers-public`.
 - Nenhuma alteração em `supabase/config.toml`.
+- Nenhuma alteração no Téo ou WhatsApp.
 
 Foram executadas somente consultas `SELECT` para validar cenários reais do inventário.
 
@@ -79,7 +86,7 @@ Há rotas reais com mais de uma combinação de aeroportos para a mesma origem/d
 
 Campos de aeroporto ausentes permanecem ausentes e não são inferidos.
 
-## Testes adicionados
+## Testes e validação técnica concluídos
 
 Foi adicionada uma suíte Vitest cobrindo:
 
@@ -89,27 +96,58 @@ Foi adicionada uma suíte Vitest cobrindo:
 4. classificação local das faixas de preço;
 5. regra de moeda única explícita.
 
-Esses testes foram adicionados ao código, mas ainda não foram executados em um ambiente completo do repositório nesta intervenção.
+A validação foi executada em GitHub Actions usando Bun e o lockfile atual do projeto.
+
+### CI principal da Etapa 5
+
+- **Workflow:** `Stage 5 Validation`
+- **Run ID:** `32421515813`
+- **Resultado:** sucesso
+- instalação com `bun install --frozen-lockfile`: aprovada
+- suíte completa `bun run test`: aprovada
+- typecheck `bunx tsc -p tsconfig.app.json --noEmit`: aprovado
+- lint restrito ao escopo da Etapa 5: aprovado
+- build Vite/PWA de produção: aprovado
+
+### CI com artefato visual
+
+- **Workflow:** `Stage 5 Validation`
+- **Run ID:** `32421613350`
+- **SHA:** `feeaa552da6be2a2a7957601d08a0bb0cd34acec`
+- **Resultado:** sucesso
+- testes: aprovados
+- typecheck: aprovado
+- lint: aprovado
+- build: aprovado
+- artefato `stage5-dist`: gerado com sucesso
+- digest do artefato: `sha256:cb46f7213e6943e464b05281f1a319ffe0b153a466c3b6d8fb1fb1d22b3f3cca`
+
+## Validação visual
+
+O `dist` compilado foi baixado e preparado para inspeção local. O navegador headless disponível no ambiente bloqueou `localhost`, `127.0.0.1`, `file://`, `data:` e o domínio simulado com `ERR_BLOCKED_BY_ADMINISTRATOR`. A falha ocorre antes de o aplicativo ser carregado e é uma política do ambiente de navegador, não um erro do build.
+
+Por esse motivo, a validação visual será feita no preview sincronizado do Lovable após integrar o código validado ao `main`, mas antes de qualquer publicação no domínio principal.
 
 ## Revisões realizadas
 
-- O diff entre a base e a implementação contém somente cinco arquivos funcionais relacionados à Etapa 5 antes deste checkpoint.
+- O diff funcional permanece restrito à Etapa 5.
 - Nenhum arquivo do Téo, WhatsApp, Supabase ou fluxo legado foi alterado.
-- O commit não possui CI associado no GitHub.
-- O ambiente local disponível nesta intervenção não consegue acessar o repositório privado pela rede para executar `npm test`, typecheck ou build completo.
+- O build validado contém chunk lazy próprio para `OpportunitiesCalendar`.
+- O contrato público existente foi reutilizado; não foi ampliada a superfície de dados sensíveis.
+- O PR da Etapa 5 permanece em modo draft durante a validação.
 
 ## Riscos e pendências
 
-1. Executar a suíte Vitest completa.
-2. Executar typecheck global.
-3. Executar lint restrito aos arquivos da Etapa 5.
-4. Executar build Vite/PWA de produção.
-5. Validar visualmente desktop e mobile.
-6. Conferir a chamada real da operação `calendar` no navegador e confirmar ausência de consultas extras ao trocar o mês.
-7. Conferir ida selecionada, retornos compatíveis, detalhe e comparação.
-8. Atualizar o `docs/TOMORROW_LIVE_MASTER_PLAN.md` com o checkpoint definitivo quando a etapa for integrada/validada.
-9. Não mesclar no `main` nem publicar até concluir as validações acima.
+1. Remover o workflow temporário de CI antes do merge.
+2. Integrar o código tecnicamente validado ao `main`, sem publicar.
+3. Confirmar que o Lovable sincronizou o novo SHA e gerou preview.
+4. Validar visualmente desktop e mobile no preview.
+5. Testar origem/destino, passageiros, janela de 120 dias, troca de mês, ida selecionada, retornos, detalhe e comparação.
+6. Confirmar no navegador que trocar o mês não dispara nova consulta `calendar`.
+7. Atualizar `docs/TOMORROW_LIVE_MASTER_PLAN.md` com o checkpoint definitivo.
+8. Somente depois publicar e validar `/oportunidades/calendario` no domínio principal.
+9. Não iniciar a Etapa 6 antes do fechamento formal da Etapa 5.
 
 ## Próxima ação exata
 
-Executar build, typecheck, testes e validação visual da branch `stage-5-smart-calendar`. Se tudo estiver aprovado, corrigir qualquer divergência encontrada, atualizar o plano mestre, integrar a Etapa 5 ao `main`, sincronizar/publicar e validar `/oportunidades/calendario` no domínio principal sem iniciar a Etapa 6.
+Remover o workflow temporário, integrar a Etapa 5 tecnicamente validada ao `main` sem publicar, sincronizar o projeto no Lovable e executar a validação visual no preview. Se o preview estiver aprovado, atualizar o plano mestre, publicar o SHA final e validar o calendário no domínio principal.
