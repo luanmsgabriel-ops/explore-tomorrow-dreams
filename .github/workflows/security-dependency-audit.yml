@@ -1,0 +1,25 @@
+name: Security Dependency Audit
+
+on:
+  push:
+    branches: [security-dependency-audit]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Validate Bun lockfile
+        run: bun install --frozen-lockfile
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --json > npm-audit.json || true
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit
+          path: npm-audit.json
+          retention-days: 1
