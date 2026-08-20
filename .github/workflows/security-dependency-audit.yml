@@ -3,6 +3,8 @@ name: Security Dependency Audit
 on:
   push:
     branches: [security-dependency-audit]
+  pull_request:
+    branches: [main]
 
 jobs:
   audit:
