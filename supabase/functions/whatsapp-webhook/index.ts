@@ -2695,6 +2695,11 @@ function formatPackageResults(data: any, airResultCount = 0): string {
     const label = pkg.rotulo || (pkg.papel === "melhor_preco" ? "Menor preço" : "Data mais próxima");
     const origin = pkg.origem_iata ? `${pkg.origem} (${pkg.origem_iata})` : pkg.origem;
 
+    const isEventPackage = pkg.evento_especifico === true;
+    if (isEventPackage) {
+      formatted += `🎟️ *PACOTE ESPECIAL PARA EVENTO*
+`;
+    }
     formatted += `*${code} — ${label}*
 `;
     formatted += `*${cleanText(pkg.nome)}*
@@ -2706,6 +2711,15 @@ function formatPackageResults(data: any, airResultCount = 0): string {
     if (Number(pkg.noites) > 0) formatted += `🌙 ${pkg.noites} noites
 `;
 
+    if (pkg.aereo_incluso === true) {
+      formatted += `✈️ *Aéreo promocional incluído no pacote*`;
+      if (Number(pkg.valor_aereo_por_pessoa) > 0) {
+        formatted += `: R$ ${Number(pkg.valor_aereo_por_pessoa).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} por pessoa`;
+      }
+      formatted += `
+`;
+    }
+
     if (pkg.hotel) formatted += `🏨 ${cleanText(pkg.hotel)}
 `;
     if (pkg.regime) formatted += `☕ ${cleanText(pkg.regime)}
@@ -2716,13 +2730,15 @@ function formatPackageResults(data: any, airResultCount = 0): string {
     const inclusions = (Array.isArray(pkg.inclusoes) ? pkg.inclusoes : [])
       .map(cleanText)
       .filter(Boolean)
-      .slice(0, 5);
+      .slice(0, 8);
     if (inclusions.length > 0) {
       formatted += `
 *O que está incluído:*
 `;
       inclusions.forEach((item: string) => {
-        formatted += `✅ ${item}
+        const isTicket = /\b(ingresso|ticket|entrada|arquibancada|passaporte)\b/i.test(item);
+        formatted += isTicket ? `🎫 *${item}*
+` : `✅ ${item}
 `;
       });
     }

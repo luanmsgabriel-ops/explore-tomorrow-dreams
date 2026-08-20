@@ -309,12 +309,27 @@ serve(async (req) => {
       const details = getPackageDetails(offer);
       const rawData = offer.raw_data || {};
 
+      const packageName = rawData.nome || offer.destination_name || "Pacote promocional";
+      const packageSignals = normalizeText([packageName, ...details.inclusions].join(" "));
+      const isEventPackage = rawData.evento === true ||
+        /\b(nfl|formula 1|f1|rock in rio|show|festival|reveillon|carnaval|ingresso|arquibancada)\b/.test(packageSignals);
+      const includesAir = details.inclusions.some((item: any) =>
+        normalizeText(item).includes("passagem aerea")
+      );
+      const embeddedAirPrice = Number(rawData.air_price_per_person) ||
+        parseBrCurrency(rawData.por) ||
+        null;
+
       return {
         id: offer.id,
         tipo: "pacote",
         papel: role,
         rotulo: role === "melhor_preco" ? "Menor preço" : "Data mais próxima",
-        nome: rawData.nome || offer.destination_name || "Pacote promocional",
+        nome: packageName,
+        evento_especifico: isEventPackage,
+        nome_evento: isEventPackage ? packageName : null,
+        aereo_incluso: includesAir,
+        valor_aereo_por_pessoa: includesAir ? embeddedAirPrice : null,
         origem: offer.origin_city || offer.origin_iata || "Origem não informada",
         origem_iata: offer.origin_iata || null,
         destino: offer.destination_name,
