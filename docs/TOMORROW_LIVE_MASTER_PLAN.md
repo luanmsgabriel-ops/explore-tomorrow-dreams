@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 20/08/2026 |
-| Estado geral | Etapas 1 e 2 concluídas; Etapa 3 concluída no código e validada localmente |
-| Etapa atual | Etapa 3 — catálogo pronto no GitHub; sincronização e validação publicada pendentes |
-| Último HEAD verificado | `3c0292cec4af7037f43e09fe5785bea760ab748f` |
-| Próxima ação exata | Sincronizar o SHA da Etapa 3 no Lovable, validar `/oportunidades/catalogo` no domínio publicado com dados reais e em viewport móvel e, somente depois, encerrar a implantação sem iniciar a Etapa 4 |
+| Estado geral | Etapas 1 e 2 concluídas; Etapa 3 concluída no código, validada localmente e sincronizada no Lovable |
+| Etapa atual | Etapa 3 — implantação e validação no domínio público pendentes |
+| Último HEAD verificado | `135307e1146b18b55d65d936c44f090f1bf47a23` |
+| Próxima ação exata | Publicar o HEAD final sincronizado no Lovable e validar `/oportunidades/catalogo` no domínio público com dados reais e viewport móvel; não iniciar a Etapa 4 |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -246,7 +246,7 @@ A rota atual `/ofertas` será preservada durante a construção. Redirecionament
 
 ### Etapa 3 — Catálogo de oportunidades
 
-**Estado:** concluída no código e validada localmente em 20/08/2026; sincronização e validação publicada pendentes
+**Estado:** concluída no código, validada localmente e sincronizada em 20/08/2026; implantação e validação publicada pendentes
 
 **Objetivo:** disponibilizar a navegação convencional pelo inventário.
 
@@ -790,18 +790,18 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Pendências:** nenhuma pendência de código da Etapa 2. A validação visual em páginas reais ocorrerá ao integrar o catálogo na Etapa 3.
 - **Próxima ação exata:** aguardar autorização expressa para a Etapa 3; no início, reler o plano, conferir o HEAD e montar `/oportunidades/catalogo` com carregamento sob demanda, sem tocar no Téo, WhatsApp ou calendário.
 
-### Checkpoint 2026-08-20 — Etapa 3 concluída no código
+### Checkpoint 2026-08-20 — Etapa 3 concluída no código e sincronizada
 
 - **Etapa:** 3 — Catálogo de oportunidades
-- **Estado:** concluída no código e validada localmente; sincronização e validação publicada pendentes
+- **Estado:** concluída no código, validada localmente e sincronizada; implantação e validação publicada pendentes
 - **Objetivo executado:** disponibilizar navegação pública, filtrável e paginada pelo inventário real, mantendo a Edge Function como única barreira de consulta.
 - **Arquivos alterados:** `src/App.tsx`; `src/components/opportunities/OpportunityCard.tsx`; `OpportunityFilters.tsx`; `OpportunityPagination.tsx`; `catalogFilterState.ts`; `index.ts`; `src/hooks/useOpportunityFavorites.ts`; `src/lib/travelOffersPublic.ts`; `travelOffersPublic.test.ts`; `src/pages/OpportunitiesCatalog.tsx`; `opportunitiesCatalog.test.tsx`; `docs/TOMORROW_LIVE_MASTER_PLAN.md`.
 - **SQL/migrations:** nenhuma operação SQL, nenhuma migration e nenhuma alteração de banco, RLS ou Edge Function.
-- **Commits:** implementação `3c0292cec4af7037f43e09fe5785bea760ab748f`; o SHA deste checkpoint documental será informado no chat após o commit.
+- **Commits:** implementação `3c0292cec4af7037f43e09fe5785bea760ab748f`; primeiro checkpoint documental `135307e1146b18b55d65d936c44f090f1bf47a23`; o SHA desta evidência final será informado no chat após o commit.
 - **Testes realizados:** 15 testes Vitest na suíte completa; lint restrito aos arquivos da Etapa 3; build Vite de produção; typecheck global; busca estática por nomes de tabelas, RPC, campos internos e Service Role; `git diff --check`; comparação do commit com o HEAD anterior.
 - **Resultado dos testes:** 15/15 aprovados; lint do escopo sem erros ou avisos; build concluído com chunk lazy próprio de 43,42 kB (13,61 kB gzip); nenhum acesso direto ou campo interno encontrado; diff sem erro de whitespace; commit contém somente os 11 arquivos de código previstos. O typecheck global mantém exclusivamente o erro anterior em `src/components/admin/QuoteEditForm.tsx`, fora do escopo e sem alteração.
-- **Implantações e SHA:** nenhuma implantação marcada neste checkpoint. O código está no GitHub e ainda precisa ter o SHA final reconhecido pelo Lovable antes da validação publicada.
+- **Implantações e SHA:** o Lovable reconheceu `135307e1146b18b55d65d936c44f090f1bf47a23`, ficou em estado `ready` e gerou nova captura do projeto. Isso confirma sincronização/build, não publicação. A navegação somente de leitura ao domínio público redirecionou para `https://tomorrowtravelbr.com.br/oportunidades/catalogo` e exibiu a página 404 da versão anterior; portanto a Etapa 3 não está marcada como implantada.
 - **Decisões tomadas:** filtros aplicados por ação explícita; paginação de 18 itens no banco; favoritos locais; CTA para `/teo` com `offer_id`; moeda do DTO respeitada; `/oportunidades` redireciona ao catálogo; nenhuma rota de detalhe foi criada.
-- **Riscos ou erros:** o domínio temporário de preview do Lovable não pertence à allowlist CORS intencionalmente restrita; a validação funcional deve ocorrer no domínio publicado. Permanecem os avisos anteriores do build e o erro global de `QuoteEditForm.tsx`.
-- **Pendências:** confirmar sincronização do SHA final no Lovable; validar carregamento real de `facets` e `catalog`, filtros, paginação, favoritos e layout móvel no domínio publicado; registrar o SHA efetivamente publicado.
-- **Próxima ação exata:** aguardar o Lovable reconhecer o commit documental, validar `/oportunidades/catalogo` no domínio publicado e atualizar este checkpoint com o SHA implantado, sem iniciar detalhe, comparação, calendário ou Tomorrow Live.
+- **Riscos ou erros:** o domínio temporário de preview do Lovable não pertence à allowlist CORS intencionalmente restrita e exige sessão para inspeção; a validação funcional deve ocorrer no domínio publicado. Permanecem os avisos anteriores do build e o erro global de `QuoteEditForm.tsx`.
+- **Pendências:** publicar o HEAD final; validar carregamento real de `facets` e `catalog`, filtros, paginação, favoritos e layout móvel no domínio público; registrar o SHA efetivamente publicado.
+- **Próxima ação exata:** enviar manualmente ao Lovable o prompt de publicação preparado no chat; depois conferir o SHA publicado e testar `/oportunidades/catalogo`, sem iniciar detalhe, comparação, calendário ou Tomorrow Live.
