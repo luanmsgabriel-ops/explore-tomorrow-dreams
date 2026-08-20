@@ -2022,6 +2022,7 @@ function extractQuotationDataFromText(text: string): Record<string, any> {
   if (destinationMatch?.[1]) {
     data.destino = destinationMatch[1]
       .replace(/^(?:cota[cç][aã]o|or[cç]amento|viagem|pacote)\s+(?:para|pra)\s+/i, "")
+      .replace(/^(?:ent[aã]o[,;:]?\s*)?(?:para|pra)\s+/i, "")
       .replace(/[,.;]+$/, "")
       .trim();
   }
@@ -2055,33 +2056,89 @@ function extractQuotationDataFromText(text: string): Record<string, any> {
   return data;
 }
 
+function isNewQuotationResetText(text: string): boolean {
+  const normalized = (text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  return /\b(?:nova|novo|outra|outro)\s+(?:cotacao|orcamento)\b/.test(normalized)
+    || /\b(?:cotar|fazer\s+(?:uma\s+)?cotacao|solicitar\s+(?:uma\s+)?cotacao)\s+(?:novamente|de\s+novo)\b/.test(normalized);
+}
+
 function recoverQuotationDataFromHistory(
   history: any[],
   currentMessage: string,
   existingData: Record<string, any>,
 ): Record<string, any> {
   const recovered: Record<string, any> = {};
-  const recentMessages = (history || []).slice(-16).reverse();
-  const texts = [
-    currentMessage,
-    ...recentMessages
-      .filter((message: any) => {
-        const content = String(message?.content || "");
-        return message?.role === "user" || (/saindo|partindo/i.test(content) && (content.match(/\d{1,2}[\/-]\d{1,2}/g) || []).length >= 2);
-      })
-      .map((message: any) => String(message.content || "")),
-  ];
+  const allMessages = history || [];
 
-  for (const text of texts) {
-    const partial = extractQuotationDataFromText(text);
+  // Never recover fields from a quotation cycle that ended before the latest reset request.
+  let cycleStart = 0;
+  let foundCycleReset = false;
+  for (let i = allMessages.length - 1; i >= 0; i--) {
+    const message = allMessages[i];
+    if (message?.role === "user" && isNewQuotationResetText(String(message?.content || ""))) {
+      cycleStart = i;
+      foundCycleReset = true;
+      break;
+    }
+  }
+
+  const cycleMessages = allMessages.slice(cycleStart);
+  const lastHistoryText = String(cycleMessages[cycleMessages.length - 1]?.content || "");
+  if (currentMessage && currentMessage !== lastHistoryText) {
+    cycleMessages.push({ role: "user", content: currentMessage });
+  }
+
+  for (let i = 0; i < cycleMessages.length; i++) {
+    const message = cycleMessages[i];
+    const content = String(message?.content || "");
+    const dateCount = (content.match(/\d{1,2}[\/-]\d{1,2}/g) || []).length;
+    const isUserMessage = message?.role === "user";
+    const isConfirmationSummary = !isUserMessage
+      && /saindo|partindo/i.test(content)
+      && dateCount >= 2;
+
+    if (!isUserMessage && !isConfirmationSummary) continue;
+
+    const partial = extractQuotationDataFromText(content);
+
+    // A one-date answer to a "data de volta" question is a return-date correction.
+    if (isUserMessage && dateCount === 1 && partial.data_ida) {
+      const previousAssistant = [...cycleMessages.slice(0, i)]
+        .reverse()
+        .find((item: any) => item?.role === "assistant");
+      const previousText = String(previousAssistant?.content || "");
+
+      if (/\b(?:volta|retorno)\b/i.test(previousText)
+        || (recovered.data_ida && !recovered.data_volta)) {
+        partial.data_volta = partial.data_ida;
+        delete partial.data_ida;
+      }
+    }
+
+    // Apply data chronologically so later corrections and confirmation summaries win.
     for (const [key, value] of Object.entries(partial)) {
-      if (recovered[key] === undefined && value !== undefined && value !== "") {
+      if (value !== undefined && value !== "") {
         recovered[key] = value;
       }
     }
   }
 
-  return { ...existingData, ...recovered };
+  const baseData = { ...existingData };
+  if (foundCycleReset) {
+    for (const key of [
+      "destino", "origem", "data_ida", "data_volta", "datas",
+      "adultos", "criancas", "idades_criancas", "num_viajantes",
+      "preferencias", "tipo_viagem", "_quotation_triggered", "_last_quote_id",
+    ]) {
+      delete baseData[key];
+    }
+  }
+
+  return { ...baseData, ...recovered };
 }
 
 function cleanAiResponse(response: string): string {
@@ -2610,6 +2667,54 @@ serve(async (req) => {
     // POST: Incoming message or manual send
     if (req.method === "POST") {
       const body = await req.json();
+
+      // Handle scheduled messages processing
+      if (body.action === "process_scheduled_messages") {
+        try {
+          const { data: pendingMsgs } = await supabase
+            .from("whatsapp_scheduled_messages")
+            .select("*")
+            .is("sent_at", null)
+            .lte("send_after", new Date().toISOString());
+
+          if (pendingMsgs && pendingMsgs.length > 0) {
+            console.log(`[SCHEDULED] Processing ${pendingMsgs.length} messages...`);
+            for (const msg of pendingMsgs) {
+              await sendWhatsAppMessage(msg.phone_number, msg.message_text);
+
+              const { data: scheduledConv } = await supabase
+                .from("whatsapp_conversations")
+                .select("id, messages_history")
+                .eq("phone_number", msg.phone_number)
+                .order("updated_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              if (scheduledConv) {
+                const scheduledHistory = [
+                  ...((scheduledConv.messages_history as any[]) || []),
+                  { role: "assistant", content: msg.message_text, timestamp: new Date().toISOString() },
+                ];
+                await supabase
+                  .from("whatsapp_conversations")
+                  .update({ messages_history: scheduledHistory })
+                  .eq("id", scheduledConv.id);
+              }
+
+              await supabase
+                .from("whatsapp_scheduled_messages")
+                .update({ sent_at: new Date().toISOString() })
+                .eq("id", msg.id);
+            }
+          }
+        } catch (err) {
+          console.error("[SCHEDULED] Error processing messages:", err);
+        }
+        return new Response(JSON.stringify({ status: "ok", processed: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
 
       // Handle manual message send from admin panel or external systems (e.g. Manus)
       if (body.manual_send || body.handler === "manual_send" || body.action === "manual_send") {
@@ -8521,7 +8626,7 @@ Regras OBRIGATÓRIAS:
       const collectedData = (conversation.collected_data as Record<string, any>) || {};
 
       // A new quotation must never inherit trip data or transient flags from the previous cycle
-      const isNewQuotationRequest = /\b(?:nova|novo|outra|outro)\s+cota[cç][aã]o\b/i.test(messageText || "");
+      const isNewQuotationRequest = isNewQuotationResetText(messageText || "");
       if (isNewQuotationRequest) {
         for (const key of [
           "destino", "origem", "data_ida", "data_volta", "datas",
@@ -9046,10 +9151,11 @@ Regras OBRIGATÓRIAS:
       // Handle quotation if triggered
       // Check for deduplication of the exact same trip (24h limit)
       let isExactDuplicate = false;
+      let duplicateQuotationMessage: string | null = null;
       if (effectiveQuotationData) {
         const { data: recentSameQuote } = await supabase
           .from("travel_quote_requests")
-          .select("id")
+          .select("id, processing_details")
           .eq("phone_number", phoneNumber)
           .eq("origin", effectiveQuotationData.origem)
           .eq("destination", effectiveQuotationData.destino)
@@ -9061,8 +9167,12 @@ Regras OBRIGATÓRIAS:
           .maybeSingle();
         
         if (recentSameQuote) {
-          console.log("[QUOTATION] Exact duplicate quote found in last 24h. Skipping search.");
+          console.log("[QUOTATION] Exact duplicate quote found in last 24h. Reusing previous results.");
           isExactDuplicate = true;
+          const previousDetails = recentSameQuote.processing_details as any;
+          if (previousDetails?.resultados?.length > 0) {
+            duplicateQuotationMessage = formatQuotationResults(previousDetails, effectiveQuotationData.data_ida);
+          }
         }
       }
 
@@ -9148,11 +9258,34 @@ Regras OBRIGATÓRIAS:
           }
         }
       } else if (isExactDuplicate) {
-        // Just send the AI response and exit
+        // Never leave the client without a result: replay the stored result for a true duplicate.
         if (cleanResponse) {
           await sendWhatsAppMessage(phoneNumber, cleanResponse);
         }
-        return new Response(JSON.stringify({ status: "ok", duplicate_skip: true }), {
+
+        const duplicateMsg = duplicateQuotationMessage
+          || "Essa mesma cotação já foi consultada nas últimas 24 horas. O pedido continua com nosso consultor especializado, e você pode me pedir novas datas ou outro destino quando quiser. 😊";
+        await sendWhatsAppMessage(phoneNumber, duplicateMsg);
+
+        const duplicateHistory = [
+          ...(conversation.messages_history as any[] || []),
+          ...(cleanResponse ? [{ role: "assistant", content: cleanResponse, timestamp: new Date().toISOString() }] : []),
+          { role: "assistant", content: duplicateMsg, timestamp: new Date().toISOString() },
+        ];
+        const duplicateCollectedData = { ...newCollectedData };
+        delete duplicateCollectedData._quotation_triggered;
+
+        await supabase
+          .from("whatsapp_conversations")
+          .update({
+            collected_data: duplicateCollectedData,
+            messages_history: duplicateHistory,
+            conversation_state: "quotation_sent",
+            is_ai_active: true,
+          })
+          .eq("id", conversation.id);
+
+        return new Response(JSON.stringify({ status: "ok", duplicate_replayed: true }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -9321,53 +9454,6 @@ Regras OBRIGATÓRIAS:
         allMsgsForMemory,
         clientMemory
       ).catch((err) => console.error("[MEMORY] Background update error:", err));
-
-      // Handle scheduled messages processing
-      if (body.action === "process_scheduled_messages") {
-        try {
-          const { data: pendingMsgs } = await supabase
-            .from("whatsapp_scheduled_messages")
-            .select("*")
-            .is("sent_at", null)
-            .lte("send_after", new Date().toISOString());
-
-          if (pendingMsgs && pendingMsgs.length > 0) {
-            console.log(`[SCHEDULED] Processing ${pendingMsgs.length} messages...`);
-            for (const msg of pendingMsgs) {
-              await sendWhatsAppMessage(msg.phone_number, msg.message_text);
-
-              const { data: scheduledConv } = await supabase
-                .from("whatsapp_conversations")
-                .select("id, messages_history")
-                .eq("phone_number", msg.phone_number)
-                .order("updated_at", { ascending: false })
-                .limit(1)
-                .maybeSingle();
-              if (scheduledConv) {
-                const scheduledHistory = [
-                  ...((scheduledConv.messages_history as any[]) || []),
-                  { role: "assistant", content: msg.message_text, timestamp: new Date().toISOString() },
-                ];
-                await supabase
-                  .from("whatsapp_conversations")
-                  .update({ messages_history: scheduledHistory })
-                  .eq("id", scheduledConv.id);
-              }
-
-              await supabase
-                .from("whatsapp_scheduled_messages")
-                .update({ sent_at: new Date().toISOString() })
-                .eq("id", msg.id);
-            }
-          }
-        } catch (err) {
-          console.error("[SCHEDULED] Error processing messages:", err);
-        }
-        return new Response(JSON.stringify({ status: "ok", processed: true }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
 
       // Schedule follow-up quote if no quotation was triggered yet
       if (newState !== "completed" && newState !== "human_takeover" && !effectiveQuotationData && !newCollectedData._quotation_triggered && !conversation.quote_request_id) {
