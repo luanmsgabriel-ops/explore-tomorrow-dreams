@@ -2022,6 +2022,7 @@ function extractQuotationDataFromText(text: string): Record<string, any> {
   if (destinationMatch?.[1]) {
     data.destino = destinationMatch[1]
       .replace(/^(?:cota[cç][aã]o|or[cç]amento|viagem|pacote)\s+(?:para|pra)\s+/i, "")
+      .replace(/^(?:ent[aã]o(?:,\s*[^,]+)?[,;:]?\s*)?(?:(?:o\s+)?pedido\s+(?:é|e)\s*:?\s*|(?:é|e)\s+)/i, "")
       .replace(/^(?:ent[aã]o[,;:]?\s*)?(?:para|pra)\s+/i, "")
       .replace(/[,.;]+$/, "")
       .trim();
@@ -2054,6 +2055,20 @@ function extractQuotationDataFromText(text: string): Record<string, any> {
   if (data.criancas !== undefined && !Array.isArray(data.idades_criancas)) data.idades_criancas = [];
 
   return data;
+}
+
+function sanitizeQuotationLocation(value: unknown): string {
+  let cleaned = String(value || "")
+    .replace(/\[(?:STATUS|DADOS|DESTINO|ORIGEM|DATAS|NUM_VIAJANTES):[^\]]*\]/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const explicitDestination = cleaned.match(/(?:pedido\s+(?:é|e)\s*:?\s*|ent[aã]o\s+(?:é|e)\s+)([^,]+)$/i);
+  if (explicitDestination?.[1]) {
+    cleaned = explicitDestination[1].trim();
+  }
+
+  return cleaned.replace(/^[,.;:\s]+|[,.;:\s]+$/g, "");
 }
 
 function isNewQuotationResetText(text: string): boolean {
@@ -2103,18 +2118,29 @@ function recoverQuotationDataFromHistory(
 
     if (!isUserMessage && !isConfirmationSummary) continue;
 
-    const partial = extractQuotationDataFromText(content);
+    const summaryLine = isConfirmationSummary
+      ? content
+          .split(/\n+/)
+          .reverse()
+          .find((line) => /saindo|partindo/i.test(line)
+            && (line.match(/\d{1,2}[\/-]\d{1,2}/g) || []).length >= 2)
+      : null;
+    const partial = extractQuotationDataFromText(summaryLine || content);
 
-    // A one-date answer to a "data de volta" question is a return-date correction.
+    // Interpret a single date only when the preceding question identifies ida or volta.
     if (isUserMessage && dateCount === 1 && partial.data_ida) {
       const previousAssistant = [...cycleMessages.slice(0, i)]
         .reverse()
         .find((item: any) => item?.role === "assistant");
       const previousText = String(previousAssistant?.content || "");
+      const asksReturnDate = /\b(?:volta|retorno)\b/i.test(previousText);
+      const asksDepartureDate = /\b(?:ida|sa[ií]da|partida)\b/i.test(previousText);
 
-      if (/\b(?:volta|retorno)\b/i.test(previousText)
-        || (recovered.data_ida && !recovered.data_volta)) {
+      if (asksReturnDate || (recovered.data_ida && !recovered.data_volta)) {
         partial.data_volta = partial.data_ida;
+        delete partial.data_ida;
+      } else if (!asksDepartureDate && recovered.data_ida && recovered.data_volta) {
+        // Ambiguous repeated date after a confirmation prompt: keep the confirmed pair.
         delete partial.data_ida;
       }
     }
@@ -9146,6 +9172,16 @@ Regras OBRIGATÓRIAS:
           };
           console.log("[QUOTATION] Payload mounted from newCollectedData:", effectiveQuotationData);
         }
+      }
+
+      if (effectiveQuotationData) {
+        effectiveQuotationData = {
+          ...effectiveQuotationData,
+          origem: sanitizeQuotationLocation(effectiveQuotationData.origem),
+          destino: sanitizeQuotationLocation(effectiveQuotationData.destino),
+        };
+        newCollectedData.origem = effectiveQuotationData.origem;
+        newCollectedData.destino = effectiveQuotationData.destino;
       }
 
       // Handle quotation if triggered
