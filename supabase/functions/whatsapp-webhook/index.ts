@@ -2014,12 +2014,23 @@ function extractQuotationDataFromText(text: string): Record<string, any> {
   if (dates[0]) data.data_ida = dates[0];
   if (dates[1]) data.data_volta = dates[1];
 
+  const directRouteMatch = normalized.match(/^(?:de\s+)?(.{2,60}?)\s+(?:para|pra)\s+(.{2,60}?)(?=,\s*\d{1,2}[\/-]|$)/i);
+  if (directRouteMatch) {
+    const routeOrigin = directRouteMatch[1].replace(/[,.;]+$/, "").trim();
+    const routeDestination = directRouteMatch[2].replace(/[,.;]+$/, "").trim();
+    const routeNoise = /\b(?:certo|correto|buscar|cotar|cotacao|orcamento|viagem|pedido)\b/i;
+    if (!routeNoise.test(routeOrigin) && !routeNoise.test(routeDestination)) {
+      data.origem = routeOrigin;
+      data.destino = routeDestination;
+    }
+  }
+
   const originMatch = normalized.match(/(?:saindo|partindo|embarque)\s+(?:de|do|da)\s+(.+?)(?=,\s*(?:de\s+)?\d{1,2}[\/-]|,\s*\d{1,2}[\/-]|\s+(?:de\s+)?\d{1,2}[\/-]|$)/i);
-  if (originMatch?.[1]) data.origem = originMatch[1].replace(/[,.;]+$/, "").trim();
+  if (!data.origem && originMatch?.[1]) data.origem = originMatch[1].replace(/[,.;]+$/, "").trim();
 
   const destinationMatch = normalized.match(/(?:cota[cç][aã]o|or[cç]amento|viagem|pacote)\s+(?:para|pra)\s+(.+?)(?=,\s*(?:saindo|partindo)|\s+(?:saindo|partindo)|,\s*(?:de\s+)?\d{1,2}[\/-]|$)/i)
     || normalized.match(/^(.+?)(?=,\s*(?:saindo|partindo)|\s+(?:saindo|partindo))/i);
-  if (destinationMatch?.[1]) {
+  if (!data.destino && destinationMatch?.[1]) {
     data.destino = destinationMatch[1]
       .replace(/^(?:cota[cç][aã]o|or[cç]amento|viagem|pacote)\s+(?:para|pra)\s+/i, "")
       .replace(/^(?:ent[aã]o(?:,\s*[^,]+)?[,;:]?\s*)?(?:(?:o\s+)?pedido\s+(?:é|e)\s*:?\s*|(?:é|e)\s+)/i, "")
@@ -2031,14 +2042,19 @@ function extractQuotationDataFromText(text: string): Record<string, any> {
   const adultsMatch = normalized.match(/\b(\d+)\s*adultos?\b/i);
   const childrenMatch = normalized.match(/\b(\d+)\s*crian[cç]as?\b/i);
   const peopleMatch = normalized.match(/\b(\d+)\s*(?:pessoas?|viajantes?|passageiros?)\b/i);
-  const wordPeopleMatch = normalized.match(/\b(um|uma|dois|duas|tres|tr[eê]s|quatro|cinco|seis|sete|oito|nove|dez)\s*(?:pessoas?|viajantes?|passageiros?)\b/i);
+  const numberWordPattern = "(um|uma|dois|duas|tres|três|quatro|cinco|seis|sete|oito|nove|dez)";
+  const wordPeopleMatch = normalized.match(new RegExp(`\\b${numberWordPattern}\\s*(?:pessoas?|viajantes?|passageiros?)\\b`, "i"));
+  const wordAdultsMatch = normalized.match(new RegExp(`\\b${numberWordPattern}\\s*adultos?\\b`, "i"));
+  const wordChildrenMatch = normalized.match(new RegExp(`\\b${numberWordPattern}\\s*crian[cç]as?\\b`, "i"));
   const numberWords: Record<string, number> = {
     um: 1, uma: 1, dois: 2, duas: 2, tres: 3, "três": 3,
     quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10,
   };
 
   if (adultsMatch) data.adultos = Number(adultsMatch[1]);
+  else if (wordAdultsMatch) data.adultos = numberWords[wordAdultsMatch[1].toLowerCase()];
   if (childrenMatch) data.criancas = Number(childrenMatch[1]);
+  else if (wordChildrenMatch) data.criancas = numberWords[wordChildrenMatch[1].toLowerCase()];
 
   const totalPeople = peopleMatch
     ? Number(peopleMatch[1])
@@ -9286,7 +9302,7 @@ Regras OBRIGATÓRIAS:
         .replace(/[\u0300-\u036f]/g, "")
         .trim()
         .toLowerCase();
-      const isQuotationConfirmation = /^(?:sim|confirmo|confirmado|pode|pode buscar|pode cotar|ta bom|ok|certo|correto|isso|isso mesmo|perfeito)[!. ]*$/.test(normalizedConfirmation);
+      const isQuotationConfirmation = /^(?:sim|confirmo|confirmado|pode|pode buscar|pode cotar|pode sim|ta bom|ok|certo|correto|isso|isso mesmo|isso sim|perfeito|esta sim|agora sim|sim esta)[!. ]*$/.test(normalizedConfirmation);
       const conversationStatus = extracted.status ||
         (isQuotationConfirmation && hasRecoveredMandatoryData ? "awaiting_quotation" : null);
 
