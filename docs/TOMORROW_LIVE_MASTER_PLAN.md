@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 20/08/2026 |
-| Estado geral | Etapas 1 e 2 concluídas; Etapa 3 implementada e validada tecnicamente, com validação pública reaberta por divergência de produção |
-| Etapa atual | Etapa 3 — pausada: implantação reportada no SHA `307b576f50fe406e4d527836954b9ffd2f2c1ef6`, mas verificação independente ainda retorna 404 |
-| Último HEAD verificado | `5f1cc7e60545767f6823911fbfe7d7c4e0f10932` |
-| Próxima ação exata | Reimplantar o HEAD final no domínio principal e validar em sessão limpa que `/oportunidades` redireciona e `/oportunidades/catalogo` carrega dados reais; não iniciar a Etapa 4 |
+| Estado geral | Etapas 1, 2 e 3 concluídas; catálogo público implantado, validado e operacional |
+| Etapa atual | Etapa 3 — concluída, implantada e validada em produção no SHA `9b95ca29602064cbfa84f78178d3e4c51d997eec` |
+| Último HEAD verificado | `9b95ca29602064cbfa84f78178d3e4c51d997eec` |
+| Próxima ação exata | Aguardar autorização expressa para iniciar a Etapa 4; não implementar detalhe, comparação, calendário ou Tomorrow Live antes dessa autorização |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -246,7 +246,7 @@ A rota atual `/ofertas` será preservada durante a construção. Redirecionament
 
 ### Etapa 3 — Catálogo de oportunidades
 
-**Estado:** concluída no código e validada tecnicamente em 20/08/2026; validação pública reaberta porque uma verificação independente posterior à implantação encontrou 404
+**Estado:** concluída, implantada e validada em produção em 20/08/2026 às 20:02:42 UTC
 
 **Objetivo:** disponibilizar a navegação convencional pelo inventário.
 
@@ -645,6 +645,7 @@ A página não implementa detalhe, comparação, calendário, Tomorrow Live, han
 | D-020 | 20/08/2026 | Consumir o inventário do catálogo exclusivamente por `travel-offers-public`, usando `facets` e `catalog`; nunca consultar tabela ou RPC legada no navegador | implementada |
 | D-021 | 20/08/2026 | Iniciar favoritos de forma local e anônima, limitados a 100 IDs; sincronização autenticada permanece decisão futura | implementada |
 | D-022 | 20/08/2026 | Paginar no banco com 18 itens por página e aplicar filtros somente após validação e ação explícita do usuário | implementada |
+| D-023 | 20/08/2026 | Considerar a Etapa 3 concluída somente após confirmar o SHA publicado, o deployment servido sem cache e o catálogo real no domínio principal | executada |
 
 ## 10. Riscos conhecidos
 
@@ -822,3 +823,21 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Riscos ou erros:** possível divergência entre a versão validada pelo executor e a versão efetivamente servida pelo domínio, ou atualização inconsistente de artefatos/cache de publicação. O rate limit em memória e os avisos técnicos anteriores permanecem riscos conhecidos, sem mudança nesta intervenção.
 - **Pendências:** reimplantar o HEAD final; confirmar o SHA servido; validar em sessão limpa o redirecionamento e o catálogo com dados reais em desktop e mobile; somente então marcar a Etapa 3 como concluída e implantada.
 - **Próxima ação exata:** enviar manualmente ao Lovable a solicitação de sincronização/republicação do HEAD final informado no chat; após o `ready`, abrir as duas rotas em sessão limpa, confirmar que não há 404 e registrar o SHA publicado. Não iniciar a Etapa 4.
+
+### Checkpoint 2026-08-20 20:02:42 UTC — Etapa 3 implantada e validada
+
+- **Etapa:** 3 — Catálogo de oportunidades
+- **Estado:** concluída, implantada, validada e operacional no domínio principal.
+- **Objetivo executado:** encerrar a divergência de publicação, confirmar o SHA efetivamente servido e validar que o catálogo público carrega o inventário real sem 404 ou falha crítica.
+- **Arquivos alterados desde o checkpoint anterior:** o Lovable alterou `package.json`, `bun.lock` e `dev-dist/sw.js` durante a correção do build; esta intervenção final altera somente `docs/TOMORROW_LIVE_MASTER_PLAN.md`.
+- **SQL/migrations:** nenhuma operação SQL, nenhuma migration e nenhuma alteração de banco, RLS ou Edge Function. A infraestrutura validada na Etapa 1 permanece inalterada.
+- **Commits:** checkpoint de divergência `9ae47c17eb9fee0e6d35f5f82616f1952d6a8003`; artefatos/correções Lovable `8677ac4b85b47b16879e615afd19be24a329aff7`, `24962893ff665b6ce70a2b39434c73ce39087778`, `7620d8a28c094c5dbe2289541243718476c671ac`, `418d6f2ae2f50910b9712502d3044fe64081ce19`; SHA final publicado `9b95ca29602064cbfa84f78178d3e4c51d997eec`.
+- **Correção de build:** foi adicionada a devDependency `@testing-library/dom` e atualizado `bun.lock` para satisfazer o peer dependency usado por `@testing-library/react`; não houve mudança de código funcional, contrato de dados ou runtime do catálogo.
+- **Implantações e SHA:** publicação confirmada em 20/08/2026 às 20:02:42 UTC no SHA `9b95ca29602064cbfa84f78178d3e4c51d997eec`. O servidor retornou o identificador de implantação `240ba944-72a9-4709-b7d4-6e3100060918`.
+- **Testes reportados:** `/oportunidades` redireciona para `/oportunidades/catalogo`; catálogo sem 404; título “Oportunidades reais para o seu próximo amanhã.”; ofertas reais carregadas; desktop em 1280 px; mobile em 390 px; nenhuma resposta 404/500 ou falha crítica de script.
+- **Verificação independente:** a resposta HTML sem cache retornou HTTP 200 e o deployment ID esperado; o bundle atual contém explicitamente as rotas `/oportunidades` e `/oportunidades/catalogo`; o chunk `OpportunitiesCatalog-DcR4sHUK.js` retornou HTTP 200 e contém o título do catálogo e as chamadas `facets`, `catalog` e `travel-offers-public`.
+- **Resultado dos testes:** implantação e integridade do SHA confirmadas. O 404 observado anteriormente ficou restrito a uma sessão com Service Worker antigo; a resposta direta do servidor e a validação em sessão limpa confirmaram a versão atual.
+- **Decisões tomadas:** considerar a Etapa 3 formalmente concluída; manter a Etapa 4 não iniciada; preservar Téo, WhatsApp, calendário, Edge Function e banco sem alterações.
+- **Riscos ou erros:** os múltiplos lockfiles continuam podendo gerar instalações divergentes; a correção atualizou apenas `bun.lock`. Clientes com Service Worker muito antigo podem precisar receber a atualização do PWA antes de visualizar a rota nova; monitorar ocorrências.
+- **Pendências:** nenhuma pendência funcional ou de implantação da Etapa 3. A escolha do gerenciador de pacotes oficial permanece dívida técnica transversal, sem bloquear o catálogo.
+- **Próxima ação exata:** aguardar autorização expressa para iniciar a Etapa 4; quando autorizada, reler integralmente este documento, conferir o HEAD e implementar detalhe/comparação usando somente a operação pública `detail`, sem alterar Téo, WhatsApp ou calendário.
