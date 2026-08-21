@@ -59,6 +59,16 @@ describe("Tomorrow Live — Etapa 7: fundação de voz", () => {
     expect(screen.getAllByRole("link", { name: "Continuar por texto" }).every((link) => link.getAttribute("href") === "/teo")).toBe(true);
   });
 
+  it("inicia a conversa pelo microfone visual do planeta", async () => {
+    getUserMedia.mockRejectedValueOnce(new DOMException("denied", "NotAllowedError"));
+    render(<OpportunitiesLive />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Iniciar conversa por voz pelo microfone do planeta" }));
+
+    expect(getUserMedia).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Permissão do microfone negada");
+  });
+
   it("permite visualizar estados sem iniciar voz ou alterar dados", () => {
     render(<OpportunitiesLive />);
 

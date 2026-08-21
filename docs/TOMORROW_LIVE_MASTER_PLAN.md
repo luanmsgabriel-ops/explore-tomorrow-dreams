@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 21/08/2026 |
-| Estado geral | Etapas 1 a 6 concluídas; fundação de voz da Etapa 7 e primeira ferramenta de inventário implementadas, testadas, mergeadas e sincronizadas |
-| Etapa atual | Etapa 7 — busca pública por voz sincronizada; reimplantação da sessão Realtime, publicação do frontend e validação manual pendentes |
-| Último HEAD verificado | `cff2dd308fa779d431456f090f9a1b5c97b66727` |
-| Próxima ação exata | Reimplantar manualmente `tomorrow-live-realtime-session`, publicar manualmente o frontend no mesmo SHA e validar busca real, vazio, erro, fala e cards; não iniciar cotação ou WhatsApp |
+| Estado geral | Etapas 1 a 6 concluídas; fundação de voz e primeira ferramenta pública de inventário da Etapa 7 implementadas, testadas, mergeadas e sincronizadas; usabilidade móvel do controle de voz em implementação isolada |
+| Etapa atual | Etapa 7 — tornar o microfone visual do planeta um controle real de início e mute, preservando a sessão Realtime existente |
+| Último HEAD verificado | `5e90a6a6025701e0f39eb7cedcc67e7fd4dd4f07` |
+| Próxima ação exata | Concluir validação automatizada, revisar o diff, abrir PR isolado, mergear após aprovação, conferir sincronização no Lovable e publicar somente com autorização explícita |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -951,3 +951,14 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Merge e sincronização:** PR funcional `#35` squash-mergeado em `cff2dd308fa779d431456f090f9a1b5c97b66727`; GitHub `main` confirmado nesse SHA; Lovable reconheceu exatamente o mesmo SHA e ficou `ready`.
 - **Estado desta mudança:** implementada, testada, mergeada e sincronizada; Edge Function ainda não reimplantada; frontend novo ainda não publicado; busca de voz e cards ainda não validados manualmente em preview/produção.
 - **Próxima ação exata:** reimplantar manualmente `tomorrow-live-realtime-session` e publicar manualmente o frontend no SHA funcional; em uma sessão nova, testar busca com resultado, destino sem resultado, erro controlado, igualdade entre voz e cards e interrupção. Não iniciar cotação, WhatsApp ou ferramenta privada.
+
+### Checkpoint 2026-08-21 — Etapa 7: microfone interativo no planeta para mobile
+
+- **Estado de entrada:** `main` e Lovable confirmados em `5e90a6a6025701e0f39eb7cedcc67e7fd4dd4f07`; o usuário validou a conversa, interrupção, voz e efeitos em dispositivo real e identificou que, no mobile, precisava descer até a Central de Comando para iniciar a voz e depois voltar ao planeta.
+- **Objetivo:** transformar o ícone de microfone já exibido sob o planeta em um controle real, sem duplicar a captura, a sessão WebRTC ou o estado do hook existente.
+- **Implementação:** o controle inicia `startConversation` quando a sessão está inativa; mostra carregamento e bloqueia toques repetidos durante `connecting`; depois de conectado, reutiliza `toggleMute` para pausar ou reativar o microfone; rótulos acessíveis e ícones acompanham os quatro estados.
+- **Preservações:** nenhuma alteração no prompt ou comportamento do Téo, WhatsApp, inventário, cotação, banco, Edge Function, áudio, globo WebGL, partículas, ondas, pedestal ou handoff.
+- **Arquivos funcionais:** `src/components/opportunities/live/LiveParticleGlobe.tsx`; `src/pages/OpportunitiesLive.tsx`; `src/pages/opportunitiesLive.test.tsx`.
+- **Validação parcial:** 7/7 testes focados aprovados; TypeScript global, ESLint do escopo, build Vite/PWA e `git diff --check` aprovados. A suíte global mantém falhas anteriores em `opportunityCompare.test.tsx`, fora do diff e reproduzidas isoladamente; os demais 68 testes globais passaram.
+- **Estado desta mudança:** implementada e testada localmente em branch isolada; ainda não commitada, mergeada, sincronizada, publicada ou validada em produção.
+- **Próxima ação exata:** revisar diff, criar commit e PR, executar CI focado, mergear somente após validação, conferir sync Lovable e não publicar automaticamente.
