@@ -9,9 +9,10 @@ A referência exige: halo turquesa cinematográfico concentrado na borda do plan
 ## Base
 
 - Repositório: `luanmsgabriel-ops/explore-tomorrow-dreams`
-- Branch: `stage-6-reference-fidelity`
-- Base do `main`: `cfc6662840538afdcf8af3e687ab28988afbcb66`
-- PR: `#21`
+- Branch funcional: `stage-6-reference-fidelity`
+- Base funcional anterior: `cfc6662840538afdcf8af3e687ab28988afbcb66`
+- PR funcional: `#21`
+- SHA funcional mergeado: `6f6cef93559ed41e0d0a3968d820ee7403e530c6`
 - Dependências preservadas: `three ^0.185.0`, `three-globe ^2.45.2`
 - Nenhuma dependência runtime nova adicionada.
 
@@ -92,6 +93,15 @@ Run aprovado:
 - ESLint do escopo: aprovado;
 - build Vite/PWA de produção: aprovado.
 
+## Merge e sincronização
+
+- PR funcional `#21` foi squash-mergeado.
+- SHA funcional em `main`: `6f6cef93559ed41e0d0a3968d820ee7403e530c6`.
+- O Lovable registrou esse SHA como `completed`.
+- Os arquivos `LiveParticleGlobe.tsx` e `liveGlobeEffects.ts` foram lidos diretamente pelo conector Lovable no ref funcional e correspondem ao código mergeado.
+- O preview foi reconstruído com screenshot identificada pelo prefixo `id-preview-6f6cef93`.
+- Nenhuma publicação de produção foi executada nesta etapa.
+
 ## Fora do escopo
 
 - microfone real;
@@ -112,7 +122,7 @@ Run aprovado:
 
 - IMPLEMENTADO: sim
 - TESTADO: sim — run `32480418240`
-- MERGEADO: pendente
-- SINCRONIZADO NO LOVABLE: pendente
+- MERGEADO: sim — PR `#21` — SHA `6f6cef93559ed41e0d0a3968d820ee7403e530c6`
+- SINCRONIZADO NO LOVABLE: sim
 - PUBLICADO: não
-- VALIDADO VISUALMENTE: pendente de preview
+- VALIDADO VISUALMENTE: pendente de validação humana no preview
