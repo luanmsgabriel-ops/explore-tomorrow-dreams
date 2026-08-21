@@ -1,0 +1,34 @@
+name: Stage 6 reactive waves validation
+
+on:
+  push:
+    branches:
+      - stage-6-reactive-waves-refinement
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Focused tests
+        run: bun run test -- src/pages/opportunitiesLive.test.tsx src/components/opportunities/live/LiveWaveBackdrop.test.tsx
+
+      - name: TypeScript
+        run: bunx tsc -p tsconfig.app.json --noEmit
+
+      - name: ESLint scope
+        run: bunx eslint src/components/opportunities/live/LiveParticleGlobe.tsx src/components/opportunities/live/LiveWaveBackdrop.tsx src/components/opportunities/live/LiveWaveBackdrop.test.tsx src/pages/OpportunitiesLive.tsx src/pages/opportunitiesLive.test.tsx
+
+      - name: Production build
+        run: bun run build
