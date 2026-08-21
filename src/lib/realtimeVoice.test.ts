@@ -5,6 +5,7 @@ import {
   catalogParamsFromRealtimeTool,
   clampAudioLevel,
   functionCallFromRealtimeEvent,
+  offerHandoffFromRealtimeTool,
   parseRealtimeEvent,
   realtimeToolContinuationEvents,
   transcriptChangeFromEvent,
@@ -97,6 +98,34 @@ describe("Realtime Voice contract", () => {
       name: "search_travel_offers",
       arguments: JSON.stringify({ start_date: "21/08/2026" }),
     })).toThrow("datas da consulta são inválidas");
+  });
+
+  it("aceita somente handoff para um UUID e canal permitidos", () => {
+    expect(offerHandoffFromRealtimeTool({
+      callId: "handoff-1",
+      name: "present_offer_actions",
+      arguments: JSON.stringify({
+        offer_id: "0191a5f2-ccaa-7f03-8f00-1234567890ab",
+        requested_channel: "whatsapp",
+      }),
+    })).toEqual({
+      offerId: "0191a5f2-ccaa-7f03-8f00-1234567890ab",
+      requestedChannel: "whatsapp",
+    });
+
+    expect(() => offerHandoffFromRealtimeTool({
+      callId: "handoff-2",
+      name: "present_offer_actions",
+      arguments: JSON.stringify({ offer_id: "oferta-inventada", requested_channel: "whatsapp" }),
+    })).toThrow("identificador da oferta é inválido");
+    expect(() => offerHandoffFromRealtimeTool({
+      callId: "handoff-3",
+      name: "present_offer_actions",
+      arguments: JSON.stringify({
+        offer_id: "0191a5f2-ccaa-7f03-8f00-1234567890ab",
+        requested_channel: "send_automatically",
+      }),
+    })).toThrow("canal solicitado é inválido");
   });
 
   it("cria a saída da função antes de pedir a continuação da resposta", () => {

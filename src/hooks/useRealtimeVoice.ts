@@ -7,11 +7,13 @@ import {
   fetchRealtimeClientSecret,
   functionCallFromRealtimeEvent,
   microphoneErrorMessage,
+  offerHandoffFromRealtimeTool,
   parseRealtimeEvent,
   realtimeToolContinuationEvents,
   transcriptChangeFromEvent,
   type RealtimeServerEvent,
   type RealtimeVoiceStatus,
+  type OfferHandoffChannel,
   type VoiceTranscriptEntry,
 } from "@/lib/realtimeVoice";
 import {
@@ -40,6 +42,11 @@ const AUDIO_PUBLISH_MIN_DELTA = 0.025;
 const OUTPUT_ACTIVITY_THRESHOLD = 0.012;
 const OUTPUT_SILENCE_HOLD_MS = 900;
 const TRANSCRIPT_FLUSH_INTERVAL_MS = 120;
+
+export interface OfferHandoffSelection {
+  offer: TravelOfferCatalogItem;
+  requestedChannel: OfferHandoffChannel;
+}
 
 function releaseResources(resources: RealtimeResources | null) {
   if (!resources) return;
@@ -84,6 +91,7 @@ export function useRealtimeVoice() {
   const [audioLevel, setAudioLevel] = useState(0);
   const [transcript, setTranscript] = useState<VoiceTranscriptEntry[]>([]);
   const [offers, setOffers] = useState<TravelOfferCatalogItem[]>([]);
+  const [offerHandoff, setOfferHandoff] = useState<OfferHandoffSelection | null>(null);
   const [toolError, setToolError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const resourcesRef = useRef<RealtimeResources | null>(null);
@@ -99,6 +107,7 @@ export function useRealtimeVoice() {
   const outputCompleteRef = useRef(true);
   const lastOutputActivityAtRef = useRef(0);
   const handledToolCallsRef = useRef(new Set<string>());
+  const offersRef = useRef<TravelOfferCatalogItem[]>([]);
 
   const updateStatus = useCallback((next: RealtimeVoiceStatus) => {
     if (statusRef.current === next) return;
@@ -139,6 +148,8 @@ export function useRealtimeVoice() {
       setMuted(false);
       setAudioLevel(0);
       setOffers([]);
+      offersRef.current = [];
+      setOfferHandoff(null);
       setToolError(null);
       setError(message);
       updateStatus("error");
@@ -160,6 +171,8 @@ export function useRealtimeVoice() {
       mutedRef.current = false;
       setAudioLevel(0);
       setOffers([]);
+      offersRef.current = [];
+      setOfferHandoff(null);
       setToolError(null);
       handledToolCallsRef.current.clear();
       updateStatus("idle");
@@ -186,24 +199,42 @@ export function useRealtimeVoice() {
     if (!resources || resources.dataChannel.readyState !== "open") return;
 
     updateStatus("thinking");
-    if (mountedRef.current) {
-      setOffers([]);
-      setToolError(null);
-    }
+    if (mountedRef.current) setToolError(null);
 
     let output: unknown;
     try {
-      const params = catalogParamsFromRealtimeTool(call);
-      const result = await fetchTravelOfferCatalog(params, resources.abortController.signal);
-      if (resourcesRef.current !== resources || !mountedRef.current) return;
-      setOffers(result.items);
-      if (result.items.length > 0) updateStatus("offers");
-      output = {
-        ok: true,
-        total: result.total,
-        items: result.items,
-        notice: result.notice,
-      };
+      if (call.name === "search_travel_offers") {
+        setOffers([]);
+        offersRef.current = [];
+        setOfferHandoff(null);
+        const params = catalogParamsFromRealtimeTool(call);
+        const result = await fetchTravelOfferCatalog(params, resources.abortController.signal);
+        if (resourcesRef.current !== resources || !mountedRef.current) return;
+        offersRef.current = result.items;
+        setOffers(result.items);
+        if (result.items.length > 0) updateStatus("offers");
+        output = {
+          ok: true,
+          total: result.total,
+          items: result.items,
+          notice: result.notice,
+        };
+      } else {
+        const request = offerHandoffFromRealtimeTool(call);
+        const offer = offersRef.current.find((item) => item.id === request.offerId);
+        if (!offer) {
+          throw new Error("A oportunidade escolhida não pertence aos resultados atuais. Peça ao cliente para escolher uma das opções exibidas.");
+        }
+        setOfferHandoff({ offer, requestedChannel: request.requestedChannel });
+        updateStatus("offers");
+        output = {
+          ok: true,
+          action_ready: true,
+          offer_id: offer.id,
+          requested_channel: request.requestedChannel,
+          instruction: "As ações verificadas foram apresentadas na interface. Oriente o cliente a tocar na opção desejada.",
+        };
+      }
     } catch (toolFailure) {
       if (resourcesRef.current !== resources || !mountedRef.current) return;
       const message = toolFailure instanceof Error
@@ -212,7 +243,9 @@ export function useRealtimeVoice() {
       setToolError(message);
       output = {
         ok: false,
-        error: "Não foi possível consultar as oportunidades reais agora. Informe isso ao cliente sem sugerir dados alternativos.",
+        error: call.name === "search_travel_offers"
+          ? "Não foi possível consultar as oportunidades reais agora. Informe isso ao cliente sem sugerir dados alternativos."
+          : "Não foi possível preparar a ação para essa oferta. Peça ao cliente para escolher uma das oportunidades exibidas, sem inventar alternativas.",
       };
     }
 
@@ -285,6 +318,8 @@ export function useRealtimeVoice() {
     setTranscript([]);
     setAudioLevel(0);
     setOffers([]);
+    offersRef.current = [];
+    setOfferHandoff(null);
     setToolError(null);
     handledToolCallsRef.current.clear();
     resetOutputActivity();
@@ -490,6 +525,7 @@ export function useRealtimeVoice() {
     audioLevel,
     transcript,
     offers,
+    offerHandoff,
     toolError,
     error,
     startConversation,

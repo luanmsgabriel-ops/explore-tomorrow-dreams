@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 21/08/2026 |
-| Estado geral | Etapas 1 a 6 concluídas; fundação de voz, primeira ferramenta pública de inventário e controle móvel do planeta da Etapa 7 implementados, testados, mergeados e sincronizados |
-| Etapa atual | Etapa 7 — microfone do planeta sincronizado; publicação do frontend e validação manual no mobile pendentes |
-| Último HEAD verificado | `81f93c0ca819674e02a84c319ef350680c7c83a7` |
-| Próxima ação exata | Publicar manualmente o frontend no SHA funcional e validar em dispositivo móvel início, conexão, efeitos, mute e retomada; não reimplantar Edge Function nem alterar Téo ou WhatsApp |
+| Estado geral | Etapas 1 a 6 concluídas; voz, interrupção, inventário e controle móvel da Etapa 7 confirmados manualmente pelo usuário; primeiro handoff público da oferta em implementação isolada |
+| Etapa atual | Etapa 7/8 — apresentar página pública e WhatsApp preenchido para a oferta real escolhida, sem envio automático nem alteração das automações existentes |
+| Último HEAD verificado | `ceddf160f82b086a59228b6fa3228d22db3f54f0` |
+| Próxima ação exata | Concluir validações e PR do handoff público; após merge, confirmar sync/preview no Lovable e reimplantar manualmente somente `tomorrow-live-realtime-session`; não publicar automaticamente |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -963,3 +963,15 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Merge e sincronização:** PR `#37` squash-mergeado no SHA funcional `81f93c0ca819674e02a84c319ef350680c7c83a7`; `main` confirmado nesse SHA; Lovable reconheceu o mesmo SHA e ficou `ready`; workflow temporário removido do diff final.
 - **Estado desta mudança:** implementada, testada, mergeada e sincronizada; não publicada automaticamente e ainda não validada em produção no mobile.
 - **Próxima ação exata:** publicar manualmente o frontend no SHA funcional e, em dispositivo móvel, tocar no microfone do planeta para validar solicitação de permissão, conexão, efeitos visuais, pause e retomada; nenhuma reimplantação de Edge Function é necessária.
+
+### Checkpoint 2026-08-21 — Etapa 7/8: handoff público da oferta escolhida
+
+- **Estado de entrada:** voz, interrupção, inventário de pacotes e controle móvel confirmados manualmente pelo usuário; `main` real e Lovable sincronizados em `ceddf160f82b086a59228b6fa3228d22db3f54f0`.
+- **Autorização:** o usuário autorizou expressamente que o cliente possa abrir a página da oferta escolhida ou iniciar o WhatsApp com essa oferta já preenchida.
+- **Implementação:** ferramenta Realtime `present_offer_actions`; argumentos fechados em UUID e canal; validação do ID contra os resultados da sessão; painel junto aos controles de voz; rota pública da oferta; link `wa.me` com mensagem derivada somente do DTO público validado.
+- **Segurança e consentimento:** o modelo não monta dados comerciais nem controla navegação; um toque explícito abre a página ou o WhatsApp; nenhuma mensagem é enviada automaticamente; ID não pertencente à busca atual é recusado.
+- **Preservações:** nenhum prompt/componente do Téo textual, webhook, Evolution API, automação de WhatsApp, banco, migration, RLS ou visual do planeta alterado.
+- **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_7_OFFER_HANDOFF.md`.
+- **Validação:** 31 testes focados, TypeScript, ESLint, build de produção, testes Deno e `git diff --check` aprovados; GitHub Actions `32526597169` concluído com sucesso; workflow temporário removido do branch.
+- **Estado desta mudança:** implementada e testada na branch isolada; PR `#39` aberto; merge, sincronização e preview ainda pendentes neste checkpoint.
+- **Próxima ação exata:** revisar e mergear o PR `#39`; após merge, confirmar sync e preview no Lovable e reimplantar manualmente somente `tomorrow-live-realtime-session`; não publicar automaticamente.

@@ -48,6 +48,13 @@ export interface TravelOfferSearchArguments {
   offer_type?: "bloqueio_aereo" | "pacote";
 }
 
+export type OfferHandoffChannel = "details" | "whatsapp" | "options";
+
+export interface OfferHandoffRequest {
+  offerId: string;
+  requestedChannel: OfferHandoffChannel;
+}
+
 type RealtimeSecretResponse = {
   value?: string;
   expires_at?: number | null;
@@ -172,6 +179,40 @@ export function catalogParamsFromRealtimeTool(call: RealtimeFunctionCall): Catal
     page: 1,
     per_page: 3,
   };
+}
+
+export function offerHandoffFromRealtimeTool(call: RealtimeFunctionCall): OfferHandoffRequest {
+  if (call.name !== "present_offer_actions") {
+    throw new RealtimeVoiceError("Ferramenta não permitida.", "unknown_tool");
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(call.arguments || "{}");
+  } catch {
+    throw new RealtimeVoiceError("A oferta selecionada é inválida.", "invalid_tool_arguments");
+  }
+  if (!isRecord(parsed)) {
+    throw new RealtimeVoiceError("A oferta selecionada é inválida.", "invalid_tool_arguments");
+  }
+  const allowed = new Set(["offer_id", "requested_channel"]);
+  if (Object.keys(parsed).some((key) => !allowed.has(key))) {
+    throw new RealtimeVoiceError("A seleção contém campos não permitidos.", "invalid_tool_arguments");
+  }
+
+  const offerId = parsed.offer_id;
+  const requestedChannel = parsed.requested_channel ?? "options";
+  if (
+    typeof offerId !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(offerId)
+  ) {
+    throw new RealtimeVoiceError("O identificador da oferta é inválido.", "invalid_tool_arguments");
+  }
+  if (requestedChannel !== "details" && requestedChannel !== "whatsapp" && requestedChannel !== "options") {
+    throw new RealtimeVoiceError("O canal solicitado é inválido.", "invalid_tool_arguments");
+  }
+
+  return { offerId, requestedChannel };
 }
 
 export function realtimeToolContinuationEvents(callId: string, output: unknown) {
