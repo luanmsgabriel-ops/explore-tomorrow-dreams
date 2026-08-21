@@ -98,12 +98,12 @@ Não são aceitos identificadores internos, campos livres adicionais, `raw_data`
 - build Vite/PWA de produção: aprovado.
 - `git diff --check`: aprovado.
 - `tsconfig.app.json` global local: mantém somente o erro histórico em `src/components/admin/QuoteEditForm.tsx`, fora do escopo e sem alteração.
-- testes Deno e CI completo: pendentes antes do PR.
+- GitHub Actions `32522511203`: aprovado em testes Deno, 33 testes ampliados, TypeScript isolado, ESLint e build de produção.
 
 ## Estado
 
 - IMPLEMENTADO: sim, na branch isolada.
-- TESTADO: parcialmente; testes locais focados, lint e build aprovados; CI pendente.
+- TESTADO: sim; validação local e GitHub Actions `32522511203` aprovados.
 - MERGEADO: não.
 - SINCRONIZADO NO LOVABLE: não.
 - PUBLICADO: não.
@@ -111,4 +111,4 @@ Não são aceitos identificadores internos, campos livres adicionais, `raw_data`
 
 ## Próxima ação exata
 
-Executar a suíte focada novamente, validar a configuração Deno no GitHub Actions, revisar o diff de segurança e abrir PR funcional. Depois do merge, sincronizar no Lovable e validar em preview sem publicar automaticamente.
+Remover o workflow temporário do diff, revisar o PR funcional e mergear somente com o SHA aprovado. Depois do merge, sincronizar no Lovable e validar em preview sem publicar automaticamente.
