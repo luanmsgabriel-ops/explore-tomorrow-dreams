@@ -2059,6 +2059,14 @@ export type Database = {
         }
         Returns: Json
       }
+      get_travel_calendar_facets: {
+        Args: {
+          p_destination?: string
+          p_offer_type?: string
+          p_origin?: string
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
