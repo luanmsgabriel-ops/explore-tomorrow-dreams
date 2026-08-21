@@ -4,6 +4,7 @@
 
 - Escopo: correção pós-publicação da rota `/oportunidades/oferta/:id` em dispositivos móveis.
 - Base: `305d21cf7b113a157cfefca5f1f02340ba543fe9`.
+- Merge funcional: `ae2f19c893076bb0f0913d44a3d986674957309c`.
 - Sintoma observado: hero, título, rota e bloco de preço ultrapassavam a largura útil do viewport em celular, gerando recorte horizontal.
 - Etapa 6: não iniciada.
 
@@ -22,17 +23,25 @@ Ajustes:
 - tabelas largas continuam com scroll horizontal local, sem expandir a página inteira;
 - nenhum dado de oferta, preço, taxa, inventário, Téo, WhatsApp ou contrato de API foi alterado.
 
-## Validação prevista
+## Validação
 
-- suíte Vitest completa;
-- TypeScript sem emissão;
-- ESLint do detalhe e teste existente;
-- build Vite/PWA de produção.
+GitHub Actions run `32435226639`:
+- suíte Vitest completa: aprovada;
+- TypeScript sem emissão: aprovado;
+- ESLint de `OpportunityDetail.tsx` e teste existente: aprovado;
+- build Vite/PWA de produção: aprovado.
+
+O workflow temporário foi removido antes do merge.
+
+## Lovable
+
+- O SHA funcional `ae2f19c893076bb0f0913d44a3d986674957309c` já está disponível para leitura no Lovable.
+- O preview do projeto foi reconstruído com referência `ae2f19c8`.
+- Publicação no domínio principal ainda requer ação manual de Publish.
 
 ## Próxima ação
 
-1. Validar CI da branch.
-2. Remover workflow temporário antes do merge.
-3. Mergear somente a correção funcional e este checkpoint.
-4. Confirmar sincronização no Lovable.
-5. Publicar manualmente e validar a mesma oferta em mobile.
+1. Publicar manualmente a versão atual no Lovable.
+2. Abrir a mesma oferta em mobile.
+3. Confirmar ausência de overflow horizontal e recorte de título, rota e preço.
+4. Não iniciar a Etapa 6 antes dessa validação visual.
