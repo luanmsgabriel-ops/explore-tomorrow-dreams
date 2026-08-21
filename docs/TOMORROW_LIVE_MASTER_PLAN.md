@@ -890,3 +890,13 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Próxima ação exata:** concluir testes, revisão de segurança e PR isolado; validar sincronização/preview sem publicar automaticamente.
 - **Validação da branch:** GitHub Actions `32510615098` aprovado em testes focados, TypeScript do escopo, ESLint, build de produção e testes Deno da nova Edge Function; workflow temporário removido antes do merge.
 - **Merge e sincronização:** PR `#25` squash-mergeado em `f869bd55e4acca900024189d29a9acd84777ffda`; Lovable marcou o SHA como `completed` e `ready`. O preview privado exigiu login nesta sessão e o domínio público permaneceu na Etapa 6, logo a Etapa 7 não está publicada nem validada com áudio real.
+
+### Checkpoint 2026-08-21 — Etapa 7: voz masculina e reatividade visual da fala
+
+- **Estado de entrada:** fundação Realtime publicada; Edge Function implantada; microfone, conversa e interrupção natural validados pelo usuário em dispositivo real.
+- **Problemas diagnosticados:** voz padrão `marin`; cena WebGL recriada a cada mudança de estado, causando desaparecimento do planeta; partículas pouco perceptíveis durante `speaking`.
+- **Implementação:** voz padrão `cedar`; cena WebGL persistente entre estados; intensidade visual com piso reativo ainda controlado pelo áudio real; camada adicional de 240 partículas durante fala, reduzida para 90 em low performance; aceleração de nuvens e órbitas.
+- **Preservações:** nenhum prompt ou fluxo do Téo, WhatsApp, inventário, cotação, banco ou handoff alterado.
+- **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_7_VOICE_VISUAL_REACTIVITY.md`.
+- **Estado desta mudança:** implementada e validada localmente; CI, PR, merge, sincronização, reimplantação da Edge Function, publicação e validação em produção ainda pendentes.
+- **Próxima ação exata:** executar CI com Deno, revisar diff e abrir PR isolado; não publicar automaticamente.
