@@ -43,20 +43,20 @@ A camada pode ser minimizada e reaberta sem encerrar a sessão de voz.
 - Build Vite/PWA de produção aprovado.
 - `git diff --check` aprovado.
 
-## Estado operacional inicial
+## Estado operacional
 
 | Marco | Estado |
 |---|---|
 | Implementado | sim |
 | Testado localmente | sim |
-| Testado no GitHub | pendente |
-| PR | pendente |
-| Mergeado | não |
-| Sincronizado no Lovable | não para este incremento |
+| Testado no GitHub | sim, Actions `32529727422` |
+| PR | `#43` |
+| Mergeado | sim, `32e00a7fd70d4aa4b9d9bae609361efa063a84b7` |
+| Sincronizado no Lovable | sim, mesmo SHA e estado `ready` |
 | Publicado | não |
 | Validado em preview | não |
 | Validado em produção | não |
 
 ## Próxima ação exata
 
-Executar o workflow focado no GitHub, revisar o diff, mergear o PR e conferir se o Lovable sincronizou exatamente o SHA funcional. Depois, no preview autenticado, validar busca com uma e três ofertas, rolagem mobile, minimização, continuidade da fala, pop-up da escolhida, página pública e WhatsApp. Não publicar automaticamente.
+No preview autenticado, validar busca com uma e três ofertas, rolagem mobile, minimização, continuidade da fala, pop-up da escolhida, página pública e WhatsApp. Não publicar automaticamente.
