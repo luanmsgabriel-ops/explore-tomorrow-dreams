@@ -1,0 +1,43 @@
+name: Tomorrow Live voice performance
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "src/App.tsx"
+      - "src/components/opportunities/live/**"
+      - "src/hooks/useRealtimeVoice.ts"
+      - "src/hooks/useRealtimeVoice.test.tsx"
+      - "docs/TOMORROW_LIVE_**"
+      - ".github/workflows/tomorrow-live-voice-performance.yml"
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Focused tests
+        run: npx vitest run src/hooks/useRealtimeVoice.test.tsx src/lib/realtimeVoice.test.ts src/components/opportunities/live/LiveParticleGlobe.test.ts src/components/opportunities/live/liveGlobeEffects.test.ts src/components/opportunities/live/LiveWaveBackdrop.test.tsx
+
+      - name: TypeScript
+        run: npx tsc --noEmit
+
+      - name: ESLint scope
+        run: npx eslint src/App.tsx src/hooks/useRealtimeVoice.ts src/hooks/useRealtimeVoice.test.tsx src/components/opportunities/live/LiveParticleGlobe.tsx src/components/opportunities/live/globeRuntime.ts
+
+      - name: Production build
+        run: npm run build
