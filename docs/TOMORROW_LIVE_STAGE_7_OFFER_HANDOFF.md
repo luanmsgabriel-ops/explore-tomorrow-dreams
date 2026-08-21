@@ -73,12 +73,13 @@ Campos ausentes são omitidos. Não são incluídos `raw_data`, `source_url`, UR
 
 - IMPLEMENTADO: sim, na branch isolada.
 - TESTADO: sim; 31 testes focados, TypeScript, ESLint, build e testes Deno aprovados localmente/GitHub Actions `32526597169`.
-- MERGEADO: não.
-- SINCRONIZADO NO LOVABLE: não.
+- MERGEADO: sim; PR `#39`, SHA funcional `82565dd3193b537aec6ad7413d735ecbde8146dc`.
+- SINCRONIZADO NO LOVABLE: sim; SHA exato reconhecido e projeto `ready`.
 - EDGE FUNCTION REIMPLANTADA: não.
 - PUBLICADO: não.
 - VALIDADO EM PRODUÇÃO: não.
+- VALIDADO NO PREVIEW: não; o preview privado redirecionou esta sessão para o login do Lovable.
 
 ## Próxima ação exata
 
-Revisar e mergear o PR `#39` somente com o CI aprovado; depois confirmar sincronização do SHA no Lovable e validar o preview. A nova declaração de ferramenta exige reimplantação manual de `tomorrow-live-realtime-session`; não publicar automaticamente.
+Reimplantar manualmente somente `tomorrow-live-realtime-session` no Lovable Cloud e, em sessão nova no preview autenticado, buscar duas ou mais oportunidades, escolher uma por voz e validar os botões **Ver oferta** e **WhatsApp**, incluindo o pacote correto na mensagem. Não publicar automaticamente e não alterar automações do WhatsApp.
