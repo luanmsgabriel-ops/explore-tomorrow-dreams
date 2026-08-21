@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 21/08/2026 |
-| Estado geral | Etapas 1 a 6 concluídas; voz, interrupção, inventário e controle móvel da Etapa 7 confirmados pelo usuário; handoff, contexto estruturado e apresentação flutuante das ofertas implementados, testados, mergeados e sincronizados |
-| Etapa atual | Etapa 8 — cards flutuantes e pop-up concluídos no código; validação manual no preview autenticado pendente |
-| Último HEAD funcional verificado | `32e00a7fd70d4aa4b9d9bae609361efa063a84b7` |
-| Próxima ação exata | No preview autenticado, buscar por voz e validar uma e três ofertas sobre o planeta, continuidade da fala, pop-up da escolhida, página pública e WhatsApp; não publicar automaticamente |
+| Estado geral | Etapas 1 a 6 concluídas; voz, interrupção, inventário e controle móvel da Etapa 7 confirmados pelo usuário; Etapa 8 com cards flutuantes mergeados e sincronizados; refinamento de legibilidade e dimensões uniformes implementado e testado localmente e no GitHub |
+| Etapa atual | Etapa 8 — refinamento visual dos cards flutuantes em revisão no PR `#45` |
+| Último HEAD verificado | `ff953e4af2bbd9eae9c740331c214436fd0eab09` |
+| Próxima ação exata | Revisar e mergear o PR `#45`, confirmar o SHA resultante no Lovable e validar os três cards no mobile; não publicar automaticamente |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -1002,3 +1002,15 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Merge e sincronização:** PR `#43` squash-mergeado em `32e00a7fd70d4aa4b9d9bae609361efa063a84b7`; GitHub `main` confirmado nesse SHA; Lovable reconheceu exatamente o mesmo SHA e ficou `completed`/`ready`.
 - **Estado desta mudança:** implementada, testada, mergeada e sincronizada; não publicada automaticamente; validação interativa em preview e produção pendente.
 - **Próxima ação exata:** no preview autenticado, buscar por voz e validar uma e três ofertas sobre o planeta, rolagem mobile, continuidade da fala, minimização, pop-up da escolhida, página pública e WhatsApp; não publicar automaticamente.
+
+### Checkpoint 2026-08-21 — Etapa 8: legibilidade e dimensões uniformes dos cards
+
+- **Estado de entrada:** `main` confirmado em `ff953e4af2bbd9eae9c740331c214436fd0eab09`; o usuário validou a apresentação das três ofertas em dispositivo móvel e identificou transparência excessiva na área de informações e diferença visual de altura entre os cards.
+- **Diagnóstico:** o bloco de informações não possuía fundo próprio e herdava a transparência do card; conteúdo com títulos de uma ou duas linhas e offsets/fases distintos de flutuação criavam dimensões e alinhamentos visuais inconsistentes.
+- **Implementação local:** fundo sólido `tomorrow-background` no card e no bloco de informações; altura única de `18rem`; estrutura flexível com título reservado para duas linhas e preço ancorado na base; cards esticados igualmente no deck; offsets e fases de flutuação sincronizados, preservando a profundidade 3D.
+- **Preservações:** nenhuma alteração em dados, seleção de oferta, pop-up, página pública, WhatsApp, prompt do Téo, voz, WebRTC, ferramentas, globo, banco ou Edge Function.
+- **Arquivos funcionais:** `src/components/opportunities/live/LiveOfferOverlay.tsx`; `src/components/opportunities/live/LiveOfferOverlay.test.tsx`.
+- **Validação:** 2/2 testes focados, TypeScript global, ESLint do escopo e build Vite/PWA aprovados no GitHub Actions `32531293737`; workflow temporário removido do diff. Localmente, os mesmos testes focados, TypeScript isolado, ESLint, build e `git diff --check` foram aprovados; o TypeScript global local encontrou erro anterior fora do escopo em `src/components/admin/QuoteEditForm.tsx:144` por divergência do lock npm histórico.
+- **PR:** `#45`, draft, mergeável e com quatro arquivos no diff final.
+- **Estado desta mudança:** implementada e testada localmente e no GitHub; ainda não mergeada, sincronizada, publicada ou validada em preview/produção.
+- **Próxima ação exata:** revisar e mergear o PR `#45`, confirmar o SHA resultante no Lovable e validar os três cards no mobile. Não publicar automaticamente.

@@ -55,14 +55,14 @@ function offerPeriod(item: TravelOfferCatalogItem) {
 function FloatingOfferCard({ item, index }: { item: TravelOfferCatalogItem; index: number }) {
   const style = {
     "--live-card-tilt": `${index === 0 ? -5 : index === 2 ? 5 : 0}deg`,
-    "--live-card-offset": `${index === 1 ? -8 : 3}px`,
-    "--live-card-delay": `${index * -0.65}s`,
+    "--live-card-offset": "0px",
+    "--live-card-delay": "0s",
   } as CSSProperties;
   const period = offerPeriod(item);
 
   return (
     <article
-      className="live-offer-float-card opportunity-scope group relative min-w-[15rem] snap-center overflow-hidden rounded-2xl border border-tomorrow-gold/35 bg-tomorrow-background/88 shadow-[0_22px_55px_rgba(0,0,0,0.48),0_0_26px_rgba(76,198,190,0.12)] backdrop-blur-xl lg:min-w-0 lg:flex-1"
+      className="live-offer-float-card opportunity-scope group relative flex h-[18rem] min-w-[15rem] snap-center flex-col overflow-hidden rounded-2xl border border-tomorrow-gold/35 bg-tomorrow-background shadow-[0_22px_55px_rgba(0,0,0,0.48),0_0_26px_rgba(76,198,190,0.12)] lg:min-w-0 lg:flex-1"
       style={style}
       data-floating-offer-id={item.id}
     >
@@ -75,7 +75,7 @@ function FloatingOfferCard({ item, index }: { item: TravelOfferCatalogItem; inde
         <div className="h-2 bg-gradient-to-r from-tomorrow-teal/70 via-tomorrow-gold/65 to-tomorrow-teal/35" aria-hidden="true" />
       )}
 
-      <div className="grid gap-3 p-3.5">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 bg-tomorrow-background p-3.5" data-live-offer-content>
         <div className="flex items-center justify-between gap-2">
           <OpportunityBadge variant={item.kind === "air_block" ? "air" : "package"}>
             {item.kind === "air_block" ? <Plane aria-hidden="true" /> : null}
@@ -84,8 +84,8 @@ function FloatingOfferCard({ item, index }: { item: TravelOfferCatalogItem; inde
           <span className="text-[0.62rem] font-bold uppercase tracking-[0.16em] text-tomorrow-teal-soft">Opção {index + 1}</span>
         </div>
 
-        <div>
-          <h3 className="line-clamp-2 font-editorial text-xl leading-none text-tomorrow-text">{offerHandoffTitle(item)}</h3>
+        <div className="min-h-0 flex-1">
+          <h3 className="line-clamp-2 min-h-10 font-editorial text-xl leading-none text-tomorrow-text">{offerHandoffTitle(item)}</h3>
           <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-tomorrow-text">
             <MapPin className="size-3.5 shrink-0 text-tomorrow-gold" aria-hidden="true" />
             {offerRoute(item)}
@@ -165,7 +165,7 @@ export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl }: L
                 <X className="size-4" aria-hidden="true" />
               </button>
             </div>
-            <div className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-1 pb-2 pt-1 lg:overflow-visible">
+            <div className="flex items-stretch snap-x snap-mandatory gap-2.5 overflow-x-auto px-1 pb-2 pt-1 lg:overflow-visible">
               {visibleOffers.map((item, index) => <FloatingOfferCard key={item.id} item={item} index={index} />)}
             </div>
             <p className="px-1 pt-1 text-center text-[0.62rem] text-tomorrow-muted">O Téo continua falando enquanto você compara as opções.</p>

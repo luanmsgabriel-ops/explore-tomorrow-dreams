@@ -35,7 +35,12 @@ describe("LiveOfferOverlay", () => {
     render(<LiveOfferOverlay offers={offers} handoff={null} detailPath={null} whatsappUrl={null} />);
 
     expect(screen.getByRole("region", { name: "Ofertas encontradas pelo Téo" })).toBeInTheDocument();
-    expect(screen.getAllByRole("article")).toHaveLength(3);
+    const cards = screen.getAllByRole("article");
+    expect(cards).toHaveLength(3);
+    cards.forEach((card) => {
+      expect(card).toHaveClass("h-[18rem]", "flex", "flex-col", "bg-tomorrow-background");
+      expect(card.querySelector("[data-live-offer-content]")).toHaveClass("flex-1", "bg-tomorrow-background");
+    });
     expect(screen.getByRole("link", { name: "Abrir oferta: Pacote Maceió 1" })).toHaveAttribute(
       "href",
       `/oportunidades/oferta/${offers[0].id}`,
