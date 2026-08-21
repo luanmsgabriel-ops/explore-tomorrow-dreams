@@ -6,23 +6,20 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
       - name: Install and update lockfile
         run: bun install
-      - name: Upload generated lockfile
-        uses: actions/upload-artifact@v4
-        with:
-          name: webgl-bun-lock
-          path: bun.lock
       - name: Tomorrow Live tests
         run: bun run test -- src/pages/opportunitiesLive.test.tsx src/components/opportunities/opportunities.test.tsx
       - name: TypeScript
@@ -31,3 +28,15 @@ jobs:
         run: bunx eslint src/components/opportunities/live/LiveParticleGlobe.tsx src/pages/opportunitiesLive.test.tsx
       - name: Build
         run: bun run build
+      - name: Commit generated lockfile only
+        shell: bash
+        run: |
+          git add bun.lock
+          if git diff --cached --quiet; then
+            echo "bun.lock already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: update bun lock for WebGL globe"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
