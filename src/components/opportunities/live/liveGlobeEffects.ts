@@ -22,6 +22,11 @@ type RingDefinition = {
   dashed?: boolean;
 };
 
+type ParticleCloud = {
+  cyanGeometry: import("three").BufferGeometry;
+  goldGeometry: import("three").BufferGeometry;
+};
+
 const TWO_PI = Math.PI * 2;
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
@@ -37,46 +42,46 @@ function buildParticleCloud(
   THREE: ThreeModule,
   globeRadius: number,
   count: number,
-  cyan: string,
-  gold: string,
   mode: "halo" | "belt",
-) {
+  goldRatio: number,
+): ParticleCloud {
   const random = makeSeededRandom(mode === "halo" ? 0x73a2ef1 : 0xd4af37);
-  const positions: number[] = [];
-  const colors: number[] = [];
-  const cyanColor = new THREE.Color(cyan);
-  const goldColor = new THREE.Color(gold);
+  const cyanPositions: number[] = [];
+  const goldPositions: number[] = [];
 
   for (let index = 0; index < count; index += 1) {
+    let x = 0;
+    let y = 0;
+    let z = 0;
+
     if (mode === "halo") {
       const vertical = random() * 2 - 1;
       const phi = random() * TWO_PI;
       const planar = Math.sqrt(Math.max(0, 1 - vertical * vertical));
-      const radius = globeRadius * (1.025 + random() * 0.16);
-      positions.push(
-        radius * planar * Math.cos(phi),
-        radius * vertical,
-        radius * planar * Math.sin(phi),
-      );
+      const radius = globeRadius * (1.018 + random() * 0.22);
+      x = radius * planar * Math.cos(phi);
+      y = radius * vertical;
+      z = radius * planar * Math.sin(phi);
     } else {
       const angle = random() * TWO_PI;
-      const radiusX = globeRadius * (1.12 + random() * 0.5);
-      const radiusZ = globeRadius * (0.98 + random() * 0.42);
-      positions.push(
-        Math.cos(angle) * radiusX,
-        (random() - 0.5) * globeRadius * 0.55,
-        Math.sin(angle) * radiusZ,
-      );
+      const radiusX = globeRadius * (1.08 + random() * 0.62);
+      const radiusZ = globeRadius * (0.96 + random() * 0.5);
+      x = Math.cos(angle) * radiusX;
+      y = (random() - 0.5) * globeRadius * 0.66;
+      z = Math.sin(angle) * radiusZ;
     }
 
-    const chosen = random() < 0.09 ? goldColor : cyanColor;
-    colors.push(chosen.r, chosen.g, chosen.b);
+    const target = random() < goldRatio ? goldPositions : cyanPositions;
+    target.push(x, y, z);
   }
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-  return geometry;
+  const cyanGeometry = new THREE.BufferGeometry();
+  cyanGeometry.setAttribute("position", new THREE.Float32BufferAttribute(cyanPositions, 3));
+
+  const goldGeometry = new THREE.BufferGeometry();
+  goldGeometry.setAttribute("position", new THREE.Float32BufferAttribute(goldPositions, 3));
+
+  return { cyanGeometry, goldGeometry };
 }
 
 function createFresnelMaterial(
@@ -114,9 +119,9 @@ function createFresnelMaterial(
       void main() {
         float facing = max(dot(normalize(vNormal), normalize(vViewDirection)), 0.0);
         float fresnel = pow(1.0 - facing, uPower);
-        float rim = smoothstep(0.06, 1.0, fresnel);
-        float alpha = rim * uOpacity * (0.72 + uIntensity * 0.58);
-        vec3 glow = uColor * (0.78 + uIntensity * 0.65);
+        float rim = smoothstep(0.04, 1.0, fresnel);
+        float alpha = rim * uOpacity * (0.72 + uIntensity * 0.56);
+        vec3 glow = uColor * (0.82 + uIntensity * 0.62);
         gl_FragColor = vec4(glow, alpha);
       }
     `,
@@ -135,7 +140,7 @@ function createOrbitRing(
   cyan: string,
   gold: string,
 ) {
-  const segments = 192;
+  const segments = 224;
   const points: import("three").Vector3[] = [];
   for (let index = 0; index < segments; index += 1) {
     const angle = (index / segments) * TWO_PI;
@@ -153,16 +158,16 @@ function createOrbitRing(
     ? new THREE.LineDashedMaterial({
         color: definition.gold ? gold : cyan,
         transparent: true,
-        opacity: definition.gold ? 0.26 : 0.22,
-        dashSize: globeRadius * 0.035,
-        gapSize: globeRadius * 0.055,
+        opacity: definition.gold ? 0.34 : 0.24,
+        dashSize: globeRadius * 0.028,
+        gapSize: globeRadius * 0.042,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
       })
     : new THREE.LineBasicMaterial({
         color: definition.gold ? gold : cyan,
         transparent: true,
-        opacity: definition.gold ? 0.3 : 0.2,
+        opacity: definition.gold ? 0.36 : 0.22,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
       });
@@ -179,60 +184,94 @@ export function createGlobeVisualEffects(
   options: GlobeVisualEffectOptions,
 ): GlobeVisualEffects {
   const group = new THREE.Group();
-  group.name = "tomorrow-live-cinematic-effects";
+  group.name = "tomorrow-live-cinematic-effects-v2";
 
   const sphereGeometry = new THREE.SphereGeometry(
     globeRadius,
-    options.lowPerformance ? 48 : 72,
-    options.lowPerformance ? 32 : 48,
+    options.lowPerformance ? 48 : 80,
+    options.lowPerformance ? 32 : 56,
   );
-  const innerHaloMaterial = createFresnelMaterial(THREE, options.cyan, 2.2, 0.72);
-  const outerHaloMaterial = createFresnelMaterial(THREE, options.cyan, 4.1, 0.36);
+
+  // Darkens the ocean/base texture while preserving all geography layers above it.
+  // This brings the visual closer to the reference: dark core + luminous coast/dots.
+  const darkCoreMaterial = new THREE.MeshBasicMaterial({
+    color: "#011114",
+    transparent: true,
+    opacity: 0.34,
+    depthWrite: false,
+    depthTest: true,
+  });
+  const darkCore = new THREE.Mesh(sphereGeometry, darkCoreMaterial);
+  darkCore.scale.setScalar(1.0015);
+
+  // Three nested Fresnel shells: broad aura, cinematic rim and a thin crisp edge.
+  const innerHaloMaterial = createFresnelMaterial(THREE, options.cyan, 2.6, 0.54);
+  const outerHaloMaterial = createFresnelMaterial(THREE, options.cyan, 5.4, 0.31);
+  const edgeHaloMaterial = createFresnelMaterial(THREE, options.cyan, 9.2, 0.26);
 
   const innerHalo = new THREE.Mesh(sphereGeometry, innerHaloMaterial);
-  innerHalo.scale.setScalar(1.026);
+  innerHalo.scale.setScalar(1.018);
   const outerHalo = new THREE.Mesh(sphereGeometry, outerHaloMaterial);
-  outerHalo.scale.setScalar(1.072);
-  group.add(innerHalo, outerHalo);
+  outerHalo.scale.setScalar(1.048);
+  const edgeHalo = new THREE.Mesh(sphereGeometry, edgeHaloMaterial);
+  edgeHalo.scale.setScalar(1.072);
+  group.add(darkCore, innerHalo, outerHalo, edgeHalo);
 
-  const particleMaterial = new THREE.PointsMaterial({
-    size: options.lowPerformance ? 1.15 : 1.55,
+  const cyanParticleMaterial = new THREE.PointsMaterial({
+    color: options.cyan,
+    size: options.lowPerformance ? 1.05 : 1.42,
     transparent: true,
-    opacity: 0.72,
-    vertexColors: true,
+    opacity: 0.62,
     depthWrite: false,
     sizeAttenuation: false,
     blending: THREE.AdditiveBlending,
   });
 
-  const haloGeometry = buildParticleCloud(
+  const goldParticleMaterial = new THREE.PointsMaterial({
+    color: options.gold,
+    size: options.lowPerformance ? 1.5 : 2.05,
+    transparent: true,
+    opacity: 0.86,
+    depthWrite: false,
+    sizeAttenuation: false,
+    blending: THREE.AdditiveBlending,
+  });
+
+  const haloCloud = buildParticleCloud(
     THREE,
     globeRadius,
-    options.lowPerformance ? 90 : 230,
-    options.cyan,
-    options.gold,
+    options.lowPerformance ? 120 : 320,
     "halo",
+    0.14,
   );
-  const beltGeometry = buildParticleCloud(
+  const beltCloud = buildParticleCloud(
     THREE,
     globeRadius,
-    options.lowPerformance ? 80 : 190,
-    options.cyan,
-    options.gold,
+    options.lowPerformance ? 100 : 260,
     "belt",
+    0.17,
   );
-  const haloParticles = new THREE.Points(haloGeometry, particleMaterial);
-  const beltParticles = new THREE.Points(beltGeometry, particleMaterial);
-  haloParticles.rotation.x = 0.08;
-  beltParticles.rotation.x = -0.18;
-  beltParticles.rotation.z = 0.12;
-  group.add(haloParticles, beltParticles);
+
+  const cyanHaloParticles = new THREE.Points(haloCloud.cyanGeometry, cyanParticleMaterial);
+  const goldHaloParticles = new THREE.Points(haloCloud.goldGeometry, goldParticleMaterial);
+  const cyanBeltParticles = new THREE.Points(beltCloud.cyanGeometry, cyanParticleMaterial);
+  const goldBeltParticles = new THREE.Points(beltCloud.goldGeometry, goldParticleMaterial);
+
+  cyanHaloParticles.rotation.x = 0.08;
+  goldHaloParticles.rotation.x = 0.08;
+  cyanBeltParticles.rotation.x = -0.18;
+  goldBeltParticles.rotation.x = -0.18;
+  cyanBeltParticles.rotation.z = 0.12;
+  goldBeltParticles.rotation.z = 0.12;
+  group.add(cyanHaloParticles, goldHaloParticles, cyanBeltParticles, goldBeltParticles);
 
   const ringDefinitions: RingDefinition[] = [
-    { radiusX: 1.28, radiusY: 0.42, rotateX: 1.08, rotateY: 0.18, rotateZ: 0.12 },
-    { radiusX: 1.42, radiusY: 0.52, rotateX: 1.26, rotateY: -0.2, rotateZ: -0.08, dashed: true },
-    { radiusX: 1.18, radiusY: 1.18, rotateX: 0.1, rotateY: 0.82, rotateZ: 0.26 },
-    { radiusX: 1.5, radiusY: 0.34, rotateX: 1.42, rotateY: 0.08, rotateZ: 0.22, gold: true, dashed: true },
+    { radiusX: 1.22, radiusY: 0.38, rotateX: 1.06, rotateY: 0.18, rotateZ: 0.12 },
+    { radiusX: 1.36, radiusY: 0.5, rotateX: 1.22, rotateY: -0.2, rotateZ: -0.08, dashed: true },
+    { radiusX: 1.14, radiusY: 1.14, rotateX: 0.08, rotateY: 0.78, rotateZ: 0.24 },
+    { radiusX: 1.46, radiusY: 0.32, rotateX: 1.4, rotateY: 0.08, rotateZ: 0.22, gold: true, dashed: true },
+    { radiusX: 1.55, radiusY: 0.58, rotateX: 1.02, rotateY: 0.46, rotateZ: -0.18, dashed: true },
+    { radiusX: 1.31, radiusY: 0.28, rotateX: 1.54, rotateY: -0.12, rotateZ: 0.04, gold: true },
   ];
 
   const orbitGroup = new THREE.Group();
@@ -249,30 +288,44 @@ export function createGlobeVisualEffects(
     group,
     update(elapsed, audioLevel, offersActive, reducedMotion) {
       const level = clamp01(audioLevel);
-      innerHaloMaterial.uniforms.uIntensity.value = 0.54 + level * 0.72;
-      outerHaloMaterial.uniforms.uIntensity.value = 0.28 + level * 0.58;
-      particleMaterial.opacity = 0.5 + level * 0.42;
-      particleMaterial.size = (options.lowPerformance ? 1.05 : 1.42) + level * 0.5;
+      innerHaloMaterial.uniforms.uIntensity.value = 0.5 + level * 0.58;
+      outerHaloMaterial.uniforms.uIntensity.value = 0.42 + level * 0.62;
+      edgeHaloMaterial.uniforms.uIntensity.value = 0.62 + level * 0.72;
+      darkCoreMaterial.opacity = 0.36 - level * 0.035;
+
+      cyanParticleMaterial.opacity = 0.5 + level * 0.3;
+      cyanParticleMaterial.size = (options.lowPerformance ? 1 : 1.32) + level * 0.42;
+      goldParticleMaterial.opacity = 0.72 + level * 0.26;
+      goldParticleMaterial.size = (options.lowPerformance ? 1.42 : 1.86) + level * 0.58;
 
       ringMaterials.forEach((material, index) => {
-        const base = index === 3 ? 0.22 : 0.16;
-        material.opacity = base + level * (index === 3 || offersActive ? 0.22 : 0.18);
+        const goldRing = index === 3 || index === 5;
+        const base = goldRing ? 0.26 : 0.16;
+        const boost = goldRing ? 0.2 : 0.16;
+        material.opacity = base + level * boost + (offersActive && goldRing ? 0.12 : 0);
       });
 
       if (!reducedMotion) {
-        orbitGroup.rotation.y = elapsed * (0.018 + level * 0.018);
-        orbitGroup.rotation.z = Math.sin(elapsed * 0.18) * 0.025;
-        haloParticles.rotation.y = -elapsed * (0.012 + level * 0.012);
-        beltParticles.rotation.y = elapsed * (0.024 + level * 0.018);
+        orbitGroup.rotation.y = elapsed * (0.017 + level * 0.02);
+        orbitGroup.rotation.z = Math.sin(elapsed * 0.2) * 0.028;
+        cyanHaloParticles.rotation.y = -elapsed * (0.011 + level * 0.012);
+        goldHaloParticles.rotation.y = -elapsed * (0.013 + level * 0.015);
+        cyanBeltParticles.rotation.y = elapsed * (0.023 + level * 0.02);
+        goldBeltParticles.rotation.y = elapsed * (0.028 + level * 0.024);
       }
     },
     dispose() {
       sphereGeometry.dispose();
+      darkCoreMaterial.dispose();
       innerHaloMaterial.dispose();
       outerHaloMaterial.dispose();
-      haloGeometry.dispose();
-      beltGeometry.dispose();
-      particleMaterial.dispose();
+      edgeHaloMaterial.dispose();
+      haloCloud.cyanGeometry.dispose();
+      haloCloud.goldGeometry.dispose();
+      beltCloud.cyanGeometry.dispose();
+      beltCloud.goldGeometry.dispose();
+      cyanParticleMaterial.dispose();
+      goldParticleMaterial.dispose();
       ringResources.forEach((resource) => {
         resource.geometry.dispose();
         resource.material.dispose();
