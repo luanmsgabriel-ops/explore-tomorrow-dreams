@@ -878,3 +878,13 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Riscos ou erros:** persistem os avisos anteriores do build sobre `@import`, classe de duração ambígua, PDF.js e chunk inicial grande; múltiplos lockfiles continuam como dívida técnica. Clientes com Service Worker antigo podem exigir atualização antes de enxergar as novas rotas. A cópia do link depende de Clipboard API em contexto seguro e possui estado de falha explícito.
 - **Pendências:** sincronizar/publicar o HEAD documental final; validar no domínio principal um bloqueio, pacote nacional, internacional sem aéreo, evento, grupo guiado, UUID inválido, comparação de três ofertas, remoção de item, responsividade, console/rede, CTA e ausência de campos internos; registrar SHA e deployment ID reais.
 - **Próxima ação exata:** enviar manualmente ao Lovable o prompt de sincronização e publicação preparado no chat; após o estado `ready`, confirmar o SHA servido e executar a validação pública da Etapa 4. Não iniciar calendário, Etapa 5 ou Tomorrow Live.
+
+### Checkpoint 2026-08-21 — Etapa 7 iniciada: Realtime Voice Foundation
+
+- **Estado de entrada:** `main` confirmado em `75990ad5451ece8109d98de54cd6ab4c696cba8e`, sem commits posteriores; Etapa 6 visual encerrada e preservada.
+- **Objetivo:** criar a fundação incremental de voz real com WebRTC, credencial efêmera emitida no backend, microfone somente após ação explícita, áudio de entrada e saída, transcrição, estados visuais orientados por eventos reais, `audioLevel` de 0 a 1, mute e encerramento completo.
+- **Arquitetura:** Edge Function isolada `tomorrow-live-realtime-session`; hook React e módulo de protocolo reutilizáveis; conexão direta do navegador ao endpoint WebRTC da OpenAI usando apenas client secret efêmero; chave principal somente no servidor.
+- **Preservações obrigatórias:** nenhum arquivo, prompt ou fluxo atual do Téo será alterado; nenhum fluxo de WhatsApp, cotação, inventário ou handoff será alterado; o globo, as ondas, o pedestal e o waveform da Etapa 6 não serão redesenhados.
+- **Escopo excluído:** tools comerciais, consulta de ofertas, alteração do prompt do Téo, WhatsApp, handoff humano, publicação e automação comercial.
+- **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_7_FOUNDATION.md`.
+- **Próxima ação exata:** concluir testes, revisão de segurança e PR isolado; validar sincronização/preview sem publicar automaticamente.

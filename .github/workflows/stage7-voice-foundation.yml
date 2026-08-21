@@ -1,0 +1,76 @@
+name: Stage 7 Voice Foundation
+
+on:
+  push:
+    branches:
+      - stage-7-realtime-voice-foundation
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies from the canonical lockfile
+        run: bun install --frozen-lockfile
+
+      - name: Focused tests
+        run: >-
+          bun x vitest run
+          src/lib/realtimeVoice.test.ts
+          src/hooks/useRealtimeVoice.test.tsx
+          src/pages/opportunitiesLive.test.tsx
+          src/components/opportunities/live/LiveParticleGlobe.test.tsx
+          --reporter=dot
+
+      - name: TypeScript for Stage 7 scope
+        run: |
+          printf '%s\n' '{' \
+            '  "extends": "./tsconfig.app.json",' \
+            '  "compilerOptions": {' \
+            '    "noEmit": true,' \
+            '    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"]' \
+            '  },' \
+            '  "include": [' \
+            '    "src/vite-env.d.ts",' \
+            '    "src/lib/realtimeVoice.ts",' \
+            '    "src/lib/realtimeVoice.test.ts",' \
+            '    "src/hooks/useRealtimeVoice.ts",' \
+            '    "src/hooks/useRealtimeVoice.test.tsx",' \
+            '    "src/pages/OpportunitiesLive.tsx",' \
+            '    "src/pages/opportunitiesLive.test.tsx",' \
+            '    "src/components/opportunities/live/LiveParticleGlobe.tsx"' \
+            '  ]' \
+            '}' > tsconfig.stage7.json
+          bun x tsc -p tsconfig.stage7.json --noEmit
+
+      - name: ESLint for Stage 7 scope
+        run: >-
+          bun x eslint
+          src/lib/realtimeVoice.ts
+          src/lib/realtimeVoice.test.ts
+          src/hooks/useRealtimeVoice.ts
+          src/hooks/useRealtimeVoice.test.tsx
+          src/pages/OpportunitiesLive.tsx
+          src/pages/opportunitiesLive.test.tsx
+          supabase/functions/tomorrow-live-realtime-session/core.ts
+          supabase/functions/tomorrow-live-realtime-session/index.ts
+          supabase/functions/tomorrow-live-realtime-session/index_test.ts
+
+      - name: Production build
+        run: bun run build
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Edge Function tests
+        run: deno test supabase/functions/tomorrow-live-realtime-session/index_test.ts
