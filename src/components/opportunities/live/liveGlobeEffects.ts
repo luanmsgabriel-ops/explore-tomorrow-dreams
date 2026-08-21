@@ -8,7 +8,13 @@ export interface GlobeVisualEffectOptions {
 
 export interface GlobeVisualEffects {
   group: import("three").Group;
-  update: (elapsed: number, audioLevel: number, offersActive: boolean, reducedMotion: boolean) => void;
+  update: (
+    elapsed: number,
+    audioLevel: number,
+    offersActive: boolean,
+    reducedMotion: boolean,
+    speakingActive: boolean,
+  ) => void;
   dispose: () => void;
 }
 
@@ -265,6 +271,41 @@ export function createGlobeVisualEffects(
   goldBeltParticles.rotation.z = 0.12;
   group.add(cyanHaloParticles, goldHaloParticles, cyanBeltParticles, goldBeltParticles);
 
+  // This additional cloud stays almost invisible while idle and becomes a fast,
+  // audio-reactive energy belt while the assistant is speaking.
+  const voiceCloud = buildParticleCloud(
+    THREE,
+    globeRadius,
+    options.lowPerformance ? 90 : 240,
+    "belt",
+    0.2,
+  );
+  const voiceCyanMaterial = new THREE.PointsMaterial({
+    color: options.cyan,
+    size: options.lowPerformance ? 1.15 : 1.58,
+    transparent: true,
+    opacity: 0.025,
+    depthWrite: false,
+    sizeAttenuation: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const voiceGoldMaterial = new THREE.PointsMaterial({
+    color: options.gold,
+    size: options.lowPerformance ? 1.5 : 2.12,
+    transparent: true,
+    opacity: 0.025,
+    depthWrite: false,
+    sizeAttenuation: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const voiceBurstGroup = new THREE.Group();
+  voiceBurstGroup.name = "tomorrow-live-speaking-particles";
+  const voiceCyanParticles = new THREE.Points(voiceCloud.cyanGeometry, voiceCyanMaterial);
+  const voiceGoldParticles = new THREE.Points(voiceCloud.goldGeometry, voiceGoldMaterial);
+  voiceBurstGroup.rotation.set(-0.26, 0, -0.16);
+  voiceBurstGroup.add(voiceCyanParticles, voiceGoldParticles);
+  group.add(voiceBurstGroup);
+
   const ringDefinitions: RingDefinition[] = [
     { radiusX: 1.22, radiusY: 0.38, rotateX: 1.06, rotateY: 0.18, rotateZ: 0.12 },
     { radiusX: 1.36, radiusY: 0.5, rotateX: 1.22, rotateY: -0.2, rotateZ: -0.08, dashed: true },
@@ -286,8 +327,9 @@ export function createGlobeVisualEffects(
 
   return {
     group,
-    update(elapsed, audioLevel, offersActive, reducedMotion) {
+    update(elapsed, audioLevel, offersActive, reducedMotion, speakingActive) {
       const level = clamp01(audioLevel);
+      const speakingEnergy = speakingActive ? 0.42 + level * 0.58 : 0;
       innerHaloMaterial.uniforms.uIntensity.value = 0.5 + level * 0.58;
       outerHaloMaterial.uniforms.uIntensity.value = 0.42 + level * 0.62;
       edgeHaloMaterial.uniforms.uIntensity.value = 0.62 + level * 0.72;
@@ -297,6 +339,10 @@ export function createGlobeVisualEffects(
       cyanParticleMaterial.size = (options.lowPerformance ? 1 : 1.32) + level * 0.42;
       goldParticleMaterial.opacity = 0.72 + level * 0.26;
       goldParticleMaterial.size = (options.lowPerformance ? 1.42 : 1.86) + level * 0.58;
+      voiceCyanMaterial.opacity = 0.025 + speakingEnergy * 0.76;
+      voiceCyanMaterial.size = (options.lowPerformance ? 1.08 : 1.48) + speakingEnergy * 0.78;
+      voiceGoldMaterial.opacity = 0.025 + speakingEnergy * 0.9;
+      voiceGoldMaterial.size = (options.lowPerformance ? 1.42 : 1.98) + speakingEnergy * 1.02;
 
       ringMaterials.forEach((material, index) => {
         const goldRing = index === 3 || index === 5;
@@ -306,12 +352,16 @@ export function createGlobeVisualEffects(
       });
 
       if (!reducedMotion) {
-        orbitGroup.rotation.y = elapsed * (0.017 + level * 0.02);
+        const speechSpeed = speakingActive ? 0.075 + level * 0.085 : 0;
+        orbitGroup.rotation.y = elapsed * (0.017 + level * 0.02 + speechSpeed * 0.24);
         orbitGroup.rotation.z = Math.sin(elapsed * 0.2) * 0.028;
-        cyanHaloParticles.rotation.y = -elapsed * (0.011 + level * 0.012);
-        goldHaloParticles.rotation.y = -elapsed * (0.013 + level * 0.015);
-        cyanBeltParticles.rotation.y = elapsed * (0.023 + level * 0.02);
-        goldBeltParticles.rotation.y = elapsed * (0.028 + level * 0.024);
+        cyanHaloParticles.rotation.y = -elapsed * (0.011 + level * 0.012 + speechSpeed * 0.32);
+        goldHaloParticles.rotation.y = -elapsed * (0.013 + level * 0.015 + speechSpeed * 0.4);
+        cyanBeltParticles.rotation.y = elapsed * (0.023 + level * 0.02 + speechSpeed * 0.58);
+        goldBeltParticles.rotation.y = elapsed * (0.028 + level * 0.024 + speechSpeed * 0.72);
+        voiceBurstGroup.rotation.y = elapsed * (0.04 + speakingEnergy * 0.34);
+        voiceBurstGroup.rotation.z = -0.16 + Math.sin(elapsed * (0.8 + speakingEnergy * 1.4)) * 0.08 * speakingEnergy;
+        voiceBurstGroup.scale.setScalar(1 + Math.sin(elapsed * 4.2) * 0.022 * speakingEnergy);
       }
     },
     dispose() {
@@ -324,8 +374,12 @@ export function createGlobeVisualEffects(
       haloCloud.goldGeometry.dispose();
       beltCloud.cyanGeometry.dispose();
       beltCloud.goldGeometry.dispose();
+      voiceCloud.cyanGeometry.dispose();
+      voiceCloud.goldGeometry.dispose();
       cyanParticleMaterial.dispose();
       goldParticleMaterial.dispose();
+      voiceCyanMaterial.dispose();
+      voiceGoldMaterial.dispose();
       ringResources.forEach((resource) => {
         resource.geometry.dispose();
         resource.material.dispose();

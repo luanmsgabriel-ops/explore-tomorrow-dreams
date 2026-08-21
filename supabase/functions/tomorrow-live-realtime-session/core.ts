@@ -15,7 +15,7 @@ const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 60_000;
 const DEFAULT_MODEL = "gpt-realtime-2.1";
 const DEFAULT_TRANSCRIPTION_MODEL = "gpt-live-transcribe";
-const DEFAULT_VOICE = "marin";
+const DEFAULT_VOICE = "cedar";
 
 const defaultOrigins = [
   "https://tomorrowtravelbr.com.br",

@@ -3,6 +3,7 @@ import { Mic } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { createGlobeVisualEffects } from "./liveGlobeEffects";
+import { resolveGlobeVisualLevel } from "./liveVisualLevel";
 import { LiveWaveBackdrop } from "./LiveWaveBackdrop";
 
 export type TomorrowLiveState = "idle" | "listening" | "thinking" | "speaking" | "offers";
@@ -112,7 +113,8 @@ const waveformBars = [12, 22, 10, 30, 44, 18, 36, 14, 50, 24, 38, 16, 54, 28, 14
 const waveformLeft = waveformBars.slice(0, waveformBars.length / 2);
 const waveformRight = waveformBars.slice(waveformBars.length / 2).reverse();
 
-const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+const GLOBE_CYAN = "#68e8e0";
+const GLOBE_GOLD = "#ddb85c";
 
 function buildSurfacePoints(count: number, cyan: string, gold: string): GlobePoint[] {
   return Array.from({ length: count }, (_, index) => {
@@ -197,14 +199,16 @@ export function LiveParticleGlobe({
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [rendererState, setRendererState] = useState<"loading" | "ready" | "fallback">("loading");
   const style = stateStyle[state];
-  const visualLevel = clamp01(audioLevel ?? style.baseline);
+  const visualLevel = resolveGlobeVisualLevel(state, audioLevel, style.baseline);
+  const stateRef = useRef(state);
+  stateRef.current = state;
   const audioLevelRef = useRef(visualLevel);
   audioLevelRef.current = visualLevel;
 
   const particleCount = lowPerformance ? 110 : 230;
   const surfacePoints = useMemo(
-    () => buildSurfacePoints(particleCount, style.cyan, style.gold),
-    [particleCount, style.cyan, style.gold],
+    () => buildSurfacePoints(particleCount, GLOBE_CYAN, GLOBE_GOLD),
+    [particleCount],
   );
 
   useEffect(() => {
@@ -222,6 +226,8 @@ export function LiveParticleGlobe({
     let abortController: AbortController | null = null;
     let visualEffects: ReturnType<typeof createGlobeVisualEffects> | null = null;
     let baseScale = 1.02;
+
+    setRendererState("loading");
 
     const start = async () => {
       try {
@@ -264,19 +270,19 @@ export function LiveParticleGlobe({
           .arcStartLng("startLng")
           .arcEndLat("endLat")
           .arcEndLng("endLng")
-          .arcColor(() => [style.cyan, style.gold])
+          .arcColor(() => [GLOBE_CYAN, GLOBE_GOLD])
           .arcAltitude(0.25)
           .arcStroke(0.38)
           .arcDashLength(0.2)
           .arcDashGap(0.08)
-          .arcDashAnimateTime(reducedMotion ? 0 : state === "listening" || state === "speaking" ? 760 : 1450)
+          .arcDashAnimateTime(reducedMotion ? 0 : stateRef.current === "listening" || stateRef.current === "speaking" ? 760 : 1450)
           .ringsData(routeRings)
           .ringLat("lat")
           .ringLng("lng")
-          .ringColor((ring: GlobeRing) => (ring.color === "gold" ? [style.gold, "rgba(229,199,112,0)"] : [style.cyan, "rgba(102,232,224,0)"]))
-          .ringMaxRadius(state === "listening" || state === "speaking" ? 7.2 : 4.8)
-          .ringPropagationSpeed(state === "listening" || state === "speaking" ? 2.8 : 1.45)
-          .ringRepeatPeriod(reducedMotion ? 0 : state === "listening" || state === "speaking" ? 620 : 1120);
+          .ringColor((ring: GlobeRing) => (ring.color === "gold" ? [GLOBE_GOLD, "rgba(229,199,112,0)"] : [GLOBE_CYAN, "rgba(102,232,224,0)"]))
+          .ringMaxRadius(stateRef.current === "listening" || stateRef.current === "speaking" ? 7.2 : 4.8)
+          .ringPropagationSpeed(stateRef.current === "listening" || stateRef.current === "speaking" ? 2.8 : 1.45)
+          .ringRepeatPeriod(reducedMotion ? 0 : stateRef.current === "listening" || stateRef.current === "speaking" ? 620 : 1120);
 
         globeObject = Globe;
         globeObject.rotation.y = 0.96;
@@ -297,13 +303,13 @@ export function LiveParticleGlobe({
         cyanRim.position.set(-230, 160, 15);
         scene.add(cyanRim);
 
-        const goldRim = new THREE.DirectionalLight(0xd8b85b, state === "offers" ? 0.52 : 0.24);
+        const goldRim = new THREE.DirectionalLight(0xd8b85b, stateRef.current === "offers" ? 0.52 : 0.24);
         goldRim.position.set(180, -90, -45);
         scene.add(goldRim);
 
         visualEffects = createGlobeVisualEffects(THREE, Globe.getGlobeRadius(), {
-          cyan: style.cyan,
-          gold: style.gold,
+          cyan: GLOBE_CYAN,
+          gold: GLOBE_GOLD,
           lowPerformance,
         });
         globeObject.add(visualEffects.group);
@@ -329,7 +335,7 @@ export function LiveParticleGlobe({
               .hexPolygonUseDots(true)
               .hexPolygonDotResolution(lowPerformance ? 4 : 6)
               .hexPolygonAltitude(0.009)
-              .hexPolygonColor(() => style.cyan)
+              .hexPolygonColor(() => GLOBE_CYAN)
               .hexPolygonsTransitionDuration(0);
           })
           .catch(() => undefined);
@@ -354,19 +360,37 @@ export function LiveParticleGlobe({
         resize();
 
         const startedAt = performance.now();
+        let appliedState = stateRef.current;
+
+        const applyStateDynamics = (nextState: TomorrowLiveState) => {
+          const activeAudioState = nextState === "listening" || nextState === "speaking";
+          Globe.arcDashAnimateTime(reducedMotion ? 0 : activeAudioState ? 760 : 1450)
+            .ringMaxRadius(activeAudioState ? 7.2 : 4.8)
+            .ringPropagationSpeed(activeAudioState ? 2.8 : 1.45)
+            .ringRepeatPeriod(reducedMotion ? 0 : activeAudioState ? 620 : 1120);
+          goldRim.intensity = nextState === "offers" ? 0.52 : nextState === "speaking" ? 0.34 : 0.24;
+        };
+
         const animate = (now: number) => {
           if (disposed || !renderer || !globeObject) return;
           const elapsed = (now - startedAt) / 1000;
           const currentLevel = audioLevelRef.current;
+          const currentState = stateRef.current;
+          const currentStyle = stateStyle[currentState];
+
+          if (appliedState !== currentState) {
+            appliedState = currentState;
+            applyStateDynamics(currentState);
+          }
 
           if (!reducedMotion) {
-            globeObject.rotation.y += style.rotation * (0.82 + currentLevel * 0.28);
-            const reactivePulse = style.pulse * (0.28 + currentLevel * 0.84);
-            const pulseSpeed = state === "speaking" ? 3.5 : state === "listening" ? 3 : state === "thinking" ? 1.3 : 1.65;
+            globeObject.rotation.y += currentStyle.rotation * (0.82 + currentLevel * 0.38);
+            const reactivePulse = currentStyle.pulse * (0.34 + currentLevel * 0.94);
+            const pulseSpeed = currentState === "speaking" ? 3.8 : currentState === "listening" ? 3 : currentState === "thinking" ? 1.3 : 1.65;
             globeObject.scale.setScalar(baseScale + Math.sin(elapsed * pulseSpeed) * reactivePulse);
           }
 
-          visualEffects?.update(elapsed, currentLevel, state === "offers", reducedMotion);
+          visualEffects?.update(elapsed, currentLevel, currentState === "offers", reducedMotion, currentState === "speaking");
           renderer.render(scene, camera);
           animationFrame = requestAnimationFrame(animate);
         };
@@ -389,7 +413,7 @@ export function LiveParticleGlobe({
       renderer?.dispose();
       if (host) host.replaceChildren();
     };
-  }, [lowPerformance, reducedMotion, state, style.cyan, style.gold, style.pulse, style.rotation, surfacePoints]);
+  }, [lowPerformance, reducedMotion, surfacePoints]);
 
   const activeWaveform = state === "listening" || state === "speaking";
 
@@ -400,6 +424,7 @@ export function LiveParticleGlobe({
       data-live-state={state}
       data-renderer={rendererState}
       data-audio-ready="true"
+      data-audio-level={visualLevel.toFixed(2)}
       data-visual-engine="webgl-fresnel-dotted-land"
     >
       <div className="relative min-h-[25rem] sm:min-h-[33rem] lg:min-h-[38rem]">
