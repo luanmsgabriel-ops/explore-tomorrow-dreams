@@ -28,6 +28,21 @@ export interface TravelOffersFacets {
   notice: string;
 }
 
+export interface CalendarFacetParams {
+  origin?: string;
+  destination?: string;
+  offer_type?: PublicOfferType;
+}
+
+export interface TravelCalendarFacets {
+  origins: FacetValue[];
+  destinations: FacetValue[];
+  date_range: { min: string | null; max: string | null };
+  price_ranges: Array<{ currency: string | null; min: number; max: number }>;
+  updated_at: string;
+  notice: string;
+}
+
 export interface TravelOfferCatalogItem {
   kind: "air_block" | "package" | "guided_group";
   id: string;
@@ -222,7 +237,7 @@ async function publicError(error: unknown) {
 }
 
 async function invokeTravelOffers<T>(
-  action: "facets" | "catalog" | "detail",
+  action: "facets" | "calendar_facets" | "catalog" | "detail",
   params: object,
   signal?: AbortSignal,
 ): Promise<T> {
@@ -242,6 +257,9 @@ async function invokeTravelOffers<T>(
 
 export const fetchTravelOfferFacets = (signal?: AbortSignal) =>
   invokeTravelOffers<TravelOffersFacets>("facets", {}, signal);
+
+export const fetchTravelCalendarFacets = (params: CalendarFacetParams = {}, signal?: AbortSignal) =>
+  invokeTravelOffers<TravelCalendarFacets>("calendar_facets", params, signal);
 
 export const fetchTravelOfferCatalog = (params: CatalogParams, signal?: AbortSignal) =>
   invokeTravelOffers<TravelOffersCatalog>("catalog", params, signal);
