@@ -14,6 +14,10 @@ Deno.test("cria configuração GA sem expor a chave principal", () => {
   assertEquals(config.session.type, "realtime");
   assertEquals(config.session.model, "gpt-realtime-2.1");
   assertEquals((config.session.audio as Record<string, unknown>).output, { voice: "cedar", speed: 1 });
+  const instructions = String(config.session.instructions);
+  assertEquals(instructions.includes("português brasileiro (pt-BR)"), true);
+  assertEquals(instructions.includes("sotaque brasileiro neutro"), true);
+  assertEquals(instructions.includes("português europeu"), true);
   assertEquals(config.session.tools, []);
   assertEquals(config.session.tool_choice, "none");
   assertEquals(JSON.stringify(config).includes("server-key"), false);
