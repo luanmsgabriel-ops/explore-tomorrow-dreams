@@ -1,5 +1,6 @@
 import { useQueries } from "@tanstack/react-query";
-import { ArrowLeft, Check, Scale, X } from "lucide-react";
+import { ArrowLeft, Check, Plus, Scale, X } from "lucide-react";
+import { useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import {
@@ -21,7 +22,13 @@ import {
   fetchTravelOfferDetail,
   type TravelOfferDetailItem,
 } from "@/lib/travelOffersPublic";
-import { comparisonHref, parseComparisonIds } from "@/lib/opportunityComparison";
+import {
+  comparisonHref,
+  mergeComparisonIds,
+  parseComparisonIds,
+  readStoredComparisonIds,
+  writeStoredComparisonIds,
+} from "@/lib/opportunityComparison";
 
 const navItems = [
   { label: "Catálogo", href: "/oportunidades/catalogo" },
@@ -73,11 +80,35 @@ const rows: ComparisonRow[] = [
   },
 ];
 
+function itemBadgeVariant(item: TravelOfferDetailItem) {
+  return item.kind === "air_block"
+    ? "air" as const
+    : item.kind === "guided_group"
+    ? "guided" as const
+    : item.offer_subtype === "evento"
+    ? "event" as const
+    : "package" as const;
+}
+
 export default function OpportunityCompare() {
-  const [searchParams] = useSearchParams();
-  const parsed = parseComparisonIds(searchParams.get("ids"));
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedParam = searchParams.get("ids");
+  const parsed = useMemo(() => parseComparisonIds(requestedParam), [requestedParam]);
+  const storedIds = readStoredComparisonIds();
+  const selectedIds = parsed.error ? [] : mergeComparisonIds(storedIds, parsed.ids);
+  const selectedKey = selectedIds.join(",");
+  const droppedRequestedId = !parsed.error && parsed.ids.some((id) => !selectedIds.includes(id));
+
+  useEffect(() => {
+    if (parsed.error) return;
+    writeStoredComparisonIds(selectedIds);
+    if (selectedKey && requestedParam !== selectedKey) {
+      setSearchParams({ ids: selectedKey }, { replace: true });
+    }
+  }, [parsed.error, requestedParam, selectedKey, selectedIds, setSearchParams]);
+
   const detailQueries = useQueries({
-    queries: parsed.ids.map((id) => ({
+    queries: selectedIds.map((id) => ({
       queryKey: ["travel-offers-public", "detail", id],
       queryFn: ({ signal }: { signal: AbortSignal }) => fetchTravelOfferDetail(id, signal),
       staleTime: 30_000,
@@ -89,18 +120,28 @@ export default function OpportunityCompare() {
   const failed = detailQueries.find((query) => query.isError);
 
   return (
-    <div className="opportunities-theme min-h-screen bg-tomorrow-background text-tomorrow-text">
+    <div className="opportunities-theme min-h-screen overflow-x-hidden bg-tomorrow-background text-tomorrow-text">
       <OpportunityHeader activeHref="/oportunidades/comparar" navItems={navItems} ctaHref="/teo" />
-      <main className="mx-auto grid w-full max-w-[90rem] gap-8 px-4 py-8 sm:px-6 lg:px-8">
-        <a href="/oportunidades/catalogo" className="opportunity-focus inline-flex w-fit items-center gap-2 rounded-lg text-sm font-semibold text-tomorrow-muted hover:text-tomorrow-text">
-          <ArrowLeft className="size-4" aria-hidden="true" />
-          Voltar ao catálogo
+      <main className="mx-auto grid w-full min-w-0 max-w-[90rem] gap-7 overflow-x-hidden px-4 py-7 sm:px-6 sm:py-8 lg:px-8">
+        <a href="/oportunidades/catalogo" className="opportunity-focus inline-flex w-fit max-w-full items-center gap-2 rounded-lg text-sm font-semibold text-tomorrow-muted hover:text-tomorrow-text">
+          <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
+          <span>Voltar ao catálogo</span>
         </a>
 
-        <header className="max-w-4xl">
+        <header className="min-w-0 max-w-4xl">
           <OpportunityBadge variant="neutral"><Scale className="size-4" aria-hidden="true" />Comparação transparente</OpportunityBadge>
-          <h1 className="mt-5 font-editorial text-5xl leading-none text-tomorrow-text sm:text-6xl">Compare até três oportunidades.</h1>
-          <p className="mt-4 max-w-2xl text-base leading-relaxed text-tomorrow-muted">Os valores permanecem por pessoa, taxas ficam separadas e informações ausentes não são preenchidas por estimativa.</p>
+          <h1 className="mt-5 max-w-full break-words font-editorial text-4xl leading-[0.98] text-tomorrow-text [overflow-wrap:anywhere] sm:text-6xl">Compare até três oportunidades.</h1>
+          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-tomorrow-muted sm:text-base">Os valores permanecem por pessoa, taxas ficam separadas e informações ausentes não são preenchidas por estimativa.</p>
+          {!parsed.error && selectedIds.length ? (
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <OpportunityBadge variant="neutral">{selectedIds.length}/3 selecionadas</OpportunityBadge>
+              {selectedIds.length < 3 ? (
+                <OpportunityButton asChild variant="outline" size="sm">
+                  <a href="/oportunidades/catalogo"><Plus aria-hidden="true" />Adicionar outra oportunidade</a>
+                </OpportunityButton>
+              ) : null}
+            </div>
+          ) : null}
         </header>
 
         {parsed.error ? (
@@ -113,11 +154,21 @@ export default function OpportunityCompare() {
           />
         ) : null}
 
-        {!parsed.error && parsed.ids.length === 0 ? (
+        {droppedRequestedId ? (
+          <OpportunityState
+            state="empty"
+            title="Você já tem três oportunidades salvas"
+            description="Remova uma das opções atuais antes de adicionar uma nova à comparação."
+            actionLabel="Ver comparação atual"
+            actionHref={comparisonHref(selectedIds)}
+          />
+        ) : null}
+
+        {!parsed.error && selectedIds.length === 0 ? (
           <OpportunityState
             state="empty"
             title="Nenhuma oportunidade selecionada"
-            description="Escolha até três opções no catálogo para comparar os dados reais lado a lado."
+            description="Escolha até três opções no catálogo. A seleção fica salva neste navegador enquanto você procura outras oportunidades."
             actionLabel="Abrir catálogo"
             actionHref="/oportunidades/catalogo"
           />
@@ -137,29 +188,70 @@ export default function OpportunityCompare() {
 
         {!parsed.error && !pending && !failed && items.length ? (
           <>
-            <section className="overflow-x-auto rounded-tomorrow-lg border border-tomorrow-line bg-tomorrow-surface/70" aria-label="Tabela comparativa de oportunidades">
+            <section className="grid min-w-0 gap-4 md:hidden" aria-label="Comparação adaptada para celular">
+              {items.map((item) => {
+                const remainingIds = selectedIds.filter((id) => id !== item.id);
+                return (
+                  <article key={item.id} className="opportunity-surface min-w-0 max-w-full overflow-hidden rounded-tomorrow-lg border border-tomorrow-line bg-tomorrow-surface/70 p-4">
+                    <div className="min-w-0">
+                      <OpportunityBadge variant={itemBadgeVariant(item)}>{opportunityTypeLabel(item)}</OpportunityBadge>
+                      <h2 className="mt-3 max-w-full break-words font-editorial text-3xl leading-[1.02] text-tomorrow-text [overflow-wrap:anywhere]">{opportunityTitle(item)}</h2>
+                    </div>
+
+                    <div className="mt-4 grid min-w-0 gap-2 sm:grid-cols-2">
+                      <OpportunityButton asChild variant="outline" size="sm" fullWidth>
+                        <a className="max-w-full whitespace-normal text-center" href={`/oportunidades/oferta/${encodeURIComponent(item.id)}`}>Ver detalhes</a>
+                      </OpportunityButton>
+                      <a
+                        href={comparisonHref(remainingIds)}
+                        onClick={() => writeStoredComparisonIds(remainingIds)}
+                        className="opportunity-focus inline-flex min-h-9 max-w-full items-center justify-center gap-2 rounded-lg px-2 text-center text-xs font-semibold text-tomorrow-muted hover:text-tomorrow-text"
+                        aria-label={`Remover ${opportunityTitle(item)} da comparação`}
+                      >
+                        <X className="size-4 shrink-0" aria-hidden="true" />Remover
+                      </a>
+                    </div>
+
+                    <dl className="mt-5 min-w-0 divide-y divide-tomorrow-line/70 border-t border-tomorrow-line/70">
+                      {rows.map((row) => (
+                        <div key={row.label} className="grid min-w-0 gap-1 py-3">
+                          <dt className="break-words text-[0.68rem] font-bold uppercase tracking-[0.1em] text-tomorrow-muted [overflow-wrap:anywhere]">{row.label}</dt>
+                          <dd className="min-w-0 max-w-full break-words text-sm leading-relaxed text-tomorrow-text [overflow-wrap:anywhere]">{row.value(item)}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </article>
+                );
+              })}
+            </section>
+
+            <section className="hidden max-w-full overflow-x-auto rounded-tomorrow-lg border border-tomorrow-line bg-tomorrow-surface/70 md:block" aria-label="Tabela comparativa de oportunidades">
               <table className="w-full min-w-[52rem] border-collapse text-left text-sm">
                 <thead>
                   <tr>
                     <th className="sticky left-0 z-10 w-44 border-b border-r border-tomorrow-line bg-tomorrow-surface p-4 text-xs uppercase tracking-[0.12em] text-tomorrow-muted">Critério</th>
-                    {items.map((item) => (
-                      <th key={item.id} className="min-w-64 border-b border-tomorrow-line p-4 align-top">
-                        <OpportunityBadge variant={item.kind === "air_block" ? "air" : item.kind === "guided_group" ? "guided" : item.offer_subtype === "evento" ? "event" : "package"}>{opportunityTypeLabel(item)}</OpportunityBadge>
-                        <p className="mt-3 font-editorial text-2xl leading-tight text-tomorrow-text">{opportunityTitle(item)}</p>
-                        <div className="mt-4 grid gap-2">
-                          <OpportunityButton asChild variant="outline" size="sm" fullWidth>
-                            <a href={`/oportunidades/oferta/${encodeURIComponent(item.id)}`}>Ver detalhes</a>
-                          </OpportunityButton>
-                          <a
-                            href={comparisonHref(parsed.ids.filter((id) => id !== item.id))}
-                            className="opportunity-focus inline-flex min-h-9 items-center justify-center gap-2 rounded-lg text-xs font-semibold text-tomorrow-muted hover:text-tomorrow-text"
-                            aria-label={`Remover ${opportunityTitle(item)} da comparação`}
-                          >
-                            <X className="size-4" aria-hidden="true" />Remover
-                          </a>
-                        </div>
-                      </th>
-                    ))}
+                    {items.map((item) => {
+                      const remainingIds = selectedIds.filter((id) => id !== item.id);
+                      return (
+                        <th key={item.id} className="min-w-64 border-b border-tomorrow-line p-4 align-top">
+                          <OpportunityBadge variant={itemBadgeVariant(item)}>{opportunityTypeLabel(item)}</OpportunityBadge>
+                          <p className="mt-3 break-words font-editorial text-2xl leading-tight text-tomorrow-text [overflow-wrap:anywhere]">{opportunityTitle(item)}</p>
+                          <div className="mt-4 grid gap-2">
+                            <OpportunityButton asChild variant="outline" size="sm" fullWidth>
+                              <a href={`/oportunidades/oferta/${encodeURIComponent(item.id)}`}>Ver detalhes</a>
+                            </OpportunityButton>
+                            <a
+                              href={comparisonHref(remainingIds)}
+                              onClick={() => writeStoredComparisonIds(remainingIds)}
+                              className="opportunity-focus inline-flex min-h-9 items-center justify-center gap-2 rounded-lg text-xs font-semibold text-tomorrow-muted hover:text-tomorrow-text"
+                              aria-label={`Remover ${opportunityTitle(item)} da comparação`}
+                            >
+                              <X className="size-4" aria-hidden="true" />Remover
+                            </a>
+                          </div>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -167,7 +259,7 @@ export default function OpportunityCompare() {
                     <tr key={row.label}>
                       <th className="sticky left-0 z-10 border-b border-r border-tomorrow-line bg-tomorrow-surface p-4 text-xs font-bold uppercase tracking-[0.08em] text-tomorrow-muted">{row.label}</th>
                       {items.map((item) => (
-                        <td key={`${row.label}-${item.id}`} className="border-b border-tomorrow-line p-4 align-top leading-relaxed text-tomorrow-text">{row.value(item)}</td>
+                        <td key={`${row.label}-${item.id}`} className="max-w-80 break-words border-b border-tomorrow-line p-4 align-top leading-relaxed text-tomorrow-text [overflow-wrap:anywhere]">{row.value(item)}</td>
                       ))}
                     </tr>
                   ))}
@@ -175,21 +267,21 @@ export default function OpportunityCompare() {
               </table>
             </section>
 
-            <section className="grid gap-4 md:grid-cols-3" aria-label="Escolher oportunidade">
+            <section className="grid min-w-0 gap-4 md:grid-cols-3" aria-label="Escolher oportunidade">
               {items.map((item) => (
-                <div key={item.id} className="opportunity-surface grid content-between gap-4 rounded-tomorrow border border-tomorrow-gold/30 bg-tomorrow-gold/5 p-5">
-                  <div>
-                    <p className="font-semibold text-tomorrow-text">{opportunityTitle(item)}</p>
-                    <p className="mt-2 text-sm text-tomorrow-muted">{formatOpportunityCurrency(item.price_per_person, item.currency)} por pessoa</p>
+                <div key={item.id} className="opportunity-surface grid min-w-0 content-between gap-4 rounded-tomorrow border border-tomorrow-gold/30 bg-tomorrow-gold/5 p-5">
+                  <div className="min-w-0">
+                    <p className="break-words font-semibold text-tomorrow-text [overflow-wrap:anywhere]">{opportunityTitle(item)}</p>
+                    <p className="mt-2 break-words text-sm text-tomorrow-muted [overflow-wrap:anywhere]">{formatOpportunityCurrency(item.price_per_person, item.currency)} por pessoa</p>
                   </div>
                   <OpportunityButton asChild fullWidth>
-                    <a href={`/teo?offer_id=${encodeURIComponent(item.id)}`}><Check aria-hidden="true" />Quero esta oportunidade</a>
+                    <a className="max-w-full whitespace-normal text-center" href={`/teo?offer_id=${encodeURIComponent(item.id)}`}><Check aria-hidden="true" />Quero esta oportunidade</a>
                   </OpportunityButton>
                 </div>
               ))}
             </section>
 
-            <aside className="opportunity-surface rounded-tomorrow border border-tomorrow-gold/30 bg-tomorrow-gold/5 p-5 text-sm leading-relaxed text-tomorrow-muted">{detailQueries[0]?.data?.notice || TRAVEL_OFFERS_NOTICE}</aside>
+            <aside className="opportunity-surface min-w-0 rounded-tomorrow border border-tomorrow-gold/30 bg-tomorrow-gold/5 p-5 text-sm leading-relaxed text-tomorrow-muted">{detailQueries[0]?.data?.notice || TRAVEL_OFFERS_NOTICE}</aside>
           </>
         ) : null}
       </main>
