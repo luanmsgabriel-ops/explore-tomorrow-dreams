@@ -898,5 +898,7 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Implementação:** voz padrão `cedar`; cena WebGL persistente entre estados; intensidade visual com piso reativo ainda controlado pelo áudio real; camada adicional de 240 partículas durante fala, reduzida para 90 em low performance; aceleração de nuvens e órbitas.
 - **Preservações:** nenhum prompt ou fluxo do Téo, WhatsApp, inventário, cotação, banco ou handoff alterado.
 - **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_7_VOICE_VISUAL_REACTIVITY.md`.
-- **Estado desta mudança:** implementada e validada localmente; CI, PR, merge, sincronização, reimplantação da Edge Function, publicação e validação em produção ainda pendentes.
-- **Próxima ação exata:** executar CI com Deno, revisar diff e abrir PR isolado; não publicar automaticamente.
+- **Validação:** GitHub Actions `32515135263` aprovado em testes focados, TypeScript isolado, ESLint, build de produção e testes Deno; workflow temporário removido antes do merge.
+- **Merge e sincronização:** PR `#27` squash-mergeado em `625391ccab7aa9b5cba1edde5a63d01424b7974f`; Lovable reconheceu o SHA como `completed` e ficou `ready`.
+- **Estado desta mudança:** implementada, testada, mergeada e sincronizada; Edge Function ainda não reimplantada; frontend ainda não republicado; validação em produção pendente.
+- **Próxima ação exata:** reimplantar manualmente `tomorrow-live-realtime-session`, publicar manualmente o frontend e validar voz `cedar`, continuidade do planeta e partículas durante `speaking`; não publicar automaticamente pelo executor.
