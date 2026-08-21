@@ -19,6 +19,7 @@ import {
 import {
   OpportunityBadge,
   OpportunityButton,
+  OpportunityCard,
   OpportunityHeader,
 } from "@/components/opportunities";
 import {
@@ -26,6 +27,7 @@ import {
   type TomorrowLiveState,
 } from "@/components/opportunities/live/LiveParticleGlobe";
 import { useRealtimeVoice } from "@/hooks/useRealtimeVoice";
+import type { TravelOfferCatalogItem } from "@/lib/travelOffersPublic";
 
 const navItems = [
   { label: "Catálogo", href: "/oportunidades/catalogo" },
@@ -105,6 +107,23 @@ const contextCards = [
   },
 ];
 
+const liveDateFormatter = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+function formatLiveDate(value: string | null) {
+  if (!value) return null;
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ? null : liveDateFormatter.format(date);
+}
+
+function liveOfferTitle(item: TravelOfferCatalogItem) {
+  return item.name || (item.kind === "air_block" ? item.airline : item.category);
+}
+
 function useAdaptiveMotion() {
   const [reducedMotion, setReducedMotion] = useState(false);
   const [lowPerformance, setLowPerformance] = useState(false);
@@ -142,6 +161,8 @@ export default function OpportunitiesLive() {
     speakerEnabled,
     audioLevel,
     transcript,
+    offers,
+    toolError,
     error,
     startConversation,
     endConversation,
@@ -155,7 +176,9 @@ export default function OpportunitiesLive() {
       ? "thinking"
       : voiceStatus === "speaking"
         ? "speaking"
-        : "idle";
+        : voiceStatus === "offers"
+          ? "offers"
+          : "idle";
   const displayedState = voiceSessionActive ? realtimeVisualState : visualState;
   const copy = stateCopy[displayedState];
   const transcriptEntries = transcript.length > 0
@@ -360,6 +383,12 @@ export default function OpportunitiesLive() {
                 </div>
               ) : null}
 
+              {toolError ? (
+                <div className="mt-3 rounded-xl border border-tomorrow-gold/35 bg-tomorrow-gold/8 p-3 text-xs leading-relaxed text-tomorrow-text" role="alert">
+                  {toolError} A conversa continua ativa e nenhuma alternativa foi criada.
+                </div>
+              ) : null}
+
               {privacyOpen ? (
                 <div className="mt-3 rounded-xl border border-tomorrow-teal/25 bg-tomorrow-teal/7 p-3 text-xs leading-relaxed text-tomorrow-muted" role="status">
                   O microfone nunca é ativado automaticamente. Durante uma sessão, o áudio é transmitido pela conexão Realtime para permitir a conversa e não é salvo por esta interface. Ao encerrar, as tracks, o WebRTC e o AudioContext são fechados. A chave principal permanece somente no servidor.
@@ -369,12 +398,51 @@ export default function OpportunitiesLive() {
           </div>
         </section>
 
+        {offers.length > 0 ? (
+          <section className="mx-auto grid w-full max-w-[90rem] gap-5 px-4 py-8 sm:px-6 lg:px-8" aria-labelledby="live-offers-title" aria-live="polite">
+            <div className="max-w-3xl">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-tomorrow-gold-soft">Inventário consultado em tempo real</p>
+              <h2 id="live-offers-title" className="mt-2 font-editorial text-4xl leading-none text-tomorrow-text sm:text-5xl">Oportunidades encontradas na conversa.</h2>
+              <p className="mt-3 text-sm leading-relaxed text-tomorrow-muted sm:text-base">
+                Os cards abaixo são os mesmos resultados públicos usados pelo Radar Tomorrow. Preços e disponibilidade permanecem sujeitos à confirmação.
+              </p>
+            </div>
+
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              {offers.map((item) => (
+                <OpportunityCard
+                  key={item.id}
+                  id={item.id}
+                  kind={item.kind === "air_block" ? "air_block" : "package"}
+                  title={liveOfferTitle(item)}
+                  origin={item.origin}
+                  originIata={item.origin_iata}
+                  destination={item.destination || item.destination_iata || "Destino não informado"}
+                  destinationIata={item.destination_iata}
+                  departureLabel={formatLiveDate(item.departure_date)}
+                  returnLabel={formatLiveDate(item.return_date)}
+                  nights={item.nights}
+                  pricePerPerson={item.price_per_person}
+                  taxPerPerson={item.tax_per_person}
+                  currency={item.currency}
+                  availableSeats={item.available_seats}
+                  airfareIncluded={item.airfare_included}
+                  imageUrl={item.image_url}
+                  imageAlt={item.destination ? `Vista de ${item.destination}` : "Imagem pública da oportunidade"}
+                  actionHref={`/oportunidades/oferta/${encodeURIComponent(item.id)}`}
+                  actionLabel="Ver detalhes"
+                />
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <section className="mx-auto grid w-full max-w-[90rem] gap-5 px-4 py-8 sm:px-6 lg:px-8" aria-labelledby="live-context-title">
           <div className="max-w-3xl">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-tomorrow-gold-soft">Contexto sem interrupção</p>
             <h2 id="live-context-title" className="mt-2 font-editorial text-4xl leading-none text-tomorrow-text sm:text-5xl">A conversa encontra o que já funciona.</h2>
             <p className="mt-3 text-sm leading-relaxed text-tomorrow-muted sm:text-base">
-              Nesta etapa, os cards contextuais apontam para experiências existentes e validadas. Nenhum preço, data, voo ou disponibilidade é criado pela interface Live.
+              A busca de voz agora consulta o inventário público real e pode apresentar até três oportunidades. Nenhum preço, data, voo ou disponibilidade é criado pela interface Live.
             </p>
           </div>
 
@@ -400,7 +468,7 @@ export default function OpportunitiesLive() {
           <div className="flex flex-col gap-3 rounded-tomorrow-lg border border-tomorrow-gold/25 bg-tomorrow-gold/5 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="flex items-center gap-2 font-semibold text-tomorrow-text"><ShieldCheck className="size-4 text-tomorrow-gold-soft" aria-hidden="true" />Fundação de voz isolada e segura.</p>
-              <p className="mt-1 text-xs leading-relaxed text-tomorrow-muted">Ferramentas de inventário, cotação e WhatsApp continuam fora deste primeiro PR da Etapa 7.</p>
+              <p className="mt-1 text-xs leading-relaxed text-tomorrow-muted">A primeira ferramenta de inventário é somente de leitura. Cotação, reserva e WhatsApp continuam fora deste incremento.</p>
             </div>
             <OpportunityButton asChild variant="ghost" className="shrink-0">
               <a href="/oportunidades/catalogo"><Search aria-hidden="true" />Explorar oportunidades</a>

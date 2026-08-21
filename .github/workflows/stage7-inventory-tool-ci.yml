@@ -1,0 +1,38 @@
+name: Stage 7 Inventory Tool CI
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Edge Function tests
+        run: deno test --allow-env supabase/functions/tomorrow-live-realtime-session/index_test.ts
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Focused tests
+        run: bun x vitest run src/lib/realtimeVoice.test.ts src/hooks/useRealtimeVoice.test.tsx src/pages/opportunitiesLive.test.tsx src/lib/travelOffersPublic.test.ts src/components/opportunities/opportunities.test.tsx
+
+      - name: TypeScript
+        run: bun x tsc --noEmit -p tsconfig.stage7-inventory.json
+
+      - name: ESLint
+        run: bun x eslint src/lib/realtimeVoice.ts src/lib/realtimeVoice.test.ts src/hooks/useRealtimeVoice.ts src/hooks/useRealtimeVoice.test.tsx src/pages/OpportunitiesLive.tsx src/pages/opportunitiesLive.test.tsx
+
+      - name: Production build
+        run: bun run build

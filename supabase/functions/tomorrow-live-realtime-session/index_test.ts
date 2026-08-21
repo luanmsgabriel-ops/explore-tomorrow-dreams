@@ -18,8 +18,11 @@ Deno.test("cria configuração GA sem expor a chave principal", () => {
   assertEquals(instructions.includes("português brasileiro (pt-BR)"), true);
   assertEquals(instructions.includes("sotaque brasileiro neutro"), true);
   assertEquals(instructions.includes("português europeu"), true);
-  assertEquals(config.session.tools, []);
-  assertEquals(config.session.tool_choice, "none");
+  const tools = config.session.tools as Array<Record<string, unknown>>;
+  assertEquals(tools.length, 1);
+  assertEquals(tools[0].name, "search_travel_offers");
+  assertEquals(tools[0].type, "function");
+  assertEquals(config.session.tool_choice, "auto");
   assertEquals(JSON.stringify(config).includes("server-key"), false);
 });
 
