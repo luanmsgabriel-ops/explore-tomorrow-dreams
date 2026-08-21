@@ -4,7 +4,7 @@
 
 - **Data:** 21/08/2026
 - **Etapa:** 6 — Interface visual do Tomorrow Live
-- **Estado atual:** implementação visual em branch isolada; validação técnica e visual pendentes
+- **Estado atual:** implementação visual e validação técnica concluídas em branch isolada; preview visual ainda pendente
 - **Branch:** `stage-6-tomorrow-live-visual`
 - **Base:** `1730661e2d4fb7ba258afa73f19aca67d6007cd8`
 - **Produção:** não alterada por esta etapa
@@ -13,7 +13,7 @@
 
 Criar a central de comando visual do Tomorrow Live antes de qualquer conexão de voz em tempo real, preservando integralmente o Téo atual, WhatsApp, banco, Edge Functions e inventário.
 
-## Escopo desta etapa
+## Escopo implementado
 
 1. Nova rota lazy `/oportunidades/live`.
 2. Entrada `Live` na navegação da plataforma de oportunidades.
@@ -28,7 +28,7 @@ Criar a central de comando visual do Tomorrow Live antes de qualquer conexão de
 11. Respeito a `prefers-reduced-motion` e redução da densidade de partículas em dispositivos de menor capacidade.
 12. Nenhuma nova dependência adicionada.
 
-## Arquivos funcionais previstos/alterados
+## Arquivos funcionais alterados
 
 - `src/App.tsx`
 - `src/components/opportunities/OpportunityHeader.tsx`
@@ -55,22 +55,48 @@ Documento de continuidade:
 
 Esses itens pertencem à Etapa 7 ou etapas posteriores.
 
-## Critérios de aceite da Etapa 6
+## Validação automatizada
 
-- animação visual fluida e responsiva;
-- alternativa reduzida para aparelhos de menor capacidade;
-- respeito à preferência de movimento reduzido;
+GitHub Actions run: `32443765733`
+
+Resultado: `success`.
+
+Executado:
+
+- testes focados `src/pages/opportunitiesLive.test.tsx` e `src/components/opportunities/opportunities.test.tsx`;
+- TypeScript (`tsc --noEmit`);
+- ESLint de todo o escopo funcional alterado;
+- build Vite/PWA de produção.
+
+Cenários específicos validados:
+
+- abrir `/oportunidades/live` não chama `getUserMedia`;
+- botão de microfone permanece desabilitado;
+- troca dos estados visuais funciona sem iniciar voz;
+- cards contextuais apontam apenas para rotas existentes;
+- privacidade deixa explícito que não há captação de áudio nesta etapa;
+- `prefers-reduced-motion` ativa a alternativa de movimento reduzido;
+- navegação inclui `Live` sem duplicar `Calendário`.
+
+O workflow `.github/workflows/stage6-validation.yml` foi usado exclusivamente para validação e removido da branch após o resultado positivo.
+
+## Critérios de aceite técnicos
+
+- animação visual responsiva implementada;
+- alternativa reduzida para aparelhos de menor capacidade implementada;
+- preferência de movimento reduzido respeitada;
 - nenhuma ativação automática do microfone;
-- navegação funcional em celular e desktop;
+- navegação funcional por links e controles acessíveis;
 - interface não afirma que voz real já está disponível;
 - nenhuma informação comercial inventada;
-- testes, TypeScript, lint do escopo e build aprovados antes do merge;
-- validação visual em preview antes de publicação.
+- testes, TypeScript, lint do escopo e build aprovados.
+
+A validação visual em preview continua obrigatória antes de considerar a Etapa 6 concluída e antes de qualquer publicação.
 
 ## Estados
 
-- IMPLEMENTADO: em andamento
-- TESTADO: pendente
+- IMPLEMENTADO: sim
+- TESTADO: sim
 - MERGEADO: não
 - SINCRONIZADO NO LOVABLE: não
 - PUBLICADO: não
@@ -78,4 +104,4 @@ Esses itens pertencem à Etapa 7 ou etapas posteriores.
 
 ## Próxima ação exata
 
-Executar a validação técnica da branch, corrigir qualquer regressão, gerar preview sincronizado no Lovable após merge autorizado e validar visualmente desktop/mobile antes de considerar a Etapa 6 concluída. Não iniciar a Etapa 7 antes desse fechamento.
+Revisar o diff final do PR #14, integrar a implementação ao `main` para permitir sincronização e preview no Lovable, validar visualmente `/oportunidades/live` em desktop e mobile e somente então decidir publicação. Não iniciar a Etapa 7 antes desse fechamento.
