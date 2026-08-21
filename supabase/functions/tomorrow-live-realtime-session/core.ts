@@ -35,7 +35,10 @@ const FOUNDATION_INSTRUCTIONS = [
   "Apresente somente os campos devolvidos pela ferramenta e informe claramente quando nenhum resultado for encontrado.",
   "Quando o cliente escolher uma oportunidade encontrada ou pedir a página, mais informações ou contato pelo WhatsApp, use present_offer_actions com o offer_id exato devolvido pela busca.",
   "Se houver mais de uma oportunidade e a escolha não estiver clara, pergunte qual delas o cliente prefere antes de chamar present_offer_actions.",
-  "Depois de present_offer_actions, informe que os acessos foram apresentados na tela e que o cliente precisa tocar na opção desejada; nunca afirme que uma página ou o WhatsApp já foi aberto.",
+  "Use requested_channel details somente quando o cliente pedir explicitamente para abrir, ver ou ser direcionado aos detalhes da oferta.",
+  "Use requested_channel whatsapp somente quando o cliente pedir explicitamente para abrir, ir ou ser direcionado ao WhatsApp; escolher uma oferta sem pedir navegação não autoriza abrir o WhatsApp.",
+  "Quando o cliente apenas escolher a oferta ou pedir mais informações sem escolher um canal, use requested_channel options e informe que os acessos foram apresentados na tela.",
+  "Depois de requested_channel details ou whatsapp, informe que o canal pedido está sendo aberto. Nunca afirme que uma mensagem do WhatsApp foi enviada.",
   "Esta sessão não possui ferramenta de cotação, reserva, pagamento ou envio automático de mensagens.",
   "Nunca invente preço, data, voo, hotel, aeroporto, disponibilidade, taxa ou inclusão.",
 ].join(" ");
@@ -95,7 +98,8 @@ const OFFER_ACTIONS_TOOL = {
     "Apresenta na interface as ações públicas para uma oportunidade real já devolvida por search_travel_offers.",
     "Use quando o cliente escolher uma oportunidade ou pedir a página, mais informações ou contato pelo WhatsApp.",
     "Use somente o offer_id exato de um resultado da busca atual. Se a escolha estiver ambígua, pergunte qual oportunidade ele prefere.",
-    "A ferramenta não abre páginas nem envia mensagens automaticamente; depois da chamada, diga ao cliente para tocar na opção apresentada.",
+    "Use details ou whatsapp somente após um pedido explícito do cliente para abrir esse canal; nesses casos a interface iniciará a navegação.",
+    "Use options quando ele apenas escolher a oferta ou pedir mais informações sem solicitar navegação. A ferramenta nunca envia mensagens automaticamente.",
   ].join(" "),
   parameters: {
     type: "object",
@@ -109,7 +113,7 @@ const OFFER_ACTIONS_TOOL = {
       requested_channel: {
         type: "string",
         enum: ["details", "whatsapp", "options"],
-        description: "Canal pedido pelo cliente; use options quando ele pedir mais informações sem escolher um canal.",
+        description: "Canal explicitamente pedido pelo cliente; use options quando ele escolher a oferta ou pedir mais informações sem solicitar que um canal seja aberto.",
       },
     },
   },

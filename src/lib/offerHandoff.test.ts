@@ -1,10 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { TravelOfferCatalogItem } from "./travelOffersPublic";
 import {
   buildOfferDetailPath,
   buildOfferWhatsAppMessage,
   buildOfferWhatsAppUrl,
+  navigateToRequestedOfferChannel,
+  requestedOfferNavigationTarget,
   travelHandoffContextFromCatalogParams,
 } from "./offerHandoff";
 
@@ -85,5 +87,58 @@ describe("offer handoff", () => {
     expect(message).toContain("2 passageiros");
     expect(message).toContain("Tipo procurado: Pacote");
     expect(message).not.toContain("texto livre que não deve ir");
+  });
+
+  it("não navega quando o cliente apenas escolhe a oferta", () => {
+    const adapter = { assign: vi.fn(), openExternal: vi.fn(() => true) };
+    const input = {
+      requestedChannel: "options" as const,
+      detailPath: buildOfferDetailPath(offer.id),
+      whatsappUrl: buildOfferWhatsAppUrl(offer),
+    };
+
+    expect(requestedOfferNavigationTarget(input)).toBeNull();
+    expect(navigateToRequestedOfferChannel(input, adapter)).toBe(false);
+    expect(adapter.assign).not.toHaveBeenCalled();
+    expect(adapter.openExternal).not.toHaveBeenCalled();
+  });
+
+  it("abre os detalhes na mesma aba somente quando esse canal foi pedido", () => {
+    const adapter = { assign: vi.fn(), openExternal: vi.fn(() => true) };
+    const detailPath = buildOfferDetailPath(offer.id);
+
+    expect(navigateToRequestedOfferChannel({
+      requestedChannel: "details",
+      detailPath,
+      whatsappUrl: buildOfferWhatsAppUrl(offer),
+    }, adapter)).toBe(true);
+    expect(adapter.assign).toHaveBeenCalledWith(detailPath);
+    expect(adapter.openExternal).not.toHaveBeenCalled();
+  });
+
+  it("abre o WhatsApp e usa a mesma aba quando o navegador bloqueia a nova", () => {
+    const whatsappUrl = buildOfferWhatsAppUrl(offer);
+    const adapter = { assign: vi.fn(), openExternal: vi.fn(() => false) };
+
+    expect(navigateToRequestedOfferChannel({
+      requestedChannel: "whatsapp",
+      detailPath: buildOfferDetailPath(offer.id),
+      whatsappUrl,
+    }, adapter)).toBe(true);
+    expect(adapter.openExternal).toHaveBeenCalledWith(whatsappUrl);
+    expect(adapter.assign).toHaveBeenCalledWith(whatsappUrl);
+  });
+
+  it("mantém a página ativa quando o WhatsApp abre em uma nova aba", () => {
+    const whatsappUrl = buildOfferWhatsAppUrl(offer);
+    const adapter = { assign: vi.fn(), openExternal: vi.fn(() => true) };
+
+    expect(navigateToRequestedOfferChannel({
+      requestedChannel: "whatsapp",
+      detailPath: buildOfferDetailPath(offer.id),
+      whatsappUrl,
+    }, adapter)).toBe(true);
+    expect(adapter.openExternal).toHaveBeenCalledWith(whatsappUrl);
+    expect(adapter.assign).not.toHaveBeenCalled();
   });
 });

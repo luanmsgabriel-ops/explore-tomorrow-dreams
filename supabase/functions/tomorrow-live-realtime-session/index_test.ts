@@ -19,12 +19,15 @@ Deno.test("cria configuração GA sem expor a chave principal", () => {
   assertEquals(instructions.includes("sotaque brasileiro neutro"), true);
   assertEquals(instructions.includes("português europeu"), true);
   assertEquals(instructions.includes("present_offer_actions"), true);
+  assertEquals(instructions.includes("somente quando o cliente pedir explicitamente"), true);
+  assertEquals(instructions.includes("Nunca afirme que uma mensagem do WhatsApp foi enviada"), true);
   const tools = config.session.tools as Array<Record<string, unknown>>;
   assertEquals(tools.length, 2);
   assertEquals(tools[0].name, "search_travel_offers");
   assertEquals(tools[0].type, "function");
   assertEquals(tools[1].name, "present_offer_actions");
   assertEquals(tools[1].type, "function");
+  assertEquals(String(tools[1].description).includes("pedido explícito"), true);
   assertEquals(config.session.tool_choice, "auto");
   assertEquals(JSON.stringify(config).includes("server-key"), false);
 });

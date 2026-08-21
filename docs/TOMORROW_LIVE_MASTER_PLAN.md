@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 21/08/2026 |
-| Estado geral | Etapas 1 a 6 concluídas; voz, interrupção, inventário e controle móvel da Etapa 7 confirmados pelo usuário; handoff, contexto estruturado e apresentação flutuante das ofertas implementados, testados, mergeados e sincronizados |
-| Etapa atual | Etapa 8 — cards flutuantes e pop-up concluídos no código; validação manual no preview autenticado pendente |
-| Último HEAD funcional verificado | `32e00a7fd70d4aa4b9d9bae609361efa063a84b7` |
-| Próxima ação exata | No preview autenticado, buscar por voz e validar uma e três ofertas sobre o planeta, continuidade da fala, pop-up da escolhida, página pública e WhatsApp; não publicar automaticamente |
+| Estado geral | Etapas 1 a 6 concluídas; voz, interrupção, inventário e controle móvel da Etapa 7 confirmados pelo usuário; handoff, contexto estruturado e apresentação flutuante das ofertas implementados, testados, mergeados e sincronizados; navegação por voz após pedido explícito implementada e testada localmente |
+| Etapa atual | Etapa 8 — navegação automática para detalhes ou WhatsApp somente após solicitação explícita; validação técnica no GitHub pendente |
+| Último HEAD funcional verificado | `ff953e4af2bbd9eae9c740331c214436fd0eab09` |
+| Próxima ação exata | Validar a mudança no GitHub, revisar o PR e, somente após merge, confirmar a sincronização no Lovable e reimplantar `tomorrow-live-realtime-session`; não publicar automaticamente |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -1002,3 +1002,15 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Merge e sincronização:** PR `#43` squash-mergeado em `32e00a7fd70d4aa4b9d9bae609361efa063a84b7`; GitHub `main` confirmado nesse SHA; Lovable reconheceu exatamente o mesmo SHA e ficou `completed`/`ready`.
 - **Estado desta mudança:** implementada, testada, mergeada e sincronizada; não publicada automaticamente; validação interativa em preview e produção pendente.
 - **Próxima ação exata:** no preview autenticado, buscar por voz e validar uma e três ofertas sobre o planeta, rolagem mobile, continuidade da fala, minimização, pop-up da escolhida, página pública e WhatsApp; não publicar automaticamente.
+
+### Checkpoint 2026-08-21 — Etapa 8: navegação após pedido explícito
+
+- **Estado de entrada:** `main` confirmado em `ff953e4af2bbd9eae9c740331c214436fd0eab09`; cards flutuantes, pop-up e handoff público preservados.
+- **Autorização:** o usuário solicitou e autorizou a abertura automática dos detalhes ou do WhatsApp exclusivamente quando o cliente pedir esse direcionamento.
+- **Implementação:** `present_offer_actions` distingue escolha simples (`options`) de pedidos explícitos (`details` ou `whatsapp`); o `call_id` deduplica a navegação; detalhes abrem na mesma aba; WhatsApp tenta nova aba e usa a aba atual se houver bloqueio.
+- **Consentimento e segurança:** escolher uma oferta não abre o WhatsApp; nenhuma mensagem é enviada automaticamente; o ID continua validado contra os resultados atuais; o Téo nunca deve afirmar que a mensagem foi enviada.
+- **Preservações:** sem alteração de banco, migration, RLS, webhook, Evolution API, automação de WhatsApp, inventário, planeta ou dados internos.
+- **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_8_EXPLICIT_NAVIGATION.md`.
+- **Validação local:** 23/23 testes focados, TypeScript isolado, ESLint do escopo, build Vite/PWA e `git diff --check` aprovados; o TypeScript global mantém somente o erro anterior em `src/components/admin/QuoteEditForm.tsx:144`; Deno será executado no GitHub Actions.
+- **Estado desta mudança:** implementada e testada localmente; PR, validação no GitHub, merge, sincronização, reimplantação e validação interativa pendentes; não publicada.
+- **Próxima ação exata:** validar a branch no GitHub, revisar o PR e, após merge, confirmar a sincronização no Lovable, reimplantar apenas `tomorrow-live-realtime-session` e testar os três canais em nova sessão móvel; não publicar automaticamente.

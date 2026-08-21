@@ -50,6 +50,7 @@ describe("LiveOfferOverlay", () => {
   it("abre a oferta escolhida em pop-up sem remover as opções encontradas", () => {
     const selected = offer(1);
     const handoff: OfferHandoffSelection = {
+      requestId: "handoff-1",
       offer: selected,
       requestedChannel: "whatsapp",
       searchContext: { destination: "Maceió", passengers: 2 },

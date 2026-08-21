@@ -48,6 +48,7 @@ const OUTPUT_SILENCE_HOLD_MS = 900;
 const TRANSCRIPT_FLUSH_INTERVAL_MS = 120;
 
 export interface OfferHandoffSelection {
+  requestId: string;
   offer: TravelOfferCatalogItem;
   requestedChannel: OfferHandoffChannel;
   searchContext: TravelHandoffContext | null;
@@ -236,6 +237,7 @@ export function useRealtimeVoice() {
           throw new Error("A oportunidade escolhida não pertence aos resultados atuais. Peça ao cliente para escolher uma das opções exibidas.");
         }
         setOfferHandoff({
+          requestId: call.callId,
           offer,
           requestedChannel: request.requestedChannel,
           searchContext: offersContextRef.current,
@@ -244,9 +246,14 @@ export function useRealtimeVoice() {
         output = {
           ok: true,
           action_ready: true,
+          navigation_requested: request.requestedChannel !== "options",
           offer_id: offer.id,
           requested_channel: request.requestedChannel,
-          instruction: "As ações verificadas foram apresentadas na interface. Oriente o cliente a tocar na opção desejada.",
+          instruction: request.requestedChannel === "whatsapp"
+            ? "O cliente pediu explicitamente o WhatsApp. Informe que ele está sendo aberto com a mensagem preenchida, mas não diga que a mensagem foi enviada."
+            : request.requestedChannel === "details"
+              ? "O cliente pediu explicitamente os detalhes. Informe que a página pública da oferta está sendo aberta."
+              : "As ações verificadas foram apresentadas na interface. Oriente o cliente a tocar na opção desejada.",
         };
       }
     } catch (toolFailure) {
