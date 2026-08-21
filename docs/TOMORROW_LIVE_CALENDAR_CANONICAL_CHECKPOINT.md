@@ -17,7 +17,8 @@ Escopo: somente `/oportunidades/calendario` e contrato público relacionado.
 - A Edge Function usa internamente `service_role` para chamar `get_travel_calendar_facets`; a RPC não recebeu permissão pública.
 - Origem vem da faceta canônica consolidada, sem varrer o inventário inteiro no frontend.
 - Destino fica desabilitado até existir uma origem e é carregado somente com destinos vinculados à origem selecionada.
-- Trocar origem limpa o destino. Trocar tipo limpa origem/destino e recarrega as facetas compatíveis.
+- Trocar origem limpa o destino.
+- Trocar tipo preserva origem e destino quando ambos continuam válidos para o novo tipo; se apenas o destino deixar de existir, limpa somente o destino; se a origem deixar de existir, limpa origem e destino.
 - Campo `Data de referência` removido da interface e da validação.
 - Após `Consultar calendário`, a rota é validada e o calendário abre no primeiro mês da primeira data real disponível.
 - Consultas `calendar` continuam limitadas a janelas de até 120 dias.
@@ -49,6 +50,34 @@ Executado:
 - teste Deno de `calendar_facets`
 
 O workflow usado exclusivamente para validação foi removido da branch antes do merge e não integra o produto final.
+
+## Correção adicional — preservação da rota ao trocar Tipo
+
+Problema identificado após a publicação: ao trocar o filtro `Tipo` entre `Todos`, `Bloqueios aéreos` e `Pacotes`, a interface apagava sempre a origem e o destino já selecionados.
+
+Correção aplicada no PR #11:
+
+- `changeType` altera somente o tipo selecionado;
+- as facetas do novo tipo são recarregadas normalmente;
+- origem e destino permanecem selecionados quando continuam válidos;
+- destino é limpo isoladamente quando deixa de existir para a origem no novo tipo;
+- origem e destino são limpos somente quando a própria origem deixa de existir no novo tipo;
+- nenhuma consulta `calendar` é disparada apenas pela troca de tipo; continua sendo necessário clicar em `Consultar calendário`.
+
+Validação da correção:
+
+GitHub Actions run: `32441419986`
+
+Resultado: `success`.
+
+Executado:
+
+- teste focado de `src/pages/opportunitiesCalendar.test.tsx`;
+- TypeScript (`tsc --noEmit`);
+- ESLint do componente e teste do calendário;
+- build Vite/PWA.
+
+O workflow temporário de validação foi removido antes do merge.
 
 ## Estados
 

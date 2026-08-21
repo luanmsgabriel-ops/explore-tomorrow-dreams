@@ -158,6 +158,24 @@ export default function OpportunitiesCalendar() {
     retry: 1,
   });
 
+  useEffect(() => {
+    if (!draft.origin || originFacetsQuery.isPending || !originFacetsQuery.data) return;
+    const originStillAvailable = originFacetsQuery.data.origins.some((item) => item.value === draft.origin);
+    if (originStillAvailable) return;
+    setDraft((current) => current.origin === draft.origin
+      ? { ...current, origin: "", destination: "" }
+      : current);
+  }, [draft.origin, originFacetsQuery.data, originFacetsQuery.isPending]);
+
+  useEffect(() => {
+    if (!draft.origin || !draft.destination || destinationFacetsQuery.isPending || !destinationFacetsQuery.data) return;
+    const destinationStillAvailable = destinationFacetsQuery.data.destinations.some((item) => item.value === draft.destination);
+    if (destinationStillAvailable) return;
+    setDraft((current) => current.origin === draft.origin && current.destination === draft.destination
+      ? { ...current, destination: "" }
+      : current);
+  }, [draft.origin, draft.destination, destinationFacetsQuery.data, destinationFacetsQuery.isPending]);
+
   const routeFacetParams = useMemo(() => confirmed ? {
     origin: confirmed.origin,
     destination: confirmed.destination,
@@ -337,7 +355,7 @@ export default function OpportunitiesCalendar() {
   };
 
   const changeType = (offerType: SearchState["offerType"]) => {
-    setDraft((current) => ({ ...current, offerType, origin: "", destination: "" }));
+    setDraft((current) => ({ ...current, offerType }));
     setErrors((current) => ({ ...current, origin: undefined, destination: undefined }));
   };
 

@@ -30,6 +30,16 @@ import OpportunitiesCalendar from "./OpportunitiesCalendar";
 const notice = "Preços e disponibilidade estão sujeitos à confirmação no momento da reserva.";
 
 function facets(params: Record<string, unknown>) {
+  if (params.offer_type === "bloqueio_aereo" && params.origin === "São Paulo") {
+    return {
+      origins: [{ value: "São Paulo", count: 5 }],
+      destinations: [{ value: "Natal", count: 3 }],
+      date_range: { min: "2026-08-24", max: "2027-08-30" },
+      price_ranges: [{ currency: "BRL", min: 1200, max: 4200 }],
+      updated_at: "2026-08-21T02:00:00Z",
+      notice,
+    };
+  }
   if (params.origin === "São Paulo" && params.destination === "Recife") {
     return {
       origins: [{ value: "São Paulo", count: 8 }],
@@ -110,6 +120,40 @@ describe("Calendário de oportunidades", () => {
     expect(screen.getByLabelText("Destino")).toHaveValue("Recife");
     fireEvent.change(screen.getByLabelText("Origem"), { target: { value: "Londrina" } });
     expect(screen.getByLabelText("Destino")).toHaveValue("");
+  });
+
+  it("preserva origem e destino ao trocar o tipo quando a rota continua válida", async () => {
+    renderCalendar();
+    await screen.findByRole("option", { name: "São Paulo" });
+
+    fireEvent.change(screen.getByLabelText("Origem"), { target: { value: "São Paulo" } });
+    await screen.findByRole("option", { name: "Recife" });
+    fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "Recife" } });
+
+    fireEvent.change(screen.getByLabelText("Tipo"), { target: { value: "pacote" } });
+
+    await waitFor(() => expect(api.fetchCalendarFacets).toHaveBeenCalledWith(
+      expect.objectContaining({ origin: "São Paulo", offer_type: "pacote" }),
+      expect.any(AbortSignal),
+    ));
+    expect(screen.getByLabelText("Origem")).toHaveValue("São Paulo");
+    expect(screen.getByLabelText("Destino")).toHaveValue("Recife");
+    expect(api.fetchCalendar).not.toHaveBeenCalled();
+  });
+
+  it("limpa somente o destino quando ele deixa de existir no novo tipo", async () => {
+    renderCalendar();
+    await screen.findByRole("option", { name: "São Paulo" });
+
+    fireEvent.change(screen.getByLabelText("Origem"), { target: { value: "São Paulo" } });
+    await screen.findByRole("option", { name: "Recife" });
+    fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "Recife" } });
+
+    fireEvent.change(screen.getByLabelText("Tipo"), { target: { value: "bloqueio_aereo" } });
+
+    await waitFor(() => expect(screen.getByLabelText("Destino")).toHaveValue(""));
+    expect(screen.getByLabelText("Origem")).toHaveValue("São Paulo");
+    expect(screen.getByLabelText("Tipo")).toHaveValue("bloqueio_aereo");
   });
 
   it("abre na primeira data real e carrega nova janela somente ao avançar além da cobertura", async () => {
