@@ -1,0 +1,31 @@
+name: Tomorrow Live card legibility
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/components/opportunities/live/LiveOfferOverlay.tsx"
+      - "src/components/opportunities/live/LiveOfferOverlay.test.tsx"
+      - "docs/TOMORROW_LIVE_MASTER_PLAN.md"
+      - "docs/TOMORROW_LIVE_STAGE_8_FLOATING_OFFERS.md"
+      - ".github/workflows/tomorrow-live-card-legibility.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Focused tests
+        run: bunx vitest run src/components/opportunities/live/LiveOfferOverlay.test.tsx
+      - name: TypeScript
+        run: bunx tsc --noEmit -p tsconfig.app.json
+      - name: ESLint scope
+        run: bunx eslint src/components/opportunities/live/LiveOfferOverlay.tsx src/components/opportunities/live/LiveOfferOverlay.test.tsx
+      - name: Production build
+        run: bun run build
