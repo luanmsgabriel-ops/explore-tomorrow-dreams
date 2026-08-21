@@ -9,7 +9,8 @@ Refinar a implementação WebGL existente do Tomorrow Live sem iniciar voz real:
 - Repositório: `luanmsgabriel-ops/explore-tomorrow-dreams`
 - Branch de implementação: `stage-6-reactive-waves-refinement`
 - Base funcional: `e8242ba8a02ac8335771d4fe7b258c35334e3428`
-- PR: `#19`
+- PR funcional: `#19`
+- SHA funcional mergeado: `76d33c687f9c72aa83713bbf5173a95dcec88372`
 - Dependências preservadas: `three ^0.185.0`, `three-globe ^2.45.2`
 
 ## Pesquisa técnica
@@ -81,6 +82,15 @@ Run aprovado:
 
 O run anterior `32477200239` falhou somente no TypeScript porque havia uma comparação impossível entre o literal `5 | 8` e `1` no cálculo de profundidade das ondas. O código foi corrigido e a suíte completa passou no run posterior.
 
+## Merge e sincronização
+
+- PR `#19` foi squash-mergeado.
+- SHA funcional em `main`: `76d33c687f9c72aa83713bbf5173a95dcec88372`.
+- O Lovable registrou o SHA `76d33c687f9c72aa83713bbf5173a95dcec88372` como `completed`.
+- O preview foi reconstruído com screenshot identificada pelo prefixo `id-preview-76d33c68`.
+- Os arquivos `LiveParticleGlobe.tsx` e `LiveWaveBackdrop.tsx` foram lidos diretamente pelo conector Lovable no ref `76d33c687f9c72aa83713bbf5173a95dcec88372` e correspondem à implementação mergeada.
+- Produção não foi republicada nesta correção.
+
 ## Fora do escopo
 
 - microfone real;
@@ -96,7 +106,7 @@ O run anterior `32477200239` falhou somente no TypeScript porque havia uma compa
 
 - IMPLEMENTADO: sim
 - TESTADO: sim — run `32477315431`
-- MERGEADO: pendente
-- SINCRONIZADO NO LOVABLE: pendente
+- MERGEADO: sim — PR `#19` — SHA `76d33c687f9c72aa83713bbf5173a95dcec88372`
+- SINCRONIZADO NO LOVABLE: sim
 - PUBLICADO: não
-- VALIDADO VISUALMENTE: pendente de preview
+- VALIDADO VISUALMENTE: pendente de validação humana no preview
