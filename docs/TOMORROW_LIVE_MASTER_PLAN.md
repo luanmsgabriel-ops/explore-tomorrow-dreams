@@ -11,9 +11,9 @@
 | Branch principal | `main` |
 | Última atualização | 21/08/2026 |
 | Estado geral | Etapas 1 a 6 concluídas; voz, interrupção, inventário e controle móvel da Etapa 7 confirmados pelo usuário; handoff, contexto estruturado e apresentação flutuante das ofertas implementados, testados, mergeados e sincronizados; navegação por voz após pedido explícito implementada e testada localmente |
-| Etapa atual | Etapa 8 — navegação automática para detalhes ou WhatsApp somente após solicitação explícita; validação técnica no GitHub pendente |
+| Etapa atual | Etapa 8 — navegação automática para detalhes ou WhatsApp somente após solicitação explícita; PR `#46` validado e aguardando revisão/merge |
 | Último HEAD funcional verificado | `ff953e4af2bbd9eae9c740331c214436fd0eab09` |
-| Próxima ação exata | Validar a mudança no GitHub, revisar o PR e, somente após merge, confirmar a sincronização no Lovable e reimplantar `tomorrow-live-realtime-session`; não publicar automaticamente |
+| Próxima ação exata | Revisar e mergear o PR `#46`; depois confirmar a sincronização no Lovable e reimplantar `tomorrow-live-realtime-session`; não publicar automaticamente |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -1011,6 +1011,7 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Consentimento e segurança:** escolher uma oferta não abre o WhatsApp; nenhuma mensagem é enviada automaticamente; o ID continua validado contra os resultados atuais; o Téo nunca deve afirmar que a mensagem foi enviada.
 - **Preservações:** sem alteração de banco, migration, RLS, webhook, Evolution API, automação de WhatsApp, inventário, planeta ou dados internos.
 - **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_8_EXPLICIT_NAVIGATION.md`.
-- **Validação local:** 23/23 testes focados, TypeScript isolado, ESLint do escopo, build Vite/PWA e `git diff --check` aprovados; o TypeScript global mantém somente o erro anterior em `src/components/admin/QuoteEditForm.tsx:144`; Deno será executado no GitHub Actions.
-- **Estado desta mudança:** implementada e testada localmente; PR, validação no GitHub, merge, sincronização, reimplantação e validação interativa pendentes; não publicada.
-- **Próxima ação exata:** validar a branch no GitHub, revisar o PR e, após merge, confirmar a sincronização no Lovable, reimplantar apenas `tomorrow-live-realtime-session` e testar os três canais em nova sessão móvel; não publicar automaticamente.
+- **Validação:** 23/23 testes focados, TypeScript, ESLint do escopo, build Vite/PWA, teste Deno da Edge Function e `git diff --check` aprovados; GitHub Actions `32532868476` concluído com sucesso; workflow temporário removido do diff final. O TypeScript global local havia reproduzido somente o erro anterior em `src/components/admin/QuoteEditForm.tsx:144`, mas passou no ambiente limpo do GitHub.
+- **Pull request:** PR rascunho `#46`, branch `feat/tomorrow-live-explicit-navigation`, commit funcional publicado `4787b4acefa0d447736ee396d1e68a7c39e1b223`.
+- **Estado desta mudança:** implementada e testada localmente e no GitHub; merge, sincronização, reimplantação e validação interativa pendentes; não publicada.
+- **Próxima ação exata:** revisar e mergear o PR `#46`; depois confirmar a sincronização no Lovable, reimplantar apenas `tomorrow-live-realtime-session` e testar os três canais em nova sessão móvel; não publicar automaticamente.
