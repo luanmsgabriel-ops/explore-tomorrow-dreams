@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "src/components/opportunities/live/LiveParticleGlobe.tsx",
+    "src/components/opportunities/live/liveGlobeEffects.ts",
+    "src/components/opportunities/live/liveVisualLevel.ts",
+    "src/components/opportunities/live/LiveParticleGlobe.test.ts",
+    "src/components/opportunities/live/liveGlobeEffects.test.ts"
+  ]
+}
