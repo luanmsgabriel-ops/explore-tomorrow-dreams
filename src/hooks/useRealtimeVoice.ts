@@ -21,15 +21,17 @@ type RealtimeResources = {
   audioElement: HTMLAudioElement;
   audioContext: AudioContext;
   inputAnalyser: AnalyserNode;
+  outputSource: MediaStreamAudioSourceNode | null;
   outputAnalyser: AnalyserNode | null;
+  outputMonitorGain: GainNode | null;
   animationFrame: number;
 };
 
 const REALTIME_CALLS_URL = "https://api.openai.com/v1/realtime/calls";
 const AUDIO_PUBLISH_INTERVAL_MS = 80;
 const AUDIO_PUBLISH_MIN_DELTA = 0.025;
-const OUTPUT_ACTIVITY_THRESHOLD = 0.018;
-const OUTPUT_SILENCE_HOLD_MS = 420;
+const OUTPUT_ACTIVITY_THRESHOLD = 0.012;
+const OUTPUT_SILENCE_HOLD_MS = 900;
 const TRANSCRIPT_FLUSH_INTERVAL_MS = 120;
 
 function releaseResources(resources: RealtimeResources | null) {
@@ -46,6 +48,9 @@ function releaseResources(resources: RealtimeResources | null) {
   resources.peer.close();
   resources.localStream.getTracks().forEach((track) => track.stop());
   resources.remoteStream?.getTracks().forEach((track) => track.stop());
+  resources.outputSource?.disconnect();
+  resources.outputAnalyser?.disconnect();
+  resources.outputMonitorGain?.disconnect();
   resources.audioElement.pause();
   resources.audioElement.srcObject = null;
   resources.audioElement.remove();
@@ -265,7 +270,9 @@ export function useRealtimeVoice() {
         audioElement,
         audioContext,
         inputAnalyser,
+        outputSource: null,
         outputAnalyser: null,
+        outputMonitorGain: null,
         animationFrame: 0,
       };
       resourcesRef.current = resources;
@@ -294,10 +301,20 @@ export function useRealtimeVoice() {
         resources.remoteStream = remoteStream;
         resources.audioElement.srcObject = remoteStream;
         resources.audioElement.muted = !speakerEnabled;
+        resources.outputSource?.disconnect();
+        resources.outputAnalyser?.disconnect();
+        resources.outputMonitorGain?.disconnect();
+        const outputSource = resources.audioContext.createMediaStreamSource(remoteStream);
         const outputAnalyser = resources.audioContext.createAnalyser();
+        const outputMonitorGain = resources.audioContext.createGain();
         setAnalyserDefaults(outputAnalyser);
-        resources.audioContext.createMediaStreamSource(remoteStream).connect(outputAnalyser);
+        outputMonitorGain.gain.value = 0;
+        outputSource.connect(outputAnalyser);
+        outputAnalyser.connect(outputMonitorGain);
+        outputMonitorGain.connect(resources.audioContext.destination);
+        resources.outputSource = outputSource;
         resources.outputAnalyser = outputAnalyser;
+        resources.outputMonitorGain = outputMonitorGain;
         void resources.audioElement.play().catch(() => undefined);
       };
       peer.onconnectionstatechange = () => {

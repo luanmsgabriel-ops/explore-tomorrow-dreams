@@ -914,3 +914,14 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Merge e sincronização:** PR `#29` squash-mergeado em `35541ef549d561070c11c6146e88fc358c1cbec2`; Lovable reconheceu exatamente esse SHA e ficou `ready`; workflow temporária removida do diff final.
 - **Estado desta mudança:** implementada, testada, mergeada e sincronizada; não publicada e não validada em produção.
 - **Próxima ação exata:** publicar manualmente somente com autorização e validar em dispositivo real a aparição inicial do planeta, o tempo de conexão e os efeitos durante toda a fala; nenhuma reimplantação de Edge Function é necessária.
+
+### Checkpoint 2026-08-21 — Etapa 7: monitor contínuo do áudio de saída
+
+- **Estado de entrada:** `main` e Lovable confirmados em `f90e8196b1ea91fd9af9fe1501f50056195e8b09`; frontend anterior publicado; usuário confirmou que o efeito de fala iniciava, mas parava antes do fim da voz.
+- **Diagnóstico:** o `AnalyserNode` do stream remoto terminava em um grafo Web Audio sem conexão ao destino. Alguns navegadores deixam de processar esse ramo sem saída; após 420 ms sem energia detectada, a histerese devolvia o visual prematuramente a `idle`.
+- **Implementação:** monitor silencioso conectado ao destino com ganho zero para manter o analisador ativo sem duplicar o áudio; limiar de detecção ajustado para voz baixa; tolerância de 900 ms para pausas naturais; desconexão explícita de todos os novos nós ao encerrar.
+- **Preservações:** áudio audível continua no elemento WebRTC existente; `audioLevel` permanece entre 0 e 1; nenhum prompt ou fluxo do Téo, voz, WhatsApp, inventário, cotação, banco, Edge Function, globo ou handoff foi alterado.
+- **Validação local:** 25/25 testes focados, incluindo grafo silencioso, pausa natural e silêncio final; TypeScript global; ESLint do escopo; build Vite/PWA e `git diff --check`, todos aprovados.
+- **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_7_OUTPUT_AUDIO_MONITOR.md`.
+- **Estado desta mudança:** implementada e testada localmente na branch `stage-7-voice-output-monitor`; CI, PR, merge, sincronização, publicação e validação em produção ainda pendentes.
+- **Próxima ação exata:** executar CI, revisar e mergear o PR isolado; confirmar sincronização no Lovable sem publicar automaticamente.
