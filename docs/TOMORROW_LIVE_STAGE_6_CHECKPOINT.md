@@ -4,10 +4,13 @@
 
 - **Data:** 21/08/2026
 - **Etapa:** 6 — Interface visual do Tomorrow Live
-- **Estado atual:** implementação visual e validação técnica concluídas em branch isolada; preview visual ainda pendente
-- **Branch:** `stage-6-tomorrow-live-visual`
+- **Estado atual:** implementação visual, validação técnica, merge e sincronização no Lovable concluídos; validação visual do preview ainda pendente
+- **Branch de implementação:** `stage-6-tomorrow-live-visual`
 - **Base:** `1730661e2d4fb7ba258afa73f19aca67d6007cd8`
-- **Produção:** não alterada por esta etapa
+- **PR:** `#14`
+- **SHA funcional no `main`:** `66a4ef0dd8feb6ffed2e9f1d43e8aa30aa56e2fa`
+- **Lovable:** SHA `66a4ef0dd8feb6ffed2e9f1d43e8aa30aa56e2fa` sincronizado com status `completed`
+- **Produção:** esta etapa ainda não foi publicada/validada no domínio principal
 
 ## Objetivo
 
@@ -80,6 +83,21 @@ Cenários específicos validados:
 
 O workflow `.github/workflows/stage6-validation.yml` foi usado exclusivamente para validação e removido da branch após o resultado positivo.
 
+## Merge e sincronização
+
+- PR #14 foi squash-mergeado.
+- `main` passou para `66a4ef0dd8feb6ffed2e9f1d43e8aa30aa56e2fa`.
+- Lovable registrou esse mesmo SHA como `developer_update` com status `completed`.
+- O arquivo `src/pages/OpportunitiesLive.tsx` foi relido diretamente pelo conector do Lovable no SHA `66a4ef...` e corresponde à implementação mergeada.
+- O projeto gerou preview associado ao prefixo do SHA `66a4ef0d`.
+- O fato de o projeto possuir uma publicação anterior (`is_published=true`) não confirma que este novo SHA esteja publicado; por isso o estado de publicação desta etapa permanece `não`.
+
+## Limitação da validação visual automática
+
+O ambiente de execução disponível não conseguiu resolver por DNS o domínio privado de preview do Lovable. Portanto, não foi possível fazer inspeção visual automatizada da rota `/oportunidades/live` por navegador externo.
+
+A validação visual em preview continua obrigatória, preferencialmente em celular e desktop, antes de publicar e antes de iniciar a Etapa 7.
+
 ## Critérios de aceite técnicos
 
 - animação visual responsiva implementada;
@@ -91,17 +109,16 @@ O workflow `.github/workflows/stage6-validation.yml` foi usado exclusivamente pa
 - nenhuma informação comercial inventada;
 - testes, TypeScript, lint do escopo e build aprovados.
 
-A validação visual em preview continua obrigatória antes de considerar a Etapa 6 concluída e antes de qualquer publicação.
-
 ## Estados
 
 - IMPLEMENTADO: sim
 - TESTADO: sim
-- MERGEADO: não
-- SINCRONIZADO NO LOVABLE: não
+- MERGEADO: sim
+- SINCRONIZADO NO LOVABLE: sim
+- VALIDADO VISUALMENTE NO PREVIEW: não
 - PUBLICADO: não
 - VALIDADO EM PRODUÇÃO: não
 
 ## Próxima ação exata
 
-Revisar o diff final do PR #14, integrar a implementação ao `main` para permitir sincronização e preview no Lovable, validar visualmente `/oportunidades/live` em desktop e mobile e somente então decidir publicação. Não iniciar a Etapa 7 antes desse fechamento.
+Abrir o preview do projeto no Lovable e validar `/oportunidades/live` em celular e desktop, verificando planeta, responsividade, estados visuais, painel de transcrição, controles e navegação. Se aprovado, registrar o fechamento visual e somente então decidir a publicação. Não iniciar a Etapa 7 antes desse fechamento.
