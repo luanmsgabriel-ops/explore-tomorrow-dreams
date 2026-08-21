@@ -180,6 +180,11 @@ export default function OpportunitiesLive() {
           ? "offers"
           : "idle";
   const displayedState = voiceSessionActive ? realtimeVisualState : visualState;
+  const globeMicrophoneState = voiceStatus === "connecting"
+    ? "connecting"
+    : connected
+      ? muted ? "muted" : "active"
+      : "idle";
   const copy = stateCopy[displayedState];
   const transcriptEntries = transcript.length > 0
     ? transcript.map((entry) => ({ speaker: entry.role === "assistant" ? "Téo" : "Você", text: entry.text, final: entry.final }))
@@ -249,6 +254,8 @@ export default function OpportunitiesLive() {
                   audioLevel={voiceSessionActive ? audioLevel : undefined}
                   reducedMotion={reducedMotion}
                   lowPerformance={lowPerformance}
+                  microphoneState={globeMicrophoneState}
+                  onMicrophoneClick={connected ? toggleMute : startConversation}
                 />
                 <div className="pointer-events-none absolute left-[4%] top-[57%] hidden items-center gap-2 rounded-full border border-tomorrow-teal/30 bg-tomorrow-background/72 px-3 py-1.5 text-[0.67rem] font-semibold text-tomorrow-teal-soft backdrop-blur sm:flex" aria-hidden="true">
                   <span className="size-1.5 rounded-full bg-tomorrow-teal-soft shadow-tomorrow-teal" />
