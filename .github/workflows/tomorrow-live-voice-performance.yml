@@ -21,23 +21,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: npm
+          bun-version: latest
 
       - name: Install
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Focused tests
-        run: npx vitest run src/hooks/useRealtimeVoice.test.tsx src/lib/realtimeVoice.test.ts src/components/opportunities/live/LiveParticleGlobe.test.ts src/components/opportunities/live/liveGlobeEffects.test.ts src/components/opportunities/live/LiveWaveBackdrop.test.tsx
+        run: bun x vitest run src/hooks/useRealtimeVoice.test.tsx src/lib/realtimeVoice.test.ts src/components/opportunities/live/LiveParticleGlobe.test.ts src/components/opportunities/live/liveGlobeEffects.test.ts src/components/opportunities/live/LiveWaveBackdrop.test.tsx
 
       - name: TypeScript
-        run: npx tsc --noEmit
+        run: bun x tsc --noEmit
 
       - name: ESLint scope
-        run: npx eslint src/App.tsx src/hooks/useRealtimeVoice.ts src/hooks/useRealtimeVoice.test.tsx src/components/opportunities/live/LiveParticleGlobe.tsx src/components/opportunities/live/globeRuntime.ts
+        run: bun x eslint src/App.tsx src/hooks/useRealtimeVoice.ts src/hooks/useRealtimeVoice.test.tsx src/components/opportunities/live/LiveParticleGlobe.tsx src/components/opportunities/live/globeRuntime.ts
 
       - name: Production build
-        run: npm run build
+        run: bun run build
