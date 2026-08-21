@@ -56,14 +56,15 @@ Escolher uma oferta, por si só, não autoriza abrir o WhatsApp.
 - Build Vite/PWA aprovado.
 - `git diff --check` aprovado.
 - A checagem TypeScript global com as dependências locais encontrou somente o erro anterior e fora do escopo em `src/components/admin/QuoteEditForm.tsx:144`.
-- Deno não está disponível no ambiente local; o teste da Edge Function será executado na validação temporária do GitHub Actions.
+- O GitHub Actions `32532868476` aprovou os 23 testes focados, TypeScript global, ESLint do escopo, build Vite/PWA e o teste Deno da Edge Function.
+- O workflow temporário foi removido do diff final após a validação.
 
 ## Estado da mudança
 
 - Implementada: sim.
 - Testada localmente: sim.
-- Testada no GitHub: pendente.
-- PR criado: pendente.
+- Testada no GitHub: sim, workflow `32532868476`.
+- PR criado: sim, PR rascunho `#46`.
 - Mergeada: não.
 - Sincronizada no Lovable: não.
 - Edge Function reimplantada: não.
@@ -72,4 +73,4 @@ Escolher uma oferta, por si só, não autoriza abrir o WhatsApp.
 
 ## Próxima ação exata
 
-Publicar a branch separada, executar a validação temporária no GitHub, revisar o diff e abrir um PR em modo rascunho. Depois do merge, confirmar o mesmo SHA no Lovable, reimplantar somente `tomorrow-live-realtime-session` e validar em uma nova sessão móvel os três casos: escolha sem navegação, pedido de detalhes e pedido de WhatsApp. Não publicar automaticamente.
+Revisar e mergear o PR `#46`. Depois do merge, confirmar o mesmo SHA no Lovable, reimplantar somente `tomorrow-live-realtime-session` e validar em uma nova sessão móvel os três casos: escolha sem navegação, pedido de detalhes e pedido de WhatsApp. Não publicar automaticamente.
