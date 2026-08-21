@@ -102,13 +102,14 @@ Não são aceitos identificadores internos, campos livres adicionais, `raw_data`
 
 ## Estado
 
-- IMPLEMENTADO: sim, na branch isolada.
+- IMPLEMENTADO: sim.
 - TESTADO: sim; validação local e GitHub Actions `32522511203` aprovados.
-- MERGEADO: não.
-- SINCRONIZADO NO LOVABLE: não.
+- MERGEADO: sim; PR `#35`, SHA funcional `cff2dd308fa779d431456f090f9a1b5c97b66727`.
+- SINCRONIZADO NO LOVABLE: sim; SHA reconhecido e projeto `ready`.
+- EDGE FUNCTION REIMPLANTADA: não.
 - PUBLICADO: não.
 - VALIDADO EM PRODUÇÃO: não.
 
 ## Próxima ação exata
 
-Remover o workflow temporário do diff, revisar o PR funcional e mergear somente com o SHA aprovado. Depois do merge, sincronizar no Lovable e validar em preview sem publicar automaticamente.
+Reimplantar manualmente `tomorrow-live-realtime-session` e publicar manualmente o frontend no mesmo SHA. Depois testar em uma sessão nova uma busca com resultado, uma busca vazia, falha controlada, igualdade entre voz e cards e interrupção. Não publicar automaticamente pelo executor.
