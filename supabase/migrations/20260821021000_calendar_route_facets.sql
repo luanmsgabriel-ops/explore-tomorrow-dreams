@@ -16,7 +16,8 @@ RETURNS TABLE (
   destination_iata text,
   min_departure_date date,
   max_departure_date date,
-  offers bigint
+  offers bigint,
+  currencies text[]
 )
 LANGUAGE sql
 STABLE
@@ -32,7 +33,12 @@ AS $$
     nullif(btrim(t.destination_iata), '') AS destination_iata,
     min(t.departure_date)::date AS min_departure_date,
     max(t.departure_date)::date AS max_departure_date,
-    count(*)::bigint AS offers
+    count(*)::bigint AS offers,
+    coalesce(
+      array_agg(DISTINCT upper(btrim(t.currency)))
+        FILTER (WHERE nullif(btrim(t.currency), '') IS NOT NULL),
+      ARRAY[]::text[]
+    ) AS currencies
   FROM public.travel_offers AS t
   WHERE t.active = true
     AND t.offer_type IN ('bloqueio_aereo', 'pacote')
