@@ -199,7 +199,7 @@ export default function OpportunitiesLive() {
     : transcriptPreview.map((entry) => ({ ...entry, final: true }));
   const handoffDetailPath = offerHandoff ? buildOfferDetailPath(offerHandoff.offer.id) : null;
   const handoffWhatsAppUrl = offerHandoff
-    ? buildOfferWhatsAppUrl(offerHandoff.offer)
+    ? buildOfferWhatsAppUrl(offerHandoff.offer, { context: offerHandoff.searchContext })
     : null;
 
   return (
@@ -408,7 +408,7 @@ export default function OpportunitiesLive() {
                     {offerHandoffTitle(offerHandoff.offer)}
                   </h3>
                   <p className="mt-2 text-xs leading-relaxed text-tomorrow-muted">
-                    Escolha como deseja continuar. O WhatsApp abrirá com esta oportunidade real já identificada na mensagem.
+                    Escolha como deseja continuar. O WhatsApp abrirá com esta oportunidade real e as preferências estruturadas da busca já identificadas na mensagem.
                   </p>
                   <div className="mt-4 grid gap-2 sm:grid-cols-2">
                     <OpportunityButton

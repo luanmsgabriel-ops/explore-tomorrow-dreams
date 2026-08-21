@@ -20,6 +20,10 @@ import {
   fetchTravelOfferCatalog,
   type TravelOfferCatalogItem,
 } from "@/lib/travelOffersPublic";
+import {
+  travelHandoffContextFromCatalogParams,
+  type TravelHandoffContext,
+} from "@/lib/offerHandoff";
 
 type RealtimeResources = {
   abortController: AbortController;
@@ -46,6 +50,7 @@ const TRANSCRIPT_FLUSH_INTERVAL_MS = 120;
 export interface OfferHandoffSelection {
   offer: TravelOfferCatalogItem;
   requestedChannel: OfferHandoffChannel;
+  searchContext: TravelHandoffContext | null;
 }
 
 function releaseResources(resources: RealtimeResources | null) {
@@ -108,6 +113,7 @@ export function useRealtimeVoice() {
   const lastOutputActivityAtRef = useRef(0);
   const handledToolCallsRef = useRef(new Set<string>());
   const offersRef = useRef<TravelOfferCatalogItem[]>([]);
+  const offersContextRef = useRef<TravelHandoffContext | null>(null);
 
   const updateStatus = useCallback((next: RealtimeVoiceStatus) => {
     if (statusRef.current === next) return;
@@ -149,6 +155,7 @@ export function useRealtimeVoice() {
       setAudioLevel(0);
       setOffers([]);
       offersRef.current = [];
+      offersContextRef.current = null;
       setOfferHandoff(null);
       setToolError(null);
       setError(message);
@@ -172,6 +179,7 @@ export function useRealtimeVoice() {
       setAudioLevel(0);
       setOffers([]);
       offersRef.current = [];
+      offersContextRef.current = null;
       setOfferHandoff(null);
       setToolError(null);
       handledToolCallsRef.current.clear();
@@ -206,11 +214,13 @@ export function useRealtimeVoice() {
       if (call.name === "search_travel_offers") {
         setOffers([]);
         offersRef.current = [];
+        offersContextRef.current = null;
         setOfferHandoff(null);
         const params = catalogParamsFromRealtimeTool(call);
         const result = await fetchTravelOfferCatalog(params, resources.abortController.signal);
         if (resourcesRef.current !== resources || !mountedRef.current) return;
         offersRef.current = result.items;
+        offersContextRef.current = travelHandoffContextFromCatalogParams(params);
         setOffers(result.items);
         if (result.items.length > 0) updateStatus("offers");
         output = {
@@ -225,7 +235,11 @@ export function useRealtimeVoice() {
         if (!offer) {
           throw new Error("A oportunidade escolhida não pertence aos resultados atuais. Peça ao cliente para escolher uma das opções exibidas.");
         }
-        setOfferHandoff({ offer, requestedChannel: request.requestedChannel });
+        setOfferHandoff({
+          offer,
+          requestedChannel: request.requestedChannel,
+          searchContext: offersContextRef.current,
+        });
         updateStatus("offers");
         output = {
           ok: true,
@@ -319,6 +333,7 @@ export function useRealtimeVoice() {
     setAudioLevel(0);
     setOffers([]);
     offersRef.current = [];
+    offersContextRef.current = null;
     setOfferHandoff(null);
     setToolError(null);
     handledToolCallsRef.current.clear();

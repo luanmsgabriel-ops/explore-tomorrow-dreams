@@ -5,6 +5,7 @@ import {
   buildOfferDetailPath,
   buildOfferWhatsAppMessage,
   buildOfferWhatsAppUrl,
+  travelHandoffContextFromCatalogParams,
 } from "./offerHandoff";
 
 const offer: TravelOfferCatalogItem = {
@@ -52,12 +53,37 @@ describe("offer handoff", () => {
   });
 
   it("gera um link wa.me codificado sem enviar a mensagem automaticamente", () => {
-    const url = buildOfferWhatsAppUrl(offer, "https://tomorrowtravelbr.com.br");
+    const url = buildOfferWhatsAppUrl(offer, { origin: "https://tomorrowtravelbr.com.br" });
     const parsed = new URL(url);
 
     expect(parsed.origin).toBe("https://wa.me");
     expect(parsed.pathname).toBe("/5515991833448");
     expect(parsed.searchParams.get("text")).toContain(offer.id);
     expect(parsed.searchParams.get("text")).toContain("Tomorrow Live");
+  });
+
+  it("leva somente preferências estruturadas da busca para o WhatsApp", () => {
+    const context = travelHandoffContextFromCatalogParams({
+      search: "texto livre que não deve ir para o WhatsApp",
+      origin: "Sorocaba",
+      destination: "Maceió",
+      start_date: "2026-09-01",
+      end_date: "2026-09-30",
+      passengers: 2,
+      offer_type: "pacote",
+      sort: "date_asc",
+      page: 1,
+      per_page: 3,
+    });
+    const url = buildOfferWhatsAppUrl(offer, { context });
+    const message = new URL(url).searchParams.get("text") ?? "";
+
+    expect(message).toContain("Preferências informadas no Tomorrow Live:");
+    expect(message).toContain("Origem desejada: Sorocaba");
+    expect(message).toContain("Destino desejado: Maceió");
+    expect(message).toContain("Período desejado: 01/09/2026 a 30/09/2026");
+    expect(message).toContain("2 passageiros");
+    expect(message).toContain("Tipo procurado: Pacote");
+    expect(message).not.toContain("texto livre que não deve ir");
   });
 });

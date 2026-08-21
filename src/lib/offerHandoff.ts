@@ -1,10 +1,26 @@
 import {
   TRAVEL_OFFERS_NOTICE,
+  type CatalogParams,
   type TravelOfferCatalogItem,
 } from "@/lib/travelOffersPublic";
 
 export const TOMORROW_WHATSAPP_NUMBER = "5515991833448";
 export const TOMORROW_PUBLIC_ORIGIN = "https://tomorrowtravelbr.com.br";
+
+export interface TravelHandoffContext {
+  origin?: string;
+  destination?: string;
+  start_date?: string;
+  end_date?: string;
+  passengers?: number;
+  offer_type?: "bloqueio_aereo" | "pacote";
+}
+
+export interface OfferWhatsAppOptions {
+  context?: TravelHandoffContext | null;
+  origin?: string;
+  phone?: string;
+}
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
@@ -48,7 +64,43 @@ export function buildOfferDetailUrl(offerId: string, origin: string) {
   return new URL(buildOfferDetailPath(offerId), origin).toString();
 }
 
-export function buildOfferWhatsAppMessage(item: TravelOfferCatalogItem, offerUrl: string) {
+export function travelHandoffContextFromCatalogParams(params: CatalogParams): TravelHandoffContext {
+  const context: TravelHandoffContext = {};
+  if (params.origin) context.origin = params.origin;
+  if (params.destination) context.destination = params.destination;
+  if (params.start_date) context.start_date = params.start_date;
+  if (params.end_date) context.end_date = params.end_date;
+  if (params.passengers) context.passengers = params.passengers;
+  if (params.offer_type) context.offer_type = params.offer_type;
+  return context;
+}
+
+function appendHandoffContext(lines: string[], context?: TravelHandoffContext | null) {
+  if (!context || Object.keys(context).length === 0) return;
+  const details: string[] = [];
+  if (context.origin) details.push(`Origem desejada: ${context.origin}`);
+  if (context.destination) details.push(`Destino desejado: ${context.destination}`);
+
+  const startDate = dateLabel(context.start_date ?? null);
+  const endDate = dateLabel(context.end_date ?? null);
+  if (startDate && endDate) details.push(`Período desejado: ${startDate} a ${endDate}`);
+  else if (startDate) details.push(`Data inicial desejada: ${startDate}`);
+  else if (endDate) details.push(`Data final desejada: ${endDate}`);
+
+  if (context.passengers) {
+    details.push(`${context.passengers} ${context.passengers === 1 ? "passageiro" : "passageiros"}`);
+  }
+  if (context.offer_type) {
+    details.push(`Tipo procurado: ${context.offer_type === "pacote" ? "Pacote" : "Bloqueio aéreo"}`);
+  }
+  if (details.length > 0) lines.push("", "Preferências informadas no Tomorrow Live:", ...details);
+}
+
+export function buildOfferWhatsAppMessage(
+  item: TravelOfferCatalogItem,
+  offerUrl: string,
+  context?: TravelHandoffContext | null,
+) {
   const lines = [
     "Olá! Conheci esta oportunidade no Tomorrow Live e gostaria de mais informações:",
     "",
@@ -70,16 +122,18 @@ export function buildOfferWhatsAppMessage(item: TravelOfferCatalogItem, offerUrl
   if (price) lines.push(`Valor por pessoa: ${price}`);
   lines.push(`Código da oferta: ${item.id}`);
   lines.push(`Ver oferta: ${offerUrl}`);
+  appendHandoffContext(lines, context);
   lines.push("", TRAVEL_OFFERS_NOTICE);
   return lines.join("\n");
 }
 
 export function buildOfferWhatsAppUrl(
   item: TravelOfferCatalogItem,
-  origin = TOMORROW_PUBLIC_ORIGIN,
-  phone = TOMORROW_WHATSAPP_NUMBER,
+  options: OfferWhatsAppOptions = {},
 ) {
+  const origin = options.origin ?? TOMORROW_PUBLIC_ORIGIN;
+  const phone = options.phone ?? TOMORROW_WHATSAPP_NUMBER;
   const offerUrl = buildOfferDetailUrl(item.id, origin);
-  const message = buildOfferWhatsAppMessage(item, offerUrl);
+  const message = buildOfferWhatsAppMessage(item, offerUrl, options.context);
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }

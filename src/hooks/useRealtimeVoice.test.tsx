@@ -399,6 +399,7 @@ describe("useRealtimeVoice", () => {
     await waitFor(() => expect(result.current.offerHandoff).toEqual({
       offer,
       requestedChannel: "whatsapp",
+      searchContext: { destination: "Maceió" },
     }));
     expect(fetchCatalogMock).toHaveBeenCalledTimes(1);
     expect(dataChannel.send).toHaveBeenCalledTimes(2);

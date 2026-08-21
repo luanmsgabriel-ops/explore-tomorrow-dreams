@@ -34,7 +34,15 @@ vi.mock("@/hooks/useRealtimeVoice", () => ({
     audioLevel: 0,
     transcript: [],
     offers: [offer],
-    offerHandoff: { offer, requestedChannel: "whatsapp" },
+    offerHandoff: {
+      offer,
+      requestedChannel: "whatsapp",
+      searchContext: {
+        origin: "Sorocaba",
+        destination: "Maceió",
+        passengers: 2,
+      },
+    },
     toolError: null,
     error: null,
     startConversation: vi.fn(),
@@ -69,5 +77,7 @@ describe("Tomorrow Live — handoff da oferta", () => {
     expect(url.origin).toBe("https://wa.me");
     expect(url.searchParams.get("text")).toContain(offer.id);
     expect(url.searchParams.get("text")).toContain("Maceió em setembro");
+    expect(url.searchParams.get("text")).toContain("Origem desejada: Sorocaba");
+    expect(url.searchParams.get("text")).toContain("2 passageiros");
   });
 });
