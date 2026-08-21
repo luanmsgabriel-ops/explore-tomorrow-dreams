@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Heart, Radar, Scale, Sparkles, X } from "lucide-react";
+import { Heart, Radar, Scale, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
 import {
@@ -40,15 +40,14 @@ const numberFormatter = new Intl.NumberFormat("pt-BR");
 
 const editorialSections: Array<{
   label: string;
-  description: string;
   subtype: PublicOfferSubtype;
   offerType: PublicOfferType;
 }> = [
-  { label: "Bloqueios aéreos", description: "Tarifas com assentos controlados", subtype: "bloqueio", offerType: "bloqueio_aereo" },
-  { label: "Pacotes nacionais", description: "Brasil com hospedagem e experiências", subtype: "nacional", offerType: "pacote" },
-  { label: "Internacionais", description: "Oportunidades para viajar ao exterior", subtype: "internacional", offerType: "pacote" },
-  { label: "Eventos", description: "Viagens ligadas a datas especiais", subtype: "evento", offerType: "pacote" },
-  { label: "Grupos guiados", description: "Roteiros acompanhados e estruturados", subtype: "grupo_guiado", offerType: "pacote" },
+  { label: "Pacotes nacionais", subtype: "nacional", offerType: "pacote" },
+  { label: "Internacionais", subtype: "internacional", offerType: "pacote" },
+  { label: "Eventos", subtype: "evento", offerType: "pacote" },
+  { label: "Grupos guiados", subtype: "grupo_guiado", offerType: "pacote" },
+  { label: "Bloqueios aéreos", subtype: "bloqueio", offerType: "bloqueio_aereo" },
 ];
 
 function formatDate(value: string | null) {
@@ -72,6 +71,23 @@ function countForSubtype(
   subtype: PublicOfferSubtype,
 ) {
   return facets?.subtypes.find((item) => item.value === subtype)?.count ?? null;
+}
+
+function countActiveFilters(filters: CatalogFilterValues) {
+  return [
+    filters.search,
+    filters.origin,
+    filters.destination,
+    filters.offerType,
+    filters.subtype,
+    filters.category,
+    filters.startDate,
+    filters.endDate,
+    filters.passengers,
+    filters.minPrice,
+    filters.maxPrice,
+    filters.onlyWithSeats ? "1" : "",
+  ].filter(Boolean).length;
 }
 
 export default function OpportunitiesCatalog() {
@@ -118,6 +134,11 @@ export default function OpportunitiesCatalog() {
     setPage(1);
   };
 
+  const showAll = () => {
+    clearFilters();
+    resultsRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  };
+
   const applyEditorialSection = (subtype: PublicOfferSubtype, offerType: PublicOfferType) => {
     const next = { ...DEFAULT_CATALOG_FILTERS, subtype, offerType };
     setDraftFilters(next);
@@ -140,6 +161,8 @@ export default function OpportunitiesCatalog() {
   };
 
   const total = catalogQuery.data?.total ?? 0;
+  const totalInventory = facetsQuery.data?.offer_types.reduce((sum, item) => sum + item.count, 0) ?? null;
+  const activeFilterCount = countActiveFilters(appliedFilters);
   const notice = catalogQuery.data?.notice || facetsQuery.data?.notice || TRAVEL_OFFERS_NOTICE;
 
   return (
@@ -159,79 +182,102 @@ export default function OpportunitiesCatalog() {
             <div className="absolute left-[8%] top-12 size-48 rounded-full bg-tomorrow-teal/10 blur-3xl" />
             <div className="absolute right-[12%] top-24 size-64 rounded-full bg-tomorrow-gold/10 blur-3xl" />
           </div>
-          <div className="relative mx-auto grid w-full max-w-[90rem] gap-8 px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
+          <div className="relative mx-auto grid w-full max-w-[90rem] gap-6 px-4 py-9 sm:px-6 sm:py-14 lg:px-8">
             <div className="max-w-4xl">
               <OpportunityBadge variant="neutral">
                 <Radar className="size-4" aria-hidden="true" />
                 Radar Tomorrow
               </OpportunityBadge>
-              <h1 className="mt-5 max-w-3xl font-editorial text-5xl leading-[0.94] text-tomorrow-text sm:text-6xl lg:text-7xl">
+              <h1 className="mt-4 max-w-3xl font-editorial text-4xl leading-[0.96] text-tomorrow-text sm:text-6xl lg:text-7xl">
                 Oportunidades reais para o seu próximo amanhã.
               </h1>
-              <p className="mt-5 max-w-2xl text-base leading-relaxed text-tomorrow-muted sm:text-lg">
-                Consulte bloqueios aéreos e pacotes válidos do inventário Tomorrow Travel. Sem preços estimados e sem disponibilidade inventada.
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-tomorrow-muted sm:text-lg">
+                Pacotes e bloqueios aéreos válidos do inventário Tomorrow Travel, sem preços estimados ou disponibilidade inventada.
               </p>
-              <div className="mt-6 flex flex-wrap gap-3 text-sm text-tomorrow-muted">
+              <div className="mt-4 flex flex-wrap gap-2 text-xs text-tomorrow-muted sm:text-sm">
                 <span>{catalogQuery.data ? `${numberFormatter.format(total)} resultados compatíveis` : "Inventário consultado em tempo real"}</span>
                 <span aria-hidden="true">·</span>
                 <span>{favoriteCount === 1 ? "1 favorito local" : `${favoriteCount} favoritos locais`}</span>
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" aria-label="Coleções de oportunidades">
-              {editorialSections.map((section) => {
-                const count = countForSubtype(facetsQuery.data, section.subtype);
-                const active = appliedFilters.subtype === section.subtype;
-                return (
+            <div aria-label="Atalhos de oportunidades">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-tomorrow-muted">Explorar por tipo</p>
+              <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:overflow-visible sm:px-0">
+                <div className="flex min-w-max gap-2 sm:min-w-0 sm:flex-wrap">
                   <button
-                    key={section.subtype}
                     type="button"
-                    className={`opportunity-focus rounded-tomorrow border p-4 text-left transition-colors ${
-                      active
-                        ? "border-tomorrow-gold/70 bg-tomorrow-gold/10"
-                        : "border-tomorrow-line bg-tomorrow-surface/65 hover:border-tomorrow-teal/60"
+                    className={`opportunity-focus min-h-10 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+                      activeFilterCount === 0
+                        ? "border-tomorrow-gold/70 bg-tomorrow-gold/12 text-tomorrow-gold-soft"
+                        : "border-tomorrow-line bg-tomorrow-surface/65 text-tomorrow-text hover:border-tomorrow-teal/60"
                     }`}
-                    aria-pressed={active}
-                    onClick={() => applyEditorialSection(section.subtype, section.offerType)}
+                    aria-pressed={activeFilterCount === 0}
+                    onClick={showAll}
                   >
-                    <span className="block text-sm font-bold text-tomorrow-text">{section.label}</span>
-                    <span className="mt-1 block text-xs leading-relaxed text-tomorrow-muted">{section.description}</span>
-                    <span className="mt-3 block text-xs font-semibold text-tomorrow-gold-soft">
-                      {count === null ? "Consultando" : `${numberFormatter.format(count)} ofertas`}
-                    </span>
+                    Todos{totalInventory === null ? "" : ` · ${numberFormatter.format(totalInventory)}`}
                   </button>
-                );
-              })}
+                  {editorialSections.map((section) => {
+                    const count = countForSubtype(facetsQuery.data, section.subtype);
+                    const active = appliedFilters.subtype === section.subtype;
+                    return (
+                      <button
+                        key={section.subtype}
+                        type="button"
+                        className={`opportunity-focus min-h-10 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+                          active
+                            ? "border-tomorrow-gold/70 bg-tomorrow-gold/12 text-tomorrow-gold-soft"
+                            : "border-tomorrow-line bg-tomorrow-surface/65 text-tomorrow-text hover:border-tomorrow-teal/60"
+                        }`}
+                        aria-pressed={active}
+                        onClick={() => applyEditorialSection(section.subtype, section.offerType)}
+                      >
+                        {section.label}{count === null ? "" : ` · ${numberFormatter.format(count)}`}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        <div className="mx-auto grid w-full max-w-[90rem] gap-10 px-4 py-10 sm:px-6 lg:px-8">
-          <details className="group" open>
-            <summary className="opportunity-focus mb-4 flex cursor-pointer list-none items-center justify-between rounded-tomorrow border border-tomorrow-line bg-tomorrow-surface/65 px-4 py-3 font-semibold text-tomorrow-text [&::-webkit-details-marker]:hidden">
-              <span>Busca e filtros</span>
-              <span className="text-xs font-medium text-tomorrow-muted group-open:hidden">Mostrar</span>
-              <span className="hidden text-xs font-medium text-tomorrow-muted group-open:inline">Ocultar</span>
+        <div className="mx-auto grid w-full max-w-[90rem] gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          <details className="group">
+            <summary className="opportunity-focus flex cursor-pointer list-none items-center justify-between rounded-tomorrow border border-tomorrow-line bg-tomorrow-surface/65 px-4 py-3 text-tomorrow-text [&::-webkit-details-marker]:hidden">
+              <span className="flex items-center gap-2 font-semibold">
+                <SlidersHorizontal className="size-4 text-tomorrow-teal-soft" aria-hidden="true" />
+                Filtros
+                {activeFilterCount > 0 ? (
+                  <span className="rounded-full bg-tomorrow-gold/15 px-2 py-0.5 text-xs font-bold text-tomorrow-gold-soft">
+                    {activeFilterCount}
+                  </span>
+                ) : null}
+              </span>
+              <span className="text-xs font-medium text-tomorrow-muted group-open:hidden">Abrir</span>
+              <span className="hidden text-xs font-medium text-tomorrow-muted group-open:inline">Fechar</span>
             </summary>
-            <OpportunityFilters
-              values={draftFilters}
-              facets={facetsQuery.data}
-              errors={filterErrors}
-              disabled={catalogQuery.isFetching && !catalogQuery.data}
-              onChange={setDraftFilters}
-              onApply={applyFilters}
-              onClear={clearFilters}
-            />
+            <div className="pt-3">
+              <OpportunityFilters
+                values={draftFilters}
+                facets={facetsQuery.data}
+                errors={filterErrors}
+                disabled={catalogQuery.isFetching && !catalogQuery.data}
+                onChange={setDraftFilters}
+                onApply={applyFilters}
+                onClear={clearFilters}
+              />
+            </div>
           </details>
 
           <section ref={resultsRef} className="scroll-mt-28" aria-labelledby="catalog-results-title">
-            <div className="mb-6 flex flex-col gap-3 border-b border-tomorrow-line pb-5 sm:flex-row sm:items-end sm:justify-between">
+            <div className="mb-5 flex flex-col gap-2 border-b border-tomorrow-line pb-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-tomorrow-teal-soft">
                   <Sparkles className="size-4" aria-hidden="true" />
                   Inventário válido
                 </p>
-                <h2 id="catalog-results-title" className="mt-2 font-editorial text-4xl text-tomorrow-text">
+                <h2 id="catalog-results-title" className="mt-1 font-editorial text-3xl text-tomorrow-text sm:text-4xl">
                   {catalogQuery.data ? `${numberFormatter.format(total)} oportunidades` : "Oportunidades"}
                 </h2>
               </div>
