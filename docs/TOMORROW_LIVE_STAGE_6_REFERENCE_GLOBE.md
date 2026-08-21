@@ -29,14 +29,26 @@ Teste ajustado:
 - `prefers-reduced-motion` e modo de menor desempenho preservados;
 - nenhuma ativação de microfone e nenhuma mudança no Téo, WhatsApp, banco ou APIs.
 
+## Validação
+
+GitHub Actions run `32446455537`: `success`.
+
+Executado:
+- testes focados do Tomorrow Live e design system;
+- TypeScript (`tsc --noEmit`);
+- ESLint do componente/teste alterados;
+- build Vite/PWA.
+
+O workflow temporário de validação foi removido antes do merge.
+
 ## Estado
 
 - IMPLEMENTADO: sim
-- TESTADO: pendente
+- TESTADO: sim
 - MERGEADO: não
 - SINCRONIZADO NO LOVABLE: não
 - PUBLICADO: não
 
 ## Próxima ação
 
-Executar testes focados, TypeScript, ESLint e build. Se aprovados, remover o workflow temporário, revisar o diff, mergear o PR e validar a sincronização no Lovable. A publicação permanece separada.
+Revisar o diff final do PR #17 e mergear somente o componente, o ajuste de teste e este checkpoint. Depois validar a sincronização do SHA no Lovable e revisar o preview antes de publicar.
