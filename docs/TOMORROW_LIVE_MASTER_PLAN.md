@@ -910,6 +910,7 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Implementação:** `speaking` orientado pela energia real do áudio remoto com histerese de silêncio; áudio publicado para React em frequência limitada; transcrição parcial agrupada; inicialização segura de microfone e credencial efêmera em paralelo; preload do runtime 3D; cena liberada antes das texturas; fallback imediato; memoização do globo.
 - **Preservações:** nenhum prompt ou fluxo do Téo, WhatsApp, inventário, cotação, banco, Edge Function ou handoff alterado.
 - **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_7_VOICE_PERFORMANCE.md`.
-- **Validação local:** 17/17 testes focados; TypeScript global; ESLint do escopo; build Vite/PWA; `git diff --check`, todos aprovados.
-- **Estado desta mudança:** implementada e testada localmente na branch `stage-7-voice-performance`; CI, PR, merge, sincronização, publicação e validação em produção ainda pendentes.
-- **Próxima ação exata:** executar CI, revisar o diff e abrir PR isolado; não publicar automaticamente.
+- **Validação:** 17/17 testes focados, TypeScript global, ESLint do escopo, build Vite/PWA e `git diff --check` aprovados localmente; GitHub Actions `32517053964` aprovou a mesma bateria com Bun. A tentativa anterior `32516975414` parou apenas no `package-lock.json` histórico incompatível e não executou testes.
+- **Merge e sincronização:** PR `#29` squash-mergeado em `35541ef549d561070c11c6146e88fc358c1cbec2`; Lovable reconheceu exatamente esse SHA e ficou `ready`; workflow temporária removida do diff final.
+- **Estado desta mudança:** implementada, testada, mergeada e sincronizada; não publicada e não validada em produção.
+- **Próxima ação exata:** publicar manualmente somente com autorização e validar em dispositivo real a aparição inicial do planeta, o tempo de conexão e os efeitos durante toda a fala; nenhuma reimplantação de Edge Function é necessária.
