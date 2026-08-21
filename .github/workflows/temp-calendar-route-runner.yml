@@ -1,0 +1,61 @@
+name: Temporary calendar route runner
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch-branch:
+    if: contains(github.event.head_commit.message, 'temporary calendar route runner')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/calendar-route-filters
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Apply patch stored on branch
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import textwrap
+          src = Path('.github/workflows/calendar-route-fix.yml').read_text()
+          start = src.index("python3 <<'PY'\n") + len("python3 <<'PY'\n")
+          end = src.index("\n          PY", start)
+          Path('/tmp/calendar_patch.py').write_text(textwrap.dedent(src[start:end]))
+          PY
+          python3 /tmp/calendar_patch.py
+          rm -f .github/workflows/calendar-route-runner.yml
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Test
+        run: bun run test
+
+      - name: Typecheck
+        run: bunx tsc -p tsconfig.app.json --noEmit
+
+      - name: Lint focused files
+        run: bunx eslint src/pages/OpportunitiesCalendar.tsx src/lib/opportunityCalendar.ts src/lib/opportunityCalendar.test.ts src/lib/travelOffersPublic.ts
+
+      - name: Build
+        run: bun run build
+
+      - name: Commit validated branch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix calendar route filters and month navigation"
+          git push origin HEAD:fix/calendar-route-filters
