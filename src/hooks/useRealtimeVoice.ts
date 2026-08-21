@@ -26,6 +26,11 @@ type RealtimeResources = {
 };
 
 const REALTIME_CALLS_URL = "https://api.openai.com/v1/realtime/calls";
+const AUDIO_PUBLISH_INTERVAL_MS = 80;
+const AUDIO_PUBLISH_MIN_DELTA = 0.025;
+const OUTPUT_ACTIVITY_THRESHOLD = 0.018;
+const OUTPUT_SILENCE_HOLD_MS = 420;
+const TRANSCRIPT_FLUSH_INTERVAL_MS = 120;
 
 function releaseResources(resources: RealtimeResources | null) {
   if (!resources) return;
@@ -73,19 +78,46 @@ export function useRealtimeVoice() {
   const statusRef = useRef<RealtimeVoiceStatus>("idle");
   const mutedRef = useRef(false);
   const startAttemptRef = useRef(0);
+  const pendingAbortControllerRef = useRef<AbortController | null>(null);
+  const transcriptBufferRef = useRef<VoiceTranscriptEntry[]>([]);
+  const transcriptFlushTimerRef = useRef<number | null>(null);
+  const outputActiveRef = useRef(false);
+  const outputCompleteRef = useRef(true);
+  const lastOutputActivityAtRef = useRef(0);
 
   const updateStatus = useCallback((next: RealtimeVoiceStatus) => {
+    if (statusRef.current === next) return;
     statusRef.current = next;
     if (mountedRef.current) setStatus(next);
   }, []);
 
+  const clearTranscriptFlush = useCallback(() => {
+    if (transcriptFlushTimerRef.current === null) return;
+    window.clearTimeout(transcriptFlushTimerRef.current);
+    transcriptFlushTimerRef.current = null;
+  }, []);
+
+  const publishTranscript = useCallback(() => {
+    transcriptFlushTimerRef.current = null;
+    if (mountedRef.current) setTranscript([...transcriptBufferRef.current]);
+  }, []);
+
+  const resetOutputActivity = useCallback(() => {
+    outputActiveRef.current = false;
+    outputCompleteRef.current = true;
+    lastOutputActivityAtRef.current = 0;
+  }, []);
+
   const failConversation = useCallback((message: string) => {
     startAttemptRef.current += 1;
+    pendingAbortControllerRef.current?.abort();
+    pendingAbortControllerRef.current = null;
     const resources = resourcesRef.current;
     resourcesRef.current = null;
     releaseResources(resources);
     userSpeakingRef.current = false;
     mutedRef.current = false;
+    resetOutputActivity();
     if (mountedRef.current) {
       setConnected(false);
       setMuted(false);
@@ -93,14 +125,17 @@ export function useRealtimeVoice() {
       setError(message);
       updateStatus("error");
     }
-  }, [updateStatus]);
+  }, [resetOutputActivity, updateStatus]);
 
   const endConversation = useCallback(() => {
     startAttemptRef.current += 1;
+    pendingAbortControllerRef.current?.abort();
+    pendingAbortControllerRef.current = null;
     const resources = resourcesRef.current;
     resourcesRef.current = null;
     releaseResources(resources);
     userSpeakingRef.current = false;
+    resetOutputActivity();
     if (mountedRef.current) {
       setConnected(false);
       setMuted(false);
@@ -108,20 +143,29 @@ export function useRealtimeVoice() {
       setAudioLevel(0);
       updateStatus("idle");
     }
-  }, [updateStatus]);
+  }, [resetOutputActivity, updateStatus]);
 
   useEffect(() => () => {
     mountedRef.current = false;
     startAttemptRef.current += 1;
+    pendingAbortControllerRef.current?.abort();
+    pendingAbortControllerRef.current = null;
+    clearTranscriptFlush();
     const resources = resourcesRef.current;
     resourcesRef.current = null;
     releaseResources(resources);
-  }, []);
+  }, [clearTranscriptFlush]);
 
   const handleEvent = useCallback((event: RealtimeServerEvent) => {
     const transcriptChange = transcriptChangeFromEvent(event);
-    if (transcriptChange && mountedRef.current) {
-      setTranscript((current) => applyTranscriptChange(current, transcriptChange));
+    if (transcriptChange) {
+      transcriptBufferRef.current = applyTranscriptChange(transcriptBufferRef.current, transcriptChange);
+      if (transcriptChange.final) {
+        clearTranscriptFlush();
+        publishTranscript();
+      } else if (transcriptFlushTimerRef.current === null) {
+        transcriptFlushTimerRef.current = window.setTimeout(publishTranscript, TRANSCRIPT_FLUSH_INTERVAL_MS);
+      }
     }
 
     switch (event.type) {
@@ -131,6 +175,7 @@ export function useRealtimeVoice() {
         break;
       case "input_audio_buffer.speech_started":
         userSpeakingRef.current = true;
+        resetOutputActivity();
         updateStatus("listening");
         break;
       case "input_audio_buffer.speech_stopped":
@@ -138,15 +183,21 @@ export function useRealtimeVoice() {
         updateStatus("thinking");
         break;
       case "response.created":
+        outputActiveRef.current = false;
+        outputCompleteRef.current = false;
         if (!userSpeakingRef.current) updateStatus("thinking");
         break;
       case "response.output_audio.delta":
       case "response.output_audio_transcript.delta":
+        outputActiveRef.current = true;
+        outputCompleteRef.current = false;
+        lastOutputActivityAtRef.current = performance.now();
         if (!userSpeakingRef.current) updateStatus("speaking");
         break;
       case "response.done":
       case "response.output_audio.done":
-        updateStatus(userSpeakingRef.current ? "listening" : "idle");
+        outputCompleteRef.current = true;
+        if (userSpeakingRef.current) updateStatus("listening");
         break;
       case "error":
         if (mountedRef.current) setError(event.error?.message || "A sessão de voz encontrou um erro.");
@@ -155,14 +206,17 @@ export function useRealtimeVoice() {
       default:
         break;
     }
-  }, [updateStatus]);
+  }, [clearTranscriptFlush, publishTranscript, resetOutputActivity, updateStatus]);
 
   const startConversation = useCallback(async () => {
     if (resourcesRef.current || statusRef.current === "connecting") return;
     const attempt = ++startAttemptRef.current;
     setError(null);
+    clearTranscriptFlush();
+    transcriptBufferRef.current = [];
     setTranscript([]);
     setAudioLevel(0);
+    resetOutputActivity();
     updateStatus("connecting");
 
     if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) {
@@ -173,14 +227,20 @@ export function useRealtimeVoice() {
 
     let resources: RealtimeResources | null = null;
     try {
-      const localStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      });
+      const abortController = new AbortController();
+      pendingAbortControllerRef.current = abortController;
+      const [localStream, secret] = await Promise.all([
+        navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        }),
+        fetchRealtimeClientSecret(abortController.signal),
+      ]);
       if (attempt !== startAttemptRef.current || !mountedRef.current) {
+        abortController.abort();
         localStream.getTracks().forEach((track) => track.stop());
         return;
       }
-      const abortController = new AbortController();
+      pendingAbortControllerRef.current = null;
       const audioContext = createAudioContext();
       await audioContext.resume();
       const inputAnalyser = audioContext.createAnalyser();
@@ -246,7 +306,6 @@ export function useRealtimeVoice() {
         }
       };
 
-      const secret = await fetchRealtimeClientSecret(abortController.signal);
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
       const sdpResponse = await fetch(REALTIME_CALLS_URL, {
@@ -264,6 +323,8 @@ export function useRealtimeVoice() {
       const inputSamples = new Uint8Array(new ArrayBuffer(inputAnalyser.fftSize));
       let outputSamples: Uint8Array<ArrayBuffer> | null = null;
       let lastSample = 0;
+      let lastPublishedAt = 0;
+      let lastPublishedLevel = 0;
       const sampleAudio = (timestamp: number) => {
         if (!resources || resourcesRef.current !== resources) return;
         if (timestamp - lastSample >= 33) {
@@ -276,14 +337,39 @@ export function useRealtimeVoice() {
             }
             outputLevel = analyserAudioLevel(resources.outputAnalyser, outputSamples);
           }
-          const level = statusRef.current === "speaking" ? outputLevel : inputLevel;
-          if (mountedRef.current) setAudioLevel(level);
+
+          if (!userSpeakingRef.current && outputLevel >= OUTPUT_ACTIVITY_THRESHOLD) {
+            outputActiveRef.current = true;
+            lastOutputActivityAtRef.current = timestamp;
+            updateStatus("speaking");
+          } else if (
+            !userSpeakingRef.current &&
+            outputActiveRef.current &&
+            outputCompleteRef.current &&
+            timestamp - lastOutputActivityAtRef.current >= OUTPUT_SILENCE_HOLD_MS
+          ) {
+            outputActiveRef.current = false;
+            updateStatus("idle");
+          }
+
+          const level = !userSpeakingRef.current && outputActiveRef.current ? outputLevel : inputLevel;
+          const shouldPublish = timestamp - lastPublishedAt >= AUDIO_PUBLISH_INTERVAL_MS &&
+            (lastPublishedAt === 0 ||
+              Math.abs(level - lastPublishedLevel) >= AUDIO_PUBLISH_MIN_DELTA ||
+              (level === 0 && lastPublishedLevel !== 0));
+          if (mountedRef.current && shouldPublish) {
+            lastPublishedAt = timestamp;
+            lastPublishedLevel = level;
+            setAudioLevel(level);
+          }
         }
         resources.animationFrame = requestAnimationFrame(sampleAudio);
       };
       resources.animationFrame = requestAnimationFrame(sampleAudio);
     } catch (startError) {
       if (attempt !== startAttemptRef.current || !mountedRef.current) return;
+      pendingAbortControllerRef.current?.abort();
+      pendingAbortControllerRef.current = null;
       if (resourcesRef.current === resources) resourcesRef.current = null;
       releaseResources(resources);
       if (mountedRef.current) {
@@ -293,7 +379,7 @@ export function useRealtimeVoice() {
         updateStatus("error");
       }
     }
-  }, [failConversation, handleEvent, speakerEnabled, updateStatus]);
+  }, [clearTranscriptFlush, failConversation, handleEvent, resetOutputActivity, speakerEnabled, updateStatus]);
 
   const toggleMute = useCallback(() => {
     const resources = resourcesRef.current;

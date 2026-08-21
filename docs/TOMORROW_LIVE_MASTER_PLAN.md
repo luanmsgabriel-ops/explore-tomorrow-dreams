@@ -902,3 +902,14 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Merge e sincronização:** PR `#27` squash-mergeado em `625391ccab7aa9b5cba1edde5a63d01424b7974f`; Lovable reconheceu o SHA como `completed` e ficou `ready`.
 - **Estado desta mudança:** implementada, testada, mergeada e sincronizada; Edge Function ainda não reimplantada; frontend ainda não republicado; validação em produção pendente.
 - **Próxima ação exata:** reimplantar manualmente `tomorrow-live-realtime-session`, publicar manualmente o frontend e validar voz `cedar`, continuidade do planeta e partículas durante `speaking`; não publicar automaticamente pelo executor.
+
+### Checkpoint 2026-08-21 — Etapa 7: continuidade visual e redução de latência
+
+- **Estado de entrada:** voz `cedar`, conversa e interrupção natural validadas pelo usuário; `main` e Lovable confirmados em `7c52b3e75f394eff1eddc19a5b0f5b8c70f48cbc`.
+- **Problemas diagnosticados:** `response.done` encerrava o estado visual antes do fim audível do stream WebRTC; áudio e transcrição causavam atualizações React excessivas; microfone e client secret eram iniciados em sequência; runtime 3D e texturas bloqueavam a aparição inicial do planeta.
+- **Implementação:** `speaking` orientado pela energia real do áudio remoto com histerese de silêncio; áudio publicado para React em frequência limitada; transcrição parcial agrupada; inicialização segura de microfone e credencial efêmera em paralelo; preload do runtime 3D; cena liberada antes das texturas; fallback imediato; memoização do globo.
+- **Preservações:** nenhum prompt ou fluxo do Téo, WhatsApp, inventário, cotação, banco, Edge Function ou handoff alterado.
+- **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_7_VOICE_PERFORMANCE.md`.
+- **Validação local:** 17/17 testes focados; TypeScript global; ESLint do escopo; build Vite/PWA; `git diff --check`, todos aprovados.
+- **Estado desta mudança:** implementada e testada localmente na branch `stage-7-voice-performance`; CI, PR, merge, sincronização, publicação e validação em produção ainda pendentes.
+- **Próxima ação exata:** executar CI, revisar o diff e abrir PR isolado; não publicar automaticamente.
