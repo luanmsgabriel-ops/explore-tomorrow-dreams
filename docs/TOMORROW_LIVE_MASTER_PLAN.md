@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 21/08/2026 |
-| Estado geral | Etapas 1 a 6 concluídas; voz, interrupção, inventário e controle móvel da Etapa 7 confirmados pelo usuário; handoff público e contexto estruturado do WhatsApp implementados, testados, mergeados e sincronizados |
-| Etapa atual | Etapa 8 — contexto estruturado no WhatsApp concluído no código; validação manual do link preenchido no preview autenticado pendente |
-| Último HEAD verificado | `db818062c624660a753a7f5874dfbe842503e1d9` |
-| Próxima ação exata | No preview autenticado, buscar por voz com origem, destino, período e passageiros, escolher uma oferta e conferir o texto preenchido do WhatsApp; não publicar automaticamente |
+| Estado geral | Etapas 1 a 6 concluídas; voz, interrupção, inventário e controle móvel da Etapa 7 confirmados pelo usuário; handoff e contexto estruturado do WhatsApp mergeados; apresentação flutuante das ofertas implementada e testada localmente |
+| Etapa atual | Etapa 8 — cards flutuantes sobre o planeta e pop-up da oferta escolhida em validação técnica |
+| Último HEAD verificado | `9553c9f6bd7dead5c811a2106b79553a1d852ff4` |
+| Próxima ação exata | Validar o incremento no GitHub Actions, revisar o diff, mergear e conferir a sincronização do mesmo SHA no Lovable; não publicar automaticamente |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -989,3 +989,15 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Merge e sincronização:** PR `#41` squash-mergeado em `db818062c624660a753a7f5874dfbe842503e1d9`; GitHub `main` confirmado exatamente nesse SHA; Lovable reconheceu o mesmo SHA e ficou `completed`/`ready`.
 - **Estado desta mudança:** implementada, testada, mergeada e sincronizada; não publicada automaticamente; validação interativa no preview autenticado pendente.
 - **Próxima ação exata:** no preview autenticado, buscar por voz com origem, destino, período e passageiros, escolher uma oferta e conferir se o WhatsApp contém a oferta correta e somente as preferências estruturadas; não publicar automaticamente.
+
+### Checkpoint 2026-08-21 — Etapa 8: apresentação flutuante das ofertas
+
+- **Estado de entrada:** `main` real e Lovable confirmados em `9553c9f6bd7dead5c811a2106b79553a1d852ff4`, sem commits posteriores; busca por voz, apresentação falada, interrupção e handoff da oferta confirmados pelo usuário.
+- **Objetivo:** manter as ofertas visíveis junto ao planeta durante a fala do Téo e substituir o painel distante da oferta escolhida por um pop-up imediato.
+- **Implementação local:** até três cards flutuantes, roláveis no mobile e minimizáveis, sobre o planeta; pop-up responsivo para a oferta selecionada com página pública e WhatsApp; voz e sessão WebRTC permanecem ativas por trás da camada visual.
+- **Dados e segurança:** somente o DTO público já validado é renderizado; links continuam derivados localmente do ID público e do contexto estruturado; nenhum dado comercial é inventado e nenhum campo interno é exposto.
+- **Preservações:** nenhuma alteração em prompt, Edge Function, ferramenta Realtime, áudio, globo WebGL, inventário, banco, automação do WhatsApp ou envio de mensagem.
+- **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_8_FLOATING_OFFERS.md`.
+- **Validação local:** 14/14 testes focados, TypeScript global, ESLint do escopo, build Vite/PWA e `git diff --check` aprovados.
+- **Estado desta mudança:** implementada e testada localmente; ainda não mergeada, sincronizada, publicada ou validada em preview/produção.
+- **Próxima ação exata:** executar CI no GitHub, revisar e mergear o PR, confirmar o mesmo SHA no Lovable e validar manualmente no preview autenticado; não publicar automaticamente.

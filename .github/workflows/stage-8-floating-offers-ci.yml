@@ -1,0 +1,43 @@
+name: Stage 8 floating offers
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/components/opportunities/live/LiveOfferOverlay.tsx"
+      - "src/components/opportunities/live/LiveOfferOverlay.test.tsx"
+      - "src/pages/OpportunitiesLive.tsx"
+      - "src/index.css"
+      - "docs/TOMORROW_LIVE_MASTER_PLAN.md"
+      - "docs/TOMORROW_LIVE_STAGE_8_FLOATING_OFFERS.md"
+      - ".github/workflows/stage-8-floating-offers-ci.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Focused tests
+        run: >-
+          bunx vitest run
+          src/components/opportunities/live/LiveOfferOverlay.test.tsx
+          src/pages/opportunitiesLiveHandoff.test.tsx
+          src/pages/opportunitiesLive.test.tsx
+          src/lib/offerHandoff.test.ts
+      - name: TypeScript
+        run: bunx tsc --noEmit
+      - name: ESLint
+        run: >-
+          bunx eslint
+          src/components/opportunities/live/LiveOfferOverlay.tsx
+          src/components/opportunities/live/LiveOfferOverlay.test.tsx
+          src/pages/OpportunitiesLive.tsx
+          src/pages/opportunitiesLiveHandoff.test.tsx
+      - name: Production build
+        run: bun run build
