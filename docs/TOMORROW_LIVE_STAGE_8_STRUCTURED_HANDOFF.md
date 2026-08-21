@@ -59,15 +59,16 @@ O contexto é sempre o da busca que produziu os resultados atuais. Uma nova busc
 
 | Marco | Estado |
 |---|---|
-| Implementado | sim, em branch isolada |
-| Testado localmente | sim |
-| PR | pendente |
-| Mergeado | não |
-| Sincronizado no Lovable | não |
+| Implementado | sim |
+| Testado localmente | sim, 32/32 testes focados |
+| Testado no GitHub | sim, Actions `32528271041` |
+| PR | `#41` |
+| Mergeado | sim, `db818062c624660a753a7f5874dfbe842503e1d9` |
+| Sincronizado no Lovable | sim, mesmo SHA e estado `ready` |
 | Publicado | não |
 | Validado em preview | não |
 | Validado em produção | não |
 
 ## Próxima ação exata
 
-Executar CI no GitHub, revisar o diff e abrir PR. Após merge validado, confirmar sincronização no Lovable e testar no preview autenticado uma busca com origem, destino, período e passageiros, escolhendo uma oferta e conferindo o texto preenchido do WhatsApp. Não publicar automaticamente.
+No preview autenticado, fazer uma busca por voz com origem, destino, período e passageiros, escolher uma oferta e conferir o texto preenchido do WhatsApp. A mensagem deve conter a oferta correta e somente as preferências estruturadas; texto livre e transcrição não podem aparecer. Não publicar automaticamente.
