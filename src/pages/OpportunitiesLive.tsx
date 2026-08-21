@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import {
+  ArrowRight,
   CalendarDays,
   Headphones,
   LoaderCircle,
   MessageSquareText,
+  MessageCircle,
   Mic,
   MicOff,
   Power,
@@ -27,6 +29,11 @@ import {
   type TomorrowLiveState,
 } from "@/components/opportunities/live/LiveParticleGlobe";
 import { useRealtimeVoice } from "@/hooks/useRealtimeVoice";
+import {
+  buildOfferDetailPath,
+  buildOfferWhatsAppUrl,
+  offerHandoffTitle,
+} from "@/lib/offerHandoff";
 import type { TravelOfferCatalogItem } from "@/lib/travelOffersPublic";
 
 const navItems = [
@@ -162,6 +169,7 @@ export default function OpportunitiesLive() {
     audioLevel,
     transcript,
     offers,
+    offerHandoff,
     toolError,
     error,
     startConversation,
@@ -189,6 +197,10 @@ export default function OpportunitiesLive() {
   const transcriptEntries = transcript.length > 0
     ? transcript.map((entry) => ({ speaker: entry.role === "assistant" ? "Téo" : "Você", text: entry.text, final: entry.final }))
     : transcriptPreview.map((entry) => ({ ...entry, final: true }));
+  const handoffDetailPath = offerHandoff ? buildOfferDetailPath(offerHandoff.offer.id) : null;
+  const handoffWhatsAppUrl = offerHandoff
+    ? buildOfferWhatsAppUrl(offerHandoff.offer)
+    : null;
 
   return (
     <div
@@ -384,6 +396,45 @@ export default function OpportunitiesLive() {
                 O microfone só é solicitado após o clique e é liberado ao encerrar.
               </p>
 
+              {offerHandoff && handoffDetailPath && handoffWhatsAppUrl ? (
+                <section
+                  className="mt-4 rounded-xl border border-tomorrow-gold/35 bg-tomorrow-gold/8 p-4"
+                  aria-labelledby="live-handoff-title"
+                  aria-live="polite"
+                  data-offer-handoff-id={offerHandoff.offer.id}
+                >
+                  <OpportunityBadge variant="success">Oferta escolhida</OpportunityBadge>
+                  <h3 id="live-handoff-title" className="mt-3 font-editorial text-2xl leading-none text-tomorrow-text">
+                    {offerHandoffTitle(offerHandoff.offer)}
+                  </h3>
+                  <p className="mt-2 text-xs leading-relaxed text-tomorrow-muted">
+                    Escolha como deseja continuar. O WhatsApp abrirá com esta oportunidade real já identificada na mensagem.
+                  </p>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <OpportunityButton
+                      asChild
+                      fullWidth
+                      variant={offerHandoff.requestedChannel === "details" ? "gold" : "outline"}
+                    >
+                      <a href={handoffDetailPath}>
+                        Ver oferta
+                        <ArrowRight aria-hidden="true" />
+                      </a>
+                    </OpportunityButton>
+                    <OpportunityButton
+                      asChild
+                      fullWidth
+                      variant={offerHandoff.requestedChannel === "details" ? "outline" : "gold"}
+                    >
+                      <a href={handoffWhatsAppUrl} target="_blank" rel="noreferrer">
+                        <MessageCircle aria-hidden="true" />
+                        WhatsApp
+                      </a>
+                    </OpportunityButton>
+                  </div>
+                </section>
+              ) : null}
+
               {error ? (
                 <div className="mt-3 rounded-xl border border-tomorrow-danger/35 bg-tomorrow-danger/8 p-3 text-xs leading-relaxed text-tomorrow-text" role="alert">
                   {error} <a href="/teo" className="font-semibold text-tomorrow-teal-soft underline underline-offset-2">Continuar por texto</a>
@@ -475,7 +526,7 @@ export default function OpportunitiesLive() {
           <div className="flex flex-col gap-3 rounded-tomorrow-lg border border-tomorrow-gold/25 bg-tomorrow-gold/5 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="flex items-center gap-2 font-semibold text-tomorrow-text"><ShieldCheck className="size-4 text-tomorrow-gold-soft" aria-hidden="true" />Fundação de voz isolada e segura.</p>
-              <p className="mt-1 text-xs leading-relaxed text-tomorrow-muted">A primeira ferramenta de inventário é somente de leitura. Cotação, reserva e WhatsApp continuam fora deste incremento.</p>
+              <p className="mt-1 text-xs leading-relaxed text-tomorrow-muted">A busca permanece somente de leitura. Para uma oferta escolhida, o cliente pode abrir a página pública ou iniciar o WhatsApp com uma mensagem preenchida; nenhuma mensagem é enviada automaticamente.</p>
             </div>
             <OpportunityButton asChild variant="ghost" className="shrink-0">
               <a href="/oportunidades/catalogo"><Search aria-hidden="true" />Explorar oportunidades</a>

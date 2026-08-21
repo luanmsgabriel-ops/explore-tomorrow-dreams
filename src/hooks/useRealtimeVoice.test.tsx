@@ -330,6 +330,116 @@ describe("useRealtimeVoice", () => {
     expect(result.current.offers).toEqual([]);
   });
 
+  it("apresenta o handoff somente para uma oferta retornada na sessão atual", async () => {
+    const offer = {
+      kind: "package" as const,
+      id: "0191a5f2-ccaa-7f03-8f00-1234567890ab",
+      offer_type: "pacote" as const,
+      offer_subtype: "nacional" as const,
+      name: "Maceió em setembro",
+      category: "Praia",
+      origin: "São Paulo",
+      origin_iata: "GRU",
+      destination: "Maceió",
+      destination_iata: "MCZ",
+      departure_date: "2026-09-10",
+      return_date: "2026-09-17",
+      nights: 7,
+      airline: null,
+      price_per_person: 1800,
+      tax_per_person: null,
+      currency: "BRL",
+      available_seats: 4,
+      airfare_included: true,
+      image_url: null,
+      updated_at: "2026-08-21T12:00:00Z",
+    };
+    fetchCatalogMock.mockResolvedValueOnce({
+      items: [offer],
+      page: 1,
+      per_page: 3,
+      total: 1,
+      total_pages: 1,
+      applied_filters: { destination: "Maceió" },
+      updated_at: "2026-08-21T12:00:00Z",
+      notice: "Preços e disponibilidade estão sujeitos à confirmação.",
+    });
+    const { result } = renderHook(() => useRealtimeVoice());
+
+    await act(async () => result.current.startConversation());
+    act(() => dataChannel.onopen?.(new Event("open")));
+    act(() => dataChannel.onmessage?.(new MessageEvent("message", {
+      data: JSON.stringify({
+        type: "response.output_item.done",
+        item: {
+          type: "function_call",
+          call_id: "search-1",
+          name: "search_travel_offers",
+          arguments: JSON.stringify({ destination: "Maceió" }),
+        },
+      }),
+    })));
+    await waitFor(() => expect(result.current.offers).toEqual([offer]));
+    vi.mocked(dataChannel.send).mockClear();
+
+    const handoffEvent = new MessageEvent("message", {
+      data: JSON.stringify({
+        type: "response.output_item.done",
+        item: {
+          type: "function_call",
+          call_id: "handoff-1",
+          name: "present_offer_actions",
+          arguments: JSON.stringify({ offer_id: offer.id, requested_channel: "whatsapp" }),
+        },
+      }),
+    });
+    act(() => dataChannel.onmessage?.(handoffEvent));
+    act(() => dataChannel.onmessage?.(handoffEvent));
+
+    await waitFor(() => expect(result.current.offerHandoff).toEqual({
+      offer,
+      requestedChannel: "whatsapp",
+    }));
+    expect(fetchCatalogMock).toHaveBeenCalledTimes(1);
+    expect(dataChannel.send).toHaveBeenCalledTimes(2);
+    const outputEvent = JSON.parse(String(vi.mocked(dataChannel.send).mock.calls[0][0]));
+    expect(JSON.parse(outputEvent.item.output)).toMatchObject({
+      ok: true,
+      action_ready: true,
+      offer_id: offer.id,
+      requested_channel: "whatsapp",
+    });
+
+    act(() => result.current.endConversation());
+    expect(result.current.offerHandoff).toBeNull();
+  });
+
+  it("recusa handoff para uma oferta que não veio da busca atual", async () => {
+    const { result } = renderHook(() => useRealtimeVoice());
+
+    await act(async () => result.current.startConversation());
+    act(() => dataChannel.onopen?.(new Event("open")));
+    act(() => dataChannel.onmessage?.(new MessageEvent("message", {
+      data: JSON.stringify({
+        type: "response.output_item.done",
+        item: {
+          type: "function_call",
+          call_id: "handoff-invalid",
+          name: "present_offer_actions",
+          arguments: JSON.stringify({
+            offer_id: "0191a5f2-ccaa-7f03-8f00-1234567890ab",
+            requested_channel: "details",
+          }),
+        },
+      }),
+    })));
+
+    await waitFor(() => expect(result.current.toolError).toContain("não pertence aos resultados atuais"));
+    expect(result.current.offerHandoff).toBeNull();
+    expect(result.current.connected).toBe(true);
+    act(() => result.current.endConversation());
+  });
+
   it("mantém a conversa ativa quando a ferramenta pública falha", async () => {
     fetchCatalogMock.mockRejectedValueOnce(new Error("Consulta temporariamente indisponível."));
     const { result } = renderHook(() => useRealtimeVoice());
