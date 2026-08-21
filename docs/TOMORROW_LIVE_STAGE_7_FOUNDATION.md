@@ -53,3 +53,38 @@ Arquitetura atual confirmada para navegador:
 2. Adaptador Téo + tools server-side sanitizadas por `travel-offers-public`.
 3. Hardening de custos, telemetria, rate limit distribuído e testes de longa duração.
 4. WhatsApp/handoff humano somente após autorização específica.
+
+## Implementação da fundação
+
+- `tomorrow-live-realtime-session` cria um client secret com validade de 60 segundos e devolve somente `value` e `expires_at`.
+- A sessão usa `gpt-realtime-2.1`, voz `marin`, transcrição `gpt-live-transcribe` e `server_vad` com interrupção habilitada.
+- Tools permanecem explicitamente vazias e desabilitadas.
+- `useRealtimeVoice` gerencia microfone, WebRTC, data channel, Web Audio, transcrição, mute e encerramento.
+- Tentativas encerradas durante a permissão do microfone são invalidadas e liberam a track assim que a promessa resolve.
+- Falhas de conexão encerram data channel, peer, tracks, elemento de áudio e `AudioContext` antes de exibir o fallback.
+- `OpportunitiesLive` preserva o componente visual e passa o `audioLevel` real pela interface criada na Etapa 6.
+
+## Validação
+
+- GitHub Actions: `32510615098` — aprovado.
+- Instalação pelo `bun.lock`: aprovada.
+- Testes focados da fundação: 14/14 aprovados.
+- Testes locais do escopo, incluindo o contrato visual de ondas: 18/18 aprovados.
+- TypeScript isolado da Etapa 7: aprovado.
+- ESLint do escopo: aprovado sem avisos.
+- Build Vite/PWA de produção: aprovado.
+- Testes Deno da Edge Function: aprovados.
+- `git diff --check`: aprovado.
+- Suíte histórica local: 54/59 testes aprovados; as cinco falhas permanecem nos testes antigos de calendário/comparação, sem arquivos funcionais compartilhados alterados por este PR.
+- O typecheck global por `tsconfig.app.json` mantém o erro anterior em `src/components/admin/QuoteEditForm.tsx`; o typecheck real do escopo novo foi aprovado localmente e no GitHub Actions.
+
+O workflow de validação foi criado somente na branch e removido antes do merge.
+
+## Estado antes do merge
+
+- IMPLEMENTADO: sim.
+- TESTADO: sim, no escopo da fundação.
+- MERGEADO: não.
+- SINCRONIZADO NO LOVABLE: não confirmado para esta branch.
+- PUBLICADO: não.
+- VALIDADO EM PREVIEW COM ÁUDIO REAL: pendente de sincronização e segredo server-side configurado.

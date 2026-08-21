@@ -888,3 +888,4 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Escopo excluído:** tools comerciais, consulta de ofertas, alteração do prompt do Téo, WhatsApp, handoff humano, publicação e automação comercial.
 - **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_7_FOUNDATION.md`.
 - **Próxima ação exata:** concluir testes, revisão de segurança e PR isolado; validar sincronização/preview sem publicar automaticamente.
+- **Validação da branch:** GitHub Actions `32510615098` aprovado em testes focados, TypeScript do escopo, ESLint, build de produção e testes Deno da nova Edge Function; workflow temporário removido antes do merge.
