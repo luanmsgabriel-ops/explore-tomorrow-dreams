@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 21/08/2026 |
-| Estado geral | Etapas 1 a 6 concluídas; voz, interrupção, inventário e controle móvel da Etapa 7 confirmados manualmente pelo usuário; primeiro handoff público da oferta em implementação isolada |
-| Etapa atual | Etapa 7/8 — apresentar página pública e WhatsApp preenchido para a oferta real escolhida, sem envio automático nem alteração das automações existentes |
-| Último HEAD verificado | `ceddf160f82b086a59228b6fa3228d22db3f54f0` |
-| Próxima ação exata | Concluir validações e PR do handoff público; após merge, confirmar sync/preview no Lovable e reimplantar manualmente somente `tomorrow-live-realtime-session`; não publicar automaticamente |
+| Estado geral | Etapas 1 a 6 concluídas; voz, interrupção, inventário e controle móvel da Etapa 7 confirmados pelo usuário; handoff público da oferta implementado, testado, mergeado e sincronizado |
+| Etapa atual | Etapa 7/8 — Edge Function do handoff ainda precisa ser reimplantada e os dois acessos precisam ser validados manualmente no preview autenticado |
+| Último HEAD verificado | `82565dd3193b537aec6ad7413d735ecbde8146dc` |
+| Próxima ação exata | Reimplantar manualmente somente `tomorrow-live-realtime-session`; depois validar em sessão nova no preview escolha por voz, página da oferta e WhatsApp preenchido; não publicar automaticamente |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -973,5 +973,6 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Preservações:** nenhum prompt/componente do Téo textual, webhook, Evolution API, automação de WhatsApp, banco, migration, RLS ou visual do planeta alterado.
 - **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_7_OFFER_HANDOFF.md`.
 - **Validação:** 31 testes focados, TypeScript, ESLint, build de produção, testes Deno e `git diff --check` aprovados; GitHub Actions `32526597169` concluído com sucesso; workflow temporário removido do branch.
-- **Estado desta mudança:** implementada e testada na branch isolada; PR `#39` aberto; merge, sincronização e preview ainda pendentes neste checkpoint.
-- **Próxima ação exata:** revisar e mergear o PR `#39`; após merge, confirmar sync e preview no Lovable e reimplantar manualmente somente `tomorrow-live-realtime-session`; não publicar automaticamente.
+- **Merge e sincronização:** PR `#39` squash-mergeado no SHA funcional `82565dd3193b537aec6ad7413d735ecbde8146dc`; GitHub `main` confirmado nesse SHA; Lovable reconheceu o mesmo SHA e ficou `completed`/`ready`.
+- **Estado desta mudança:** implementada, testada, mergeada e sincronizada; Edge Function ainda não reimplantada; preview privado bloqueado por login nesta sessão; não publicada nem validada em produção.
+- **Próxima ação exata:** reimplantar manualmente somente `tomorrow-live-realtime-session` e, em sessão nova no preview autenticado, validar escolha por voz, **Ver oferta** e **WhatsApp** com o pacote correto; não publicar automaticamente.
