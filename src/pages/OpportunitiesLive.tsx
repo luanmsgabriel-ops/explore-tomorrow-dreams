@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CalendarDays,
   Headphones,
@@ -30,6 +30,7 @@ import { useRealtimeVoice } from "@/hooks/useRealtimeVoice";
 import {
   buildOfferDetailPath,
   buildOfferWhatsAppUrl,
+  navigateToRequestedOfferChannel,
 } from "@/lib/offerHandoff";
 
 const navItems = [
@@ -139,6 +140,7 @@ function useAdaptiveMotion() {
 export default function OpportunitiesLive() {
   const [visualState, setVisualState] = useState<TomorrowLiveState>("idle");
   const [privacyOpen, setPrivacyOpen] = useState(false);
+  const handledNavigationRequestRef = useRef<string | null>(null);
   const { reducedMotion, lowPerformance } = useAdaptiveMotion();
   const {
     status: voiceStatus,
@@ -180,6 +182,24 @@ export default function OpportunitiesLive() {
   const handoffWhatsAppUrl = offerHandoff
     ? buildOfferWhatsAppUrl(offerHandoff.offer, { context: offerHandoff.searchContext })
     : null;
+
+  useEffect(() => {
+    if (!offerHandoff) {
+      handledNavigationRequestRef.current = null;
+      return;
+    }
+    if (
+      offerHandoff.requestedChannel === "options" ||
+      handledNavigationRequestRef.current === offerHandoff.requestId
+    ) return;
+
+    handledNavigationRequestRef.current = offerHandoff.requestId;
+    navigateToRequestedOfferChannel({
+      requestedChannel: offerHandoff.requestedChannel,
+      detailPath: handoffDetailPath,
+      whatsappUrl: handoffWhatsAppUrl,
+    });
+  }, [handoffDetailPath, handoffWhatsAppUrl, offerHandoff]);
 
   return (
     <div

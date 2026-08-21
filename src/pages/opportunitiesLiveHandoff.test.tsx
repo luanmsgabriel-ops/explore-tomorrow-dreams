@@ -1,5 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const navigateToRequestedOfferChannelMock = vi.hoisted(() => vi.fn(() => true));
 
 const offer = {
   kind: "package" as const,
@@ -35,6 +37,7 @@ vi.mock("@/hooks/useRealtimeVoice", () => ({
     transcript: [],
     offers: [offer],
     offerHandoff: {
+      requestId: "handoff-whatsapp-1",
       offer,
       requestedChannel: "whatsapp",
       searchContext: {
@@ -52,10 +55,19 @@ vi.mock("@/hooks/useRealtimeVoice", () => ({
   }),
 }));
 
+vi.mock("@/lib/offerHandoff", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/offerHandoff")>("@/lib/offerHandoff");
+  return {
+    ...actual,
+    navigateToRequestedOfferChannel: navigateToRequestedOfferChannelMock,
+  };
+});
+
 import OpportunitiesLive from "./OpportunitiesLive";
 
 describe("Tomorrow Live — handoff da oferta", () => {
   beforeEach(() => {
+    navigateToRequestedOfferChannelMock.mockClear();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
   });
 
@@ -63,7 +75,7 @@ describe("Tomorrow Live — handoff da oferta", () => {
     vi.restoreAllMocks();
   });
 
-  it("apresenta página real e WhatsApp preenchido para a escolha validada", () => {
+  it("abre o WhatsApp preenchido quando o canal foi pedido explicitamente", async () => {
     render(<OpportunitiesLive />);
 
     expect(screen.getByText("Oferta escolhida")).toBeInTheDocument();
@@ -79,5 +91,11 @@ describe("Tomorrow Live — handoff da oferta", () => {
     expect(url.searchParams.get("text")).toContain("Maceió em setembro");
     expect(url.searchParams.get("text")).toContain("Origem desejada: Sorocaba");
     expect(url.searchParams.get("text")).toContain("2 passageiros");
+    await waitFor(() => expect(navigateToRequestedOfferChannelMock).toHaveBeenCalledWith({
+      requestedChannel: "whatsapp",
+      detailPath: `/oportunidades/oferta/${offer.id}`,
+      whatsappUrl: whatsapp.getAttribute("href"),
+    }));
+    expect(navigateToRequestedOfferChannelMock).toHaveBeenCalledTimes(1);
   });
 });

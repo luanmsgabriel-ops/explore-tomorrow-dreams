@@ -3,6 +3,7 @@ import {
   type CatalogParams,
   type TravelOfferCatalogItem,
 } from "@/lib/travelOffersPublic";
+import type { OfferHandoffChannel } from "@/lib/realtimeVoice";
 
 export const TOMORROW_WHATSAPP_NUMBER = "5515991833448";
 export const TOMORROW_PUBLIC_ORIGIN = "https://tomorrowtravelbr.com.br";
@@ -20,6 +21,17 @@ export interface OfferWhatsAppOptions {
   context?: TravelHandoffContext | null;
   origin?: string;
   phone?: string;
+}
+
+export interface OfferHandoffNavigationInput {
+  requestedChannel: OfferHandoffChannel;
+  detailPath: string | null;
+  whatsappUrl: string | null;
+}
+
+export interface OfferHandoffNavigationAdapter {
+  assign: (url: string) => void;
+  openExternal: (url: string) => boolean;
 }
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
@@ -136,4 +148,42 @@ export function buildOfferWhatsAppUrl(
   const offerUrl = buildOfferDetailUrl(item.id, origin);
   const message = buildOfferWhatsAppMessage(item, offerUrl, options.context);
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+
+export function requestedOfferNavigationTarget({
+  requestedChannel,
+  detailPath,
+  whatsappUrl,
+}: OfferHandoffNavigationInput) {
+  if (requestedChannel === "details") return detailPath;
+  if (requestedChannel === "whatsapp") return whatsappUrl;
+  return null;
+}
+
+const browserNavigationAdapter = (): OfferHandoffNavigationAdapter => ({
+  assign: (url) => window.location.assign(url),
+  openExternal: (url) => Boolean(window.open(url, "_blank", "noopener,noreferrer")),
+});
+
+export function navigateToRequestedOfferChannel(
+  input: OfferHandoffNavigationInput,
+  adapter: OfferHandoffNavigationAdapter = browserNavigationAdapter(),
+) {
+  const target = requestedOfferNavigationTarget(input);
+  if (!target) return false;
+
+  if (input.requestedChannel === "whatsapp") {
+    try {
+      if (adapter.openExternal(target)) return true;
+    } catch {
+      // A navegação na mesma aba abaixo é o fallback para bloqueadores de pop-up.
+    }
+  }
+
+  try {
+    adapter.assign(target);
+    return true;
+  } catch {
+    return false;
+  }
 }

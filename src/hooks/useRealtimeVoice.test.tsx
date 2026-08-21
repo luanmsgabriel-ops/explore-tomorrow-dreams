@@ -397,6 +397,7 @@ describe("useRealtimeVoice", () => {
     act(() => dataChannel.onmessage?.(handoffEvent));
 
     await waitFor(() => expect(result.current.offerHandoff).toEqual({
+      requestId: "handoff-1",
       offer,
       requestedChannel: "whatsapp",
       searchContext: { destination: "Maceió" },
@@ -407,6 +408,7 @@ describe("useRealtimeVoice", () => {
     expect(JSON.parse(outputEvent.item.output)).toMatchObject({
       ok: true,
       action_ready: true,
+      navigation_requested: true,
       offer_id: offer.id,
       requested_channel: "whatsapp",
     });
