@@ -7,6 +7,10 @@ export function normalizeComparisonIds(ids: string[]) {
   return [...new Set(ids.filter((id) => isPublicOfferId(id)))].slice(0, MAX_COMPARISON_ITEMS);
 }
 
+export function mergeComparisonIds(...groups: string[][]) {
+  return normalizeComparisonIds(groups.flat());
+}
+
 export function parseComparisonIds(value: string | null) {
   if (!value) return { ids: [] as string[], error: null as "invalid" | "too_many" | null };
   const requested = value.split(",").map((id) => id.trim()).filter(Boolean);
