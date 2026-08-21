@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - fix/pwa-refresh-stage5
+  pull_request:
+    branches:
+      - main
 
 jobs:
   validate:
