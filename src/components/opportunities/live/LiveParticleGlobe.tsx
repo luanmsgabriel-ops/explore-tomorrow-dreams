@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { Mic } from "lucide-react";
+import { LoaderCircle, Mic, MicOff } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { createGlobeVisualEffects } from "./liveGlobeEffects";
@@ -8,6 +8,7 @@ import { resolveGlobeVisualLevel } from "./liveVisualLevel";
 import { LiveWaveBackdrop } from "./LiveWaveBackdrop";
 
 export type TomorrowLiveState = "idle" | "listening" | "thinking" | "speaking" | "offers";
+export type LiveGlobeMicrophoneState = "idle" | "connecting" | "active" | "muted";
 
 export interface LiveParticleGlobeProps {
   state: TomorrowLiveState;
@@ -15,6 +16,8 @@ export interface LiveParticleGlobeProps {
   reducedMotion?: boolean;
   lowPerformance?: boolean;
   className?: string;
+  microphoneState?: LiveGlobeMicrophoneState;
+  onMicrophoneClick?: () => void;
 }
 
 type StateStyle = {
@@ -196,6 +199,8 @@ function LiveParticleGlobeComponent({
   reducedMotion = false,
   lowPerformance = false,
   className,
+  microphoneState = "idle",
+  onMicrophoneClick,
 }: LiveParticleGlobeProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [rendererState, setRendererState] = useState<"loading" | "ready" | "fallback">("loading");
@@ -417,6 +422,13 @@ function LiveParticleGlobeComponent({
   }, [lowPerformance, reducedMotion, surfacePoints]);
 
   const activeWaveform = state === "listening" || state === "speaking";
+  const microphoneLabel = microphoneState === "connecting"
+    ? "Conectando conversa por voz pelo microfone do planeta"
+    : microphoneState === "active"
+      ? "Pausar microfone pelo controle do planeta"
+      : microphoneState === "muted"
+        ? "Reativar microfone pelo controle do planeta"
+        : "Iniciar conversa por voz pelo microfone do planeta";
 
   return (
     <figure
@@ -470,12 +482,12 @@ function LiveParticleGlobeComponent({
           <div className="absolute left-1/2 bottom-1 h-16 w-px -translate-x-1/2 bg-gradient-to-t from-tomorrow-teal/48 to-transparent" />
         </div>
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center" aria-hidden="true">
-          <p className="text-xs font-bold uppercase tracking-[0.32em] text-tomorrow-teal-soft drop-shadow-[0_0_8px_rgba(104,232,224,0.5)] sm:text-sm">
+        <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col items-center">
+          <p className="pointer-events-none text-xs font-bold uppercase tracking-[0.32em] text-tomorrow-teal-soft drop-shadow-[0_0_8px_rgba(104,232,224,0.5)] sm:text-sm" aria-hidden="true">
             {style.label}
           </p>
           <div className="mt-2 flex h-14 items-center justify-center gap-[3px] sm:h-16 sm:gap-1">
-            <div className="flex h-full items-center gap-[3px] sm:gap-1">
+            <div className="pointer-events-none flex h-full items-center gap-[3px] sm:gap-1" aria-hidden="true">
               {waveformLeft.map((height, index) => (
                 <span
                   key={`left-${index}-${height}`}
@@ -493,17 +505,29 @@ function LiveParticleGlobeComponent({
               ))}
             </div>
 
-            <span
+            <button
+              type="button"
+              aria-label={microphoneLabel}
+              aria-pressed={microphoneState === "muted"}
+              disabled={!onMicrophoneClick || microphoneState === "connecting"}
+              onClick={onMicrophoneClick}
               className={cn(
-                "mx-2 flex size-11 items-center justify-center rounded-full border border-tomorrow-teal/55 bg-[#062d32]/90 text-tomorrow-teal-soft shadow-[0_0_20px_rgba(83,238,229,0.28),inset_0_0_16px_rgba(83,238,229,0.08)] sm:mx-3 sm:size-14",
+                "opportunity-focus mx-2 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-tomorrow-teal/55 bg-[#062d32]/90 text-tomorrow-teal-soft shadow-[0_0_20px_rgba(83,238,229,0.28),inset_0_0_16px_rgba(83,238,229,0.08)] transition-[transform,border-color,box-shadow,opacity] duration-200 active:scale-95 disabled:cursor-wait disabled:opacity-70 sm:mx-3 sm:size-14 motion-safe:hover:scale-105 motion-safe:hover:border-tomorrow-teal-soft/90",
                 activeWaveform && "border-tomorrow-teal-soft/85 shadow-[0_0_34px_rgba(83,238,229,0.48),inset_0_0_20px_rgba(83,238,229,0.12)]",
                 activeWaveform && !reducedMotion && "animate-pulse",
+                microphoneState === "muted" && "border-tomorrow-gold/65 text-tomorrow-gold-soft shadow-[0_0_24px_rgba(212,175,55,0.28)]",
               )}
             >
-              <Mic className="size-5 sm:size-6" />
-            </span>
+              {microphoneState === "connecting" ? (
+                <LoaderCircle className="size-5 animate-spin sm:size-6" aria-hidden="true" />
+              ) : microphoneState === "muted" ? (
+                <MicOff className="size-5 sm:size-6" aria-hidden="true" />
+              ) : (
+                <Mic className="size-5 sm:size-6" aria-hidden="true" />
+              )}
+            </button>
 
-            <div className="flex h-full items-center gap-[3px] sm:gap-1">
+            <div className="pointer-events-none flex h-full items-center gap-[3px] sm:gap-1" aria-hidden="true">
               {waveformRight.map((height, index) => (
                 <span
                   key={`right-${index}-${height}`}
