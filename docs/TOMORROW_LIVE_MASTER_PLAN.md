@@ -889,3 +889,4 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_7_FOUNDATION.md`.
 - **Próxima ação exata:** concluir testes, revisão de segurança e PR isolado; validar sincronização/preview sem publicar automaticamente.
 - **Validação da branch:** GitHub Actions `32510615098` aprovado em testes focados, TypeScript do escopo, ESLint, build de produção e testes Deno da nova Edge Function; workflow temporário removido antes do merge.
+- **Merge e sincronização:** PR `#25` squash-mergeado em `f869bd55e4acca900024189d29a9acd84777ffda`; Lovable marcou o SHA como `completed` e `ready`. O preview privado exigiu login nesta sessão e o domínio público permaneceu na Etapa 6, logo a Etapa 7 não está publicada nem validada com áudio real.
