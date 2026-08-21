@@ -926,3 +926,15 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Merge e sincronização:** PR `#31` squash-mergeado em `4ab5ee94a1cecec9b29331ce9d54ab00efba0d1a`; Lovable reconheceu exatamente esse SHA e ficou `ready`; workflow temporária removida do diff final.
 - **Estado desta mudança:** implementada, testada, mergeada e sincronizada; não publicada e não validada em produção.
 - **Próxima ação exata:** publicar manualmente o frontend e validar em uma nova sessão real que os efeitos permanecem durante toda a fala; nenhuma reimplantação de Edge Function é necessária.
+
+### Checkpoint 2026-08-21 — Etapa 7: pronúncia brasileira no Realtime
+
+- **Estado de entrada:** `main` confirmado em `4968ed7c8eb011ed9ba2a11a1464bae13f8c9f0f`; voz `cedar`, efeitos contínuos e interrupção natural validados pelo usuário; versão funcional anterior sincronizada no Lovable e publicada.
+- **Problema validado:** a voz masculina estava correta, mas apresentava cadência e pronúncia próximas do português europeu.
+- **Diagnóstico:** `cedar` define o timbre, não uma localidade regional; a instrução anterior dizia apenas “português do Brasil” e não delimitava pronúncia, ritmo, entonação ou exclusão do português europeu.
+- **Implementação:** orientação vocal explícita para português brasileiro `pt-BR`, sotaque brasileiro neutro e vocabulário do Brasil, rejeitando pronúncia e construções do português europeu.
+- **Preservações:** voz `cedar`, modelo, VAD, WebRTC, interrupção, ferramentas, segurança e frontend mantidos; nenhum fluxo comercial, inventário, WhatsApp ou prompt externo do Téo alterado.
+- **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_7_VOICE_PT_BR.md`.
+- **Validação local:** payload server-side executado e verificado; TypeScript do módulo e global; ESLint do escopo; build Vite/PWA; `git diff --check`, todos aprovados. Deno indisponível localmente; teste Deno pendente no CI.
+- **Estado desta mudança:** implementada e testada localmente na branch `stage-7-voice-pt-br`; CI, PR, merge, sincronização, reimplantação da Edge Function e validação em produção pendentes.
+- **Próxima ação exata:** executar o teste Deno no CI, abrir PR isolado e reimplantar somente a Edge Function após merge; não republicar o frontend.
