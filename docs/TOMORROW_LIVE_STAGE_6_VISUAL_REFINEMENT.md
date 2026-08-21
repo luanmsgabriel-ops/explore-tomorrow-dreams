@@ -9,9 +9,10 @@ A primeira versão do planeta de partículas ainda apresentava leitura visual pr
 
 ## Alteração funcional
 
-Arquivo alterado:
+Arquivos alterados:
 
 - `src/components/opportunities/live/LiveParticleGlobe.tsx`
+- `src/pages/opportunitiesLive.test.tsx` (somente ajuste do rótulo acessível de `Planeta visual` para `Núcleo visual`).
 
 Mudanças:
 
@@ -25,14 +26,31 @@ Mudanças:
 - `prefers-reduced-motion` e modo de menor desempenho preservados;
 - nenhuma alteração no layout da página, Téo, WhatsApp, banco ou APIs.
 
+## Validação
+
+Primeira execução: GitHub Actions `32445364206` falhou porque o teste ainda procurava o rótulo acessível antigo `Planeta visual do Tomorrow Live`.
+
+O teste foi atualizado para o novo contrato visual `Núcleo visual do Tomorrow Live`, sem mudança de comportamento.
+
+Execução final: GitHub Actions `32445423201` = `success`.
+
+Validado:
+
+- testes focados do Tomorrow Live e design system;
+- TypeScript (`tsc --noEmit`);
+- ESLint do componente alterado;
+- build Vite/PWA.
+
+O workflow temporário `.github/workflows/live-command-core-validation.yml` foi removido antes do merge.
+
 ## Estados
 
 - IMPLEMENTADO: sim
-- TESTADO: pendente
+- TESTADO: sim
 - MERGEADO: não
 - SINCRONIZADO NO LOVABLE: não
 - PUBLICADO: não
 
 ## Próxima ação
 
-Executar testes focados, TypeScript, ESLint e build; remover workflow temporário; revisar o diff; mergear somente se toda a validação passar; depois conferir o preview do Lovable antes de publicação.
+Revisar o diff final do PR #16, mergear se estiver restrito ao núcleo visual, ao teste correspondente e a este checkpoint; depois confirmar a sincronização no Lovable e revisar o preview antes de publicação.
