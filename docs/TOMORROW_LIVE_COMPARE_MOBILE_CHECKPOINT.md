@@ -34,15 +34,35 @@ Escopo: somente `/oportunidades/comparar` e persistência da seleção de compar
 
 Nenhuma alteração em banco, migrations, Edge Functions, inventário, Téo ou WhatsApp.
 
-## Validação
+## Validação automatizada
 
-Pendente neste checkpoint até a conclusão do workflow do PR.
+GitHub Actions run: `32442182024`
+
+Resultado: `success`.
+
+Executado:
+
+- teste focado `src/pages/opportunityCompare.test.tsx`;
+- TypeScript (`tsc --noEmit`);
+- ESLint do escopo alterado;
+- build Vite/PWA.
+
+Cenários cobertos:
+
+- seleção anterior salva + nova oferta = comparação acumulada;
+- reabertura de `/oportunidades/comparar` sem `ids` recupera a seleção;
+- remoção atualiza o armazenamento persistido;
+- limite máximo de 3 e deduplicação;
+- layout mobile por cards e tabela preservada somente no desktop;
+- ofertas heterogêneas continuam sem inventar taxa, vagas ou aéreo.
+
+O workflow temporário de validação foi removido antes do merge e não integra o produto final.
 
 ## Estados
 
 - IMPLEMENTADO: sim
-- TESTADO: pendente
-- MERGEADO: pendente
+- TESTADO: sim
+- MERGEADO: pendente neste checkpoint
 - SINCRONIZADO NO LOVABLE: pendente
 - PUBLICADO: não confirmado
 - VALIDADO EM PRODUÇÃO: não
