@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 21/08/2026 |
-| Estado geral | Etapas 1 a 6 concluídas; voz, interrupção, inventário e controle móvel da Etapa 7 confirmados pelo usuário; Etapa 8 com cards flutuantes mergeados e sincronizados; refinamento de legibilidade e dimensões uniformes implementado e testado localmente |
-| Etapa atual | Etapa 8 — refinamento visual dos cards flutuantes em validação técnica |
+| Estado geral | Etapas 1 a 6 concluídas; voz, interrupção, inventário e controle móvel da Etapa 7 confirmados pelo usuário; Etapa 8 com cards flutuantes mergeados e sincronizados; refinamento de legibilidade e dimensões uniformes implementado e testado localmente e no GitHub |
+| Etapa atual | Etapa 8 — refinamento visual dos cards flutuantes em revisão no PR `#45` |
 | Último HEAD verificado | `ff953e4af2bbd9eae9c740331c214436fd0eab09` |
-| Próxima ação exata | Validar o refinamento no GitHub, revisar o PR e confirmar o mesmo SHA no Lovable; não publicar automaticamente |
+| Próxima ação exata | Revisar e mergear o PR `#45`, confirmar o SHA resultante no Lovable e validar os três cards no mobile; não publicar automaticamente |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -1010,6 +1010,7 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Implementação local:** fundo sólido `tomorrow-background` no card e no bloco de informações; altura única de `18rem`; estrutura flexível com título reservado para duas linhas e preço ancorado na base; cards esticados igualmente no deck; offsets e fases de flutuação sincronizados, preservando a profundidade 3D.
 - **Preservações:** nenhuma alteração em dados, seleção de oferta, pop-up, página pública, WhatsApp, prompt do Téo, voz, WebRTC, ferramentas, globo, banco ou Edge Function.
 - **Arquivos funcionais:** `src/components/opportunities/live/LiveOfferOverlay.tsx`; `src/components/opportunities/live/LiveOfferOverlay.test.tsx`.
-- **Validação local:** 2/2 testes focados aprovados; TypeScript isolado aprovado; ESLint do escopo aprovado; build Vite/PWA aprovado; `git diff --check` aprovado. O TypeScript global encontrou erro anterior fora do escopo em `src/components/admin/QuoteEditForm.tsx:144`.
-- **Estado desta mudança:** implementada e testada localmente; ainda não mergeada, sincronizada, publicada ou validada em preview/produção.
-- **Próxima ação exata:** executar a validação no GitHub, revisar o PR, mergear e confirmar a sincronização do mesmo SHA no Lovable; depois validar os três cards no mobile. Não publicar automaticamente.
+- **Validação:** 2/2 testes focados, TypeScript global, ESLint do escopo e build Vite/PWA aprovados no GitHub Actions `32531293737`; workflow temporário removido do diff. Localmente, os mesmos testes focados, TypeScript isolado, ESLint, build e `git diff --check` foram aprovados; o TypeScript global local encontrou erro anterior fora do escopo em `src/components/admin/QuoteEditForm.tsx:144` por divergência do lock npm histórico.
+- **PR:** `#45`, draft, mergeável e com quatro arquivos no diff final.
+- **Estado desta mudança:** implementada e testada localmente e no GitHub; ainda não mergeada, sincronizada, publicada ou validada em preview/produção.
+- **Próxima ação exata:** revisar e mergear o PR `#45`, confirmar o SHA resultante no Lovable e validar os três cards no mobile. Não publicar automaticamente.
