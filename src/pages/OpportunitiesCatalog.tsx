@@ -29,6 +29,17 @@ import {
 
 const PAGE_SIZE = 18;
 
+const PRIORITY_CATALOG_FILTERS: CatalogFilterValues = {
+  ...DEFAULT_CATALOG_FILTERS,
+  offerType: "pacote",
+  sort: "price_asc",
+};
+
+const ALL_CATALOG_FILTERS: CatalogFilterValues = {
+  ...PRIORITY_CATALOG_FILTERS,
+  offerType: "",
+};
+
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
   month: "short",
@@ -43,11 +54,11 @@ const editorialSections: Array<{
   subtype: PublicOfferSubtype;
   offerType: PublicOfferType;
 }> = [
-  { label: "Pacotes nacionais", subtype: "nacional", offerType: "pacote" },
+  { label: "Nacionais", subtype: "nacional", offerType: "pacote" },
   { label: "Internacionais", subtype: "internacional", offerType: "pacote" },
   { label: "Eventos", subtype: "evento", offerType: "pacote" },
-  { label: "Grupos guiados", subtype: "grupo_guiado", offerType: "pacote" },
-  { label: "Bloqueios aéreos", subtype: "bloqueio", offerType: "bloqueio_aereo" },
+  { label: "Grupos", subtype: "grupo_guiado", offerType: "pacote" },
+  { label: "Aéreo", subtype: "bloqueio", offerType: "bloqueio_aereo" },
 ];
 
 function formatDate(value: string | null) {
@@ -66,34 +77,31 @@ function badgesFor(item: TravelOfferCatalogItem): OpportunityCardBadge[] {
   return badges;
 }
 
-function countForSubtype(
-  facets: Awaited<ReturnType<typeof fetchTravelOfferFacets>> | undefined,
-  subtype: PublicOfferSubtype,
-) {
-  return facets?.subtypes.find((item) => item.value === subtype)?.count ?? null;
-}
-
 function countActiveFilters(filters: CatalogFilterValues) {
-  return [
-    filters.search,
-    filters.origin,
-    filters.destination,
-    filters.offerType,
-    filters.subtype,
-    filters.category,
-    filters.startDate,
-    filters.endDate,
-    filters.passengers,
-    filters.minPrice,
-    filters.maxPrice,
-    filters.onlyWithSeats ? "1" : "",
-  ].filter(Boolean).length;
+  const fields: Array<keyof CatalogFilterValues> = [
+    "search",
+    "origin",
+    "destination",
+    "offerType",
+    "subtype",
+    "category",
+    "startDate",
+    "endDate",
+    "passengers",
+    "minPrice",
+    "maxPrice",
+    "onlyWithSeats",
+    "sort",
+  ];
+
+  return fields.filter((field) => filters[field] !== PRIORITY_CATALOG_FILTERS[field]).length;
 }
 
 export default function OpportunitiesCatalog() {
-  const [draftFilters, setDraftFilters] = useState<CatalogFilterValues>(DEFAULT_CATALOG_FILTERS);
-  const [appliedFilters, setAppliedFilters] = useState<CatalogFilterValues>(DEFAULT_CATALOG_FILTERS);
+  const [draftFilters, setDraftFilters] = useState<CatalogFilterValues>(PRIORITY_CATALOG_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState<CatalogFilterValues>(PRIORITY_CATALOG_FILTERS);
   const [filterErrors, setFilterErrors] = useState<CatalogFilterErrors>({});
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [comparisonIds, setComparisonIds] = useState<string[]>([]);
   const resultsRef = useRef<HTMLElement>(null);
@@ -125,27 +133,31 @@ export default function OpportunitiesCatalog() {
     if (Object.keys(errors).length) return;
     setPage(1);
     setAppliedFilters({ ...draftFilters });
+    setFiltersOpen(false);
   };
 
   const clearFilters = () => {
-    setDraftFilters({ ...DEFAULT_CATALOG_FILTERS });
-    setAppliedFilters({ ...DEFAULT_CATALOG_FILTERS });
+    setDraftFilters({ ...PRIORITY_CATALOG_FILTERS });
+    setAppliedFilters({ ...PRIORITY_CATALOG_FILTERS });
     setFilterErrors({});
     setPage(1);
+    setFiltersOpen(false);
   };
 
-  const showAll = () => {
-    clearFilters();
+  const applyQuickFilter = (filters: CatalogFilterValues) => {
+    setDraftFilters({ ...filters });
+    setAppliedFilters({ ...filters });
+    setFilterErrors({});
+    setPage(1);
+    setFiltersOpen(false);
     resultsRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   };
+
+  const showPackages = () => applyQuickFilter(PRIORITY_CATALOG_FILTERS);
+  const showAll = () => applyQuickFilter(ALL_CATALOG_FILTERS);
 
   const applyEditorialSection = (subtype: PublicOfferSubtype, offerType: PublicOfferType) => {
-    const next = { ...DEFAULT_CATALOG_FILTERS, subtype, offerType };
-    setDraftFilters(next);
-    setAppliedFilters(next);
-    setFilterErrors({});
-    setPage(1);
-    resultsRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    applyQuickFilter({ ...PRIORITY_CATALOG_FILTERS, subtype, offerType });
   };
 
   const changePage = (nextPage: number) => {
@@ -161,8 +173,9 @@ export default function OpportunitiesCatalog() {
   };
 
   const total = catalogQuery.data?.total ?? 0;
-  const totalInventory = facetsQuery.data?.offer_types.reduce((sum, item) => sum + item.count, 0) ?? null;
   const activeFilterCount = countActiveFilters(appliedFilters);
+  const packagesActive = appliedFilters.offerType === "pacote" && !appliedFilters.subtype;
+  const allActive = appliedFilters.offerType === "" && !appliedFilters.subtype;
   const notice = catalogQuery.data?.notice || facetsQuery.data?.notice || TRAVEL_OFFERS_NOTICE;
 
   return (
@@ -182,7 +195,7 @@ export default function OpportunitiesCatalog() {
             <div className="absolute left-[8%] top-12 size-48 rounded-full bg-tomorrow-teal/10 blur-3xl" />
             <div className="absolute right-[12%] top-24 size-64 rounded-full bg-tomorrow-gold/10 blur-3xl" />
           </div>
-          <div className="relative mx-auto grid w-full max-w-[90rem] gap-6 px-4 py-9 sm:px-6 sm:py-14 lg:px-8">
+          <div className="relative mx-auto grid w-full max-w-[90rem] gap-5 px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
             <div className="max-w-4xl">
               <OpportunityBadge variant="neutral">
                 <Radar className="size-4" aria-hidden="true" />
@@ -201,74 +214,110 @@ export default function OpportunitiesCatalog() {
               </div>
             </div>
 
-            <div aria-label="Atalhos de oportunidades">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-tomorrow-muted">Explorar por tipo</p>
-              <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:overflow-visible sm:px-0">
-                <div className="flex min-w-max gap-2 sm:min-w-0 sm:flex-wrap">
-                  <button
-                    type="button"
-                    className={`opportunity-focus min-h-10 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
-                      activeFilterCount === 0
-                        ? "border-tomorrow-gold/70 bg-tomorrow-gold/12 text-tomorrow-gold-soft"
-                        : "border-tomorrow-line bg-tomorrow-surface/65 text-tomorrow-text hover:border-tomorrow-teal/60"
-                    }`}
-                    aria-pressed={activeFilterCount === 0}
-                    onClick={showAll}
-                  >
-                    Todos{totalInventory === null ? "" : ` · ${numberFormatter.format(totalInventory)}`}
-                  </button>
-                  {editorialSections.map((section) => {
-                    const count = countForSubtype(facetsQuery.data, section.subtype);
-                    const active = appliedFilters.subtype === section.subtype;
-                    return (
-                      <button
-                        key={section.subtype}
-                        type="button"
-                        className={`opportunity-focus min-h-10 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
-                          active
-                            ? "border-tomorrow-gold/70 bg-tomorrow-gold/12 text-tomorrow-gold-soft"
-                            : "border-tomorrow-line bg-tomorrow-surface/65 text-tomorrow-text hover:border-tomorrow-teal/60"
-                        }`}
-                        aria-pressed={active}
-                        onClick={() => applyEditorialSection(section.subtype, section.offerType)}
-                      >
-                        {section.label}{count === null ? "" : ` · ${numberFormatter.format(count)}`}
-                      </button>
-                    );
-                  })}
-                </div>
+            <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:overflow-visible sm:px-0" aria-label="Atalhos de oportunidades">
+              <div className="flex min-w-max gap-1.5 sm:min-w-0 sm:flex-wrap">
+                <button
+                  type="button"
+                  className={`opportunity-focus rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    packagesActive
+                      ? "border-tomorrow-gold/70 bg-tomorrow-gold/12 text-tomorrow-gold-soft"
+                      : "border-tomorrow-line bg-tomorrow-surface/60 text-tomorrow-text hover:border-tomorrow-teal/60"
+                  }`}
+                  aria-pressed={packagesActive}
+                  onClick={showPackages}
+                >
+                  Pacotes
+                </button>
+                {editorialSections.map((section) => {
+                  const active = appliedFilters.subtype === section.subtype;
+                  return (
+                    <button
+                      key={section.subtype}
+                      type="button"
+                      className={`opportunity-focus rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                        active
+                          ? "border-tomorrow-gold/70 bg-tomorrow-gold/12 text-tomorrow-gold-soft"
+                          : "border-tomorrow-line bg-tomorrow-surface/60 text-tomorrow-text hover:border-tomorrow-teal/60"
+                      }`}
+                      aria-pressed={active}
+                      onClick={() => applyEditorialSection(section.subtype, section.offerType)}
+                    >
+                      {section.label}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  className={`opportunity-focus rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    allActive
+                      ? "border-tomorrow-gold/70 bg-tomorrow-gold/12 text-tomorrow-gold-soft"
+                      : "border-tomorrow-line bg-tomorrow-surface/60 text-tomorrow-text hover:border-tomorrow-teal/60"
+                  }`}
+                  aria-pressed={allActive}
+                  onClick={showAll}
+                >
+                  Todos
+                </button>
               </div>
             </div>
           </div>
         </section>
 
-        <div className="mx-auto grid w-full max-w-[90rem] gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-          <details className="group">
-            <summary className="opportunity-focus flex cursor-pointer list-none items-center justify-between rounded-tomorrow border border-tomorrow-line bg-tomorrow-surface/65 px-4 py-3 text-tomorrow-text [&::-webkit-details-marker]:hidden">
-              <span className="flex items-center gap-2 font-semibold">
-                <SlidersHorizontal className="size-4 text-tomorrow-teal-soft" aria-hidden="true" />
-                Filtros
-                {activeFilterCount > 0 ? (
-                  <span className="rounded-full bg-tomorrow-gold/15 px-2 py-0.5 text-xs font-bold text-tomorrow-gold-soft">
-                    {activeFilterCount}
-                  </span>
-                ) : null}
-              </span>
-              <span className="text-xs font-medium text-tomorrow-muted group-open:hidden">Abrir</span>
-              <span className="hidden text-xs font-medium text-tomorrow-muted group-open:inline">Fechar</span>
-            </summary>
-            <div className="pt-3">
-              <OpportunityFilters
-                values={draftFilters}
-                facets={facetsQuery.data}
-                errors={filterErrors}
-                disabled={catalogQuery.isFetching && !catalogQuery.data}
-                onChange={setDraftFilters}
-                onApply={applyFilters}
-                onClear={clearFilters}
-              />
+        <div className="mx-auto grid w-full max-w-[90rem] gap-5 px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <button
+              type="button"
+              className="opportunity-focus inline-flex min-h-10 items-center gap-2 rounded-full border border-tomorrow-line bg-tomorrow-surface/70 px-4 py-2 text-sm font-semibold text-tomorrow-text transition-colors hover:border-tomorrow-gold/60"
+              onClick={() => setFiltersOpen(true)}
+              aria-haspopup="dialog"
+            >
+              <SlidersHorizontal className="size-4 text-tomorrow-teal-soft" aria-hidden="true" />
+              Filtrar e ordenar
+              {activeFilterCount > 0 ? (
+                <span className="rounded-full bg-tomorrow-gold/15 px-2 py-0.5 text-xs font-bold text-tomorrow-gold-soft">
+                  {activeFilterCount}
+                </span>
+              ) : null}
+            </button>
+            {packagesActive && appliedFilters.sort === "price_asc" ? (
+              <span className="text-xs font-medium text-tomorrow-muted">Pacotes do menor preço para o maior</span>
+            ) : null}
+          </div>
+
+          {filtersOpen ? (
+            <div
+              className="fixed inset-0 z-50 flex items-end bg-black/75 sm:items-center sm:p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="catalog-filter-dialog-title"
+            >
+              <div className="max-h-[92vh] w-full overflow-y-auto rounded-t-tomorrow-lg border border-tomorrow-line bg-tomorrow-background p-3 shadow-2xl sm:mx-auto sm:max-w-5xl sm:rounded-tomorrow-lg sm:p-4">
+                <div className="mb-3 flex items-center justify-between gap-4 px-1">
+                  <div>
+                    <p id="catalog-filter-dialog-title" className="font-editorial text-2xl text-tomorrow-text">Filtrar oportunidades</p>
+                    <p className="mt-1 text-xs text-tomorrow-muted">A vitrine permanece priorizada por pacotes e menor preço.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="opportunity-focus grid size-10 shrink-0 place-items-center rounded-full border border-tomorrow-line text-tomorrow-text"
+                    aria-label="Fechar filtros"
+                    onClick={() => setFiltersOpen(false)}
+                  >
+                    <X className="size-5" aria-hidden="true" />
+                  </button>
+                </div>
+                <OpportunityFilters
+                  values={draftFilters}
+                  facets={facetsQuery.data}
+                  errors={filterErrors}
+                  disabled={catalogQuery.isFetching && !catalogQuery.data}
+                  onChange={setDraftFilters}
+                  onApply={applyFilters}
+                  onClear={clearFilters}
+                />
+              </div>
             </div>
-          </details>
+          ) : null}
 
           <section ref={resultsRef} className="scroll-mt-28" aria-labelledby="catalog-results-title">
             <div className="mb-5 flex flex-col gap-2 border-b border-tomorrow-line pb-4 sm:flex-row sm:items-end sm:justify-between">
