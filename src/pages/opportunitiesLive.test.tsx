@@ -41,7 +41,7 @@ describe("Tomorrow Live — Etapa 6 visual", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Pensando" }));
 
-    expect(screen.getByLabelText("Núcleo visual do Tomorrow Live — Pensando")).toHaveAttribute("data-live-state", "thinking");
+    expect(screen.getByLabelText("Globo visual do Tomorrow Live — Pensando")).toHaveAttribute("data-live-state", "thinking");
     expect(screen.getByText("Menos ruído. Mais clareza sobre o que importa.")).toBeInTheDocument();
     expect(getUserMedia).not.toHaveBeenCalled();
   });
