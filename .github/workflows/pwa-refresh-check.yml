@@ -1,0 +1,31 @@
+name: PWA refresh validation
+
+on:
+  push:
+    branches:
+      - fix/pwa-refresh-stage5
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Tests
+        run: bun run test
+
+      - name: Typecheck
+        run: bunx tsc -p tsconfig.app.json --noEmit
+
+      - name: Scoped lint
+        run: bunx eslint src/main.tsx vite.config.ts
+
+      - name: Production build
+        run: bun run build
