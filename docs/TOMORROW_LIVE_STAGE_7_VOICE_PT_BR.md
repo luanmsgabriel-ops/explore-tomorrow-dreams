@@ -44,14 +44,14 @@ A instrução da sessão Realtime agora determina:
 
 ## Estado
 
-- IMPLEMENTADO: sim, na branch isolada.
-- TESTADO: sim localmente; payload executado, TypeScript do módulo e global, ESLint, build Vite/PWA e `git diff --check` aprovados. Teste Deno pendente no CI porque o runtime não está disponível localmente.
-- MERGEADO: não.
-- SINCRONIZADO NO LOVABLE: não.
+- IMPLEMENTADO: sim.
+- TESTADO: sim; validação local aprovada e GitHub Actions `32519810390` aprovou testes Deno, TypeScript, ESLint e build.
+- MERGEADO: sim; PR `#33`, SHA funcional `5a81b02130b3356dc39f52af9c02f4b756753425`.
+- SINCRONIZADO NO LOVABLE: sim; o Lovable reconheceu o mesmo SHA e ficou `ready`.
 - EDGE FUNCTION REIMPLANTADA: não.
 - PUBLICADO: a versão anterior está publicada; esta correção server-side ainda não.
 - VALIDADO EM PRODUÇÃO: não.
 
 ## Próxima ação exata
 
-Validar o payload, executar CI e mergear somente com checks aprovados. Depois reimplantar apenas `tomorrow-live-realtime-session` e testar em uma sessão nova; não é necessário republicar o frontend.
+Reimplantar manualmente somente `tomorrow-live-realtime-session` no backend Lovable Cloud e testar em uma sessão nova. Não é necessário republicar o frontend.

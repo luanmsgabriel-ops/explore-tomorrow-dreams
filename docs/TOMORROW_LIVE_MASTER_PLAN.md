@@ -935,6 +935,7 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Implementação:** orientação vocal explícita para português brasileiro `pt-BR`, sotaque brasileiro neutro e vocabulário do Brasil, rejeitando pronúncia e construções do português europeu.
 - **Preservações:** voz `cedar`, modelo, VAD, WebRTC, interrupção, ferramentas, segurança e frontend mantidos; nenhum fluxo comercial, inventário, WhatsApp ou prompt externo do Téo alterado.
 - **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_7_VOICE_PT_BR.md`.
-- **Validação local:** payload server-side executado e verificado; TypeScript do módulo e global; ESLint do escopo; build Vite/PWA; `git diff --check`, todos aprovados. Deno indisponível localmente; teste Deno pendente no CI.
-- **Estado desta mudança:** implementada e testada localmente na branch `stage-7-voice-pt-br`; CI, PR, merge, sincronização, reimplantação da Edge Function e validação em produção pendentes.
-- **Próxima ação exata:** executar o teste Deno no CI, abrir PR isolado e reimplantar somente a Edge Function após merge; não republicar o frontend.
+- **Validação:** payload server-side executado e verificado; TypeScript do módulo e global; ESLint do escopo; build Vite/PWA e `git diff --check` aprovados localmente; GitHub Actions `32519810390` aprovou também os testes Deno da Edge Function.
+- **Merge e sincronização:** PR `#33` squash-mergeado em `5a81b02130b3356dc39f52af9c02f4b756753425`; Lovable reconheceu exatamente esse SHA e ficou `ready`; workflow temporária removida do diff final.
+- **Estado desta mudança:** implementada, testada, mergeada e sincronizada; Edge Function ainda não reimplantada e pronúncia ainda não validada em produção.
+- **Próxima ação exata:** reimplantar manualmente somente `tomorrow-live-realtime-session` no backend Lovable Cloud e testar em uma nova sessão; não republicar o frontend.
