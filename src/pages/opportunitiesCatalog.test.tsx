@@ -92,7 +92,7 @@ const catalog = {
   per_page: 18,
   total: 20,
   total_pages: 2,
-  applied_filters: { sort: "date_asc", page: 1, per_page: 18 },
+  applied_filters: { sort: "price_asc", offer_type: "pacote", page: 1, per_page: 18 },
   updated_at: "2026-08-20T18:19:00.000Z",
   notice: facets.notice,
 };
@@ -113,15 +113,16 @@ describe("Catálogo de oportunidades", () => {
     api.fetchCatalog.mockReset().mockResolvedValue(catalog);
   });
 
-  it("consulta a página real e diferencia bloqueio de pacote sem inventar vagas ou aéreo", async () => {
+  it("prioriza pacotes por menor preço na consulta inicial", async () => {
     const { container } = renderCatalog();
 
     expect(await screen.findByText("GOL")).toBeInTheDocument();
     expect(screen.getByText("João Pessoa Essencial")).toBeInTheDocument();
     expect(api.fetchCatalog).toHaveBeenCalledWith(
-      expect.objectContaining({ page: 1, per_page: 18, sort: "date_asc" }),
+      expect.objectContaining({ page: 1, per_page: 18, sort: "price_asc", offer_type: "pacote" }),
       expect.any(AbortSignal),
     );
+    expect(screen.getByText("Pacotes do menor preço para o maior")).toBeInTheDocument();
 
     const packageCard = container.querySelector('[data-offer-id="02519000-0000-4000-8000-000000000002"]');
     expect(packageCard).not.toBeNull();
@@ -129,18 +130,37 @@ describe("Catálogo de oportunidades", () => {
     expect(within(packageCard as HTMLElement).queryByText(/vagas/i)).not.toBeInTheDocument();
   });
 
-  it("envia filtros compatíveis ao contrato e reinicia na primeira página", async () => {
+  it("mantém filtros fora da tela até o usuário clicar no botão", async () => {
     renderCatalog();
     await screen.findByText("GOL");
 
+    expect(screen.queryByLabelText("Buscar")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Filtrar e ordenar" }));
+    expect(screen.getByRole("dialog", { name: "Filtrar oportunidades" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Buscar")).toBeInTheDocument();
+  });
+
+  it("envia filtros compatíveis ao contrato e fecha o diálogo após aplicar", async () => {
+    renderCatalog();
+    await screen.findByText("GOL");
+
+    fireEvent.click(screen.getByRole("button", { name: "Filtrar e ordenar" }));
     fireEvent.change(screen.getByLabelText("Origem"), { target: { value: "Belém" } });
     fireEvent.change(screen.getByLabelText("Passageiros"), { target: { value: "2" } });
     fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
 
     await waitFor(() => expect(api.fetchCatalog).toHaveBeenLastCalledWith(
-      expect.objectContaining({ origin: "Belém", passengers: 2, page: 1, per_page: 18 }),
+      expect.objectContaining({
+        origin: "Belém",
+        passengers: 2,
+        offer_type: "pacote",
+        sort: "price_asc",
+        page: 1,
+        per_page: 18,
+      }),
       expect.any(AbortSignal),
     ));
+    expect(screen.queryByRole("dialog", { name: "Filtrar oportunidades" })).not.toBeInTheDocument();
   });
 
   it("bloqueia busca inválida antes de consultar a função", async () => {
@@ -148,6 +168,7 @@ describe("Catálogo de oportunidades", () => {
     await screen.findByText("GOL");
     const initialCalls = api.fetchCatalog.mock.calls.length;
 
+    fireEvent.click(screen.getByRole("button", { name: "Filtrar e ordenar" }));
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "Rio!" } });
     fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
 
