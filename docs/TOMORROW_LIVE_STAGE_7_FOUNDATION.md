@@ -80,11 +80,23 @@ Arquitetura atual confirmada para navegador:
 
 O workflow de validação foi criado somente na branch e removido antes do merge.
 
-## Estado antes do merge
+## Merge e sincronização
+
+- PR funcional: `#25`.
+- SHA squash-mergeado em `main`: `f869bd55e4acca900024189d29a9acd84777ffda`.
+- Lovable reconheceu o SHA como `completed`, ficou `ready` e gerou screenshot com o prefixo `id-preview-f869bd55`.
+- O preview privado redirecionou a uma tela de login do Lovable nesta sessão de validação; portanto microfone, credencial efêmera e áudio real ainda não foram validados no navegador do preview.
+- O domínio público continuou servindo a interface da Etapa 6, confirmando que a Etapa 7 não foi publicada automaticamente.
+
+## Estado após o merge
 
 - IMPLEMENTADO: sim.
 - TESTADO: sim, no escopo da fundação.
-- MERGEADO: não.
-- SINCRONIZADO NO LOVABLE: não confirmado para esta branch.
+- MERGEADO: sim, PR `#25` / SHA `f869bd55e4acca900024189d29a9acd84777ffda`.
+- SINCRONIZADO NO LOVABLE: sim, status `completed`.
 - PUBLICADO: não.
-- VALIDADO EM PREVIEW COM ÁUDIO REAL: pendente de sincronização e segredo server-side configurado.
+- VALIDADO EM PREVIEW COM ÁUDIO REAL: pendente; o preview exige sessão autenticada e a existência do segredo server-side não foi exposta nem inferida.
+
+## Próxima ação exata
+
+Validar no preview autenticado o clique explícito, permissão/negação do microfone, conexão, transcrição, estados, áudio de saída, barge-in, mute e encerramento. Se a Edge Function responder `realtime_unavailable`, configurar `OPENAI_API_KEY` exclusivamente no ambiente server-side e repetir o teste. Não publicar, alterar o Téo ou tocar no WhatsApp durante essa validação.
