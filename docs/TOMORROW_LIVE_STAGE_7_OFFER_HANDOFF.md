@@ -72,7 +72,7 @@ Campos ausentes são omitidos. Não são incluídos `raw_data`, `source_url`, UR
 ## Estado deste checkpoint
 
 - IMPLEMENTADO: sim, na branch isolada.
-- TESTADO: testes focados locais aprovados; validação completa pendente.
+- TESTADO: sim; 31 testes focados, TypeScript, ESLint, build e testes Deno aprovados localmente/GitHub Actions `32526597169`.
 - MERGEADO: não.
 - SINCRONIZADO NO LOVABLE: não.
 - EDGE FUNCTION REIMPLANTADA: não.
@@ -81,4 +81,4 @@ Campos ausentes são omitidos. Não são incluídos `raw_data`, `source_url`, UR
 
 ## Próxima ação exata
 
-Concluir TypeScript, ESLint, build, testes Deno e revisão do diff; abrir PR isolado e aguardar CI. Depois do merge, confirmar sincronização do SHA no Lovable e validar o preview. A nova declaração de ferramenta exige reimplantação manual de `tomorrow-live-realtime-session`; não publicar automaticamente.
+Revisar e mergear o PR `#39` somente com o CI aprovado; depois confirmar sincronização do SHA no Lovable e validar o preview. A nova declaração de ferramenta exige reimplantação manual de `tomorrow-live-realtime-session`; não publicar automaticamente.
