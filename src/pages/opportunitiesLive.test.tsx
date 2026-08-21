@@ -5,19 +5,26 @@ import OpportunitiesLive from "./OpportunitiesLive";
 
 const originalMatchMedia = window.matchMedia;
 const originalMediaDevices = navigator.mediaDevices;
+const originalPeerConnection = window.RTCPeerConnection;
 
-describe("Tomorrow Live — Etapa 6 visual", () => {
+describe("Tomorrow Live — Etapa 7: fundação de voz", () => {
   const getUserMedia = vi.fn();
 
   beforeEach(() => {
     getUserMedia.mockReset();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
     Object.defineProperty(navigator, "mediaDevices", {
       configurable: true,
       value: { getUserMedia },
     });
+    Object.defineProperty(window, "RTCPeerConnection", {
+      configurable: true,
+      value: vi.fn(),
+    });
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       value: originalMatchMedia,
@@ -26,14 +33,30 @@ describe("Tomorrow Live — Etapa 6 visual", () => {
       configurable: true,
       value: originalMediaDevices,
     });
+    Object.defineProperty(window, "RTCPeerConnection", {
+      configurable: true,
+      value: originalPeerConnection,
+    });
   });
 
-  it("abre a central visual sem solicitar microfone", () => {
+  it("abre a central sem solicitar microfone", () => {
     render(<OpportunitiesLive />);
 
-    expect(screen.getByText("Tomorrow Live · Interface visual")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Microfone indisponível nesta etapa" })).toBeDisabled();
+    expect(screen.getByText("Tomorrow Live · Voz em tempo real")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Iniciar conversa por voz" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Pausar microfone" })).toBeDisabled();
     expect(getUserMedia).not.toHaveBeenCalled();
+  });
+
+  it("solicita microfone somente após o clique e trata permissão negada", async () => {
+    getUserMedia.mockRejectedValueOnce(new DOMException("denied", "NotAllowedError"));
+    render(<OpportunitiesLive />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Iniciar conversa por voz" }));
+
+    expect(getUserMedia).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Permissão do microfone negada");
+    expect(screen.getAllByRole("link", { name: "Continuar por texto" }).every((link) => link.getAttribute("href") === "/teo")).toBe(true);
   });
 
   it("permite visualizar estados sem iniciar voz ou alterar dados", () => {
@@ -60,8 +83,8 @@ describe("Tomorrow Live — Etapa 6 visual", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Ver informações de privacidade" }));
 
-    expect(screen.getByRole("status")).toHaveTextContent("não acessa microfone");
-    expect(screen.getByText(/Voz em tempo real, ferramentas e consulta conversacional de estoque pertencem à Etapa 7/)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("nunca é ativado automaticamente");
+    expect(screen.getByText(/Ferramentas de inventário, cotação e WhatsApp continuam fora/)).toBeInTheDocument();
   });
 
   it("respeita preferência de movimento reduzido", async () => {

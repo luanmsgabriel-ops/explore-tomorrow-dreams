@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.travel-offers-public]
 verify_jwt = false
+
+[functions.tomorrow-live-realtime-session]
+verify_jwt = false
