@@ -84,14 +84,20 @@ Nenhum dado, link, seleção, pop-up, fluxo de voz, ferramenta Realtime, prompt,
 - `git diff --check` aprovado.
 - O TypeScript global mantém erro anterior fora do escopo em `src/components/admin/QuoteEditForm.tsx:144`.
 
+### Validação no GitHub
+
+- GitHub Actions `32531293737`: aprovado.
+- Testes focados, TypeScript global, ESLint do escopo e build Vite/PWA: aprovados com Bun.
+- Workflow temporário removido do diff após a execução.
+
 ### Estado do refinamento
 
 | Marco | Estado |
 |---|---|
 | Implementado | sim |
 | Testado localmente | sim |
-| Testado no GitHub | pendente |
-| PR | pendente |
+| Testado no GitHub | sim, Actions `32531293737` |
+| PR | `#45`, draft e mergeável |
 | Mergeado | não |
 | Sincronizado no Lovable | não para este incremento |
 | Publicado | não |
@@ -100,4 +106,4 @@ Nenhum dado, link, seleção, pop-up, fluxo de voz, ferramenta Realtime, prompt,
 
 ### Próxima ação exata
 
-Executar a validação no GitHub, revisar o PR, mergear e confirmar que o Lovable sincronizou exatamente o mesmo SHA. Depois, validar os três cards no mobile. Não publicar automaticamente.
+Revisar e mergear o PR `#45`, confirmar que o Lovable sincronizou exatamente o SHA resultante e validar os três cards no mobile. Não publicar automaticamente.
