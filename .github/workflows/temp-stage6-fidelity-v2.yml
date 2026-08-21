@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - stage-6-reference-fidelity-v2
+  pull_request:
+    branches:
+      - main
 
 jobs:
   validate:
