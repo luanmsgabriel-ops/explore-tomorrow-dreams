@@ -29,7 +29,6 @@ const statePreset: Record<TomorrowLiveState, WavePreset> = {
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
 function buildWavePath(index: number, amplitude: number, phase = 0) {
-  const width = 960;
   const segment = 120;
   const center = 118 + index * 13;
   const frequency = 0.84 + (index % 3) * 0.13;
@@ -67,7 +66,7 @@ export function LiveWaveBackdrop({
 
   const waves = useMemo(() => {
     return Array.from({ length: lineCount }, (_, index) => {
-      const depth = lineCount === 1 ? 1 : index / (lineCount - 1);
+      const depth = index / (lineCount - 1);
       const amplitude = preset.amplitude * (0.62 + effectiveLevel * 0.72) * (1 - depth * 0.18);
       const phase = index * 0.48;
       const nextPhase = phase + (state === "thinking" ? 0.18 : 0.42 + effectiveLevel * 0.22);
