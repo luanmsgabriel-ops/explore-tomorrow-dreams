@@ -19,11 +19,11 @@ export interface LiveWaveBackdropProps {
 }
 
 const statePreset: Record<TomorrowLiveState, WavePreset> = {
-  idle: { baseline: 0.14, amplitude: 20, speed: 0.72, opacity: 0.38, glow: 0.38 },
-  listening: { baseline: 0.7, amplitude: 38, speed: 1.16, opacity: 0.82, glow: 0.84 },
-  thinking: { baseline: 0.32, amplitude: 24, speed: 0.84, opacity: 0.54, glow: 0.5 },
-  speaking: { baseline: 0.86, amplitude: 46, speed: 1.42, opacity: 0.92, glow: 0.96 },
-  offers: { baseline: 0.45, amplitude: 30, speed: 0.94, opacity: 0.68, glow: 0.68 },
+  idle: { baseline: 0.14, amplitude: 31, speed: 0.72, opacity: 0.46, glow: 0.46 },
+  listening: { baseline: 0.7, amplitude: 58, speed: 1.18, opacity: 0.9, glow: 0.94 },
+  thinking: { baseline: 0.32, amplitude: 39, speed: 0.86, opacity: 0.62, glow: 0.58 },
+  speaking: { baseline: 0.86, amplitude: 68, speed: 1.46, opacity: 0.96, glow: 1 },
+  offers: { baseline: 0.45, amplitude: 48, speed: 0.98, opacity: 0.76, glow: 0.78 },
 };
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
@@ -35,11 +35,13 @@ function waveY(
   frequency: number,
   phase: number,
   index: number,
+  depth: number,
 ) {
   const primary = Math.sin(x * frequency + phase + index * 0.66);
-  const secondary = Math.sin(x * frequency * 0.43 - phase * 0.58 + index * 1.07) * 0.34;
-  const tertiary = Math.sin(x * frequency * 1.72 + phase * 0.28 + index * 0.31) * 0.12;
-  return centerY + (primary + secondary + tertiary) * amplitude;
+  const secondary = Math.sin(x * frequency * 0.47 - phase * 0.54 + index * 1.07) * 0.42;
+  const tertiary = Math.sin(x * frequency * 1.86 + phase * 0.31 + index * 0.31) * 0.16;
+  const slowEnvelope = 0.78 + Math.sin(x * 0.0022 - phase * 0.18 + index) * 0.22;
+  return centerY + (primary + secondary + tertiary) * amplitude * slowEnvelope * (1 - depth * 0.12);
 }
 
 export function LiveWaveBackdrop({
@@ -90,8 +92,7 @@ export function LiveWaveBackdrop({
       const time = reducedMotion ? 0 : timestamp / 1000;
       const midLine = (lineCount - 1) / 2;
       const scale = height / 320;
-      const step = lowPerformance ? 12 : 7;
-      const backgroundAlpha = 0.12 + level * 0.18;
+      const step = lowPerformance ? 11 : 6;
 
       context.clearRect(0, 0, width, height);
       context.save();
@@ -99,67 +100,94 @@ export function LiveWaveBackdrop({
 
       for (let index = 0; index < lineCount; index += 1) {
         const depth = Math.abs(index - midLine) / Math.max(1, midLine);
-        const centerY = height * 0.5 + (index - midLine) * height * 0.027;
-        const amplitude = preset.amplitude * scale * (0.62 + level * 0.74) * (1 - depth * 0.28);
-        const frequency = 0.0094 + (index % 4) * 0.0015;
-        const phase = time * preset.speed * (0.9 + index * 0.026);
-        const goldLine = state === "offers" && (index === 2 || index === lineCount - 3);
-        const color = goldLine ? "233,201,115" : "103,241,233";
-        const alpha = Math.max(0.12, preset.opacity * (1 - depth * 0.38));
+        const layer = index % 3;
+        const centerY = height * 0.5 + (index - midLine) * height * 0.021;
+        const amplitude =
+          preset.amplitude *
+          scale *
+          (0.74 + level * 0.78) *
+          (layer === 0 ? 1.08 : layer === 1 ? 0.88 : 0.7) *
+          (1 - depth * 0.18);
+        const frequency = 0.0108 + (index % 4) * 0.00155;
+        const phase = time * preset.speed * (0.9 + index * 0.032) * (index % 2 === 0 ? 1 : -1);
+        const permanentlyGold = index === 2 || index === lineCount - 3;
+        const goldLine = permanentlyGold && (state === "offers" || index % 2 === 0);
+        const color = goldLine ? "235,201,112" : "96,243,234";
+        const alpha = Math.max(0.13, preset.opacity * (1 - depth * 0.32));
 
+        // Far glow pass gives the wave field depth without turning it into a flat neon stripe.
         context.beginPath();
-        for (let x = -24; x <= width + 24; x += step) {
-          const y = waveY(x, centerY, amplitude, frequency, phase, index);
-          if (x === -24) context.moveTo(x, y);
+        for (let x = -32; x <= width + 32; x += step) {
+          const y = waveY(x, centerY, amplitude, frequency, phase, index, depth);
+          if (x === -32) context.moveTo(x, y);
           else context.lineTo(x, y);
         }
-        context.strokeStyle = `rgba(${color},${alpha * 0.2})`;
-        context.lineWidth = 5.5 + level * 4.2;
-        context.shadowColor = `rgba(${color},${0.26 + preset.glow * 0.46})`;
-        context.shadowBlur = lowPerformance ? 4 : 10 + level * 10;
+        context.strokeStyle = `rgba(${color},${alpha * (layer === 0 ? 0.23 : 0.14)})`;
+        context.lineWidth = (layer === 0 ? 8 : 5) + level * (layer === 0 ? 5 : 3.4);
+        context.shadowColor = `rgba(${color},${0.3 + preset.glow * 0.48})`;
+        context.shadowBlur = lowPerformance ? 4 : 13 + level * 12;
         context.stroke();
 
+        // Main crisp line.
         context.beginPath();
-        for (let x = -24; x <= width + 24; x += step) {
-          const y = waveY(x, centerY, amplitude, frequency, phase, index);
-          if (x === -24) context.moveTo(x, y);
+        for (let x = -32; x <= width + 32; x += step) {
+          const y = waveY(x, centerY, amplitude, frequency, phase, index, depth);
+          if (x === -32) context.moveTo(x, y);
           else context.lineTo(x, y);
         }
-        context.strokeStyle = `rgba(${color},${alpha})`;
-        context.lineWidth = 0.75 + level * 0.9 + (index % 4 === 0 ? 0.35 : 0);
+        context.strokeStyle = `rgba(${color},${alpha * (layer === 2 ? 0.76 : 1)})`;
+        context.lineWidth = 0.7 + level * 0.82 + (layer === 0 ? 0.45 : 0);
         context.shadowBlur = 0;
-        context.setLineDash(index % 3 === 0 ? [2, 8] : index % 3 === 1 ? [1, 11] : [6, 14]);
-        context.lineDashOffset = reducedMotion ? 0 : -time * (12 + level * 24) * (index % 2 === 0 ? 1 : -1);
+        context.setLineDash(layer === 0 ? [2, 8] : layer === 1 ? [1, 10] : [5, 13]);
+        context.lineDashOffset = reducedMotion
+          ? 0
+          : -time * (15 + level * 31) * (index % 2 === 0 ? 1 : -1);
         context.stroke();
         context.setLineDash([]);
 
-        const nodeCount = lowPerformance ? 1 : 2;
+        // Travelling nodes create the same flowing data-stream feeling as the reference.
+        const nodeCount = lowPerformance ? 1 : layer === 0 ? 3 : 2;
         for (let node = 0; node < nodeCount; node += 1) {
-          const travel = reducedMotion ? 0 : time * (22 + level * 34) * (index % 2 === 0 ? 1 : -1);
-          const nodeX = ((index * 137 + node * 281 + travel) % (width + 120) + (width + 120)) % (width + 120) - 60;
-          const nodeY = waveY(nodeX, centerY, amplitude, frequency, phase, index);
-          const goldNode = goldLine || (index + node) % 11 === 0;
+          const travel = reducedMotion
+            ? 0
+            : time * (25 + level * 42) * (index % 2 === 0 ? 1 : -1);
+          const nodeX =
+            ((index * 137 + node * 251 + travel) % (width + 140) + (width + 140)) % (width + 140) - 70;
+          const nodeY = waveY(nodeX, centerY, amplitude, frequency, phase, index, depth);
+          const goldNode = goldLine || (index * 3 + node * 5) % 13 === 0;
+          const nodeRadius = goldNode ? 2.15 + level * 0.55 : 1.2 + level * 0.72;
+
           context.beginPath();
-          context.arc(nodeX, nodeY, goldNode ? 1.9 : 1.25 + level * 0.7, 0, Math.PI * 2);
+          context.arc(nodeX, nodeY, nodeRadius, 0, Math.PI * 2);
           context.fillStyle = goldNode
-            ? `rgba(239,205,119,${0.42 + level * 0.48})`
-            : `rgba(112,247,238,${0.32 + level * 0.56})`;
-          context.shadowColor = goldNode ? "rgba(239,205,119,0.75)" : "rgba(112,247,238,0.72)";
-          context.shadowBlur = lowPerformance ? 2 : 5 + level * 5;
+            ? `rgba(239,205,119,${0.56 + level * 0.42})`
+            : `rgba(112,247,238,${0.36 + level * 0.58})`;
+          context.shadowColor = goldNode ? "rgba(239,205,119,0.92)" : "rgba(112,247,238,0.78)";
+          context.shadowBlur = lowPerformance ? 2 : goldNode ? 9 + level * 7 : 6 + level * 6;
           context.fill();
         }
       }
 
       context.shadowBlur = 0;
       context.globalCompositeOperation = "source-over";
-      context.fillStyle = `rgba(47,201,196,${backgroundAlpha})`;
-      for (let index = 0; index < (lowPerformance ? 9 : 18); index += 1) {
-        const x = ((index * 173 + (reducedMotion ? 0 : time * 9)) % (width + 80)) - 40;
-        const y = height * (0.18 + ((index * 47) % 66) / 100);
+
+      // Ambient particles behind the globe. Gold is always present, not only in the Offers state.
+      const ambientCount = lowPerformance ? 14 : 30;
+      for (let index = 0; index < ambientCount; index += 1) {
+        const travel = reducedMotion ? 0 : time * (index % 2 === 0 ? 7 : -5);
+        const x = ((index * 173 + travel) % (width + 100) + (width + 100)) % (width + 100) - 50;
+        const y = height * (0.12 + ((index * 47) % 76) / 100);
+        const goldParticle = index % 8 === 0 || index % 13 === 0;
+        const radius = goldParticle ? 1.25 + (index % 3) * 0.24 : 0.65 + (index % 3) * 0.3;
+
         context.beginPath();
-        context.arc(x, y, 0.7 + (index % 3) * 0.35, 0, Math.PI * 2);
+        context.arc(x, y, radius, 0, Math.PI * 2);
+        context.fillStyle = goldParticle
+          ? `rgba(232,196,99,${0.42 + level * 0.26})`
+          : `rgba(67,214,208,${0.22 + level * 0.24})`;
         context.fill();
       }
+
       context.restore();
 
       if (!reducedMotion) animationFrame = requestAnimationFrame(draw);
