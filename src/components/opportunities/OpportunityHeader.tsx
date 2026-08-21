@@ -19,20 +19,32 @@ export interface OpportunityHeaderProps {
   className?: string;
 }
 
+const liveNavItem: OpportunityNavItem = {
+  label: "Live",
+  href: "/oportunidades/live",
+};
+
 const calendarNavItem: OpportunityNavItem = {
   label: "Calendário",
   href: "/oportunidades/calendario",
 };
 
-function withCalendarNavigation(navItems: OpportunityNavItem[]) {
-  if (navItems.some((item) => item.href === calendarNavItem.href)) return navItems;
-  const compareIndex = navItems.findIndex((item) => item.href === "/oportunidades/comparar");
-  if (compareIndex === -1) return [...navItems, calendarNavItem];
-  return [
-    ...navItems.slice(0, compareIndex),
-    calendarNavItem,
-    ...navItems.slice(compareIndex),
-  ];
+function withPlatformNavigation(navItems: OpportunityNavItem[]) {
+  const next = [...navItems];
+
+  if (!next.some((item) => item.href === liveNavItem.href)) {
+    const catalogIndex = next.findIndex((item) => item.href === "/oportunidades/catalogo");
+    next.splice(catalogIndex >= 0 ? catalogIndex + 1 : 0, 0, liveNavItem);
+  }
+
+  if (!next.some((item) => item.href === calendarNavItem.href)) {
+    const liveIndex = next.findIndex((item) => item.href === liveNavItem.href);
+    const compareIndex = next.findIndex((item) => item.href === "/oportunidades/comparar");
+    const insertAt = liveIndex >= 0 ? liveIndex + 1 : compareIndex >= 0 ? compareIndex : next.length;
+    next.splice(insertAt, 0, calendarNavItem);
+  }
+
+  return next;
 }
 
 export function OpportunityHeader({
@@ -45,7 +57,7 @@ export function OpportunityHeader({
 }: OpportunityHeaderProps) {
   const [open, setOpen] = useState(false);
   const mobileMenuId = useId();
-  const navigationItems = withCalendarNavigation(navItems);
+  const navigationItems = withPlatformNavigation(navItems);
 
   useEffect(() => {
     if (!open) return;
