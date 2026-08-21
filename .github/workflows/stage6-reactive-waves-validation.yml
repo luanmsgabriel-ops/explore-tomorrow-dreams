@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - stage-6-reactive-waves-refinement
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
