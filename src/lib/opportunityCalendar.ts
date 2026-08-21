@@ -117,6 +117,16 @@ export function calendarSearchWindow(anchorDate: string) {
   };
 }
 
+export function calendarForwardWindow(startDate: string, maxDate?: string | null) {
+  if (!isIsoDate(startDate)) throw new Error("Data inicial inválida.");
+  if (maxDate && !isIsoDate(maxDate)) throw new Error("Data final inválida.");
+  const limit = shiftDate(startDate, 120);
+  return {
+    startDate,
+    endDate: maxDate && maxDate < limit ? maxDate : limit,
+  };
+}
+
 export function daysBetween(startDate: string, endDate: string) {
   return Math.round((parseIsoDate(endDate).getTime() - parseIsoDate(startDate).getTime()) / DAY_MS);
 }
@@ -131,6 +141,10 @@ export function shiftMonth(value: string, months: number) {
   const date = parseIsoDate(monthStart(value));
   date.setUTCMonth(date.getUTCMonth() + months);
   return toIsoDate(date);
+}
+
+export function monthEnd(value: string) {
+  return shiftDate(shiftMonth(value, 1), -1);
 }
 
 export interface CalendarMonthCell {
@@ -157,8 +171,7 @@ export function buildCalendarMonth(value: string): CalendarMonthCell[] {
 
 export function monthIntersectsWindow(month: string, startDate: string, endDate: string) {
   const first = monthStart(month);
-  const nextMonth = shiftMonth(first, 1);
-  const last = shiftDate(nextMonth, -1);
+  const last = monthEnd(first);
   return last >= startDate && first <= endDate;
 }
 

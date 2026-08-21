@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
   CalendarDays,
@@ -24,19 +24,20 @@ import { comparisonHref } from "@/lib/opportunityComparison";
 import {
   buildCalendarMonth,
   calculatePriceBands,
-  calendarSearchWindow,
+  calendarForwardWindow,
   fetchOpportunityCalendar,
-  monthIntersectsWindow,
+  monthEnd,
   monthStart,
   priceBand,
+  shiftDate,
   shiftMonth,
   singleCalendarCurrency,
   type OpportunityCalendarDate,
 } from "@/lib/opportunityCalendar";
 import {
   TRAVEL_OFFERS_NOTICE,
+  fetchTravelCalendarFacets,
   fetchTravelOfferCatalog,
-  fetchTravelOfferFacets,
   type PublicOfferType,
   type TravelOfferCatalogItem,
 } from "@/lib/travelOffersPublic";
@@ -102,66 +103,150 @@ type SearchState = {
   origin: string;
   destination: string;
   passengers: number;
-  anchorDate: string;
   offerType: "" | PublicOfferType;
 };
 
+type AppliedSearch = SearchState & {
+  minDate: string;
+  maxDate: string;
+  priceRanges: Array<{ currency: string | null; min: number; max: number }>;
+  notice: string;
+};
+
 type SearchErrors = Partial<Record<keyof SearchState, string>>;
+type CalendarWindow = { startDate: string; endDate: string };
 
 const initialSearch: SearchState = {
   origin: "",
   destination: "",
   passengers: 1,
-  anchorDate: "",
   offerType: "",
 };
 
 export default function OpportunitiesCalendar() {
   const [draft, setDraft] = useState<SearchState>(initialSearch);
-  const [applied, setApplied] = useState<SearchState | null>(null);
+  const [confirmed, setConfirmed] = useState<SearchState | null>(null);
+  const [applied, setApplied] = useState<AppliedSearch | null>(null);
   const [errors, setErrors] = useState<SearchErrors>({});
   const [visibleMonth, setVisibleMonth] = useState<string>(monthStart(new Date().toISOString().slice(0, 10)));
+  const [calendarWindows, setCalendarWindows] = useState<CalendarWindow[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [comparisonIds, setComparisonIds] = useState<string[]>([]);
 
-  const facetsQuery = useQuery({
-    queryKey: ["travel-offers-public", "facets"],
-    queryFn: ({ signal }) => fetchTravelOfferFacets(signal),
+  const originFacetParams = useMemo(
+    () => draft.offerType ? { offer_type: draft.offerType } : {},
+    [draft.offerType],
+  );
+
+  const originFacetsQuery = useQuery({
+    queryKey: ["travel-offers-public", "calendar_facets", "origins", originFacetParams],
+    queryFn: ({ signal }) => fetchTravelCalendarFacets(originFacetParams, signal),
     staleTime: 5 * 60_000,
     retry: 1,
   });
 
-  useEffect(() => {
-    const firstDate = facetsQuery.data?.date_range.min;
-    if (!firstDate) return;
-    setDraft((current) => current.anchorDate ? current : { ...current, anchorDate: firstDate });
-  }, [facetsQuery.data?.date_range.min]);
+  const destinationFacetParams = useMemo(() => draft.origin ? {
+    origin: draft.origin,
+    ...(draft.offerType ? { offer_type: draft.offerType } : {}),
+  } : null, [draft.origin, draft.offerType]);
 
-  const searchWindow = useMemo(
-    () => applied ? calendarSearchWindow(applied.anchorDate) : null,
-    [applied],
-  );
+  const destinationFacetsQuery = useQuery({
+    queryKey: ["travel-offers-public", "calendar_facets", "destinations", destinationFacetParams],
+    queryFn: ({ signal }) => fetchTravelCalendarFacets(destinationFacetParams!, signal),
+    enabled: Boolean(destinationFacetParams),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
 
-  const calendarParams = useMemo(() => {
-    if (!applied || !searchWindow) return null;
-    return {
-      origin: applied.origin,
-      destination: applied.destination,
-      start_date: searchWindow.startDate,
-      end_date: searchWindow.endDate,
-      passengers: applied.passengers,
-      ...(applied.offerType ? { offer_type: applied.offerType } : {}),
-    };
-  }, [applied, searchWindow]);
+  const routeFacetParams = useMemo(() => confirmed ? {
+    origin: confirmed.origin,
+    destination: confirmed.destination,
+    ...(confirmed.offerType ? { offer_type: confirmed.offerType } : {}),
+  } : null, [confirmed]);
 
-  const calendarQuery = useQuery({
-    queryKey: ["travel-offers-public", "calendar", calendarParams],
-    queryFn: ({ signal }) => fetchOpportunityCalendar(calendarParams!, signal),
-    enabled: Boolean(calendarParams),
-    placeholderData: keepPreviousData,
+  const routeFacetsQuery = useQuery({
+    queryKey: ["travel-offers-public", "calendar_facets", "route", routeFacetParams],
+    queryFn: ({ signal }) => fetchTravelCalendarFacets(routeFacetParams!, signal),
+    enabled: Boolean(routeFacetParams),
     staleTime: 60_000,
     retry: 1,
   });
+
+  useEffect(() => {
+    if (!confirmed || !routeFacetsQuery.data) return;
+    const minDate = routeFacetsQuery.data.date_range.min;
+    const maxDate = routeFacetsQuery.data.date_range.max;
+    setSelectedDate(null);
+    setComparisonIds([]);
+    if (!minDate || !maxDate) {
+      setApplied(null);
+      setCalendarWindows([]);
+      return;
+    }
+
+    const nextApplied: AppliedSearch = {
+      ...confirmed,
+      minDate,
+      maxDate,
+      priceRanges: routeFacetsQuery.data.price_ranges,
+      notice: routeFacetsQuery.data.notice,
+    };
+    setApplied(nextApplied);
+    setVisibleMonth(monthStart(minDate));
+    setCalendarWindows([calendarForwardWindow(minDate, maxDate)]);
+  }, [confirmed, routeFacetsQuery.data]);
+
+  const calendarQueries = useQueries({
+    queries: calendarWindows.map((window) => ({
+      queryKey: [
+        "travel-offers-public",
+        "calendar",
+        applied?.origin,
+        applied?.destination,
+        applied?.passengers,
+        applied?.offerType,
+        window.startDate,
+        window.endDate,
+      ],
+      queryFn: ({ signal }: { signal: AbortSignal }) => fetchOpportunityCalendar({
+        origin: applied!.origin,
+        destination: applied!.destination,
+        start_date: window.startDate,
+        end_date: window.endDate,
+        passengers: applied!.passengers,
+        ...(applied!.offerType ? { offer_type: applied!.offerType } : {}),
+      }, signal),
+      enabled: Boolean(applied),
+      staleTime: 60_000,
+      retry: 1,
+    })),
+  });
+
+  const loadedCalendarResponses = useMemo(
+    () => calendarQueries.flatMap((query) => query.data ? [query.data] : []),
+    [calendarQueries],
+  );
+
+  const calendarDates = useMemo(() => {
+    const byDate = new Map<string, OpportunityCalendarDate>();
+    for (const response of loadedCalendarResponses) {
+      for (const entry of response.dates) {
+        const current = byDate.get(entry.date);
+        if (!current || entry.min_price_per_person < current.min_price_per_person) byDate.set(entry.date, entry);
+      }
+    }
+    return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+  }, [loadedCalendarResponses]);
+
+  const loadedCoverageEnd = useMemo(() => {
+    const ends = loadedCalendarResponses.map((response) => response.end_date).sort();
+    return ends.at(-1) ?? null;
+  }, [loadedCalendarResponses]);
+
+  const plannedCoverageEnd = calendarWindows.at(-1)?.endDate ?? null;
+  const calendarPending = calendarQueries.some((query) => query.isPending || query.isFetching);
+  const calendarError = calendarQueries.find((query) => query.isError)?.error;
+  const totalOptions = loadedCalendarResponses.reduce((sum, response) => sum + response.total_options, 0);
 
   const compatibleParams = useMemo(() => {
     if (!applied || !selectedDate) return null;
@@ -187,25 +272,25 @@ export default function OpportunitiesCalendar() {
   });
 
   const calendarByDate = useMemo(
-    () => new Map((calendarQuery.data?.dates ?? []).map((item) => [item.date, item])),
-    [calendarQuery.data?.dates],
+    () => new Map(calendarDates.map((item) => [item.date, item])),
+    [calendarDates],
   );
 
   const bands = useMemo(
-    () => calculatePriceBands((calendarQuery.data?.dates ?? []).map((item) => item.min_price_per_person)),
-    [calendarQuery.data?.dates],
+    () => calculatePriceBands(calendarDates.map((item) => item.min_price_per_person)),
+    [calendarDates],
   );
 
-  const currency = singleCalendarCurrency(facetsQuery.data?.price_ranges);
+  const currency = singleCalendarCurrency(applied?.priceRanges);
   const monthCells = useMemo(() => buildCalendarMonth(visibleMonth), [visibleMonth]);
 
   const routeOptions = useMemo(() => {
     const routes = new Set<string>();
-    for (const date of calendarQuery.data?.dates ?? []) {
+    for (const date of calendarDates) {
       if (date.origin_iata && date.destination_iata) routes.add(`${date.origin_iata} → ${date.destination_iata}`);
     }
     return [...routes].sort();
-  }, [calendarQuery.data?.dates]);
+  }, [calendarDates]);
 
   const returnGroups = useMemo(() => {
     const groups = new Map<string, TravelOfferCatalogItem[]>();
@@ -232,7 +317,6 @@ export default function OpportunitiesCalendar() {
     if (!Number.isInteger(draft.passengers) || draft.passengers < 1 || draft.passengers > 20) {
       next.passengers = "Informe de 1 a 20 passageiros.";
     }
-    if (!draft.anchorDate) next.anchorDate = "Informe a data de referência.";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -240,11 +324,21 @@ export default function OpportunitiesCalendar() {
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
     if (!validate()) return;
-    const next = { ...draft };
-    setApplied(next);
-    setVisibleMonth(monthStart(next.anchorDate));
+    setConfirmed({ ...draft });
+    setApplied(null);
+    setCalendarWindows([]);
     setSelectedDate(null);
     setComparisonIds([]);
+  };
+
+  const changeOrigin = (origin: string) => {
+    setDraft((current) => ({ ...current, origin, destination: "" }));
+    setErrors((current) => ({ ...current, origin: undefined, destination: undefined }));
+  };
+
+  const changeType = (offerType: SearchState["offerType"]) => {
+    setDraft((current) => ({ ...current, offerType, origin: "", destination: "" }));
+    setErrors((current) => ({ ...current, origin: undefined, destination: undefined }));
   };
 
   const selectDate = (entry: OpportunityCalendarDate) => {
@@ -259,10 +353,35 @@ export default function OpportunitiesCalendar() {
     });
   };
 
-  const canPrevious = Boolean(searchWindow && monthIntersectsWindow(shiftMonth(visibleMonth, -1), searchWindow.startDate, searchWindow.endDate));
-  const canNext = Boolean(searchWindow && monthIntersectsWindow(shiftMonth(visibleMonth, 1), searchWindow.startDate, searchWindow.endDate));
+  const routeMinMonth = applied ? monthStart(applied.minDate) : null;
+  const routeMaxMonth = applied ? monthStart(applied.maxDate) : null;
+  const canPrevious = Boolean(routeMinMonth && shiftMonth(visibleMonth, -1) >= routeMinMonth);
+  const canNext = Boolean(routeMaxMonth && shiftMonth(visibleMonth, 1) <= routeMaxMonth);
+
+  const moveMonth = (direction: -1 | 1) => {
+    if (!applied) return;
+    const next = shiftMonth(visibleMonth, direction);
+    if (next < monthStart(applied.minDate) || next > monthStart(applied.maxDate)) return;
+
+    const requiredEnd = monthEnd(next) > applied.maxDate ? applied.maxDate : monthEnd(next);
+    if (direction > 0 && plannedCoverageEnd && requiredEnd > plannedCoverageEnd && plannedCoverageEnd < applied.maxDate) {
+      const nextStart = shiftDate(plannedCoverageEnd, 1);
+      setCalendarWindows((current) => [...current, calendarForwardWindow(nextStart, applied.maxDate)]);
+    }
+    setVisibleMonth(next);
+    setSelectedDate(null);
+    setComparisonIds([]);
+  };
+
+  const requiredVisibleEnd = applied
+    ? (monthEnd(visibleMonth) > applied.maxDate ? applied.maxDate : monthEnd(visibleMonth))
+    : null;
+  const visibleMonthFullyLoaded = Boolean(
+    loadedCoverageEnd && requiredVisibleEnd && loadedCoverageEnd >= requiredVisibleEnd,
+  );
   const selectedEntry = selectedDate ? calendarByDate.get(selectedDate) : undefined;
-  const notice = calendarQuery.data?.notice || facetsQuery.data?.notice || TRAVEL_OFFERS_NOTICE;
+  const notice = loadedCalendarResponses.at(-1)?.notice || applied?.notice || routeFacetsQuery.data?.notice || TRAVEL_OFFERS_NOTICE;
+  const routeUnavailable = Boolean(confirmed && routeFacetsQuery.data && (!routeFacetsQuery.data.date_range.min || !routeFacetsQuery.data.date_range.max));
 
   const fieldClass = "opportunity-focus min-h-11 w-full rounded-tomorrow border border-tomorrow-line bg-tomorrow-surface/90 px-3 py-2 text-sm text-tomorrow-text disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -283,35 +402,52 @@ export default function OpportunitiesCalendar() {
             <div className="absolute -left-20 top-10 size-72 rounded-full bg-tomorrow-teal/10 blur-3xl" />
             <div className="absolute right-0 top-16 size-80 rounded-full bg-tomorrow-gold/10 blur-3xl" />
           </div>
-          <div className="relative mx-auto grid w-full max-w-[90rem] gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+          <div className="relative mx-auto grid w-full max-w-[90rem] gap-8 px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
             <div className="max-w-4xl">
               <OpportunityBadge variant="neutral">
                 <CalendarDays className="size-4" aria-hidden="true" />
                 Calendário inteligente
               </OpportunityBadge>
-              <h1 className="mt-5 max-w-4xl font-editorial text-5xl leading-[0.94] text-tomorrow-text sm:text-6xl lg:text-7xl">
+              <h1 className="mt-5 max-w-4xl font-editorial text-4xl leading-[0.98] text-tomorrow-text sm:text-6xl lg:text-7xl">
                 Veja quando viajar pelo menor valor real disponível.
               </h1>
               <p className="mt-5 max-w-3xl text-base leading-relaxed text-tomorrow-muted sm:text-lg">
-                Consulte até 60 dias antes e 60 dias depois da sua data de referência. O calendário usa apenas o inventário válido da Tomorrow Travel e não preenche datas sem estoque.
+                Escolha a rota e consulte. O calendário abre na primeira data real disponível e carrega novos períodos somente quando a navegação exigir.
               </p>
             </div>
 
             <form onSubmit={submitSearch} className="opportunity-surface grid gap-4 rounded-tomorrow-lg border border-tomorrow-line bg-tomorrow-surface/72 p-4 shadow-tomorrow-surface sm:p-6 lg:grid-cols-6" aria-label="Pesquisar calendário de oportunidades">
               <label className="grid gap-2 lg:col-span-2">
                 <span className="text-sm font-semibold text-tomorrow-text">Origem</span>
-                <select value={draft.origin} onChange={(event) => setDraft((current) => ({ ...current, origin: event.target.value }))} className={fieldClass} aria-invalid={errors.origin ? true : undefined}>
-                  <option value="">Selecione</option>
-                  {(facetsQuery.data?.origins ?? []).map((item) => <option key={item.value} value={item.value}>{item.value}</option>)}
+                <select
+                  aria-label="Origem"
+                  value={draft.origin}
+                  onChange={(event) => changeOrigin(event.target.value)}
+                  className={fieldClass}
+                  aria-invalid={errors.origin ? true : undefined}
+                  disabled={originFacetsQuery.isPending}
+                >
+                  <option value="">{originFacetsQuery.isPending ? "Carregando..." : "Selecione"}</option>
+                  {(originFacetsQuery.data?.origins ?? []).map((item) => <option key={item.value} value={item.value}>{item.value}</option>)}
                 </select>
                 {errors.origin ? <span className="text-xs text-tomorrow-danger">{errors.origin}</span> : null}
               </label>
 
               <label className="grid gap-2 lg:col-span-2">
                 <span className="text-sm font-semibold text-tomorrow-text">Destino</span>
-                <select value={draft.destination} onChange={(event) => setDraft((current) => ({ ...current, destination: event.target.value }))} className={fieldClass} aria-invalid={errors.destination ? true : undefined}>
-                  <option value="">Selecione</option>
-                  {(facetsQuery.data?.destinations ?? []).map((item) => <option key={item.value} value={item.value}>{item.value}</option>)}
+                <select
+                  aria-label="Destino"
+                  value={draft.destination}
+                  onChange={(event) => {
+                    setDraft((current) => ({ ...current, destination: event.target.value }));
+                    setErrors((current) => ({ ...current, destination: undefined }));
+                  }}
+                  className={fieldClass}
+                  aria-invalid={errors.destination ? true : undefined}
+                  disabled={!draft.origin || destinationFacetsQuery.isPending}
+                >
+                  <option value="">{!draft.origin ? "Escolha a origem primeiro" : destinationFacetsQuery.isPending ? "Carregando..." : "Selecione"}</option>
+                  {(destinationFacetsQuery.data?.destinations ?? []).map((item) => <option key={item.value} value={item.value}>{item.value}</option>)}
                 </select>
                 {errors.destination ? <span className="text-xs text-tomorrow-danger">{errors.destination}</span> : null}
               </label>
@@ -320,37 +456,22 @@ export default function OpportunitiesCalendar() {
                 <span className="text-sm font-semibold text-tomorrow-text">Passageiros</span>
                 <div className="relative">
                   <UsersRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-tomorrow-teal-soft" aria-hidden="true" />
-                  <input type="number" min={1} max={20} value={draft.passengers} onChange={(event) => setDraft((current) => ({ ...current, passengers: Number(event.target.value) }))} className={`${fieldClass} pl-10`} aria-invalid={errors.passengers ? true : undefined} />
+                  <input aria-label="Passageiros" type="number" min={1} max={20} value={draft.passengers} onChange={(event) => setDraft((current) => ({ ...current, passengers: Number(event.target.value) }))} className={`${fieldClass} pl-10`} aria-invalid={errors.passengers ? true : undefined} />
                 </div>
                 {errors.passengers ? <span className="text-xs text-tomorrow-danger">{errors.passengers}</span> : null}
               </label>
 
               <label className="grid gap-2">
                 <span className="text-sm font-semibold text-tomorrow-text">Tipo</span>
-                <select value={draft.offerType} onChange={(event) => setDraft((current) => ({ ...current, offerType: event.target.value as SearchState["offerType"] }))} className={fieldClass}>
+                <select aria-label="Tipo" value={draft.offerType} onChange={(event) => changeType(event.target.value as SearchState["offerType"])} className={fieldClass}>
                   <option value="">Todos</option>
                   <option value="bloqueio_aereo">Bloqueios aéreos</option>
                   <option value="pacote">Pacotes</option>
                 </select>
               </label>
 
-              <label className="grid gap-2 lg:col-span-2">
-                <span className="text-sm font-semibold text-tomorrow-text">Data de referência</span>
-                <input
-                  type="date"
-                  value={draft.anchorDate}
-                  min={facetsQuery.data?.date_range.min ?? undefined}
-                  max={facetsQuery.data?.date_range.max ?? undefined}
-                  onChange={(event) => setDraft((current) => ({ ...current, anchorDate: event.target.value }))}
-                  className={fieldClass}
-                  aria-invalid={errors.anchorDate ? true : undefined}
-                />
-                <span className="text-xs text-tomorrow-muted">A busca cobre uma janela total de 120 dias ao redor desta data.</span>
-                {errors.anchorDate ? <span className="text-xs text-tomorrow-danger">{errors.anchorDate}</span> : null}
-              </label>
-
-              <div className="flex items-end lg:col-span-4">
-                <OpportunityButton type="submit" size="lg" fullWidth disabled={facetsQuery.isPending}>
+              <div className="flex items-end lg:col-span-6">
+                <OpportunityButton type="submit" size="lg" fullWidth disabled={originFacetsQuery.isPending || routeFacetsQuery.isFetching}>
                   <Search aria-hidden="true" />
                   Consultar calendário
                 </OpportunityButton>
@@ -360,93 +481,109 @@ export default function OpportunitiesCalendar() {
         </section>
 
         <div className="mx-auto grid w-full max-w-[90rem] gap-8 px-4 py-8 sm:px-6 lg:px-8">
-          {facetsQuery.isError ? (
-            <OpportunityState state="error" title="Não foi possível carregar origens e destinos" description={facetsQuery.error instanceof Error ? facetsQuery.error.message : undefined} actionLabel="Tentar novamente" onAction={() => facetsQuery.refetch()} />
+          {originFacetsQuery.isError ? (
+            <OpportunityState state="error" title="Não foi possível carregar as origens" description={originFacetsQuery.error instanceof Error ? originFacetsQuery.error.message : undefined} actionLabel="Tentar novamente" onAction={() => originFacetsQuery.refetch()} />
           ) : null}
 
-          {!applied ? (
-            <OpportunityState state="empty" title="Escolha uma rota para abrir o calendário" description="Informe origem, destino, passageiros e uma data de referência. Nenhuma consulta de calendário é feita antes da sua confirmação." />
+          {draft.origin && destinationFacetsQuery.isError ? (
+            <OpportunityState state="error" title="Não foi possível carregar os destinos desta origem" description={destinationFacetsQuery.error instanceof Error ? destinationFacetsQuery.error.message : undefined} actionLabel="Tentar novamente" onAction={() => destinationFacetsQuery.refetch()} />
           ) : null}
 
-          {applied && calendarQuery.isPending ? <OpportunityState state="loading" title="Consultando preços por data" /> : null}
-
-          {applied && calendarQuery.isError ? (
-            <OpportunityState state="error" title="Não foi possível consultar este período" description={calendarQuery.error instanceof Error ? calendarQuery.error.message : undefined} actionLabel="Tentar novamente" onAction={() => calendarQuery.refetch()} />
+          {!confirmed ? (
+            <OpportunityState state="empty" title="Escolha uma rota para abrir o calendário" description="Informe origem, destino, passageiros e tipo. Nenhuma consulta de calendário é feita antes da sua confirmação." />
           ) : null}
 
-          {applied && calendarQuery.data ? (
+          {confirmed && routeFacetsQuery.isPending ? <OpportunityState state="loading" title="Localizando a primeira data disponível" /> : null}
+
+          {confirmed && routeFacetsQuery.isError ? (
+            <OpportunityState state="error" title="Não foi possível validar esta rota" description={routeFacetsQuery.error instanceof Error ? routeFacetsQuery.error.message : undefined} actionLabel="Tentar novamente" onAction={() => routeFacetsQuery.refetch()} />
+          ) : null}
+
+          {routeUnavailable ? (
+            <OpportunityState state="empty" title="Nenhuma data disponível para esta rota" description="Escolha outra combinação de origem, destino ou tipo de oportunidade." />
+          ) : null}
+
+          {applied ? (
             <>
               <section className="opportunity-surface overflow-hidden rounded-tomorrow-lg border border-tomorrow-line bg-tomorrow-surface/72" aria-labelledby="calendar-title">
                 <div className="grid gap-5 border-b border-tomorrow-line p-4 sm:p-6 lg:grid-cols-[1fr_auto] lg:items-center">
-                  <div>
-                    <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-tomorrow-teal-soft">
-                      <MapPin className="size-4" aria-hidden="true" />
-                      {applied.origin} → {applied.destination}
+                  <div className="min-w-0">
+                    <p className="flex min-w-0 items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-tomorrow-teal-soft">
+                      <MapPin className="size-4 shrink-0" aria-hidden="true" />
+                      <span className="break-words">{applied.origin} → {applied.destination}</span>
                     </p>
-                    <h2 id="calendar-title" className="mt-2 font-editorial text-4xl text-tomorrow-text">{formatMonth(visibleMonth)}</h2>
+                    <h2 id="calendar-title" className="mt-2 break-words font-editorial text-3xl text-tomorrow-text sm:text-4xl">{formatMonth(visibleMonth)}</h2>
                     <p className="mt-2 text-sm text-tomorrow-muted">
-                      {calendarQuery.data.total_options} opções encontradas entre {formatDate(calendarQuery.data.start_date)} e {formatDate(calendarQuery.data.end_date)}.
+                      {totalOptions} opções carregadas. Navegue pelos meses para consultar novas janelas quando necessário.
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <OpportunityButton variant="outline" size="icon" disabled={!canPrevious} aria-label="Mês anterior" onClick={() => setVisibleMonth((current) => shiftMonth(current, -1))}><ChevronLeft aria-hidden="true" /></OpportunityButton>
-                    <OpportunityButton variant="outline" size="icon" disabled={!canNext} aria-label="Próximo mês" onClick={() => setVisibleMonth((current) => shiftMonth(current, 1))}><ChevronRight aria-hidden="true" /></OpportunityButton>
+                    <OpportunityButton variant="outline" size="icon" disabled={!canPrevious} aria-label="Mês anterior" onClick={() => moveMonth(-1)}><ChevronLeft aria-hidden="true" /></OpportunityButton>
+                    <OpportunityButton variant="outline" size="icon" disabled={!canNext} aria-label="Próximo mês" onClick={() => moveMonth(1)}><ChevronRight aria-hidden="true" /></OpportunityButton>
                   </div>
                 </div>
 
-                <div className="p-2 sm:p-5">
-                  <div className="grid grid-cols-7 border-b border-tomorrow-line pb-2 text-center text-[0.65rem] font-bold uppercase tracking-[0.08em] text-tomorrow-muted sm:text-xs">
-                    {weekdays.map((day) => <span key={day}>{day}</span>)}
+                {calendarError && !visibleMonthFullyLoaded ? (
+                  <div className="p-4 sm:p-6">
+                    <OpportunityState state="error" title="Não foi possível carregar este mês" description={calendarError instanceof Error ? calendarError.message : undefined} actionLabel="Tentar novamente" onAction={() => calendarQueries.forEach((query) => { if (query.isError) void query.refetch(); })} />
                   </div>
-                  <div className="mt-2 grid grid-cols-7 gap-1 sm:gap-2">
-                    {monthCells.map((cell) => {
-                      const entry = calendarByDate.get(cell.date);
-                      const insideWindow = Boolean(searchWindow && cell.date >= searchWindow.startDate && cell.date <= searchWindow.endDate);
-                      const selectable = Boolean(cell.inMonth && insideWindow && entry);
-                      const selected = selectedDate === cell.date;
-                      const band = entry ? priceBand(entry.min_price_per_person, bands) : null;
-                      const bandClass = band === "cheap"
-                        ? "border-tomorrow-teal/70 bg-tomorrow-teal/10"
-                        : band === "mid"
-                        ? "border-tomorrow-gold/55 bg-tomorrow-gold/5"
-                        : band === "high"
-                        ? "border-tomorrow-danger/45 bg-tomorrow-danger/5"
-                        : "border-tomorrow-line bg-tomorrow-background/30";
+                ) : !visibleMonthFullyLoaded && calendarPending ? (
+                  <div className="p-4 sm:p-6"><OpportunityState state="loading" title={`Carregando ${formatMonth(visibleMonth)}`} /></div>
+                ) : (
+                  <div className="p-2 sm:p-5">
+                    <div className="grid grid-cols-7 border-b border-tomorrow-line pb-2 text-center text-[0.65rem] font-bold uppercase tracking-[0.08em] text-tomorrow-muted sm:text-xs">
+                      {weekdays.map((day) => <span key={day}>{day}</span>)}
+                    </div>
+                    <div className="mt-2 grid grid-cols-7 gap-1 sm:gap-2">
+                      {monthCells.map((cell) => {
+                        const entry = calendarByDate.get(cell.date);
+                        const insideRoute = cell.date >= applied.minDate && cell.date <= applied.maxDate;
+                        const selectable = Boolean(cell.inMonth && insideRoute && entry);
+                        const selected = selectedDate === cell.date;
+                        const band = entry ? priceBand(entry.min_price_per_person, bands) : null;
+                        const bandClass = band === "cheap"
+                          ? "border-tomorrow-teal/70 bg-tomorrow-teal/10"
+                          : band === "mid"
+                          ? "border-tomorrow-gold/55 bg-tomorrow-gold/5"
+                          : band === "high"
+                          ? "border-tomorrow-danger/45 bg-tomorrow-danger/5"
+                          : "border-tomorrow-line bg-tomorrow-background/30";
 
-                      if (!cell.inMonth) return <span key={cell.date} className="min-h-20 sm:min-h-28" aria-hidden="true" />;
+                        if (!cell.inMonth) return <span key={cell.date} className="min-h-20 sm:min-h-28" aria-hidden="true" />;
 
-                      return (
-                        <button
-                          key={cell.date}
-                          type="button"
-                          disabled={!selectable}
-                          onClick={() => entry && selectDate(entry)}
-                          className={`opportunity-focus relative min-h-20 rounded-lg border p-1 text-left transition sm:min-h-28 sm:rounded-tomorrow sm:p-2 ${bandClass} ${selected ? "ring-2 ring-tomorrow-gold ring-offset-2 ring-offset-tomorrow-background" : ""} ${!insideWindow ? "opacity-30" : ""} ${selectable ? "hover:-translate-y-0.5 hover:border-tomorrow-gold" : "cursor-default"}`}
-                          aria-pressed={selected || undefined}
-                          aria-label={entry ? `${formatDate(cell.date)}: ${formatCurrency(entry.min_price_per_person, currency)} por pessoa, ${entry.options_count} opções` : `${formatDate(cell.date)}: sem disponibilidade`}
-                        >
-                          <span className="block text-xs font-bold text-tomorrow-text sm:text-sm">{cell.day}</span>
-                          {entry ? (
-                            <>
-                              <span className="mt-2 block break-all text-[0.62rem] font-extrabold leading-tight text-tomorrow-text sm:text-xs">{compactPrice(entry.min_price_per_person)}</span>
-                              <span className="mt-1 hidden text-[0.62rem] leading-tight text-tomorrow-muted sm:block">{entry.options_count} {entry.options_count === 1 ? "opção" : "opções"}</span>
-                              {entry.min_available_seats !== null && entry.min_available_seats <= 5 ? <span className="mt-1 hidden text-[0.6rem] font-bold text-tomorrow-gold-soft lg:block">{entry.min_available_seats} {entry.min_available_seats === 1 ? "vaga" : "vagas"}</span> : null}
-                            </>
-                          ) : (
-                            <span className="mt-2 block text-[0.58rem] leading-tight text-tomorrow-muted sm:text-[0.65rem]">Sem oferta</span>
-                          )}
-                        </button>
-                      );
-                    })}
+                        return (
+                          <button
+                            key={cell.date}
+                            type="button"
+                            disabled={!selectable}
+                            onClick={() => entry && selectDate(entry)}
+                            className={`opportunity-focus relative min-h-20 min-w-0 rounded-lg border p-1 text-left transition sm:min-h-28 sm:rounded-tomorrow sm:p-2 ${bandClass} ${selected ? "ring-2 ring-tomorrow-gold ring-offset-2 ring-offset-tomorrow-background" : ""} ${!insideRoute ? "opacity-30" : ""} ${selectable ? "hover:-translate-y-0.5 hover:border-tomorrow-gold" : "cursor-default"}`}
+                            aria-pressed={selected || undefined}
+                            aria-label={entry ? `${formatDate(cell.date)}: ${formatCurrency(entry.min_price_per_person, currency)} por pessoa, ${entry.options_count} opções` : `${formatDate(cell.date)}: sem oferta`}
+                          >
+                            <span className="block text-xs font-bold text-tomorrow-text sm:text-sm">{cell.day}</span>
+                            {entry ? (
+                              <>
+                                <span className="mt-2 block break-words text-[0.58rem] font-extrabold leading-tight text-tomorrow-text sm:text-xs">{compactPrice(entry.min_price_per_person)}</span>
+                                <span className="mt-1 hidden text-[0.62rem] leading-tight text-tomorrow-muted sm:block">{entry.options_count} {entry.options_count === 1 ? "opção" : "opções"}</span>
+                                {entry.min_available_seats !== null && entry.min_available_seats <= 5 ? <span className="mt-1 hidden text-[0.6rem] font-bold text-tomorrow-gold-soft lg:block">{entry.min_available_seats} {entry.min_available_seats === 1 ? "vaga" : "vagas"}</span> : null}
+                              </>
+                            ) : (
+                              <span className="mt-2 block break-words text-[0.55rem] leading-tight text-tomorrow-muted sm:text-[0.65rem]">Sem oferta</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="grid gap-4 border-t border-tomorrow-line p-4 text-xs text-tomorrow-muted sm:p-5 lg:grid-cols-[1fr_auto] lg:items-center">
                   <div className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Legenda de preços">
                     <span className="flex items-center gap-2"><span className="size-2.5 rounded-full bg-tomorrow-teal" /> Econômica</span>
                     <span className="flex items-center gap-2"><span className="size-2.5 rounded-full bg-tomorrow-gold" /> Intermediária</span>
                     <span className="flex items-center gap-2"><span className="size-2.5 rounded-full bg-tomorrow-danger" /> Faixa mais alta</span>
-                    <span className="flex items-center gap-2"><span className="size-2.5 rounded-full border border-tomorrow-line" /> Sem disponibilidade</span>
+                    <span className="flex items-center gap-2"><span className="size-2.5 rounded-full border border-tomorrow-line" /> Sem oferta</span>
                   </div>
                   <span>{currency ? `Valores por pessoa em ${currency}.` : "A moeda é confirmada no detalhe da oferta."}</span>
                 </div>
@@ -454,22 +591,22 @@ export default function OpportunitiesCalendar() {
 
               {routeOptions.length ? (
                 <section className="opportunity-surface rounded-tomorrow border border-tomorrow-line bg-tomorrow-surface/55 p-4 sm:p-5" aria-label="Aeroportos encontrados">
-                  <p className="flex items-center gap-2 text-sm font-semibold text-tomorrow-text"><Plane className="size-4 text-tomorrow-gold" aria-hidden="true" /> Aeroportos encontrados nesta janela</p>
+                  <p className="flex items-center gap-2 text-sm font-semibold text-tomorrow-text"><Plane className="size-4 text-tomorrow-gold" aria-hidden="true" /> Aeroportos encontrados nas datas carregadas</p>
                   <div className="mt-3 flex flex-wrap gap-2">{routeOptions.map((route) => <OpportunityBadge key={route} variant="air">{route}</OpportunityBadge>)}</div>
                   {routeOptions.length > 1 ? <p className="mt-3 text-xs leading-relaxed text-tomorrow-muted">Existem combinações de aeroportos exclusivas no período. Compare a rota exata antes de escolher.</p> : null}
                 </section>
               ) : null}
 
-              {calendarQuery.data.dates.length === 0 ? (
-                <OpportunityState state="empty" title="Nenhuma data com estoque para esta rota" description="Tente outra data de referência, quantidade de passageiros ou tipo de oportunidade." />
+              {visibleMonthFullyLoaded && calendarDates.length === 0 && !calendarPending ? (
+                <OpportunityState state="empty" title="Nenhuma data com estoque para esta rota" description="Tente outra quantidade de passageiros ou tipo de oportunidade." />
               ) : null}
 
               {selectedDate ? (
                 <section className="scroll-mt-28" aria-labelledby="returns-title">
                   <div className="mb-5 flex flex-col gap-3 border-b border-tomorrow-line pb-5 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
+                    <div className="min-w-0">
                       <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-tomorrow-teal-soft"><Sparkles className="size-4" aria-hidden="true" /> Ida selecionada</p>
-                      <h2 id="returns-title" className="mt-2 font-editorial text-4xl text-tomorrow-text">Voltas compatíveis para {formatDate(selectedDate)}</h2>
+                      <h2 id="returns-title" className="mt-2 break-words font-editorial text-3xl text-tomorrow-text sm:text-4xl">Voltas compatíveis para {formatDate(selectedDate)}</h2>
                       {selectedEntry ? <p className="mt-2 text-sm text-tomorrow-muted">Menor valor do dia: {formatCurrency(selectedEntry.min_price_per_person, currency)} por pessoa.</p> : null}
                     </div>
                     <OpportunityButton variant="ghost" onClick={() => { setSelectedDate(null); setComparisonIds([]); }}><X aria-hidden="true" /> Limpar ida</OpportunityButton>
@@ -484,9 +621,9 @@ export default function OpportunitiesCalendar() {
                       {returnGroups.map(([returnDate, items]) => (
                         <div key={returnDate} className="opportunity-surface rounded-tomorrow-lg border border-tomorrow-line bg-tomorrow-surface/60 p-4 sm:p-5">
                           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                            <div>
+                            <div className="min-w-0">
                               <p className="text-xs font-bold uppercase tracking-[0.12em] text-tomorrow-muted">Retorno</p>
-                              <h3 className="mt-1 font-editorial text-3xl text-tomorrow-text">{returnDate === "unknown" ? "Data de volta não informada" : formatDate(returnDate)}</h3>
+                              <h3 className="mt-1 break-words font-editorial text-3xl text-tomorrow-text">{returnDate === "unknown" ? "Data de volta não informada" : formatDate(returnDate)}</h3>
                             </div>
                             <OpportunityBadge variant="neutral">{items.length} {items.length === 1 ? "opção" : "opções"}</OpportunityBadge>
                           </div>
@@ -497,17 +634,17 @@ export default function OpportunitiesCalendar() {
                               const limitReached = comparisonIds.length >= 3 && !selectedForComparison;
                               const best = selectedEntry?.best_option_id === item.id;
                               return (
-                                <article key={item.id} className={`rounded-tomorrow border p-4 ${best ? "border-tomorrow-gold/65 bg-tomorrow-gold/5" : "border-tomorrow-line bg-tomorrow-background/30"}`}>
-                                  <div className="flex flex-wrap items-start justify-between gap-3">
-                                    <div>
+                                <article key={item.id} className={`min-w-0 rounded-tomorrow border p-4 ${best ? "border-tomorrow-gold/65 bg-tomorrow-gold/5" : "border-tomorrow-line bg-tomorrow-background/30"}`}>
+                                  <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+                                    <div className="min-w-0">
                                       <div className="flex flex-wrap gap-2">
                                         <OpportunityBadge variant={item.kind === "air_block" ? "air" : item.offer_subtype === "grupo_guiado" ? "guided" : item.offer_subtype === "evento" ? "event" : "package"}>{item.kind === "air_block" ? "Bloqueio aéreo" : item.offer_subtype === "grupo_guiado" ? "Grupo guiado" : "Pacote"}</OpportunityBadge>
                                         {best ? <OpportunityBadge variant="neutral">Menor valor do dia</OpportunityBadge> : null}
                                       </div>
-                                      <h4 className="mt-3 font-semibold text-tomorrow-text">{optionTitle(item)}</h4>
-                                      <p className="mt-1 text-sm text-tomorrow-muted">{optionRoute(item)}</p>
+                                      <h4 className="mt-3 break-words font-semibold text-tomorrow-text">{optionTitle(item)}</h4>
+                                      <p className="mt-1 break-words text-sm text-tomorrow-muted">{optionRoute(item)}</p>
                                     </div>
-                                    <p className="font-editorial text-2xl text-tomorrow-gold-soft">{formatCurrency(item.price_per_person, item.currency)}</p>
+                                    <p className="break-words font-editorial text-2xl text-tomorrow-gold-soft">{formatCurrency(item.price_per_person, item.currency)}</p>
                                   </div>
 
                                   <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">

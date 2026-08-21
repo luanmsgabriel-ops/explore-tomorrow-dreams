@@ -7,6 +7,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 import {
+  fetchTravelCalendarFacets,
   fetchTravelOfferCatalog,
   fetchTravelOfferDetail,
   fetchTravelOfferFacets,
@@ -25,6 +26,32 @@ describe("cliente público de ofertas", () => {
     expect(invoke).toHaveBeenCalledWith("travel-offers-public", {
       body: { action: "facets", params: {} },
       signal: controller.signal,
+      timeout: 15_000,
+    });
+  });
+
+  it("consulta calendar_facets sem acessar a tabela no frontend", async () => {
+    const response = {
+      origins: [{ value: "São Paulo", count: 10 }],
+      destinations: [{ value: "Recife", count: 4 }],
+      date_range: { min: "2026-09-10", max: "2027-01-10" },
+      price_ranges: [{ currency: "BRL", min: 999, max: 3999 }],
+      updated_at: "2026-08-21T02:00:00Z",
+      notice: "Confirmação necessária",
+    };
+    invoke.mockResolvedValue({ data: response, error: null });
+
+    await expect(fetchTravelCalendarFacets({
+      origin: "São Paulo",
+      offer_type: "pacote",
+    })).resolves.toBe(response);
+
+    expect(invoke).toHaveBeenCalledWith("travel-offers-public", {
+      body: {
+        action: "calendar_facets",
+        params: { origin: "São Paulo", offer_type: "pacote" },
+      },
+      signal: undefined,
       timeout: 15_000,
     });
   });

@@ -9,9 +9,11 @@ vi.mock("@/integrations/supabase/client", () => ({
 import {
   buildCalendarMonth,
   calculatePriceBands,
+  calendarForwardWindow,
   calendarSearchWindow,
   daysBetween,
   fetchOpportunityCalendar,
+  monthEnd,
   priceBand,
   singleCalendarCurrency,
 } from "./opportunityCalendar";
@@ -55,10 +57,26 @@ describe("calendário inteligente de oportunidades", () => {
     });
   });
 
-  it("gera janela de 60 dias antes e depois dentro do limite de 120 dias", () => {
+  it("preserva a janela legada de 120 dias sem usá-la como requisito da interface", () => {
     const window = calendarSearchWindow("2026-10-15");
     expect(window).toEqual({ startDate: "2026-08-16", endDate: "2026-12-14" });
     expect(daysBetween(window.startDate, window.endDate)).toBe(120);
+  });
+
+  it("gera janelas progressivas de no máximo 120 dias e respeita o fim real da rota", () => {
+    const first = calendarForwardWindow("2026-09-10");
+    expect(first).toEqual({ startDate: "2026-09-10", endDate: "2027-01-08" });
+    expect(daysBetween(first.startDate, first.endDate)).toBe(120);
+
+    expect(calendarForwardWindow("2026-09-10", "2026-11-20")).toEqual({
+      startDate: "2026-09-10",
+      endDate: "2026-11-20",
+    });
+  });
+
+  it("calcula o último dia do mês para carregar a próxima janela apenas quando necessário", () => {
+    expect(monthEnd("2026-02-15")).toBe("2026-02-28");
+    expect(monthEnd("2028-02-01")).toBe("2028-02-29");
   });
 
   it("monta grade mensal fixa de seis semanas", () => {
