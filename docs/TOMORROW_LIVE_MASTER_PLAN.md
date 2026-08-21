@@ -972,5 +972,6 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Segurança e consentimento:** o modelo não monta dados comerciais nem controla navegação; um toque explícito abre a página ou o WhatsApp; nenhuma mensagem é enviada automaticamente; ID não pertencente à busca atual é recusado.
 - **Preservações:** nenhum prompt/componente do Téo textual, webhook, Evolution API, automação de WhatsApp, banco, migration, RLS ou visual do planeta alterado.
 - **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_7_OFFER_HANDOFF.md`.
-- **Estado desta mudança:** implementada na branch isolada; testes completos, PR, merge, sincronização e preview ainda pendentes neste checkpoint.
-- **Próxima ação exata:** concluir testes, TypeScript, ESLint, build, Deno e diff; abrir PR e aguardar CI. Após merge, confirmar sync e preview no Lovable e reimplantar manualmente somente `tomorrow-live-realtime-session`; não publicar automaticamente.
+- **Validação:** 31 testes focados, TypeScript, ESLint, build de produção, testes Deno e `git diff --check` aprovados; GitHub Actions `32526597169` concluído com sucesso; workflow temporário removido do branch.
+- **Estado desta mudança:** implementada e testada na branch isolada; PR `#39` aberto; merge, sincronização e preview ainda pendentes neste checkpoint.
+- **Próxima ação exata:** revisar e mergear o PR `#39`; após merge, confirmar sync e preview no Lovable e reimplantar manualmente somente `tomorrow-live-realtime-session`; não publicar automaticamente.
