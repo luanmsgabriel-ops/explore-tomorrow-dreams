@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import {
-  ArrowRight,
   CalendarDays,
   Headphones,
   LoaderCircle,
   MessageSquareText,
-  MessageCircle,
   Mic,
   MicOff,
   Power,
@@ -21,20 +19,18 @@ import {
 import {
   OpportunityBadge,
   OpportunityButton,
-  OpportunityCard,
   OpportunityHeader,
 } from "@/components/opportunities";
 import {
   LiveParticleGlobe,
   type TomorrowLiveState,
 } from "@/components/opportunities/live/LiveParticleGlobe";
+import { LiveOfferOverlay } from "@/components/opportunities/live/LiveOfferOverlay";
 import { useRealtimeVoice } from "@/hooks/useRealtimeVoice";
 import {
   buildOfferDetailPath,
   buildOfferWhatsAppUrl,
-  offerHandoffTitle,
 } from "@/lib/offerHandoff";
-import type { TravelOfferCatalogItem } from "@/lib/travelOffersPublic";
 
 const navItems = [
   { label: "Catálogo", href: "/oportunidades/catalogo" },
@@ -113,23 +109,6 @@ const contextCards = [
     icon: Scale,
   },
 ];
-
-const liveDateFormatter = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
-function formatLiveDate(value: string | null) {
-  if (!value) return null;
-  const date = new Date(`${value}T00:00:00Z`);
-  return Number.isNaN(date.getTime()) ? null : liveDateFormatter.format(date);
-}
-
-function liveOfferTitle(item: TravelOfferCatalogItem) {
-  return item.name || (item.kind === "air_block" ? item.airline : item.category);
-}
 
 function useAdaptiveMotion() {
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -269,6 +248,12 @@ export default function OpportunitiesLive() {
                   microphoneState={globeMicrophoneState}
                   onMicrophoneClick={connected ? toggleMute : startConversation}
                 />
+                <LiveOfferOverlay
+                  offers={offers}
+                  handoff={offerHandoff}
+                  detailPath={handoffDetailPath}
+                  whatsappUrl={handoffWhatsAppUrl}
+                />
                 <div className="pointer-events-none absolute left-[4%] top-[57%] hidden items-center gap-2 rounded-full border border-tomorrow-teal/30 bg-tomorrow-background/72 px-3 py-1.5 text-[0.67rem] font-semibold text-tomorrow-teal-soft backdrop-blur sm:flex" aria-hidden="true">
                   <span className="size-1.5 rounded-full bg-tomorrow-teal-soft shadow-tomorrow-teal" />
                   Origem
@@ -396,45 +381,6 @@ export default function OpportunitiesLive() {
                 O microfone só é solicitado após o clique e é liberado ao encerrar.
               </p>
 
-              {offerHandoff && handoffDetailPath && handoffWhatsAppUrl ? (
-                <section
-                  className="mt-4 rounded-xl border border-tomorrow-gold/35 bg-tomorrow-gold/8 p-4"
-                  aria-labelledby="live-handoff-title"
-                  aria-live="polite"
-                  data-offer-handoff-id={offerHandoff.offer.id}
-                >
-                  <OpportunityBadge variant="success">Oferta escolhida</OpportunityBadge>
-                  <h3 id="live-handoff-title" className="mt-3 font-editorial text-2xl leading-none text-tomorrow-text">
-                    {offerHandoffTitle(offerHandoff.offer)}
-                  </h3>
-                  <p className="mt-2 text-xs leading-relaxed text-tomorrow-muted">
-                    Escolha como deseja continuar. O WhatsApp abrirá com esta oportunidade real e as preferências estruturadas da busca já identificadas na mensagem.
-                  </p>
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                    <OpportunityButton
-                      asChild
-                      fullWidth
-                      variant={offerHandoff.requestedChannel === "details" ? "gold" : "outline"}
-                    >
-                      <a href={handoffDetailPath}>
-                        Ver oferta
-                        <ArrowRight aria-hidden="true" />
-                      </a>
-                    </OpportunityButton>
-                    <OpportunityButton
-                      asChild
-                      fullWidth
-                      variant={offerHandoff.requestedChannel === "details" ? "outline" : "gold"}
-                    >
-                      <a href={handoffWhatsAppUrl} target="_blank" rel="noreferrer">
-                        <MessageCircle aria-hidden="true" />
-                        WhatsApp
-                      </a>
-                    </OpportunityButton>
-                  </div>
-                </section>
-              ) : null}
-
               {error ? (
                 <div className="mt-3 rounded-xl border border-tomorrow-danger/35 bg-tomorrow-danger/8 p-3 text-xs leading-relaxed text-tomorrow-text" role="alert">
                   {error} <a href="/teo" className="font-semibold text-tomorrow-teal-soft underline underline-offset-2">Continuar por texto</a>
@@ -455,45 +401,6 @@ export default function OpportunitiesLive() {
             </aside>
           </div>
         </section>
-
-        {offers.length > 0 ? (
-          <section className="mx-auto grid w-full max-w-[90rem] gap-5 px-4 py-8 sm:px-6 lg:px-8" aria-labelledby="live-offers-title" aria-live="polite">
-            <div className="max-w-3xl">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-tomorrow-gold-soft">Inventário consultado em tempo real</p>
-              <h2 id="live-offers-title" className="mt-2 font-editorial text-4xl leading-none text-tomorrow-text sm:text-5xl">Oportunidades encontradas na conversa.</h2>
-              <p className="mt-3 text-sm leading-relaxed text-tomorrow-muted sm:text-base">
-                Os cards abaixo são os mesmos resultados públicos usados pelo Radar Tomorrow. Preços e disponibilidade permanecem sujeitos à confirmação.
-              </p>
-            </div>
-
-            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              {offers.map((item) => (
-                <OpportunityCard
-                  key={item.id}
-                  id={item.id}
-                  kind={item.kind === "air_block" ? "air_block" : "package"}
-                  title={liveOfferTitle(item)}
-                  origin={item.origin}
-                  originIata={item.origin_iata}
-                  destination={item.destination || item.destination_iata || "Destino não informado"}
-                  destinationIata={item.destination_iata}
-                  departureLabel={formatLiveDate(item.departure_date)}
-                  returnLabel={formatLiveDate(item.return_date)}
-                  nights={item.nights}
-                  pricePerPerson={item.price_per_person}
-                  taxPerPerson={item.tax_per_person}
-                  currency={item.currency}
-                  availableSeats={item.available_seats}
-                  airfareIncluded={item.airfare_included}
-                  imageUrl={item.image_url}
-                  imageAlt={item.destination ? `Vista de ${item.destination}` : "Imagem pública da oportunidade"}
-                  actionHref={`/oportunidades/oferta/${encodeURIComponent(item.id)}`}
-                  actionLabel="Ver detalhes"
-                />
-              ))}
-            </div>
-          </section>
-        ) : null}
 
         <section className="mx-auto grid w-full max-w-[90rem] gap-5 px-4 py-8 sm:px-6 lg:px-8" aria-labelledby="live-context-title">
           <div className="max-w-3xl">
