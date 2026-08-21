@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - stage-7-realtime-voice-foundation
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
