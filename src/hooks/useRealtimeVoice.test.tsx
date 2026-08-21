@@ -104,6 +104,54 @@ describe("useRealtimeVoice", () => {
     expect(result.current.audioLevel).toBe(0);
   });
 
+  it("solicita permissão e credencial efêmera em paralelo após o clique", async () => {
+    let resolvePermission!: (value: MediaStream) => void;
+    let resolveSecret!: (value: string) => void;
+    getUserMedia.mockReturnValue(new Promise<MediaStream>((resolve) => {
+      resolvePermission = resolve;
+    }));
+    fetchSecretMock.mockReturnValue(new Promise<string>((resolve) => {
+      resolveSecret = resolve;
+    }));
+    const { result } = renderHook(() => useRealtimeVoice());
+    let startPromise!: Promise<void>;
+
+    act(() => {
+      startPromise = result.current.startConversation();
+    });
+
+    await waitFor(() => {
+      expect(getUserMedia).toHaveBeenCalledTimes(1);
+      expect(fetchSecretMock).toHaveBeenCalledTimes(1);
+    });
+
+    resolvePermission(stream);
+    resolveSecret("ek_test");
+    await act(async () => startPromise);
+
+    expect(peer.createOffer).toHaveBeenCalledTimes(1);
+    act(() => result.current.endConversation());
+  });
+
+  it("mantém Falando após response.done até o áudio remoto realmente terminar", async () => {
+    const { result } = renderHook(() => useRealtimeVoice());
+
+    await act(async () => result.current.startConversation());
+    act(() => dataChannel.onopen?.(new Event("open")));
+    await waitFor(() => expect(result.current.connected).toBe(true));
+
+    act(() => dataChannel.onmessage?.(new MessageEvent("message", {
+      data: JSON.stringify({ type: "response.output_audio.delta", response_id: "response-1" }),
+    })));
+    expect(result.current.status).toBe("speaking");
+
+    act(() => dataChannel.onmessage?.(new MessageEvent("message", {
+      data: JSON.stringify({ type: "response.done", response_id: "response-1" }),
+    })));
+    expect(result.current.status).toBe("speaking");
+    act(() => result.current.endConversation());
+  });
+
   it("libera recursos quando a conexão falha", async () => {
     const { result } = renderHook(() => useRealtimeVoice());
 
@@ -139,7 +187,8 @@ describe("useRealtimeVoice", () => {
     await act(async () => startPromise);
 
     expect(track.stop).toHaveBeenCalled();
-    expect(fetchSecretMock).not.toHaveBeenCalled();
+    expect(fetchSecretMock).toHaveBeenCalledTimes(1);
+    expect((fetchSecretMock.mock.calls[0]?.[0] as AbortSignal).aborted).toBe(true);
     expect(result.current.status).toBe("idle");
     expect(result.current.connected).toBe(false);
   });

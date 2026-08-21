@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Mic } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { createGlobeVisualEffects } from "./liveGlobeEffects";
+import { preloadTomorrowLiveGlobeRuntime } from "./globeRuntime";
 import { resolveGlobeVisualLevel } from "./liveVisualLevel";
 import { LiveWaveBackdrop } from "./LiveWaveBackdrop";
 
@@ -189,7 +190,7 @@ function StaticGlobeFallback({ state }: { state: TomorrowLiveState }) {
   );
 }
 
-export function LiveParticleGlobe({
+function LiveParticleGlobeComponent({
   state,
   audioLevel,
   reducedMotion = false,
@@ -231,7 +232,7 @@ export function LiveParticleGlobe({
 
     const start = async () => {
       try {
-        const [THREE, threeGlobeModule] = await Promise.all([import("three"), import("three-globe")]);
+        const [THREE, threeGlobeModule] = await preloadTomorrowLiveGlobeRuntime();
         if (disposed) return;
 
         const ThreeGlobe = threeGlobeModule.default;
@@ -253,7 +254,7 @@ export function LiveParticleGlobe({
         renderer.domElement.setAttribute("aria-hidden", "true");
         host.replaceChildren(renderer.domElement);
 
-        const Globe = new ThreeGlobe({ waitForGlobeReady: true, animateIn: false })
+        const Globe = new ThreeGlobe({ waitForGlobeReady: false, animateIn: false })
           .globeImageUrl(EARTH_TEXTURE)
           .bumpImageUrl(EARTH_BUMP)
           .showAtmosphere(false)
@@ -451,7 +452,7 @@ export function LiveParticleGlobe({
           aria-hidden="true"
         />
 
-        {rendererState === "fallback" ? (
+        {rendererState !== "ready" ? (
           <div className="absolute inset-x-0 top-[7%] bottom-[20%] z-10 flex items-center justify-center">
             <StaticGlobeFallback state={state} />
           </div>
@@ -526,3 +527,5 @@ export function LiveParticleGlobe({
     </figure>
   );
 }
+
+export const LiveParticleGlobe = memo(LiveParticleGlobeComponent);

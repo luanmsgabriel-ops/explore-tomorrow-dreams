@@ -26,12 +26,17 @@ import { FloatingWhatsApp } from "./components/FloatingWhatsApp";
 import { TravelAdvisorChat } from "./components/TravelAdvisorChat";
 import { AnalyticsProvider } from "./components/AnalyticsProvider";
 import { useLenis } from "./hooks/useLenis";
+import { preloadTomorrowLiveGlobeRuntime } from "./components/opportunities/live/globeRuntime";
 
 const OpportunitiesCatalog = lazy(() => import("./pages/OpportunitiesCatalog"));
 const OpportunitiesCalendar = lazy(() => import("./pages/OpportunitiesCalendar"));
 const OpportunitiesLive = lazy(() => import("./pages/OpportunitiesLive"));
 const OpportunityDetail = lazy(() => import("./pages/OpportunityDetail"));
 const OpportunityCompare = lazy(() => import("./pages/OpportunityCompare"));
+
+if (typeof window !== "undefined" && window.location.pathname === "/oportunidades/live") {
+  void preloadTomorrowLiveGlobeRuntime();
+}
 
 const queryClient = new QueryClient();
 
