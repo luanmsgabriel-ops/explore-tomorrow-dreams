@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 21/08/2026 |
-| Estado geral | Etapas 1 a 6 concluídas; voz, interrupção, inventário e controle móvel da Etapa 7 confirmados pelo usuário; handoff público da oferta implementado, testado, mergeado, sincronizado e com Edge Function reimplantada |
-| Etapa atual | Etapa 8 — continuidade estruturada para o WhatsApp em implementação isolada, sem transcrição completa e sem alterar automações existentes |
-| Último HEAD verificado | `663dba996d6c2ccd6f17e966d363dc37575940cb` |
-| Próxima ação exata | Concluir CI e revisão do handoff estruturado; abrir e validar PR; sincronizar o merge no Lovable e testar manualmente o conteúdo do link de WhatsApp; não publicar automaticamente |
+| Estado geral | Etapas 1 a 6 concluídas; voz, interrupção, inventário e controle móvel da Etapa 7 confirmados pelo usuário; handoff público e contexto estruturado do WhatsApp implementados, testados, mergeados e sincronizados |
+| Etapa atual | Etapa 8 — contexto estruturado no WhatsApp concluído no código; validação manual do link preenchido no preview autenticado pendente |
+| Último HEAD verificado | `db818062c624660a753a7f5874dfbe842503e1d9` |
+| Próxima ação exata | No preview autenticado, buscar por voz com origem, destino, período e passageiros, escolher uma oferta e conferir o texto preenchido do WhatsApp; não publicar automaticamente |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -985,6 +985,7 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Privacidade:** texto livre de busca e transcrição da conversa não são repassados; nenhuma mensagem é enviada automaticamente; a abertura do WhatsApp continua exigindo toque explícito do cliente.
 - **Preservações:** nenhum prompt do Téo, ferramenta Realtime, Edge Function, webhook, Evolution API, automação de WhatsApp, banco, migration ou planeta alterado.
 - **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_8_STRUCTURED_HANDOFF.md`.
-- **Validação local:** 32/32 testes focados, TypeScript global, ESLint do escopo, build Vite/PWA e `git diff --check` aprovados. A suíte global mantém falhas anteriores em `opportunityCompare.test.tsx`, fora do diff desta etapa.
-- **Estado desta mudança:** implementada e testada localmente; PR, merge, sincronização Lovable, preview e publicação pendentes.
-- **Próxima ação exata:** executar CI no GitHub, revisar o diff, abrir PR e mergear somente após aprovação; confirmar sincronização Lovable e validar manualmente o texto do WhatsApp no preview autenticado; não publicar automaticamente.
+- **Validação:** 32/32 testes focados, TypeScript global, ESLint do escopo, build Vite/PWA e `git diff --check` aprovados localmente e no GitHub Actions `32528271041`. A suíte global mantém falhas anteriores em `opportunityCompare.test.tsx`, fora do diff desta etapa; o workflow temporário foi removido antes do merge.
+- **Merge e sincronização:** PR `#41` squash-mergeado em `db818062c624660a753a7f5874dfbe842503e1d9`; GitHub `main` confirmado exatamente nesse SHA; Lovable reconheceu o mesmo SHA e ficou `completed`/`ready`.
+- **Estado desta mudança:** implementada, testada, mergeada e sincronizada; não publicada automaticamente; validação interativa no preview autenticado pendente.
+- **Próxima ação exata:** no preview autenticado, buscar por voz com origem, destino, período e passageiros, escolher uma oferta e conferir se o WhatsApp contém a oferta correta e somente as preferências estruturadas; não publicar automaticamente.
