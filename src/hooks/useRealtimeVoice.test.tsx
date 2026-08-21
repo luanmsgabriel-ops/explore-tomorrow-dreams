@@ -38,16 +38,39 @@ describe("useRealtimeVoice", () => {
     ontrack: null,
     onconnectionstatechange: null,
   } as unknown as RTCPeerConnection;
-  const analyser = {
+  const inputAnalyser = {
     fftSize: 32,
     smoothingTimeConstant: 0,
+    connect: vi.fn(),
+    disconnect: vi.fn(),
     getByteTimeDomainData: vi.fn((samples: Uint8Array) => samples.fill(128)),
   } as unknown as AnalyserNode;
+  const outputAnalyser = {
+    fftSize: 32,
+    smoothingTimeConstant: 0,
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    getByteTimeDomainData: vi.fn((samples: Uint8Array) => samples.fill(128)),
+  } as unknown as AnalyserNode;
+  const inputSource = { connect: vi.fn(), disconnect: vi.fn() } as unknown as MediaStreamAudioSourceNode;
+  const outputSource = { connect: vi.fn(), disconnect: vi.fn() } as unknown as MediaStreamAudioSourceNode;
+  const outputMonitorGain = {
+    gain: { value: 1 },
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+  } as unknown as GainNode;
+  const audioDestination = {} as AudioDestinationNode;
   const audioContext = {
     resume: vi.fn(async () => undefined),
     close: vi.fn(async () => undefined),
-    createAnalyser: vi.fn(() => analyser),
-    createMediaStreamSource: vi.fn(() => ({ connect: vi.fn() })),
+    destination: audioDestination,
+    createAnalyser: vi.fn()
+      .mockImplementationOnce(() => inputAnalyser)
+      .mockImplementation(() => outputAnalyser),
+    createMediaStreamSource: vi.fn()
+      .mockImplementationOnce(() => inputSource)
+      .mockImplementation(() => outputSource),
+    createGain: vi.fn(() => outputMonitorGain),
   } as unknown as AudioContext;
 
   beforeEach(() => {
@@ -63,6 +86,25 @@ describe("useRealtimeVoice", () => {
     (peer.setLocalDescription as ReturnType<typeof vi.fn>).mockClear();
     (peer.setRemoteDescription as ReturnType<typeof vi.fn>).mockClear();
     (audioContext.close as ReturnType<typeof vi.fn>).mockReset().mockResolvedValue(undefined);
+    (audioContext.createAnalyser as ReturnType<typeof vi.fn>).mockReset()
+      .mockImplementationOnce(() => inputAnalyser)
+      .mockImplementation(() => outputAnalyser);
+    (audioContext.createMediaStreamSource as ReturnType<typeof vi.fn>).mockReset()
+      .mockImplementationOnce(() => inputSource)
+      .mockImplementation(() => outputSource);
+    (audioContext.createGain as ReturnType<typeof vi.fn>).mockClear();
+    (inputAnalyser.getByteTimeDomainData as ReturnType<typeof vi.fn>).mockReset()
+      .mockImplementation((samples: Uint8Array) => samples.fill(128));
+    (outputAnalyser.getByteTimeDomainData as ReturnType<typeof vi.fn>).mockReset()
+      .mockImplementation((samples: Uint8Array) => samples.fill(128));
+    (inputSource.connect as ReturnType<typeof vi.fn>).mockClear();
+    (outputSource.connect as ReturnType<typeof vi.fn>).mockClear();
+    (outputSource.disconnect as ReturnType<typeof vi.fn>).mockClear();
+    (outputAnalyser.connect as ReturnType<typeof vi.fn>).mockClear();
+    (outputAnalyser.disconnect as ReturnType<typeof vi.fn>).mockClear();
+    (outputMonitorGain.connect as ReturnType<typeof vi.fn>).mockClear();
+    (outputMonitorGain.disconnect as ReturnType<typeof vi.fn>).mockClear();
+    outputMonitorGain.gain.value = 1;
     Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia } });
     Object.defineProperty(window, "RTCPeerConnection", { configurable: true, value: vi.fn(() => peer) });
     Object.defineProperty(window, "AudioContext", { configurable: true, value: vi.fn(() => audioContext) });
@@ -149,6 +191,55 @@ describe("useRealtimeVoice", () => {
       data: JSON.stringify({ type: "response.done", response_id: "response-1" }),
     })));
     expect(result.current.status).toBe("speaking");
+    act(() => result.current.endConversation());
+  });
+
+  it("mantém o analisador do áudio remoto ativo sem duplicar o som", async () => {
+    const { result } = renderHook(() => useRealtimeVoice());
+
+    await act(async () => result.current.startConversation());
+    act(() => peer.ontrack?.({ streams: [stream], track } as unknown as RTCTrackEvent));
+
+    expect(outputSource.connect).toHaveBeenCalledWith(outputAnalyser);
+    expect(outputAnalyser.connect).toHaveBeenCalledWith(outputMonitorGain);
+    expect(outputMonitorGain.gain.value).toBe(0);
+    expect(outputMonitorGain.connect).toHaveBeenCalledWith(audioDestination);
+
+    act(() => result.current.endConversation());
+    expect(outputSource.disconnect).toHaveBeenCalled();
+    expect(outputAnalyser.disconnect).toHaveBeenCalled();
+    expect(outputMonitorGain.disconnect).toHaveBeenCalled();
+  });
+
+  it("preserva Falando durante pausas naturais e encerra só após silêncio contínuo", async () => {
+    let frameCallback: FrameRequestCallback | null = null;
+    vi.mocked(requestAnimationFrame).mockImplementation((callback) => {
+      frameCallback = callback;
+      return 1;
+    });
+    (outputAnalyser.getByteTimeDomainData as ReturnType<typeof vi.fn>)
+      .mockImplementation((samples: Uint8Array) => samples.fill(148));
+    const { result } = renderHook(() => useRealtimeVoice());
+
+    await act(async () => result.current.startConversation());
+    act(() => peer.ontrack?.({ streams: [stream], track } as unknown as RTCTrackEvent));
+    act(() => dataChannel.onmessage?.(new MessageEvent("message", {
+      data: JSON.stringify({ type: "response.output_audio.delta", response_id: "response-1" }),
+    })));
+    act(() => dataChannel.onmessage?.(new MessageEvent("message", {
+      data: JSON.stringify({ type: "response.done", response_id: "response-1" }),
+    })));
+
+    act(() => frameCallback?.(1_000));
+    expect(result.current.status).toBe("speaking");
+
+    (outputAnalyser.getByteTimeDomainData as ReturnType<typeof vi.fn>)
+      .mockImplementation((samples: Uint8Array) => samples.fill(128));
+    act(() => frameCallback?.(1_750));
+    expect(result.current.status).toBe("speaking");
+
+    act(() => frameCallback?.(1_950));
+    expect(result.current.status).toBe("idle");
     act(() => result.current.endConversation());
   });
 
