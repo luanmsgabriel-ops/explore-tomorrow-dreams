@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - fix/calendar-route-filters
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
