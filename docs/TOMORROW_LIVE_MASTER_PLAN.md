@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 21/08/2026 |
-| Estado geral | Etapas 1 a 6 concluídas; fundação de voz e primeira ferramenta pública de inventário da Etapa 7 implementadas, testadas, mergeadas e sincronizadas; usabilidade móvel do controle de voz em implementação isolada |
-| Etapa atual | Etapa 7 — tornar o microfone visual do planeta um controle real de início e mute, preservando a sessão Realtime existente |
-| Último HEAD verificado | `5e90a6a6025701e0f39eb7cedcc67e7fd4dd4f07` |
-| Próxima ação exata | Concluir validação automatizada, revisar o diff, abrir PR isolado, mergear após aprovação, conferir sincronização no Lovable e publicar somente com autorização explícita |
+| Estado geral | Etapas 1 a 6 concluídas; fundação de voz, primeira ferramenta pública de inventário e controle móvel do planeta da Etapa 7 implementados, testados, mergeados e sincronizados |
+| Etapa atual | Etapa 7 — microfone do planeta sincronizado; publicação do frontend e validação manual no mobile pendentes |
+| Último HEAD verificado | `81f93c0ca819674e02a84c319ef350680c7c83a7` |
+| Próxima ação exata | Publicar manualmente o frontend no SHA funcional e validar em dispositivo móvel início, conexão, efeitos, mute e retomada; não reimplantar Edge Function nem alterar Téo ou WhatsApp |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -959,6 +959,7 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Implementação:** o controle inicia `startConversation` quando a sessão está inativa; mostra carregamento e bloqueia toques repetidos durante `connecting`; depois de conectado, reutiliza `toggleMute` para pausar ou reativar o microfone; rótulos acessíveis e ícones acompanham os quatro estados.
 - **Preservações:** nenhuma alteração no prompt ou comportamento do Téo, WhatsApp, inventário, cotação, banco, Edge Function, áudio, globo WebGL, partículas, ondas, pedestal ou handoff.
 - **Arquivos funcionais:** `src/components/opportunities/live/LiveParticleGlobe.tsx`; `src/pages/OpportunitiesLive.tsx`; `src/pages/opportunitiesLive.test.tsx`.
-- **Validação parcial:** 7/7 testes focados aprovados; TypeScript global, ESLint do escopo, build Vite/PWA e `git diff --check` aprovados. A suíte global mantém falhas anteriores em `opportunityCompare.test.tsx`, fora do diff e reproduzidas isoladamente; os demais 68 testes globais passaram.
-- **Estado desta mudança:** implementada e testada localmente em branch isolada; ainda não commitada, mergeada, sincronizada, publicada ou validada em produção.
-- **Próxima ação exata:** revisar diff, criar commit e PR, executar CI focado, mergear somente após validação, conferir sync Lovable e não publicar automaticamente.
+- **Validação:** 7/7 testes focados da página aprovados localmente; TypeScript global, ESLint do escopo, build Vite/PWA e `git diff --check` aprovados localmente e no GitHub Actions `32525025281`. A suíte global mantém falhas anteriores em `opportunityCompare.test.tsx`, fora do diff e reproduzidas isoladamente; os demais 68 testes globais passaram.
+- **Merge e sincronização:** PR `#37` squash-mergeado no SHA funcional `81f93c0ca819674e02a84c319ef350680c7c83a7`; `main` confirmado nesse SHA; Lovable reconheceu o mesmo SHA e ficou `ready`; workflow temporário removido do diff final.
+- **Estado desta mudança:** implementada, testada, mergeada e sincronizada; não publicada automaticamente e ainda não validada em produção no mobile.
+- **Próxima ação exata:** publicar manualmente o frontend no SHA funcional e, em dispositivo móvel, tocar no microfone do planeta para validar solicitação de permissão, conexão, efeitos visuais, pause e retomada; nenhuma reimplantação de Edge Function é necessária.
