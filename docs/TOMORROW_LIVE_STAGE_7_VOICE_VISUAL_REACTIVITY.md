@@ -51,18 +51,20 @@ Nenhum arquivo ou prompt do Téo, WhatsApp, inventário, cotação, banco ou han
 - build Vite/PWA de produção: aprovado;
 - `git diff --check`: aprovado;
 - typecheck global mantém somente o erro histórico em `src/components/admin/QuoteEditForm.tsx`, fora do escopo;
-- Deno não estava disponível no ambiente local; o teste server-side atualizado deve ser executado no GitHub Actions antes do merge.
+- Deno não estava disponível no ambiente local; o teste server-side atualizado foi aprovado no GitHub Actions.
+- GitHub Actions `32515135263`: testes focados, TypeScript isolado, ESLint, build Vite/PWA e testes Deno aprovados.
+- O workflow e o `tsconfig` temporários de CI foram removidos antes do merge e não fazem parte do diff final.
 
 ## Estado
 
-- IMPLEMENTADO: sim, na branch isolada.
-- TESTADO: parcialmente; validação local aprovada e CI pendente.
-- MERGEADO: não.
-- SINCRONIZADO NO LOVABLE: não.
+- IMPLEMENTADO: sim.
+- TESTADO: sim; validação local e GitHub Actions aprovadas.
+- MERGEADO: sim; PR `#27`, SHA `625391ccab7aa9b5cba1edde5a63d01424b7974f`.
+- SINCRONIZADO NO LOVABLE: sim; SHA reconhecido como `completed` e projeto `ready`.
 - EDGE FUNCTION REIMPLANTADA: não.
 - PUBLICADO: não.
 - VALIDADO EM PRODUÇÃO: não.
 
 ## Próxima ação exata
 
-Executar CI com Deno, revisar o diff, abrir PR e fazer merge apenas se todos os checks passarem. Depois, sincronizar no Lovable, reimplantar manualmente a Edge Function para aplicar `cedar`, publicar manualmente o frontend e validar a transição contínua `thinking` → `speaking` em dispositivo real.
+Reimplantar manualmente a Edge Function para aplicar `cedar`; depois publicar manualmente o frontend e validar a transição contínua `thinking` → `speaking` em dispositivo real. Não alterar o prompt do Téo nem o WhatsApp.
