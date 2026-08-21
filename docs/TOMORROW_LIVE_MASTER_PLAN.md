@@ -9,11 +9,11 @@
 | Projeto | Tomorrow Live / Radar Tomorrow |
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
-| Última atualização | 20/08/2026 |
-| Estado geral | Etapas 1, 2 e 3 concluídas e implantadas; Etapa 4 concluída no código e validada localmente |
-| Etapa atual | Etapa 4 — detalhe e comparação sincronizados no GitHub; implantação e validação pública pendentes |
-| Último HEAD verificado | `af6d090aae6cd2642cd475a9f188c7f8f414cb17` |
-| Próxima ação exata | Sincronizar e publicar o HEAD final da Etapa 4 no Lovable; validar detalhe e comparação no domínio principal; não iniciar a Etapa 5 |
+| Última atualização | 21/08/2026 |
+| Estado geral | Etapas 1 a 6 concluídas; fundação de voz da Etapa 7 e primeira ferramenta de inventário implementadas, testadas, mergeadas e sincronizadas |
+| Etapa atual | Etapa 7 — busca pública por voz sincronizada; reimplantação da sessão Realtime, publicação do frontend e validação manual pendentes |
+| Último HEAD verificado | `cff2dd308fa779d431456f090f9a1b5c97b66727` |
+| Próxima ação exata | Reimplantar manualmente `tomorrow-live-realtime-session`, publicar manualmente o frontend no mesmo SHA e validar busca real, vazio, erro, fala e cards; não iniciar cotação ou WhatsApp |
 
 ## 2. Protocolo obrigatório de continuidade
 
@@ -939,3 +939,15 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Merge e sincronização:** PR `#33` squash-mergeado em `5a81b02130b3356dc39f52af9c02f4b756753425`; Lovable reconheceu exatamente esse SHA e ficou `ready`; workflow temporária removida do diff final.
 - **Estado desta mudança:** implementada, testada, mergeada e sincronizada; Edge Function ainda não reimplantada e pronúncia ainda não validada em produção.
 - **Próxima ação exata:** reimplantar manualmente somente `tomorrow-live-realtime-session` no backend Lovable Cloud e testar em uma nova sessão; não republicar o frontend.
+
+### Checkpoint 2026-08-21 — Etapa 7: primeira ferramenta de inventário por voz
+
+- **Estado de entrada:** pronúncia `pt-BR`, voz `cedar`, áudio bidirecional, interrupção e efeitos contínuos validados pelo usuário; `main` e Lovable confirmados em `ae244f49de1e257263756515c78ff5fd9f73d815` antes da intervenção.
+- **Diagnóstico:** a sessão Realtime ainda declarava ferramentas vazias, enquanto o inventário real já possuía o contrato público, sanitizado e validado de `travel-offers-public`.
+- **Implementação:** uma única função `search_travel_offers`, declarada no backend e limitada a filtros públicos e três resultados; ponte WebRTC deduplicada por `call_id`; execução exclusiva pela operação pública `catalog`; retorno por `function_call_output` e `response.create`; estados reais `thinking`, `offers` e `speaking`; cards reutilizados do Radar Tomorrow; falha preserva a conversa e não cria alternativa.
+- **Segurança:** nenhum acesso frontend à tabela ou RPC legada; nenhuma exposição de `raw_data`, `source_url`, credencial, Service Role ou link interno; nenhuma migration, RLS, sincronização, cotação, WhatsApp, reserva ou handoff alterado.
+- **Validação:** 33/33 testes ampliados, TypeScript isolado, ESLint, build Vite/PWA, testes Deno e `git diff --check` aprovados; GitHub Actions `32522511203` concluído com sucesso; workflow e tsconfig temporários removidos do diff final.
+- **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_7_INVENTORY_TOOL.md`.
+- **Merge e sincronização:** PR funcional `#35` squash-mergeado em `cff2dd308fa779d431456f090f9a1b5c97b66727`; GitHub `main` confirmado nesse SHA; Lovable reconheceu exatamente o mesmo SHA e ficou `ready`.
+- **Estado desta mudança:** implementada, testada, mergeada e sincronizada; Edge Function ainda não reimplantada; frontend novo ainda não publicado; busca de voz e cards ainda não validados manualmente em preview/produção.
+- **Próxima ação exata:** reimplantar manualmente `tomorrow-live-realtime-session` e publicar manualmente o frontend no SHA funcional; em uma sessão nova, testar busca com resultado, destino sem resultado, erro controlado, igualdade entre voz e cards e interrupção. Não iniciar cotação, WhatsApp ou ferramenta privada.
