@@ -46,13 +46,13 @@ Nenhum segredo, token, dado interno ou URL de fornecedor foi adicionado. Nenhuma
 
 ## Estado
 
-- IMPLEMENTADO: sim, na branch isolada.
-- TESTADO: sim, localmente.
-- MERGEADO: não.
-- SINCRONIZADO NO LOVABLE: não.
+- IMPLEMENTADO: sim.
+- TESTADO: sim, localmente e no GitHub Actions `32518120794`.
+- MERGEADO: sim; PR `#31`, SHA funcional `4ab5ee94a1cecec9b29331ce9d54ab00efba0d1a`.
+- SINCRONIZADO NO LOVABLE: sim; o Lovable reconheceu o mesmo SHA e ficou `ready`.
 - PUBLICADO: não.
 - VALIDADO EM PRODUÇÃO: não.
 
 ## Próxima ação exata
 
-Executar CI no GitHub, revisar o diff, mergear somente com checks aprovados e confirmar sincronização automática no Lovable. Não publicar automaticamente; a validação final deve ocorrer em uma nova sessão de voz no dispositivo real do usuário.
+Publicar manualmente o frontend e validar em uma nova sessão de voz no dispositivo real do usuário que os efeitos permanecem ativos durante toda a resposta. Não é necessário reimplantar a Edge Function.

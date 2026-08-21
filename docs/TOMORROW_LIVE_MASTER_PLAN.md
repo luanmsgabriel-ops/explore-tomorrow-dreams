@@ -921,7 +921,8 @@ Copiar e preencher esta estrutura ao final de cada sessão:
 - **Diagnóstico:** o `AnalyserNode` do stream remoto terminava em um grafo Web Audio sem conexão ao destino. Alguns navegadores deixam de processar esse ramo sem saída; após 420 ms sem energia detectada, a histerese devolvia o visual prematuramente a `idle`.
 - **Implementação:** monitor silencioso conectado ao destino com ganho zero para manter o analisador ativo sem duplicar o áudio; limiar de detecção ajustado para voz baixa; tolerância de 900 ms para pausas naturais; desconexão explícita de todos os novos nós ao encerrar.
 - **Preservações:** áudio audível continua no elemento WebRTC existente; `audioLevel` permanece entre 0 e 1; nenhum prompt ou fluxo do Téo, voz, WhatsApp, inventário, cotação, banco, Edge Function, globo ou handoff foi alterado.
-- **Validação local:** 25/25 testes focados, incluindo grafo silencioso, pausa natural e silêncio final; TypeScript global; ESLint do escopo; build Vite/PWA e `git diff --check`, todos aprovados.
+- **Validação:** 25/25 testes focados, incluindo grafo silencioso, pausa natural e silêncio final; TypeScript global; ESLint do escopo; build Vite/PWA e `git diff --check`, todos aprovados localmente e no GitHub Actions `32518120794` com Bun.
 - **Checkpoint técnico detalhado:** `docs/TOMORROW_LIVE_STAGE_7_OUTPUT_AUDIO_MONITOR.md`.
-- **Estado desta mudança:** implementada e testada localmente na branch `stage-7-voice-output-monitor`; CI, PR, merge, sincronização, publicação e validação em produção ainda pendentes.
-- **Próxima ação exata:** executar CI, revisar e mergear o PR isolado; confirmar sincronização no Lovable sem publicar automaticamente.
+- **Merge e sincronização:** PR `#31` squash-mergeado em `4ab5ee94a1cecec9b29331ce9d54ab00efba0d1a`; Lovable reconheceu exatamente esse SHA e ficou `ready`; workflow temporária removida do diff final.
+- **Estado desta mudança:** implementada, testada, mergeada e sincronizada; não publicada e não validada em produção.
+- **Próxima ação exata:** publicar manualmente o frontend e validar em uma nova sessão real que os efeitos permanecem durante toda a fala; nenhuma reimplantação de Edge Function é necessária.
