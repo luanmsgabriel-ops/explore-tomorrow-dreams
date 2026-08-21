@@ -30,10 +30,60 @@ const FOUNDATION_INSTRUCTIONS = [
   "Fale exclusivamente em português brasileiro (pt-BR), com respostas breves, naturais e acolhedoras.",
   "Use pronúncia, ritmo, entonação e vocabulário naturais do Brasil, com sotaque brasileiro neutro.",
   "Não use pronúncia, cadência, vocabulário ou construções do português europeu.",
-  "Esta sessão ainda não possui ferramentas de inventário, cotação ou WhatsApp.",
+  "Esta sessão possui uma ferramenta somente de leitura para buscar oportunidades reais no inventário público da Tomorrow Travel.",
+  "Use a ferramenta search_travel_offers quando o cliente pedir ofertas, preços, datas ou disponibilidade.",
+  "Apresente somente os campos devolvidos pela ferramenta e informe claramente quando nenhum resultado for encontrado.",
+  "Esta sessão não possui ferramenta de cotação, reserva, pagamento ou WhatsApp.",
   "Nunca invente preço, data, voo, hotel, aeroporto, disponibilidade, taxa ou inclusão.",
-  "Quando pedirem informação comercial específica, explique que a consulta por voz ainda não está conectada e indique o catálogo ou o modo texto.",
 ].join(" ");
+
+const TRAVEL_OFFERS_TOOL = {
+  type: "function",
+  name: "search_travel_offers",
+  description: [
+    "Busca até três oportunidades reais e atuais no inventário público da Tomorrow Travel.",
+    "Use quando o cliente pedir ofertas, preços, datas ou disponibilidade.",
+    "Não presuma filtros que o cliente não informou; faça uma pergunta antes quando um dado for indispensável.",
+    "Apresente somente os dados devolvidos e, se a lista vier vazia, informe que nenhuma oportunidade compatível foi encontrada.",
+  ].join(" "),
+  parameters: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      search: {
+        type: "string",
+        description: "Termo geral citado pelo cliente, como destino, cidade, evento ou estilo de viagem.",
+      },
+      origin: {
+        type: "string",
+        description: "Cidade de origem informada pelo cliente.",
+      },
+      destination: {
+        type: "string",
+        description: "Cidade ou destino informado pelo cliente.",
+      },
+      start_date: {
+        type: "string",
+        description: "Data inicial de saída no formato YYYY-MM-DD.",
+      },
+      end_date: {
+        type: "string",
+        description: "Data final de saída no formato YYYY-MM-DD.",
+      },
+      passengers: {
+        type: "integer",
+        minimum: 1,
+        maximum: 20,
+        description: "Quantidade total de passageiros informada pelo cliente.",
+      },
+      offer_type: {
+        type: "string",
+        enum: ["bloqueio_aereo", "pacote"],
+        description: "Tipo de oportunidade quando o cliente distinguir aéreo de pacote.",
+      },
+    },
+  },
+} as const;
 
 const isRecord = (value: unknown): value is JsonRecord =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -121,8 +171,8 @@ export function createRealtimeSessionConfig(env: RuntimeEnv) {
       },
     },
     max_output_tokens: 512,
-    tools: [],
-    tool_choice: "none",
+    tools: [TRAVEL_OFFERS_TOOL],
+    tool_choice: "auto",
     parallel_tool_calls: false,
   };
 

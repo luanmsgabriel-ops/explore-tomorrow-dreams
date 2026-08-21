@@ -1,13 +1,19 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { fetchSecretMock } = vi.hoisted(() => ({
+const { fetchCatalogMock, fetchSecretMock } = vi.hoisted(() => ({
+  fetchCatalogMock: vi.fn(),
   fetchSecretMock: vi.fn(),
 }));
 
 vi.mock("@/lib/realtimeVoice", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/realtimeVoice")>();
   return { ...actual, fetchRealtimeClientSecret: fetchSecretMock };
+});
+
+vi.mock("@/lib/travelOffersPublic", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/travelOffersPublic")>();
+  return { ...actual, fetchTravelOfferCatalog: fetchCatalogMock };
 });
 
 import { useRealtimeVoice } from "./useRealtimeVoice";
@@ -22,6 +28,7 @@ describe("useRealtimeVoice", () => {
   const dataChannel = {
     readyState: "open",
     close: vi.fn(),
+    send: vi.fn(),
     onopen: null,
     onmessage: null,
     onerror: null,
@@ -78,7 +85,18 @@ describe("useRealtimeVoice", () => {
     track.stop.mockReset();
     getUserMedia.mockReset().mockResolvedValue(stream);
     fetchSecretMock.mockReset().mockResolvedValue("ek_test");
+    fetchCatalogMock.mockReset().mockResolvedValue({
+      items: [],
+      page: 1,
+      per_page: 3,
+      total: 0,
+      total_pages: 0,
+      applied_filters: {},
+      updated_at: "2026-08-21T12:00:00Z",
+      notice: "Preços e disponibilidade estão sujeitos à confirmação.",
+    });
     (dataChannel.close as ReturnType<typeof vi.fn>).mockReset();
+    (dataChannel.send as ReturnType<typeof vi.fn>).mockReset();
     (peer.close as ReturnType<typeof vi.fn>).mockReset();
     (peer.addTrack as ReturnType<typeof vi.fn>).mockReset();
     (peer.createDataChannel as ReturnType<typeof vi.fn>).mockClear();
@@ -240,6 +258,105 @@ describe("useRealtimeVoice", () => {
 
     act(() => frameCallback?.(1_950));
     expect(result.current.status).toBe("idle");
+    act(() => result.current.endConversation());
+  });
+
+  it("executa a busca pública uma vez e devolve o resultado para a conversa", async () => {
+    const offer = {
+      kind: "air_block" as const,
+      id: "0191a5f2-ccaa-7f03-8f00-1234567890ab",
+      offer_type: "bloqueio_aereo" as const,
+      offer_subtype: "bloqueio" as const,
+      name: null,
+      category: null,
+      origin: "São Paulo",
+      origin_iata: "GRU",
+      destination: "Maceió",
+      destination_iata: "MCZ",
+      departure_date: "2026-09-10",
+      return_date: "2026-09-17",
+      nights: 7,
+      airline: "Companhia informada",
+      price_per_person: 1800,
+      tax_per_person: 120,
+      currency: "BRL",
+      available_seats: 4,
+      airfare_included: true,
+      image_url: null,
+      updated_at: "2026-08-21T12:00:00Z",
+    };
+    fetchCatalogMock.mockResolvedValueOnce({
+      items: [offer],
+      page: 1,
+      per_page: 3,
+      total: 1,
+      total_pages: 1,
+      applied_filters: { destination: "Maceió" },
+      updated_at: "2026-08-21T12:00:00Z",
+      notice: "Preços e disponibilidade estão sujeitos à confirmação.",
+    });
+    const { result } = renderHook(() => useRealtimeVoice());
+
+    await act(async () => result.current.startConversation());
+    act(() => dataChannel.onopen?.(new Event("open")));
+    const functionEvent = new MessageEvent("message", {
+      data: JSON.stringify({
+        type: "response.output_item.done",
+        item: {
+          type: "function_call",
+          call_id: "call-1",
+          name: "search_travel_offers",
+          arguments: JSON.stringify({ destination: "Maceió", passengers: 2 }),
+        },
+      }),
+    });
+    act(() => dataChannel.onmessage?.(functionEvent));
+    act(() => dataChannel.onmessage?.(functionEvent));
+
+    await waitFor(() => expect(result.current.offers).toEqual([offer]));
+    expect(result.current.status).toBe("offers");
+    expect(fetchCatalogMock).toHaveBeenCalledTimes(1);
+    expect(fetchCatalogMock).toHaveBeenCalledWith(
+      expect.objectContaining({ destination: "Maceió", passengers: 2, per_page: 3 }),
+      expect.any(AbortSignal),
+    );
+    expect(dataChannel.send).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(String(vi.mocked(dataChannel.send).mock.calls[0][0]))).toMatchObject({
+      type: "conversation.item.create",
+      item: { type: "function_call_output", call_id: "call-1" },
+    });
+    expect(JSON.parse(String(vi.mocked(dataChannel.send).mock.calls[1][0]))).toEqual({ type: "response.create" });
+    act(() => result.current.endConversation());
+    expect(result.current.offers).toEqual([]);
+  });
+
+  it("mantém a conversa ativa quando a ferramenta pública falha", async () => {
+    fetchCatalogMock.mockRejectedValueOnce(new Error("Consulta temporariamente indisponível."));
+    const { result } = renderHook(() => useRealtimeVoice());
+
+    await act(async () => result.current.startConversation());
+    act(() => dataChannel.onopen?.(new Event("open")));
+    act(() => dataChannel.onmessage?.(new MessageEvent("message", {
+      data: JSON.stringify({
+        type: "response.output_item.done",
+        item: {
+          type: "function_call",
+          call_id: "call-error",
+          name: "search_travel_offers",
+          arguments: "{}",
+        },
+      }),
+    })));
+
+    await waitFor(() => expect(result.current.toolError).toBe("Consulta temporariamente indisponível."));
+    expect(result.current.connected).toBe(true);
+    expect(result.current.status).toBe("thinking");
+    expect(dataChannel.send).toHaveBeenCalledTimes(2);
+    const outputEvent = JSON.parse(String(vi.mocked(dataChannel.send).mock.calls[0][0]));
+    expect(JSON.parse(outputEvent.item.output)).toEqual({
+      ok: false,
+      error: "Não foi possível consultar as oportunidades reais agora. Informe isso ao cliente sem sugerir dados alternativos.",
+    });
     act(() => result.current.endConversation());
   });
 

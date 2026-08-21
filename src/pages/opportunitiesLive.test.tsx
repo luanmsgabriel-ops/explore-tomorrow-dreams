@@ -84,7 +84,7 @@ describe("Tomorrow Live — Etapa 7: fundação de voz", () => {
     fireEvent.click(screen.getByRole("button", { name: "Ver informações de privacidade" }));
 
     expect(screen.getByRole("status")).toHaveTextContent("nunca é ativado automaticamente");
-    expect(screen.getByText(/Ferramentas de inventário, cotação e WhatsApp continuam fora/)).toBeInTheDocument();
+    expect(screen.getByText(/A primeira ferramenta de inventário é somente de leitura/)).toBeInTheDocument();
   });
 
   it("respeita preferência de movimento reduzido", async () => {

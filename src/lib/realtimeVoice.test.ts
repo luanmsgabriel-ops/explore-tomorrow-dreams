@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyTranscriptChange,
+  catalogParamsFromRealtimeTool,
   clampAudioLevel,
+  functionCallFromRealtimeEvent,
   parseRealtimeEvent,
+  realtimeToolContinuationEvents,
   transcriptChangeFromEvent,
 } from "./realtimeVoice";
 
@@ -54,6 +57,59 @@ describe("Realtime Voice contract", () => {
 
     expect(applyTranscriptChange([], change!)).toEqual([
       { id: "assistant-1", role: "assistant", text: "Vamos começar.", final: false },
+    ]);
+  });
+
+  it("reconhece a chamada oficial da ferramenta e limita a consulta a três resultados", () => {
+    const call = functionCallFromRealtimeEvent({
+      type: "response.output_item.done",
+      item: {
+        type: "function_call",
+        call_id: "call-1",
+        name: "search_travel_offers",
+        arguments: JSON.stringify({ destination: "Maceió", passengers: 2 }),
+      },
+    });
+
+    expect(call).toEqual({
+      callId: "call-1",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({ destination: "Maceió", passengers: 2 }),
+    });
+    expect(catalogParamsFromRealtimeTool(call!)).toEqual({
+      destination: "Maceió",
+      passengers: 2,
+      sort: "date_asc",
+      page: 1,
+      per_page: 3,
+    });
+  });
+
+  it("rejeita ferramenta, filtros e datas fora do contrato público", () => {
+    expect(() => catalogParamsFromRealtimeTool({ callId: "1", name: "internal_search", arguments: "{}" })).toThrow("Ferramenta não permitida");
+    expect(() => catalogParamsFromRealtimeTool({
+      callId: "2",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({ raw_data: true }),
+    })).toThrow("filtros não permitidos");
+    expect(() => catalogParamsFromRealtimeTool({
+      callId: "3",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({ start_date: "21/08/2026" }),
+    })).toThrow("datas da consulta são inválidas");
+  });
+
+  it("cria a saída da função antes de pedir a continuação da resposta", () => {
+    expect(realtimeToolContinuationEvents("call-1", { ok: true, items: [] })).toEqual([
+      {
+        type: "conversation.item.create",
+        item: {
+          type: "function_call_output",
+          call_id: "call-1",
+          output: JSON.stringify({ ok: true, items: [] }),
+        },
+      },
+      { type: "response.create" },
     ]);
   });
 });

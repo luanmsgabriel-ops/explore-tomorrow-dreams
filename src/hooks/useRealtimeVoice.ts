@@ -3,14 +3,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   analyserAudioLevel,
   applyTranscriptChange,
+  catalogParamsFromRealtimeTool,
   fetchRealtimeClientSecret,
+  functionCallFromRealtimeEvent,
   microphoneErrorMessage,
   parseRealtimeEvent,
+  realtimeToolContinuationEvents,
   transcriptChangeFromEvent,
   type RealtimeServerEvent,
   type RealtimeVoiceStatus,
   type VoiceTranscriptEntry,
 } from "@/lib/realtimeVoice";
+import {
+  fetchTravelOfferCatalog,
+  type TravelOfferCatalogItem,
+} from "@/lib/travelOffersPublic";
 
 type RealtimeResources = {
   abortController: AbortController;
@@ -76,6 +83,8 @@ export function useRealtimeVoice() {
   const [speakerEnabled, setSpeakerEnabled] = useState(true);
   const [audioLevel, setAudioLevel] = useState(0);
   const [transcript, setTranscript] = useState<VoiceTranscriptEntry[]>([]);
+  const [offers, setOffers] = useState<TravelOfferCatalogItem[]>([]);
+  const [toolError, setToolError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const resourcesRef = useRef<RealtimeResources | null>(null);
   const mountedRef = useRef(true);
@@ -89,6 +98,7 @@ export function useRealtimeVoice() {
   const outputActiveRef = useRef(false);
   const outputCompleteRef = useRef(true);
   const lastOutputActivityAtRef = useRef(0);
+  const handledToolCallsRef = useRef(new Set<string>());
 
   const updateStatus = useCallback((next: RealtimeVoiceStatus) => {
     if (statusRef.current === next) return;
@@ -123,10 +133,13 @@ export function useRealtimeVoice() {
     userSpeakingRef.current = false;
     mutedRef.current = false;
     resetOutputActivity();
+    handledToolCallsRef.current.clear();
     if (mountedRef.current) {
       setConnected(false);
       setMuted(false);
       setAudioLevel(0);
+      setOffers([]);
+      setToolError(null);
       setError(message);
       updateStatus("error");
     }
@@ -146,6 +159,9 @@ export function useRealtimeVoice() {
       setMuted(false);
       mutedRef.current = false;
       setAudioLevel(0);
+      setOffers([]);
+      setToolError(null);
+      handledToolCallsRef.current.clear();
       updateStatus("idle");
     }
   }, [resetOutputActivity, updateStatus]);
@@ -161,7 +177,54 @@ export function useRealtimeVoice() {
     releaseResources(resources);
   }, [clearTranscriptFlush]);
 
+  const handleFunctionCall = useCallback(async (event: RealtimeServerEvent) => {
+    const call = functionCallFromRealtimeEvent(event);
+    if (!call || handledToolCallsRef.current.has(call.callId)) return;
+    handledToolCallsRef.current.add(call.callId);
+
+    const resources = resourcesRef.current;
+    if (!resources || resources.dataChannel.readyState !== "open") return;
+
+    updateStatus("thinking");
+    if (mountedRef.current) {
+      setOffers([]);
+      setToolError(null);
+    }
+
+    let output: unknown;
+    try {
+      const params = catalogParamsFromRealtimeTool(call);
+      const result = await fetchTravelOfferCatalog(params, resources.abortController.signal);
+      if (resourcesRef.current !== resources || !mountedRef.current) return;
+      setOffers(result.items);
+      if (result.items.length > 0) updateStatus("offers");
+      output = {
+        ok: true,
+        total: result.total,
+        items: result.items,
+        notice: result.notice,
+      };
+    } catch (toolFailure) {
+      if (resourcesRef.current !== resources || !mountedRef.current) return;
+      const message = toolFailure instanceof Error
+        ? toolFailure.message
+        : "Não foi possível consultar as oportunidades agora.";
+      setToolError(message);
+      output = {
+        ok: false,
+        error: "Não foi possível consultar as oportunidades reais agora. Informe isso ao cliente sem sugerir dados alternativos.",
+      };
+    }
+
+    if (resourcesRef.current !== resources || resources.dataChannel.readyState !== "open") return;
+    for (const continuationEvent of realtimeToolContinuationEvents(call.callId, output)) {
+      resources.dataChannel.send(JSON.stringify(continuationEvent));
+    }
+  }, [updateStatus]);
+
   const handleEvent = useCallback((event: RealtimeServerEvent) => {
+    if (functionCallFromRealtimeEvent(event)) void handleFunctionCall(event);
+
     const transcriptChange = transcriptChangeFromEvent(event);
     if (transcriptChange) {
       transcriptBufferRef.current = applyTranscriptChange(transcriptBufferRef.current, transcriptChange);
@@ -190,7 +253,7 @@ export function useRealtimeVoice() {
       case "response.created":
         outputActiveRef.current = false;
         outputCompleteRef.current = false;
-        if (!userSpeakingRef.current) updateStatus("thinking");
+        if (!userSpeakingRef.current && statusRef.current !== "offers") updateStatus("thinking");
         break;
       case "response.output_audio.delta":
       case "response.output_audio_transcript.delta":
@@ -211,7 +274,7 @@ export function useRealtimeVoice() {
       default:
         break;
     }
-  }, [clearTranscriptFlush, publishTranscript, resetOutputActivity, updateStatus]);
+  }, [clearTranscriptFlush, handleFunctionCall, publishTranscript, resetOutputActivity, updateStatus]);
 
   const startConversation = useCallback(async () => {
     if (resourcesRef.current || statusRef.current === "connecting") return;
@@ -221,6 +284,9 @@ export function useRealtimeVoice() {
     transcriptBufferRef.current = [];
     setTranscript([]);
     setAudioLevel(0);
+    setOffers([]);
+    setToolError(null);
+    handledToolCallsRef.current.clear();
     resetOutputActivity();
     updateStatus("connecting");
 
@@ -423,6 +489,8 @@ export function useRealtimeVoice() {
     speakerEnabled,
     audioLevel,
     transcript,
+    offers,
+    toolError,
     error,
     startConversation,
     endConversation,

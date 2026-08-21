@@ -1,8 +1,9 @@
 import { FunctionsHttpError } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
+import type { CatalogParams } from "@/lib/travelOffersPublic";
 
-export type RealtimeVoiceStatus = "idle" | "connecting" | "listening" | "thinking" | "speaking" | "error";
+export type RealtimeVoiceStatus = "idle" | "connecting" | "listening" | "thinking" | "speaking" | "offers" | "error";
 export type VoiceTranscriptRole = "user" | "assistant";
 
 export interface VoiceTranscriptEntry {
@@ -19,7 +20,32 @@ export interface RealtimeServerEvent {
   response_id?: string;
   delta?: string;
   transcript?: string;
+  call_id?: string;
+  name?: string;
+  arguments?: string;
+  item?: {
+    type?: string;
+    call_id?: string;
+    name?: string;
+    arguments?: string;
+  };
   error?: { message?: string };
+}
+
+export interface RealtimeFunctionCall {
+  callId: string;
+  name: string;
+  arguments: string;
+}
+
+export interface TravelOfferSearchArguments {
+  search?: string;
+  origin?: string;
+  destination?: string;
+  start_date?: string;
+  end_date?: string;
+  passengers?: number;
+  offer_type?: "bloqueio_aereo" | "pacote";
 }
 
 type RealtimeSecretResponse = {
@@ -60,6 +86,106 @@ export function parseRealtimeEvent(data: unknown): RealtimeServerEvent | null {
   } catch {
     return null;
   }
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+export function functionCallFromRealtimeEvent(event: RealtimeServerEvent): RealtimeFunctionCall | null {
+  if (event.type === "response.output_item.done" && event.item?.type === "function_call") {
+    const { call_id: callId, name, arguments: argumentsJson } = event.item;
+    return callId && name && typeof argumentsJson === "string"
+      ? { callId, name, arguments: argumentsJson }
+      : null;
+  }
+  if (event.type === "response.function_call_arguments.done") {
+    return event.call_id && event.name && typeof event.arguments === "string"
+      ? { callId: event.call_id, name: event.name, arguments: event.arguments }
+      : null;
+  }
+  return null;
+}
+
+const validIsoDate = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+};
+
+export function catalogParamsFromRealtimeTool(call: RealtimeFunctionCall): CatalogParams {
+  if (call.name !== "search_travel_offers") throw new RealtimeVoiceError("Ferramenta não permitida.", "unknown_tool");
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(call.arguments || "{}");
+  } catch {
+    throw new RealtimeVoiceError("Os filtros da consulta são inválidos.", "invalid_tool_arguments");
+  }
+  if (!isRecord(parsed)) throw new RealtimeVoiceError("Os filtros da consulta são inválidos.", "invalid_tool_arguments");
+
+  const allowed = new Set(["search", "origin", "destination", "start_date", "end_date", "passengers", "offer_type"]);
+  if (Object.keys(parsed).some((key) => !allowed.has(key))) {
+    throw new RealtimeVoiceError("A consulta contém filtros não permitidos.", "invalid_tool_arguments");
+  }
+
+  const args: TravelOfferSearchArguments = {};
+  const text = (field: "search" | "origin" | "destination", maxLength: number) => {
+    const value = parsed[field];
+    if (value === undefined || value === null || value === "") return;
+    if (typeof value !== "string" || !value.trim() || value.trim().length > maxLength) {
+      throw new RealtimeVoiceError("Os filtros da consulta são inválidos.", "invalid_tool_arguments");
+    }
+    args[field] = value.trim();
+  };
+  text("search", 80);
+  text("origin", 100);
+  text("destination", 120);
+
+  for (const field of ["start_date", "end_date"] as const) {
+    const value = parsed[field];
+    if (value === undefined || value === null || value === "") continue;
+    if (typeof value !== "string" || !validIsoDate(value)) {
+      throw new RealtimeVoiceError("As datas da consulta são inválidas.", "invalid_tool_arguments");
+    }
+    args[field] = value;
+  }
+  if (args.start_date && args.end_date && args.start_date > args.end_date) {
+    throw new RealtimeVoiceError("O período da consulta é inválido.", "invalid_tool_arguments");
+  }
+
+  if (parsed.passengers !== undefined && parsed.passengers !== null) {
+    if (!Number.isInteger(parsed.passengers) || (parsed.passengers as number) < 1 || (parsed.passengers as number) > 20) {
+      throw new RealtimeVoiceError("A quantidade de passageiros é inválida.", "invalid_tool_arguments");
+    }
+    args.passengers = parsed.passengers as number;
+  }
+  if (parsed.offer_type !== undefined && parsed.offer_type !== null && parsed.offer_type !== "") {
+    if (parsed.offer_type !== "bloqueio_aereo" && parsed.offer_type !== "pacote") {
+      throw new RealtimeVoiceError("O tipo de oportunidade é inválido.", "invalid_tool_arguments");
+    }
+    args.offer_type = parsed.offer_type;
+  }
+
+  return {
+    ...args,
+    sort: "date_asc",
+    page: 1,
+    per_page: 3,
+  };
+}
+
+export function realtimeToolContinuationEvents(callId: string, output: unknown) {
+  return [
+    {
+      type: "conversation.item.create",
+      item: {
+        type: "function_call_output",
+        call_id: callId,
+        output: JSON.stringify(output),
+      },
+    },
+    { type: "response.create" },
+  ];
 }
 
 export function transcriptChangeFromEvent(event: RealtimeServerEvent) {
