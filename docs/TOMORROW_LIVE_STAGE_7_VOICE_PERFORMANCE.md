@@ -51,15 +51,21 @@ Nenhum arquivo ou prompt do Téo, WhatsApp, inventário, cotação, banco, Edge 
 - `git diff --check`: aprovado;
 - o build mantém apenas avisos históricos de CSS, PDF.js e tamanho de chunks, sem novo erro.
 
+## Validação no GitHub
+
+- A primeira execução `32516975414` parou na instalação porque o `package-lock.json` histórico não corresponde ao `package.json`; nenhum teste funcional chegou a executar nessa tentativa.
+- A execução corrigida `32517053964` usou o `bun.lock` já adotado pelos CI anteriores e aprovou instalação, 17 testes focados, TypeScript global, ESLint do escopo e build Vite/PWA.
+- A workflow temporária foi removida antes do merge e não faz parte do diff final.
+
 ## Estado
 
-- IMPLEMENTADO: sim, na branch isolada `stage-7-voice-performance`.
-- TESTADO: sim, localmente; CI ainda pendente.
-- MERGEADO: não.
-- SINCRONIZADO NO LOVABLE: não.
+- IMPLEMENTADO: sim.
+- TESTADO: sim, localmente e no GitHub Actions `32517053964`.
+- MERGEADO: sim; PR `#29`, SHA `35541ef549d561070c11c6146e88fc358c1cbec2`.
+- SINCRONIZADO NO LOVABLE: sim; o Lovable reconheceu o mesmo SHA e ficou `ready`.
 - PUBLICADO: não.
 - VALIDADO EM PRODUÇÃO: não.
 
 ## Próxima ação exata
 
-Revisar o diff, executar CI, abrir PR isolado e fazer merge somente com todos os checks aprovados. Depois confirmar a sincronização automática no Lovable, sem publicar automaticamente, e solicitar validação manual em dispositivo real.
+Publicar manualmente o frontend somente com autorização do usuário e validar em dispositivo real: aparição inicial do planeta, tempo de conexão e continuidade dos efeitos durante toda a fala do Téo. Esta mudança não exige reimplantar a Edge Function.
