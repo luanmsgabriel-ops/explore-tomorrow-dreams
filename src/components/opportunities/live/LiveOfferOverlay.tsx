@@ -54,28 +54,28 @@ function offerPeriod(item: TravelOfferCatalogItem) {
 
 function FloatingOfferCard({ item, index }: { item: TravelOfferCatalogItem; index: number }) {
   const style = {
-    "--live-card-tilt": `${index === 0 ? -5 : index === 2 ? 5 : 0}deg`,
-    "--live-card-offset": `${index === 1 ? -8 : 3}px`,
+    "--live-card-tilt": "0deg",
+    "--live-card-offset": "0px",
     "--live-card-delay": `${index * -0.65}s`,
   } as CSSProperties;
   const period = offerPeriod(item);
 
   return (
     <article
-      className="live-offer-float-card opportunity-scope group relative min-w-[15rem] snap-center overflow-hidden rounded-2xl border border-tomorrow-gold/35 bg-tomorrow-background/88 shadow-[0_22px_55px_rgba(0,0,0,0.48),0_0_26px_rgba(76,198,190,0.12)] backdrop-blur-xl lg:min-w-0 lg:flex-1"
+      className="live-offer-float-card opportunity-scope group relative flex min-h-[19.5rem] w-[17rem] flex-none snap-center flex-col overflow-hidden rounded-2xl border border-tomorrow-gold/40 bg-[#071f23] shadow-[0_24px_65px_rgba(0,0,0,0.62),0_0_22px_rgba(76,198,190,0.10)] sm:w-[18rem] lg:min-h-[20rem] lg:w-auto lg:min-w-0"
       style={style}
       data-floating-offer-id={item.id}
     >
       {item.image_url ? (
-        <div className="relative h-20 overflow-hidden">
-          <img src={item.image_url} alt="" loading="lazy" className="size-full object-cover opacity-75 transition-transform duration-500 motion-safe:group-hover:scale-105" />
-          <div className="absolute inset-0 bg-gradient-to-t from-tomorrow-background to-transparent" aria-hidden="true" />
+        <div className="relative h-24 shrink-0 overflow-hidden">
+          <img src={item.image_url} alt="" loading="lazy" className="size-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-105" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#071f23] via-transparent to-transparent" aria-hidden="true" />
         </div>
       ) : (
-        <div className="h-2 bg-gradient-to-r from-tomorrow-teal/70 via-tomorrow-gold/65 to-tomorrow-teal/35" aria-hidden="true" />
+        <div className="h-2 shrink-0 bg-gradient-to-r from-tomorrow-teal/70 via-tomorrow-gold/65 to-tomorrow-teal/35" aria-hidden="true" />
       )}
 
-      <div className="grid gap-3 p-3.5">
+      <div className="grid flex-1 grid-rows-[auto_1fr_auto] gap-3 p-4">
         <div className="flex items-center justify-between gap-2">
           <OpportunityBadge variant={item.kind === "air_block" ? "air" : "package"}>
             {item.kind === "air_block" ? <Plane aria-hidden="true" /> : null}
@@ -84,15 +84,15 @@ function FloatingOfferCard({ item, index }: { item: TravelOfferCatalogItem; inde
           <span className="text-[0.62rem] font-bold uppercase tracking-[0.16em] text-tomorrow-teal-soft">Opção {index + 1}</span>
         </div>
 
-        <div>
-          <h3 className="line-clamp-2 font-editorial text-xl leading-none text-tomorrow-text">{offerHandoffTitle(item)}</h3>
+        <div className="min-h-0">
+          <h3 className="line-clamp-3 font-editorial text-xl leading-[1.05] text-tomorrow-text">{offerHandoffTitle(item)}</h3>
           <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-tomorrow-text">
             <MapPin className="size-3.5 shrink-0 text-tomorrow-gold" aria-hidden="true" />
             {offerRoute(item)}
           </p>
           {period ? (
-            <p className="mt-1.5 flex items-center gap-1.5 text-[0.7rem] text-tomorrow-muted">
-              <CalendarDays className="size-3.5 shrink-0 text-tomorrow-teal-soft" aria-hidden="true" />
+            <p className="mt-1.5 flex items-start gap-1.5 text-[0.7rem] leading-relaxed text-tomorrow-muted">
+              <CalendarDays className="mt-0.5 size-3.5 shrink-0 text-tomorrow-teal-soft" aria-hidden="true" />
               {period}
             </p>
           ) : null}
@@ -108,7 +108,7 @@ function FloatingOfferCard({ item, index }: { item: TravelOfferCatalogItem; inde
           <a
             href={`/oportunidades/oferta/${encodeURIComponent(item.id)}`}
             aria-label={`Abrir oferta: ${offerHandoffTitle(item)}`}
-            className="opportunity-focus grid size-10 shrink-0 place-items-center rounded-xl border border-tomorrow-teal/35 bg-tomorrow-teal/10 text-tomorrow-teal-soft transition-colors hover:border-tomorrow-gold/55 hover:text-tomorrow-gold-soft"
+            className="opportunity-focus grid size-10 shrink-0 place-items-center rounded-xl border border-tomorrow-teal/40 bg-[#0b3034] text-tomorrow-teal-soft transition-colors hover:border-tomorrow-gold/55 hover:text-tomorrow-gold-soft"
           >
             <ArrowRight aria-hidden="true" />
           </a>
@@ -144,14 +144,14 @@ export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl }: L
 
   return (
     <>
-      <div className="pointer-events-none absolute inset-x-0 top-[18%] z-30 px-1 sm:top-[22%] sm:px-3 lg:top-[26%]">
+      <div className="pointer-events-none absolute inset-x-0 top-[18%] z-30 px-2 sm:top-[22%] sm:px-3 lg:top-[26%]">
         {deckOpen && visibleOffers.length > 0 ? (
           <section
-            className="pointer-events-auto rounded-2xl border border-tomorrow-teal/20 bg-tomorrow-background/38 p-2 shadow-[0_18px_65px_rgba(0,0,0,0.3)] backdrop-blur-sm sm:p-3"
+            className="pointer-events-auto rounded-2xl border border-tomorrow-teal/30 bg-[#06191d] p-3 shadow-[0_22px_72px_rgba(0,0,0,0.60),0_0_26px_rgba(76,198,190,0.08)] sm:p-4"
             aria-label="Ofertas encontradas pelo Téo"
             aria-live="polite"
           >
-            <div className="mb-2 flex items-center justify-between gap-3 px-1">
+            <div className="mb-3 flex items-center justify-between gap-3 px-1">
               <p className="flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-[0.17em] text-tomorrow-gold-soft">
                 <Layers3 className="size-3.5" aria-hidden="true" />
                 {visibleOffers.length === 1 ? "1 oportunidade encontrada" : `${visibleOffers.length} oportunidades encontradas`}
@@ -160,12 +160,12 @@ export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl }: L
                 type="button"
                 onClick={() => setDeckOpen(false)}
                 aria-label="Minimizar ofertas encontradas"
-                className="opportunity-focus grid size-8 place-items-center rounded-lg border border-tomorrow-line bg-tomorrow-background/70 text-tomorrow-muted hover:text-tomorrow-text"
+                className="opportunity-focus grid size-8 place-items-center rounded-lg border border-tomorrow-line bg-[#0a2529] text-tomorrow-muted hover:text-tomorrow-text"
               >
                 <X className="size-4" aria-hidden="true" />
               </button>
             </div>
-            <div className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-1 pb-2 pt-1 lg:overflow-visible">
+            <div className="flex snap-x snap-mandatory items-stretch gap-3 overflow-x-auto px-1 pb-2 pt-1 lg:grid lg:grid-cols-3 lg:overflow-visible">
               {visibleOffers.map((item, index) => <FloatingOfferCard key={item.id} item={item} index={index} />)}
             </div>
             <p className="px-1 pt-1 text-center text-[0.62rem] text-tomorrow-muted">O Téo continua falando enquanto você compara as opções.</p>
@@ -174,7 +174,7 @@ export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl }: L
           <button
             type="button"
             onClick={() => setDeckOpen(true)}
-            className="opportunity-focus pointer-events-auto mx-auto flex items-center gap-2 rounded-full border border-tomorrow-gold/40 bg-tomorrow-background/88 px-4 py-2 text-xs font-semibold text-tomorrow-gold-soft shadow-tomorrow-surface backdrop-blur-xl"
+            className="opportunity-focus pointer-events-auto mx-auto flex items-center gap-2 rounded-full border border-tomorrow-gold/40 bg-[#071f23] px-4 py-2 text-xs font-semibold text-tomorrow-gold-soft shadow-tomorrow-surface"
           >
             <ChevronUp className="size-4" aria-hidden="true" />
             Mostrar {visibleOffers.length} {visibleOffers.length === 1 ? "oferta" : "ofertas"}
