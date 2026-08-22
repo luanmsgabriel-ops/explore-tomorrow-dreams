@@ -2,11 +2,11 @@
 
 ## Estado
 
-**INICIADA — fundação de dados implementada em branch; migration ainda NÃO aplicada em produção.**
+**FUNDAÇÃO DE DADOS APLICADA E VALIDADA NO BANCO — painel administrativo é a próxima subetapa.**
 
 Data de início: 22/08/2026.
 
-Base de código usada: `main` em `607a522f89ee22e8d918e86a75b97f3e76172e14`.
+Base atual verificada antes da aplicação: `main` em `05bab558c2f7493418113ccff4d2e80e8ae1601b`.
 
 Branch: `feat/stage-9-curation-foundation`.
 
@@ -16,13 +16,17 @@ O sync atual faz `upsert` em `public.travel_offers` com conflito em `(source, so
 
 A Etapa 9 usa uma camada editorial separada, vinculada por `offer_id`. O sync continua dono do inventário e a curadoria passa a ser dona apenas da apresentação comercial.
 
-## Fundação implementada nesta primeira entrega
+## Fundação aplicada
 
-Migration:
+Migration canônica no Git:
 
 `supabase/migrations/20260822163500_stage9_travel_offer_curation.sql`
 
-Estruturas previstas:
+A migration foi aplicada manualmente pelo SQL Editor do Lovable Cloud/Supabase em 22/08/2026, depois de validar o schema real do projeto.
+
+Durante o preflight foi detectada uma divergência na primeira versão da migration: o controle de administrador real usa `public.user_roles.role`, e `public.profiles` não possui coluna `role`. A migration foi corrigida no Git antes de qualquer DDL ser executado.
+
+Estruturas criadas:
 
 - `public.travel_offer_curation`
   - ocultar oferta;
@@ -45,21 +49,39 @@ Estruturas previstas:
   - estado anterior e posterior em JSONB;
   - ator e horário.
 
-## Segurança
+## Segurança validada
 
-As quatro tabelas têm RLS habilitado.
+As quatro tabelas existem com RLS habilitado.
 
-Acesso direto é restrito a usuários autenticados cujo registro em `public.profiles` tenha `role = 'admin'`.
+Policies existentes:
 
-A tabela de auditoria é somente leitura para o administrador; a escrita acontece pelo trigger de auditoria.
+- `Admins can manage travel offer curation` — `ALL`;
+- `Admins can manage travel offer collections` — `ALL`;
+- `Admins can manage travel offer collection items` — `ALL`;
+- `Admins can view travel offer curation audit` — `SELECT`.
 
-Nenhuma dessas tabelas é pública por RLS.
+Todas usam `public.user_roles` e exigem `role = 'admin'` para o `auth.uid()` atual.
 
-## Integridade do sync
+A tabela de auditoria permanece somente leitura por policy para o administrador; a escrita acontece pelo trigger de auditoria.
+
+Triggers validados:
+
+- `stage9_travel_offer_curation_actor` — INSERT/UPDATE;
+- `stage9_travel_offer_collection_actor` — INSERT/UPDATE;
+- `stage9_travel_offer_collection_item_actor` — INSERT;
+- `stage9_travel_offer_curation_audit` — INSERT/UPDATE/DELETE.
+
+## Integridade do inventário
+
+Antes da migration, `public.travel_offers` possuía 11.062 registros.
+
+Após a migration e validação, `public.travel_offers` continuou com 11.062 registros.
+
+As quatro tabelas novas permaneceram com zero registros após a criação; nenhum dado de teste foi persistido.
 
 Esta entrega não altera:
 
-- `public.travel_offers`;
+- conteúdo de `public.travel_offers`;
 - `travel-offers-sync`;
 - `raw_data`;
 - `source_url`;
@@ -77,18 +99,20 @@ Assim, ainda não existe efeito público de ocultar/destacar uma oferta até a p
 ## Estado por marco
 
 - IMPLEMENTADO NO CÓDIGO: sim, fundação de dados.
-- TESTADO: pendente de validação SQL/CI.
-- MERGEADO: não.
-- MIGRATION APLICADA: não.
-- SINCRONIZADO LOVABLE: não aplicável ainda.
-- PUBLICADO: não.
-- VALIDADO EM PRODUÇÃO: não.
+- VALIDADO NO SQL EDITOR: sim.
+- MIGRATION APLICADA: sim, via SQL Editor.
+- TABELAS/RLS/POLICIES/TRIGGERS VALIDADOS: sim.
+- MERGEADO: pendente neste checkpoint.
+- PAINEL ADMINISTRATIVO: não iniciado.
+- EFEITO NA CAMADA PÚBLICA: não iniciado.
+- PUBLICADO: não aplicável à migration; frontend não alterado nesta subetapa.
+- VALIDADO EM PRODUÇÃO: schema de produção validado; comportamento de painel ainda não existe.
 
 ## Próxima ação exata
 
-1. validar o diff e a migration;
-2. abrir PR da fundação;
-3. executar CI estático/build;
-4. NÃO mergear nem aplicar migration antes de autorização para mudança de banco;
-5. após aplicação validada, implementar o painel de curadoria no `/admin/dashboard`;
-6. em seguida integrar `is_hidden`, `is_featured`, ordem, coleções e vigência à `travel-offers-public`, mantendo a resposta pública sanitizada.
+1. concluir revisão e merge do PR da fundação;
+2. implementar módulo de curadoria protegido em `/admin/dashboard` usando as tabelas novas;
+3. permitir buscar ofertas reais e editar somente a camada editorial;
+4. adicionar controles de destaque, ocultação, ordem, campanha, validade e coleções;
+5. depois integrar a curadoria à `travel-offers-public`, mantendo resposta pública sanitizada e ignorando overrides expirados;
+6. validar catálogo, Tomorrow Live e detalhe contra dados reais antes de publicar qualquer mudança de frontend.
