@@ -1,0 +1,48 @@
+name: Temporary Live voice selector validation
+
+on:
+  push:
+    branches:
+      - feat/live-temporary-voice-selector
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Install dependencies despite historical lock drift
+        run: npm install --package-lock=false --ignore-scripts
+      - name: Edge Function tests
+        run: deno test --allow-env --allow-net supabase/functions/tomorrow-live-realtime-session/index_test.ts
+      - name: Focused Vitest
+        run: npx vitest run src/lib/realtimeVoice.test.ts
+      - name: Scoped ESLint
+        run: npx eslint src/App.tsx src/components/opportunities/live/TemporaryRealtimeVoiceSelector.tsx src/lib/realtimeVoice.ts
+      - name: TypeScript excluding known historical error
+        shell: bash
+        run: |
+          set +e
+          npx tsc --noEmit --pretty false > /tmp/tsc.log 2>&1
+          set -e
+          cat /tmp/tsc.log
+          unexpected=$(grep "error TS" /tmp/tsc.log | grep -v "src/components/admin/QuoteEditForm.tsx" || true)
+          if [ -n "$unexpected" ]; then
+            echo "$unexpected"
+            exit 1
+          fi
+      - name: Production build
+        run: npm run build
+      - name: Diff check
+        run: git diff --check origin/main...HEAD
