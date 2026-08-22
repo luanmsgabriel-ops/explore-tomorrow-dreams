@@ -217,7 +217,7 @@ export function catalogParamsFromRealtimeTool(call: RealtimeFunctionCall): Catal
 
   const pureSearchOfferType = offerTypeFromPureSearch(args.search);
   if (pureSearchOfferType) {
-    args.offer_type ??= pureSearchOfferType;
+    args.offer_type = pureSearchOfferType;
     delete args.search;
   }
 
