@@ -1427,6 +1427,190 @@ export type Database = {
         }
         Relationships: []
       }
+      travel_offer_collection_items: {
+        Row: {
+          added_by: string | null
+          collection_id: string
+          created_at: string
+          offer_id: string
+          sort_order: number
+        }
+        Insert: {
+          added_by?: string | null
+          collection_id: string
+          created_at?: string
+          offer_id: string
+          sort_order?: number
+        }
+        Update: {
+          added_by?: string | null
+          collection_id?: string
+          created_at?: string
+          offer_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "travel_offer_collection_items_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "travel_offer_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_offer_collection_items_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "travel_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_offer_collection_items_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "travel_offers_curated_source"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      travel_offer_collections: {
+        Row: {
+          banner_image_url: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          slug: string
+          sort_order: number
+          starts_at: string | null
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          banner_image_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          slug: string
+          sort_order?: number
+          starts_at?: string | null
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          banner_image_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          slug?: string
+          sort_order?: number
+          starts_at?: string | null
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      travel_offer_curation: {
+        Row: {
+          campaign_label: string | null
+          created_at: string
+          editorial_image_url: string | null
+          editorial_subtitle: string | null
+          editorial_title: string | null
+          expires_at: string | null
+          is_featured: boolean
+          is_hidden: boolean
+          offer_id: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          campaign_label?: string | null
+          created_at?: string
+          editorial_image_url?: string | null
+          editorial_subtitle?: string | null
+          editorial_title?: string | null
+          expires_at?: string | null
+          is_featured?: boolean
+          is_hidden?: boolean
+          offer_id: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          campaign_label?: string | null
+          created_at?: string
+          editorial_image_url?: string | null
+          editorial_subtitle?: string | null
+          editorial_title?: string | null
+          expires_at?: string | null
+          is_featured?: boolean
+          is_hidden?: boolean
+          offer_id?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "travel_offer_curation_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: true
+            referencedRelation: "travel_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_offer_curation_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: true
+            referencedRelation: "travel_offers_curated_source"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      travel_offer_curation_audit: {
+        Row: {
+          action: string
+          after_state: Json | null
+          before_state: Json | null
+          changed_at: string
+          changed_by: string | null
+          id: string
+          offer_id: string
+        }
+        Insert: {
+          action: string
+          after_state?: Json | null
+          before_state?: Json | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          offer_id: string
+        }
+        Update: {
+          action?: string
+          after_state?: Json | null
+          before_state?: Json | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          offer_id?: string
+        }
+        Relationships: []
+      }
       travel_offers: {
         Row: {
           active: boolean | null
@@ -2021,6 +2205,44 @@ export type Database = {
           event_type: string | null
           page_path: string | null
           unique_sessions: number | null
+        }
+        Relationships: []
+      }
+      travel_offers_curated_source: {
+        Row: {
+          active: boolean | null
+          airline: string | null
+          alternative_dates: string | null
+          available_seats: number | null
+          boarding_tax: number | null
+          created_at: string | null
+          curation_campaign_label: string | null
+          curation_featured: boolean | null
+          curation_sort_order: number | null
+          curation_subtitle: string | null
+          currency: string | null
+          departure_date: string | null
+          destination_iata: string | null
+          destination_name: string | null
+          id: string | null
+          issue_deadline: string | null
+          last_seen_at: string | null
+          nights: number | null
+          offer_type: string | null
+          origin_city: string | null
+          origin_iata: string | null
+          outbound_arrival_time: string | null
+          outbound_departure_time: string | null
+          price_per_person: number | null
+          raw_data: Json | null
+          return_arrival_time: string | null
+          return_date: string | null
+          return_departure_time: string | null
+          source: string | null
+          source_id: string | null
+          source_type: string | null
+          source_url: string | null
+          updated_at: string | null
         }
         Relationships: []
       }
