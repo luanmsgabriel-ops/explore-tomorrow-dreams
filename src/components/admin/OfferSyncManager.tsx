@@ -8,20 +8,31 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { TravelOfferCurationManager } from "@/components/admin/TravelOfferCurationManager";
 
+type SyncLog = {
+  started_at: string;
+  status: string;
+  offers_created: number | null;
+  offers_updated: number | null;
+  offers_found: number | null;
+  offers_deactivated: number | null;
+};
+
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : "Erro desconhecido";
+
 export const OfferSyncManager = () => {
-  const [lastSync, setLastSync] = useState<any>(null);
+  const [lastSync, setLastSync] = useState<SyncLog | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchLastSync = async () => {
     const { data, error } = await supabase
       .from("travel_sync_logs")
-      .select("*")
+      .select("started_at, status, offers_created, offers_updated, offers_found, offers_deactivated")
       .order("started_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (!error) setLastSync(data);
+    if (!error) setLastSync(data as SyncLog | null);
     setLoading(false);
   };
 
@@ -38,9 +49,9 @@ export const OfferSyncManager = () => {
       
       toast.success(`Sincronização concluída: ${data.found} ofertas encontradas!`);
       fetchLastSync();
-    } catch (err: any) {
-      console.error("Sync trigger error:", err);
-      toast.error(`Falha na sincronização: ${err.message}`);
+    } catch (error: unknown) {
+      console.error("Sync trigger error:", error);
+      toast.error(`Falha na sincronização: ${errorMessage(error)}`);
       fetchLastSync();
     } finally {
       setIsSyncing(false);
@@ -97,7 +108,7 @@ export const OfferSyncManager = () => {
                 <div>
                   <p className="text-xs text-muted-foreground">Novas / Atualizadas</p>
                   <p className="text-sm font-medium text-white">
-                    {lastSync.offers_created} / {lastSync.offers_updated}
+                    {lastSync.offers_created ?? 0} / {lastSync.offers_updated ?? 0}
                   </p>
                 </div>
               </div>
@@ -107,7 +118,7 @@ export const OfferSyncManager = () => {
                 <div>
                   <p className="text-xs text-muted-foreground">Encontradas / Desativadas</p>
                   <p className="text-sm font-medium text-white">
-                    {lastSync.offers_found} / {lastSync.offers_deactivated}
+                    {lastSync.offers_found ?? 0} / {lastSync.offers_deactivated ?? 0}
                   </p>
                 </div>
               </div>
