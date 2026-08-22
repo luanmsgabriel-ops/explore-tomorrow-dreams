@@ -68,4 +68,5 @@ COMMENT ON VIEW public.travel_offers_curated_source IS
 REVOKE ALL ON public.travel_offers_curated_source FROM PUBLIC;
 REVOKE ALL ON public.travel_offers_curated_source FROM anon;
 REVOKE ALL ON public.travel_offers_curated_source FROM authenticated;
+REVOKE ALL ON public.travel_offers_curated_source FROM service_role;
 GRANT SELECT ON public.travel_offers_curated_source TO service_role;
