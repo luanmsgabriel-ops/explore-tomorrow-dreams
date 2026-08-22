@@ -29,6 +29,10 @@ const offer: TravelOfferCatalogItem = {
   available_seats: 4,
   airfare_included: true,
   image_url: null,
+  featured: false,
+  editorial_order: 0,
+  campaign_label: null,
+  editorial_subtitle: null,
   updated_at: "2026-08-21T12:00:00Z",
 };
 
