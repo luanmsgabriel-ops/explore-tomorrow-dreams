@@ -120,6 +120,18 @@ describe("Realtime Voice contract", () => {
     });
 
     expect(catalogParamsFromRealtimeTool({
+      callId: "air-conflict",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({ search: "bloqueios", offer_type: "pacote", destination: "Maceió" }),
+    })).toEqual({
+      destination: "Maceió",
+      offer_type: "bloqueio_aereo",
+      sort: "date_asc",
+      page: 1,
+      per_page: 3,
+    });
+
+    expect(catalogParamsFromRealtimeTool({
       callId: "package-1",
       name: "search_travel_offers",
       arguments: JSON.stringify({ search: "pacotes", destination: "Maceió" }),
@@ -195,7 +207,7 @@ describe("Realtime Voice contract", () => {
         item: {
           type: "function_call_output",
           call_id: "call-1",
-          output: JSON.stringify({ ok: true, items: [] }),
+          output: JSON.stringify(output),
         },
       },
       { type: "response.create" },
