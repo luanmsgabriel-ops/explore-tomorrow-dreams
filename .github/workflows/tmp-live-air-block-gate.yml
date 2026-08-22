@@ -1,0 +1,47 @@
+name: Temporary live air-block quality gate
+
+on:
+  push:
+    branches:
+      - fix/live-air-block-filter
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install dependencies despite historical lock drift
+        run: npm install --package-lock=false --ignore-scripts
+
+      - name: Focused realtime voice tests
+        run: npx vitest run src/lib/realtimeVoice.test.ts src/hooks/useRealtimeVoice.test.tsx
+
+      - name: Edge Function tests
+        run: deno test --node-modules-dir=auto supabase/functions/travel-offers-public/*_test.ts supabase/functions/tomorrow-live-realtime-session/*_test.ts
+
+      - name: ESLint scope
+        run: npx eslint src/lib/realtimeVoice.ts src/lib/realtimeVoice.test.ts src/hooks/useRealtimeVoice.ts src/hooks/useRealtimeVoice.test.tsx
+
+      - name: TypeScript
+        run: npx tsc --noEmit --pretty false
+
+      - name: Production build
+        run: npm run build
+
+      - name: Diff check
+        run: git diff --check origin/main...HEAD
