@@ -61,14 +61,14 @@ Deno.test("rejeita voz fora da allowlist", async () => {
 Deno.test("retorna somente client secret efêmero e expiração", async () => {
   let authorization = "";
   let safetyIdentifier = "";
-  let upstreamBody: Record<string, unknown> | null = null;
+  let upstreamBody = "";
   const handler = createRealtimeSessionHandler({
     env,
     fetchFn: async (_url, init) => {
       const headers = new Headers(init?.headers);
       authorization = headers.get("authorization") ?? "";
       safetyIdentifier = headers.get("openai-safety-identifier") ?? "";
-      upstreamBody = JSON.parse(String(init?.body ?? "{}"));
+      upstreamBody = String(init?.body ?? "{}");
       return Response.json({ value: "ek_test_ephemeral", expires_at: 12345, session: { internal: true } });
     },
   });
@@ -83,7 +83,8 @@ Deno.test("retorna somente client secret efêmero e expiração", async () => {
   assertEquals(body, { value: "ek_test_ephemeral", expires_at: 12345 });
   assertEquals(authorization, "Bearer server-key");
   assertMatch(safetyIdentifier, /^[a-f0-9]{64}$/);
-  const session = upstreamBody?.session as Record<string, unknown>;
+  const parsedUpstream = JSON.parse(upstreamBody) as Record<string, unknown>;
+  const session = parsedUpstream.session as Record<string, unknown>;
   assertEquals((session.audio as Record<string, unknown>).output, { voice: "marin", speed: 1 });
 });
 
