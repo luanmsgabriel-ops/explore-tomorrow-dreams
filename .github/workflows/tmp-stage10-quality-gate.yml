@@ -1,0 +1,50 @@
+name: Temporary stage 10 quality gate
+
+on:
+  push:
+    branches:
+      - stage-10-quality-security-performance
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install dependencies despite historical lock drift
+        run: npm install --package-lock=false --ignore-scripts
+
+      - name: Vitest
+        run: npx vitest run
+
+      - name: Edge Function tests
+        run: deno test --node-modules-dir=auto supabase/functions/travel-offers-public/*_test.ts supabase/functions/tomorrow-live-realtime-session/*_test.ts
+
+      - name: ESLint
+        run: npx eslint src
+
+      - name: TypeScript
+        run: npx tsc --noEmit --pretty false
+
+      - name: Production build
+        run: npm run build
+
+      - name: Dependency audit
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Diff check
+        run: git diff --check origin/main...HEAD
