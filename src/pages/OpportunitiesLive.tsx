@@ -38,73 +38,50 @@ const navItems = [
   { label: "Comparar", href: "/oportunidades/comparar" },
 ];
 
-const stateOptions: Array<{ value: TomorrowLiveState; label: string }> = [
-  { value: "idle", label: "Aguardando" },
-  { value: "listening", label: "Ouvindo" },
-  { value: "thinking", label: "Pensando" },
-  { value: "speaking", label: "Falando" },
-  { value: "offers", label: "Ofertas" },
-];
-
 const stateCopy: Record<TomorrowLiveState, { eyebrow: string; title: string; body: string }> = {
   idle: {
-    eyebrow: "Central pronta",
+    eyebrow: "Téo pronto",
     title: "A viagem começa antes da primeira pergunta.",
-    body: "A conversa por voz só começa depois da sua ação e pode ser encerrada a qualquer momento.",
+    body: "Converse com o Téo e descubra oportunidades que combinam com você.",
   },
   listening: {
-    eyebrow: "Escuta ativa",
-    title: "O sistema acompanha sem interromper.",
-    body: "O estado Ouvindo acompanha a detecção real de fala durante uma sessão ativa.",
+    eyebrow: "Estou ouvindo",
+    title: "Pode falar. O Téo está com você.",
+    body: "Conte o que você procura e deixe a conversa seguir de forma natural.",
   },
   thinking: {
-    eyebrow: "Organizando contexto",
-    title: "Menos ruído. Mais clareza sobre o que importa.",
-    body: "O planeta muda de estado quando a fala termina e a resposta está sendo preparada.",
+    eyebrow: "Buscando possibilidades",
+    title: "O próximo destino está ganhando forma.",
+    body: "O Téo organiza suas preferências e procura as melhores opções disponíveis.",
   },
   speaking: {
-    eyebrow: "Resposta em curso",
+    eyebrow: "Téo falando",
     title: "A conversa continua enquanto a rota ganha forma.",
-    body: "O estado Falando acompanha a resposta de áudio recebida pela conexão WebRTC.",
+    body: "Ouça as opções e interrompa quando quiser para ajustar sua busca.",
   },
   offers: {
-    eyebrow: "Contexto conectado",
-    title: "As oportunidades entram na conversa sem quebrar a experiência.",
-    body: "Os cards desta etapa apontam apenas para experiências reais já existentes na plataforma, sem inventar ofertas.",
+    eyebrow: "Opções encontradas",
+    title: "Agora ficou mais fácil escolher.",
+    body: "Compare as oportunidades na tela e peça ao Téo para abrir a que mais gostar.",
   },
 };
-
-const transcriptPreview = [
-  {
-    speaker: "Téo",
-    text: "Antes de qualquer coisa: o que essa viagem precisa ser para você?",
-  },
-  {
-    speaker: "Você",
-    text: "Quero algo diferente, com natureza e poucos dias de deslocamento.",
-  },
-  {
-    speaker: "Téo",
-    text: "Há um ponto importante que vale considerar: flexibilidade de datas pode abrir caminhos muito melhores para esse perfil.",
-  },
-];
 
 const contextCards = [
   {
     title: "Calendário inteligente",
-    description: "Consulte datas e preços reais do inventário Tomorrow Travel.",
+    description: "Encontre datas e valores para planejar a melhor saída.",
     href: "/oportunidades/calendario",
     icon: CalendarDays,
   },
   {
     title: "Catálogo de oportunidades",
-    description: "Explore pacotes e bloqueios pela camada pública controlada.",
+    description: "Explore pacotes e bloqueios disponíveis para sua próxima viagem.",
     href: "/oportunidades/catalogo",
     icon: Search,
   },
   {
     title: "Comparar escolhas",
-    description: "Mantenha até três oportunidades lado a lado antes de decidir.",
+    description: "Veja suas opções lado a lado antes de decidir.",
     href: "/oportunidades/comparar",
     icon: Scale,
   },
@@ -119,7 +96,6 @@ function useAdaptiveMotion() {
     setLowPerformance(hardwareConcurrency <= 4 || window.innerWidth < 390);
 
     if (typeof window.matchMedia !== "function") return undefined;
-
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => setReducedMotion(query.matches);
     update();
@@ -137,7 +113,6 @@ function useAdaptiveMotion() {
 }
 
 export default function OpportunitiesLive() {
-  const [visualState, setVisualState] = useState<TomorrowLiveState>("idle");
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const { reducedMotion, lowPerformance } = useAdaptiveMotion();
   const {
@@ -156,8 +131,9 @@ export default function OpportunitiesLive() {
     toggleMute,
     toggleSpeaker,
   } = useRealtimeVoice();
+
   const voiceSessionActive = connected || voiceStatus === "connecting";
-  const realtimeVisualState: TomorrowLiveState = voiceStatus === "listening"
+  const displayedState: TomorrowLiveState = voiceStatus === "listening"
     ? "listening"
     : voiceStatus === "thinking" || voiceStatus === "connecting"
       ? "thinking"
@@ -166,16 +142,12 @@ export default function OpportunitiesLive() {
         : voiceStatus === "offers"
           ? "offers"
           : "idle";
-  const displayedState = voiceSessionActive ? realtimeVisualState : visualState;
   const globeMicrophoneState = voiceStatus === "connecting"
     ? "connecting"
     : connected
       ? muted ? "muted" : "active"
       : "idle";
   const copy = stateCopy[displayedState];
-  const transcriptEntries = transcript.length > 0
-    ? transcript.map((entry) => ({ speaker: entry.role === "assistant" ? "Téo" : "Você", text: entry.text, final: entry.final }))
-    : transcriptPreview.map((entry) => ({ ...entry, final: true }));
   const handoffDetailPath = offerHandoff ? buildOfferDetailPath(offerHandoff.offer.id) : null;
   const handoffWhatsAppUrl = offerHandoff
     ? buildOfferWhatsAppUrl(offerHandoff.offer, { context: offerHandoff.searchContext })
@@ -204,7 +176,7 @@ export default function OpportunitiesLive() {
               <div className="max-w-3xl">
                 <OpportunityBadge variant="neutral">
                   <Sparkles className="size-3.5" aria-hidden="true" />
-                  Tomorrow Live · Voz em tempo real
+                  Tomorrow Live
                 </OpportunityBadge>
                 <p className="mt-5 text-xs font-bold uppercase tracking-[0.22em] text-tomorrow-teal-soft">{copy.eyebrow}</p>
                 <h1 className="mt-3 max-w-3xl font-editorial text-5xl leading-[0.9] text-tomorrow-text sm:text-6xl lg:text-7xl">
@@ -215,31 +187,7 @@ export default function OpportunitiesLive() {
                 </p>
               </div>
 
-              <div className="mt-6 -mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0" aria-label="Estados visuais do Tomorrow Live">
-                <div className="flex min-w-max gap-2 sm:min-w-0 sm:flex-wrap">
-                  {stateOptions.map((option) => {
-                    const active = option.value === visualState;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        aria-pressed={active}
-                        disabled={voiceSessionActive}
-                        className={`opportunity-focus rounded-full border px-3 py-2 text-xs font-semibold transition-colors ${
-                          active
-                            ? "border-tomorrow-gold/65 bg-tomorrow-gold/12 text-tomorrow-gold-soft"
-                            : "border-tomorrow-line bg-tomorrow-surface/50 text-tomorrow-muted hover:border-tomorrow-teal/55 hover:text-tomorrow-text"
-                        }`}
-                        onClick={() => setVisualState(option.value)}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="relative mt-2 sm:mt-0">
+              <div className="relative mt-3">
                 <LiveParticleGlobe
                   state={displayedState}
                   audioLevel={voiceSessionActive ? audioLevel : undefined}
@@ -265,53 +213,56 @@ export default function OpportunitiesLive() {
               </div>
             </div>
 
-            <aside className="min-w-0 rounded-tomorrow-lg border border-tomorrow-line bg-tomorrow-surface/72 p-4 shadow-tomorrow-surface backdrop-blur-xl sm:p-5" aria-label="Painel de controle do Tomorrow Live">
+            <aside className="min-w-0 rounded-tomorrow-lg border border-tomorrow-line bg-tomorrow-surface/72 p-4 shadow-tomorrow-surface backdrop-blur-xl sm:p-5" aria-label="Conversa com o Téo">
               <div className="flex flex-wrap items-start justify-between gap-3 border-b border-tomorrow-line pb-4">
                 <div>
                   <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-tomorrow-teal-soft">
                     <Route className="size-4" aria-hidden="true" />
-                    Central de comando
+                    Fale com o Téo
                   </p>
-                  <h2 className="mt-2 font-editorial text-3xl text-tomorrow-text">Téo em contexto.</h2>
+                  <h2 className="mt-2 font-editorial text-3xl text-tomorrow-text">Sua viagem, em conversa.</h2>
                 </div>
-                <OpportunityBadge variant="success">Visual ativo</OpportunityBadge>
+                {connected ? <OpportunityBadge variant="success">Conectado</OpportunityBadge> : null}
               </div>
 
               <section className="mt-4 rounded-tomorrow border border-tomorrow-line bg-tomorrow-background/55 p-4" aria-labelledby="live-transcript-title">
                 <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p id="live-transcript-title" className="text-xs font-bold uppercase tracking-[0.14em] text-tomorrow-muted">
-                      {voiceSessionActive || transcript.length > 0 ? "Transcrição da conversa" : "Prévia de transcrição"}
-                    </p>
-                    <p className="mt-1 text-xs text-tomorrow-muted/80">
-                      {voiceSessionActive || transcript.length > 0 ? "Gerada durante a sessão de voz ativa." : "Conteúdo demonstrativo da interface."}
-                    </p>
-                  </div>
+                  <p id="live-transcript-title" className="text-xs font-bold uppercase tracking-[0.14em] text-tomorrow-muted">
+                    Conversa
+                  </p>
                   <MessageSquareText className="size-5 text-tomorrow-gold-soft" aria-hidden="true" />
                 </div>
 
-                <div className="mt-4 grid max-h-64 gap-3 overflow-y-auto pr-1">
-                  {transcriptEntries.map((entry, index) => (
-                    <div
-                      key={`${entry.speaker}-${index}-${entry.final ? "final" : "partial"}`}
-                      className={`rounded-xl border p-3 ${
-                        entry.speaker === "Téo"
-                          ? "border-tomorrow-teal/25 bg-tomorrow-teal/8"
-                          : "border-tomorrow-gold/22 bg-tomorrow-gold/7"
-                      }`}
-                    >
-                      <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-tomorrow-muted">{entry.speaker}</p>
-                      <p className="mt-1.5 text-sm leading-relaxed text-tomorrow-text">{entry.text}</p>
-                    </div>
-                  ))}
-                </div>
+                {transcript.length > 0 ? (
+                  <div className="mt-4 grid max-h-64 gap-3 overflow-y-auto pr-1">
+                    {transcript.map((entry, index) => (
+                      <div
+                        key={`${entry.role}-${index}-${entry.final ? "final" : "partial"}`}
+                        className={`rounded-xl border p-3 ${
+                          entry.role === "assistant"
+                            ? "border-tomorrow-teal/25 bg-tomorrow-teal/8"
+                            : "border-tomorrow-gold/22 bg-tomorrow-gold/7"
+                        }`}
+                      >
+                        <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-tomorrow-muted">
+                          {entry.role === "assistant" ? "Téo" : "Você"}
+                        </p>
+                        <p className="mt-1.5 text-sm leading-relaxed text-tomorrow-text">{entry.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm leading-relaxed text-tomorrow-muted">
+                    Inicie a conversa e fale naturalmente com o Téo.
+                  </p>
+                )}
               </section>
 
               <section className="mt-4" aria-labelledby="live-text-mode-title">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p id="live-text-mode-title" className="text-sm font-semibold text-tomorrow-text">Modo texto</p>
-                    <p className="mt-1 text-xs leading-relaxed text-tomorrow-muted">A conversa atual do Téo continua separada e não foi modificada nesta etapa.</p>
+                    <p id="live-text-mode-title" className="text-sm font-semibold text-tomorrow-text">Prefere digitar?</p>
+                    <p className="mt-1 text-xs leading-relaxed text-tomorrow-muted">Você também pode continuar a conversa por texto.</p>
                   </div>
                   <Headphones className="size-5 shrink-0 text-tomorrow-teal-soft" aria-hidden="true" />
                 </div>
@@ -320,7 +271,7 @@ export default function OpportunitiesLive() {
                 </OpportunityButton>
               </section>
 
-              <section className="mt-4 grid grid-cols-4 gap-2" aria-label="Controles do Tomorrow Live">
+              <section className="mt-4 grid grid-cols-4 gap-2" aria-label="Controles da conversa">
                 <button
                   type="button"
                   disabled={!connected}
@@ -369,17 +320,13 @@ export default function OpportunitiesLive() {
                 onClick={voiceSessionActive ? endConversation : startConversation}
               >
                 {voiceStatus === "connecting" ? (
-                  <><LoaderCircle className="animate-spin" aria-hidden="true" />Conectando com segurança...</>
+                  <><LoaderCircle className="animate-spin" aria-hidden="true" />Conectando...</>
                 ) : voiceSessionActive ? (
                   <><Power aria-hidden="true" />Encerrar conversa</>
                 ) : (
                   <><Mic aria-hidden="true" />Iniciar conversa por voz</>
                 )}
               </OpportunityButton>
-
-              <p className="mt-2 text-center text-[0.68rem] leading-relaxed text-tomorrow-muted">
-                O microfone só é solicitado após o clique e é liberado ao encerrar.
-              </p>
 
               {error ? (
                 <div className="mt-3 rounded-xl border border-tomorrow-danger/35 bg-tomorrow-danger/8 p-3 text-xs leading-relaxed text-tomorrow-text" role="alert">
@@ -389,13 +336,13 @@ export default function OpportunitiesLive() {
 
               {toolError ? (
                 <div className="mt-3 rounded-xl border border-tomorrow-gold/35 bg-tomorrow-gold/8 p-3 text-xs leading-relaxed text-tomorrow-text" role="alert">
-                  {toolError} A conversa continua ativa e nenhuma alternativa foi criada.
+                  {toolError}
                 </div>
               ) : null}
 
               {privacyOpen ? (
                 <div className="mt-3 rounded-xl border border-tomorrow-teal/25 bg-tomorrow-teal/7 p-3 text-xs leading-relaxed text-tomorrow-muted" role="status">
-                  O microfone nunca é ativado automaticamente. Durante uma sessão, o áudio é transmitido pela conexão Realtime para permitir a conversa e não é salvo por esta interface. Ao encerrar, as tracks, o WebRTC e o AudioContext são fechados. A chave principal permanece somente no servidor.
+                  Sua conversa é privada. O microfone só é usado enquanto você estiver falando com o Téo.
                 </div>
               ) : null}
             </aside>
@@ -404,10 +351,10 @@ export default function OpportunitiesLive() {
 
         <section className="mx-auto grid w-full max-w-[90rem] gap-5 px-4 py-8 sm:px-6 lg:px-8" aria-labelledby="live-context-title">
           <div className="max-w-3xl">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-tomorrow-gold-soft">Contexto sem interrupção</p>
-            <h2 id="live-context-title" className="mt-2 font-editorial text-4xl leading-none text-tomorrow-text sm:text-5xl">A conversa encontra o que já funciona.</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-tomorrow-gold-soft">Continue explorando</p>
+            <h2 id="live-context-title" className="mt-2 font-editorial text-4xl leading-none text-tomorrow-text sm:text-5xl">Sua próxima viagem está mais perto.</h2>
             <p className="mt-3 text-sm leading-relaxed text-tomorrow-muted sm:text-base">
-              A busca de voz agora consulta o inventário público real e pode apresentar até três oportunidades. Nenhum preço, data, voo ou disponibilidade é criado pela interface Live.
+              Explore datas, compare oportunidades ou abra o catálogo completo.
             </p>
           </div>
 
@@ -430,12 +377,8 @@ export default function OpportunitiesLive() {
             })}
           </div>
 
-          <div className="flex flex-col gap-3 rounded-tomorrow-lg border border-tomorrow-gold/25 bg-tomorrow-gold/5 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="flex items-center gap-2 font-semibold text-tomorrow-text"><ShieldCheck className="size-4 text-tomorrow-gold-soft" aria-hidden="true" />Fundação de voz isolada e segura.</p>
-              <p className="mt-1 text-xs leading-relaxed text-tomorrow-muted">A busca permanece somente de leitura. Para uma oferta escolhida, o cliente pode abrir a página pública ou iniciar o WhatsApp com uma mensagem preenchida; nenhuma mensagem é enviada automaticamente.</p>
-            </div>
-            <OpportunityButton asChild variant="ghost" className="shrink-0">
+          <div className="flex justify-end">
+            <OpportunityButton asChild variant="ghost">
               <a href="/oportunidades/catalogo"><Search aria-hidden="true" />Explorar oportunidades</a>
             </OpportunityButton>
           </div>
