@@ -28,7 +28,7 @@ const KNOWN_SUBTYPES = [
   "evento",
   "grupo_guiado",
 ] as const;
-const SORTS = ["price_asc", "price_desc", "date_asc", "date_desc", "updated_desc"] as const;
+const SORTS = ["editorial", "price_asc", "price_desc", "date_asc", "date_desc", "updated_desc"] as const;
 
 type Action = (typeof KNOWN_ACTIONS)[number];
 type OfferType = (typeof KNOWN_OFFER_TYPES)[number];
@@ -59,6 +59,10 @@ type TravelOfferRow = {
   issue_deadline: string | null;
   updated_at: string | null;
   raw_data?: JsonRecord | null;
+  curation_featured?: boolean | null;
+  curation_sort_order?: number | null;
+  curation_campaign_label?: string | null;
+  curation_subtitle?: string | null;
 };
 
 type CatalogParams = {
@@ -469,6 +473,10 @@ const commonFields = (row: TravelOfferRow) => ({
     ? row.available_seats
     : null,
   updated_at: publicText(row.updated_at, 40),
+  featured: row.curation_featured === true,
+  editorial_order: Number.isInteger(row.curation_sort_order) ? row.curation_sort_order as number : 0,
+  campaign_label: publicText(row.curation_campaign_label, 80),
+  editorial_subtitle: publicText(row.curation_subtitle, 320),
 });
 
 const normalizeHotel = (value: unknown) => {
@@ -649,6 +657,10 @@ const catalogItem = (row: TravelOfferRow) => {
       available_seats: detail.available_seats,
       airfare_included: true,
       image_url: null,
+      featured: detail.featured,
+      editorial_order: detail.editorial_order,
+      campaign_label: detail.campaign_label,
+      editorial_subtitle: detail.editorial_subtitle,
       updated_at: detail.updated_at,
     };
   }
@@ -673,6 +685,10 @@ const catalogItem = (row: TravelOfferRow) => {
     available_seats: detail.available_seats,
     airfare_included: detail.airfare_included,
     image_url: detail.image_url,
+    featured: detail.featured,
+    editorial_order: detail.editorial_order,
+    campaign_label: detail.campaign_label,
+    editorial_subtitle: detail.editorial_subtitle,
     updated_at: detail.updated_at,
   };
 };
@@ -754,6 +770,10 @@ const DETAIL_SELECT = [
   "issue_deadline",
   "updated_at",
   "raw_data",
+  "curation_featured",
+  "curation_sort_order",
+  "curation_campaign_label",
+  "curation_subtitle",
 ].join(",");
 
 const CALENDAR_SELECT = [
@@ -792,7 +812,7 @@ const nowInSaoPaulo = (now = new Date()) =>
 
 const validQuery = (client: any, select: string, count?: "exact") => {
   let query = client
-    .from("travel_offers")
+    .from("travel_offers_curated_source")
     .select(select, count ? { count } : undefined)
     .eq("active", true)
     .in("offer_type", [...KNOWN_OFFER_TYPES])
@@ -928,15 +948,23 @@ const catalog = async (client: any, params: CatalogParams) => {
   if (params.max_price !== null) query = query.lte("price_per_person", params.max_price);
   if (params.only_with_seats) query = query.gt("available_seats", 0);
 
-  const orders: Record<Sort, [string, boolean]> = {
-    price_asc: ["price_per_person", true],
-    price_desc: ["price_per_person", false],
-    date_asc: ["departure_date", true],
-    date_desc: ["departure_date", false],
-    updated_desc: ["updated_at", false],
-  };
-  const [column, ascending] = orders[params.sort];
-  query = query.order(column, { ascending }).order("id", { ascending: true });
+  if (params.sort === "editorial") {
+    query = query
+      .order("curation_featured", { ascending: false })
+      .order("curation_sort_order", { ascending: true })
+      .order("departure_date", { ascending: true })
+      .order("id", { ascending: true });
+  } else {
+    const orders: Record<Exclude<Sort, "editorial">, [string, boolean]> = {
+      price_asc: ["price_per_person", true],
+      price_desc: ["price_per_person", false],
+      date_asc: ["departure_date", true],
+      date_desc: ["departure_date", false],
+      updated_desc: ["updated_at", false],
+    };
+    const [column, ascending] = orders[params.sort];
+    query = query.order(column, { ascending }).order("id", { ascending: true });
+  }
   const start = (params.page - 1) * params.per_page;
   const result = await query.range(start, start + params.per_page - 1);
   if (result.error) throw result.error;

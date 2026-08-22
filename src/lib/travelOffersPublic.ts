@@ -7,7 +7,7 @@ export const TRAVEL_OFFERS_NOTICE =
 
 export type PublicOfferType = "bloqueio_aereo" | "pacote";
 export type PublicOfferSubtype = "bloqueio" | "nacional" | "internacional" | "evento" | "grupo_guiado";
-export type CatalogSort = "price_asc" | "price_desc" | "date_asc" | "date_desc" | "updated_desc";
+export type CatalogSort = "editorial" | "price_asc" | "price_desc" | "date_asc" | "date_desc" | "updated_desc";
 
 export interface FacetValue {
   value: string;
@@ -64,6 +64,10 @@ export interface TravelOfferCatalogItem {
   available_seats: number | null;
   airfare_included: boolean;
   image_url: string | null;
+  featured: boolean;
+  editorial_order: number;
+  campaign_label: string | null;
+  editorial_subtitle: string | null;
   updated_at: string | null;
 }
 
@@ -111,6 +115,10 @@ interface TravelOfferDetailBase {
   nights: number | null;
   currency: string | null;
   available_seats: number | null;
+  featured: boolean;
+  editorial_order: number;
+  campaign_label: string | null;
+  editorial_subtitle: string | null;
   updated_at: string | null;
   price_per_person: number;
   tax_per_person: number | null;
