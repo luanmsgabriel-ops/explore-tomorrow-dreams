@@ -22,12 +22,10 @@ import NotFound from "./pages/NotFound";
 import Blog from "./pages/Blog";
 import Experiencia from "./pages/Experiencia";
 import { InstallPrompt } from "./components/InstallPrompt";
-import { FloatingWhatsApp } from "./components/FloatingWhatsApp";
 import { TravelAdvisorChat } from "./components/TravelAdvisorChat";
 import { AnalyticsProvider } from "./components/AnalyticsProvider";
 import { useLenis } from "./hooks/useLenis";
 import { preloadTomorrowLiveGlobeRuntime } from "./components/opportunities/live/globeRuntime";
-import { TemporaryRealtimeVoiceSelector } from "./components/opportunities/live/TemporaryRealtimeVoiceSelector";
 
 const OpportunitiesCatalog = lazy(() => import("./pages/OpportunitiesCatalog"));
 const OpportunitiesCalendar = lazy(() => import("./pages/OpportunitiesCalendar"));
@@ -35,8 +33,9 @@ const OpportunitiesLive = lazy(() => import("./pages/OpportunitiesLive"));
 const OpportunityDetail = lazy(() => import("./pages/OpportunityDetail"));
 const OpportunityCompare = lazy(() => import("./pages/OpportunityCompare"));
 
-if (typeof window !== "undefined" && window.location.pathname === "/oportunidades/live") {
-  void preloadTomorrowLiveGlobeRuntime();
+if (typeof window !== "undefined") {
+  window.localStorage.setItem("tomorrow-live-realtime-voice", "verse");
+  if (window.location.pathname === "/oportunidades/live") void preloadTomorrowLiveGlobeRuntime();
 }
 
 const queryClient = new QueryClient();
@@ -46,19 +45,12 @@ const SmoothScroll = () => {
   return null;
 };
 
-// Floating buttons that hide on client/admin areas
 const FloatingButtons = () => {
   const location = useLocation();
   const hideOnRoutes = ['/cliente', '/minha-area', '/admin', '/admin/dashboard', '/avaliacao', '/experiencia', '/oportunidades'];
   const shouldHide = hideOnRoutes.some(route => location.pathname.startsWith(route));
-  
   if (shouldHide) return null;
-  
-  return (
-    <>
-      <TravelAdvisorChat />
-    </>
-  );
+  return <TravelAdvisorChat />;
 };
 
 const App = () => (
@@ -86,49 +78,13 @@ const App = () => (
           <Route path="/blog" element={<Blog />} />
           <Route path="/experiencia" element={<Experiencia />} />
           <Route path="/oportunidades" element={<Navigate to="/oportunidades/catalogo" replace />} />
-          <Route
-            path="/oportunidades/catalogo"
-            element={(
-              <Suspense fallback={<div className="min-h-screen bg-[#041012]" aria-label="Carregando catálogo" />}>
-                <OpportunitiesCatalog />
-              </Suspense>
-            )}
-          />
-          <Route
-            path="/oportunidades/live"
-            element={(
-              <Suspense fallback={<div className="min-h-screen bg-[#041012]" aria-label="Carregando Tomorrow Live" />}>
-                <OpportunitiesLive />
-              </Suspense>
-            )}
-          />
-          <Route
-            path="/oportunidades/calendario"
-            element={(
-              <Suspense fallback={<div className="min-h-screen bg-[#041012]" aria-label="Carregando calendário" />}>
-                <OpportunitiesCalendar />
-              </Suspense>
-            )}
-          />
-          <Route
-            path="/oportunidades/oferta/:id"
-            element={(
-              <Suspense fallback={<div className="min-h-screen bg-[#041012]" aria-label="Carregando oportunidade" />}>
-                <OpportunityDetail />
-              </Suspense>
-            )}
-          />
-          <Route
-            path="/oportunidades/comparar"
-            element={(
-              <Suspense fallback={<div className="min-h-screen bg-[#041012]" aria-label="Carregando comparação" />}>
-                <OpportunityCompare />
-              </Suspense>
-            )}
-          />
+          <Route path="/oportunidades/catalogo" element={<Suspense fallback={<div className="min-h-screen bg-[#041012]" aria-label="Carregando catálogo" />}><OpportunitiesCatalog /></Suspense>} />
+          <Route path="/oportunidades/live" element={<Suspense fallback={<div className="min-h-screen bg-[#041012]" aria-label="Carregando Tomorrow Live" />}><OpportunitiesLive /></Suspense>} />
+          <Route path="/oportunidades/calendario" element={<Suspense fallback={<div className="min-h-screen bg-[#041012]" aria-label="Carregando calendário" />}><OpportunitiesCalendar /></Suspense>} />
+          <Route path="/oportunidades/oferta/:id" element={<Suspense fallback={<div className="min-h-screen bg-[#041012]" aria-label="Carregando oportunidade" />}><OpportunityDetail /></Suspense>} />
+          <Route path="/oportunidades/comparar" element={<Suspense fallback={<div className="min-h-screen bg-[#041012]" aria-label="Carregando comparação" />}><OpportunityCompare /></Suspense>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-        <TemporaryRealtimeVoiceSelector />
         <AnalyticsProvider />
         <InstallPrompt />
         <FloatingButtons />
