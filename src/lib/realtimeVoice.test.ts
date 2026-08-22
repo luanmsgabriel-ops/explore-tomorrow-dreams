@@ -28,7 +28,7 @@ describe("Realtime Voice contract", () => {
     setSelectedRealtimeVoice("marin");
     expect(getSelectedRealtimeVoice()).toBe("marin");
     window.localStorage.setItem(REALTIME_VOICE_STORAGE_KEY, "voz-inventada");
-    expect(getSelectedRealtimeVoice()).toBe(DEFAULT_REALTIME_VOOICE);
+    expect(getSelectedRealtimeVoice()).toBe(DEFAULT_REALTIME_VOICE);
     window.localStorage.removeItem(REALTIME_VOICE_STORAGE_KEY);
   });
 
