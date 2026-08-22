@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   ArrowRight,
   CalendarDays,
@@ -21,6 +21,7 @@ interface LiveOfferOverlayProps {
   handoff: OfferHandoffSelection | null;
   detailPath: string | null;
   whatsappUrl: string | null;
+  navigate?: (target: string) => void;
 }
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
@@ -29,6 +30,19 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
   timeZone: "UTC",
 });
+
+const defaultNavigate = (target: string) => window.location.assign(target);
+
+export function automaticHandoffTarget(
+  handoff: OfferHandoffSelection | null,
+  detailPath: string | null,
+  whatsappUrl: string | null,
+) {
+  if (!handoff) return null;
+  if (handoff.requestedChannel === "details") return detailPath;
+  if (handoff.requestedChannel === "whatsapp") return whatsappUrl;
+  return null;
+}
 
 function formatDate(value: string | null) {
   if (!value) return null;
@@ -118,9 +132,10 @@ function FloatingOfferCard({ item, index }: { item: TravelOfferCatalogItem; inde
   );
 }
 
-export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl }: LiveOfferOverlayProps) {
+export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl, navigate = defaultNavigate }: LiveOfferOverlayProps) {
   const [deckOpen, setDeckOpen] = useState(offers.length > 0);
   const [handoffOpen, setHandoffOpen] = useState(Boolean(handoff));
+  const automaticNavigationRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (offers.length > 0) setDeckOpen(true);
@@ -129,6 +144,15 @@ export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl }: L
   useEffect(() => {
     if (handoff) setHandoffOpen(true);
   }, [handoff]);
+
+  useEffect(() => {
+    const target = automaticHandoffTarget(handoff, detailPath, whatsappUrl);
+    if (!handoff || !target) return;
+    const navigationKey = `${handoff.offer.id}:${handoff.requestedChannel}`;
+    if (automaticNavigationRef.current === navigationKey) return;
+    automaticNavigationRef.current = navigationKey;
+    navigate(target);
+  }, [detailPath, handoff, navigate, whatsappUrl]);
 
   useEffect(() => {
     if (!handoffOpen) return undefined;
@@ -240,7 +264,7 @@ export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl }: L
               </div>
 
               <p id="live-offer-popup-description" className="text-xs leading-relaxed text-tomorrow-muted">
-                A conversa por voz continua ativa. Escolha a página da oferta ou abra o WhatsApp com esta oportunidade e as preferências da busca já preenchidas.
+                Quando você pede diretamente a página ou o WhatsApp, o Tomorrow Live inicia o redirecionamento automático. Estes botões permanecem disponíveis como alternativa caso o navegador impeça a saída automática.
               </p>
 
               <div className="grid gap-2 sm:grid-cols-2">
