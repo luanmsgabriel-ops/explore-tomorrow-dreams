@@ -207,7 +207,7 @@ describe("Realtime Voice contract", () => {
         item: {
           type: "function_call_output",
           call_id: "call-1",
-          output: JSON.stringify(output),
+          output: JSON.stringify({ ok: true, items: [] }),
         },
       },
       { type: "response.create" },
