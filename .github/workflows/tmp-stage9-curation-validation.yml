@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - feat/stage-9-curation-foundation
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
