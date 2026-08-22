@@ -1,6 +1,7 @@
 import { ArrowRight, CalendarDays, MapPin, Plane, UsersRound } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { DeferredOfferImage } from "./DeferredOfferImage";
 import { OpportunityBadge, OpportunityButton, type OpportunityBadgeProps } from "./OpportunityPrimitives";
 
 function formatCurrency(value: number, currency?: string | null) {
@@ -80,7 +81,7 @@ export function OpportunityCard({
   return (
     <article
       className={cn(
-        "opportunity-scope opportunity-card group grid min-h-full overflow-hidden rounded-tomorrow-lg border border-tomorrow-line bg-tomorrow-surface text-tomorrow-text shadow-tomorrow-surface",
+        "opportunity-scope opportunity-card group grid min-h-full overflow-hidden rounded-tomorrow-lg border border-tomorrow-line bg-tomorrow-surface text-tomorrow-text shadow-tomorrow-surface [content-visibility:auto] [contain-intrinsic-size:30rem]",
         className,
       )}
       data-offer-id={id}
@@ -88,10 +89,9 @@ export function OpportunityCard({
     >
       <div className="relative aspect-[16/9] overflow-hidden bg-tomorrow-surface-elevated">
         {imageUrl ? (
-          <img
+          <DeferredOfferImage
             src={imageUrl}
             alt={imageAlt ?? destination}
-            loading="lazy"
             className="size-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-[1.035]"
           />
         ) : (
