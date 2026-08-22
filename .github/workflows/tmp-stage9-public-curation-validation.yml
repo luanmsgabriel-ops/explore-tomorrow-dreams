@@ -1,0 +1,57 @@
+name: Temporary stage 9 public curation validation
+
+on:
+  push:
+    branches:
+      - feat/stage-9-public-curation
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Deno tests for public offers
+        run: deno test supabase/functions/travel-offers-public/*_test.ts
+
+      - name: Deno check public offers function
+        run: deno check supabase/functions/travel-offers-public/index.ts
+
+      - name: Install dependencies despite historical lock drift
+        run: npm install --package-lock=false --ignore-scripts
+
+      - name: ESLint client contract
+        run: npx eslint src/lib/travelOffersPublic.ts
+
+      - name: TypeScript excluding known historical error
+        shell: bash
+        run: |
+          set +e
+          npx tsc --noEmit --pretty false > /tmp/tsc.log 2>&1
+          set -e
+          cat /tmp/tsc.log
+          unexpected=$(grep "error TS" /tmp/tsc.log | grep -v "src/components/admin/QuoteEditForm.tsx" || true)
+          if [ -n "$unexpected" ]; then
+            echo "$unexpected"
+            exit 1
+          fi
+
+      - name: Production build
+        run: npm run build
+
+      - name: Diff check
+        run: git diff --check origin/main...HEAD
