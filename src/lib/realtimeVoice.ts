@@ -6,6 +6,37 @@ import type { CatalogParams } from "@/lib/travelOffersPublic";
 export type RealtimeVoiceStatus = "idle" | "connecting" | "listening" | "thinking" | "speaking" | "offers" | "error";
 export type VoiceTranscriptRole = "user" | "assistant";
 
+export const REALTIME_VOICES = [
+  "alloy",
+  "ash",
+  "ballad",
+  "coral",
+  "echo",
+  "sage",
+  "shimmer",
+  "verse",
+  "marin",
+  "cedar",
+] as const;
+
+export type RealtimeVoiceName = typeof REALTIME_VOICES[number];
+export const DEFAULT_REALTIME_VOICE: RealtimeVoiceName = "cedar";
+export const REALTIME_VOICE_STORAGE_KEY = "tomorrow-live-realtime-voice";
+
+export function isRealtimeVoiceName(value: unknown): value is RealtimeVoiceName {
+  return typeof value === "string" && (REALTIME_VOICES as readonly string[]).includes(value);
+}
+
+export function getSelectedRealtimeVoice(): RealtimeVoiceName {
+  if (typeof window === "undefined") return DEFAULT_REALTIME_VOICE;
+  const stored = window.localStorage.getItem(REALTIME_VOICE_STORAGE_KEY);
+  return isRealtimeVoiceName(stored) ? stored : DEFAULT_REALTIME_VOICE;
+}
+
+export function setSelectedRealtimeVoice(voice: RealtimeVoiceName) {
+  if (typeof window !== "undefined") window.localStorage.setItem(REALTIME_VOICE_STORAGE_KEY, voice);
+}
+
 export interface VoiceTranscriptEntry {
   id: string;
   role: VoiceTranscriptRole;
@@ -281,9 +312,12 @@ async function functionError(error: unknown) {
   return new RealtimeVoiceError("A conexão de voz está indisponível agora.", "session_request_failed");
 }
 
-export async function fetchRealtimeClientSecret(signal?: AbortSignal) {
+export async function fetchRealtimeClientSecret(
+  signal?: AbortSignal,
+  voice: RealtimeVoiceName = getSelectedRealtimeVoice(),
+) {
   const { data, error } = await supabase.functions.invoke<RealtimeSecretResponse>("tomorrow-live-realtime-session", {
-    body: {},
+    body: { voice },
     signal,
     timeout: 15_000,
   });

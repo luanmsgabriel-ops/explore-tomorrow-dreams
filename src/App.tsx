@@ -27,6 +27,7 @@ import { TravelAdvisorChat } from "./components/TravelAdvisorChat";
 import { AnalyticsProvider } from "./components/AnalyticsProvider";
 import { useLenis } from "./hooks/useLenis";
 import { preloadTomorrowLiveGlobeRuntime } from "./components/opportunities/live/globeRuntime";
+import { TemporaryRealtimeVoiceSelector } from "./components/opportunities/live/TemporaryRealtimeVoiceSelector";
 
 const OpportunitiesCatalog = lazy(() => import("./pages/OpportunitiesCatalog"));
 const OpportunitiesCalendar = lazy(() => import("./pages/OpportunitiesCalendar"));
@@ -127,6 +128,7 @@ const App = () => (
           />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <TemporaryRealtimeVoiceSelector />
         <AnalyticsProvider />
         <InstallPrompt />
         <FloatingButtons />

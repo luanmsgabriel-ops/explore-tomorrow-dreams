@@ -1,6 +1,6 @@
 import { assertEquals, assertMatch } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
-import { createRealtimeSessionConfig, createRealtimeSessionHandler } from "./core.ts";
+import { createRealtimeSessionConfig, createRealtimeSessionHandler, REALTIME_VOICES } from "./core.ts";
 
 const envValues = new Map<string, string>([
   ["OPENAI_API_KEY", "server-key"],
@@ -29,6 +29,13 @@ Deno.test("cria configuração GA sem expor a chave principal", () => {
   assertEquals(JSON.stringify(config).includes("server-key"), false);
 });
 
+Deno.test("aceita somente vozes temporárias conhecidas", () => {
+  assertEquals(REALTIME_VOICES.includes("marin"), true);
+  assertEquals(REALTIME_VOICES.includes("cedar"), true);
+  const config = createRealtimeSessionConfig(env, "marin");
+  assertEquals((config.session.audio as Record<string, unknown>).output, { voice: "marin", speed: 1 });
+});
+
 Deno.test("rejeita origem não autorizada", async () => {
   const handler = createRealtimeSessionHandler({ env });
   const response = await handler(new Request("https://edge.test", {
@@ -39,22 +46,36 @@ Deno.test("rejeita origem não autorizada", async () => {
   assertEquals(response.status, 403);
 });
 
+Deno.test("rejeita voz fora da allowlist", async () => {
+  const handler = createRealtimeSessionHandler({ env });
+  const response = await handler(new Request("https://edge.test", {
+    method: "POST",
+    headers: { "content-type": "application/json", origin },
+    body: JSON.stringify({ voice: "voz-inventada" }),
+  }));
+  const body = await response.json();
+  assertEquals(response.status, 400);
+  assertEquals(body.error.code, "invalid_voice");
+});
+
 Deno.test("retorna somente client secret efêmero e expiração", async () => {
   let authorization = "";
   let safetyIdentifier = "";
+  let upstreamBody = "";
   const handler = createRealtimeSessionHandler({
     env,
     fetchFn: async (_url, init) => {
       const headers = new Headers(init?.headers);
       authorization = headers.get("authorization") ?? "";
       safetyIdentifier = headers.get("openai-safety-identifier") ?? "";
+      upstreamBody = String(init?.body ?? "{}");
       return Response.json({ value: "ek_test_ephemeral", expires_at: 12345, session: { internal: true } });
     },
   });
   const response = await handler(new Request("https://edge.test", {
     method: "POST",
     headers: { "content-type": "application/json", origin, "x-forwarded-for": "203.0.113.8" },
-    body: "{}",
+    body: JSON.stringify({ voice: "marin" }),
   }));
   const body = await response.json();
 
@@ -62,6 +83,9 @@ Deno.test("retorna somente client secret efêmero e expiração", async () => {
   assertEquals(body, { value: "ek_test_ephemeral", expires_at: 12345 });
   assertEquals(authorization, "Bearer server-key");
   assertMatch(safetyIdentifier, /^[a-f0-9]{64}$/);
+  const parsedUpstream = JSON.parse(upstreamBody) as Record<string, unknown>;
+  const session = parsedUpstream.session as Record<string, unknown>;
+  assertEquals((session.audio as Record<string, unknown>).output, { voice: "marin", speed: 1 });
 });
 
 Deno.test("trata ausência de chave sem chamar a OpenAI", async () => {

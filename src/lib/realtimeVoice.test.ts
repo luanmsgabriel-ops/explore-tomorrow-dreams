@@ -4,14 +4,34 @@ import {
   applyTranscriptChange,
   catalogParamsFromRealtimeTool,
   clampAudioLevel,
+  DEFAULT_REALTIME_VOICE,
   functionCallFromRealtimeEvent,
+  getSelectedRealtimeVoice,
+  isRealtimeVoiceName,
   offerHandoffFromRealtimeTool,
   parseRealtimeEvent,
+  REALTIME_VOICES,
+  REALTIME_VOICE_STORAGE_KEY,
   realtimeToolContinuationEvents,
+  setSelectedRealtimeVoice,
   transcriptChangeFromEvent,
 } from "./realtimeVoice";
 
 describe("Realtime Voice contract", () => {
+  it("expõe somente as vozes permitidas e persiste a seleção temporária", () => {
+    expect(REALTIME_VOICES).toContain("marin");
+    expect(REALTIME_VOICES).toContain("cedar");
+    expect(isRealtimeVoiceName("voz-inventada")).toBe(false);
+
+    window.localStorage.removeItem(REALTIME_VOICE_STORAGE_KEY);
+    expect(getSelectedRealtimeVoice()).toBe(DEFAULT_REALTIME_VOICE);
+    setSelectedRealtimeVoice("marin");
+    expect(getSelectedRealtimeVoice()).toBe("marin");
+    window.localStorage.setItem(REALTIME_VOICE_STORAGE_KEY, "voz-inventada");
+    expect(getSelectedRealtimeVoice()).toBe(DEFAULT_REALTIME_VOICE);
+    window.localStorage.removeItem(REALTIME_VOICE_STORAGE_KEY);
+  });
+
   it("mantém audioLevel entre zero e um", () => {
     expect(clampAudioLevel(-1)).toBe(0);
     expect(clampAudioLevel(0.42)).toBe(0.42);
