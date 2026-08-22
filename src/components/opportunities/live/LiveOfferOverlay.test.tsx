@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { OfferHandoffSelection } from "@/hooks/useRealtimeVoice";
 import type { TravelOfferCatalogItem } from "@/lib/travelOffersPublic";
@@ -47,7 +47,7 @@ describe("LiveOfferOverlay", () => {
     expect(screen.getByRole("region", { name: "Ofertas encontradas pelo Téo" })).toBeInTheDocument();
   });
 
-  it("abre a oferta escolhida em pop-up sem remover as opções encontradas", () => {
+  it("mantém o pop-up como fallback depois de escolher uma oferta", () => {
     const selected = offer(1);
     const handoff: OfferHandoffSelection = {
       offer: selected,
@@ -57,7 +57,15 @@ describe("LiveOfferOverlay", () => {
     const detailPath = `/oportunidades/oferta/${selected.id}`;
     const whatsappUrl = "https://wa.me/5515991833448?text=oferta";
 
-    render(<LiveOfferOverlay offers={[selected]} handoff={handoff} detailPath={detailPath} whatsappUrl={whatsappUrl} />);
+    render(
+      <LiveOfferOverlay
+        offers={[selected]}
+        handoff={handoff}
+        detailPath={detailPath}
+        whatsappUrl={whatsappUrl}
+        navigate={() => undefined}
+      />,
+    );
 
     expect(screen.getByRole("dialog", { name: "Pacote Maceió 1" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ver oferta" })).toHaveAttribute("href", detailPath);
@@ -67,5 +75,76 @@ describe("LiveOfferOverlay", () => {
     fireEvent.click(screen.getByRole("button", { name: "Fechar oferta escolhida" }));
     expect(screen.queryByRole("dialog", { name: "Pacote Maceió 1" })).not.toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Ofertas encontradas pelo Téo" })).toBeInTheDocument();
+  });
+
+  it("redireciona automaticamente para o WhatsApp quando esse canal foi pedido", () => {
+    const selected = offer(1);
+    const navigate = vi.fn();
+    const whatsappUrl = "https://wa.me/5515991833448?text=oferta";
+    const handoff: OfferHandoffSelection = {
+      offer: selected,
+      requestedChannel: "whatsapp",
+      searchContext: null,
+    };
+
+    render(
+      <LiveOfferOverlay
+        offers={[selected]}
+        handoff={handoff}
+        detailPath={`/oportunidades/oferta/${selected.id}`}
+        whatsappUrl={whatsappUrl}
+        navigate={navigate}
+      />,
+    );
+
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledWith(whatsappUrl);
+  });
+
+  it("redireciona automaticamente para os detalhes quando a página da oferta foi pedida", () => {
+    const selected = offer(1);
+    const navigate = vi.fn();
+    const detailPath = `/oportunidades/oferta/${selected.id}`;
+    const handoff: OfferHandoffSelection = {
+      offer: selected,
+      requestedChannel: "details",
+      searchContext: null,
+    };
+
+    render(
+      <LiveOfferOverlay
+        offers={[selected]}
+        handoff={handoff}
+        detailPath={detailPath}
+        whatsappUrl="https://wa.me/5515991833448?text=oferta"
+        navigate={navigate}
+      />,
+    );
+
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledWith(detailPath);
+  });
+
+  it("não redireciona quando o cliente pediu apenas as opções", () => {
+    const selected = offer(1);
+    const navigate = vi.fn();
+    const handoff: OfferHandoffSelection = {
+      offer: selected,
+      requestedChannel: "options",
+      searchContext: null,
+    };
+
+    render(
+      <LiveOfferOverlay
+        offers={[selected]}
+        handoff={handoff}
+        detailPath={`/oportunidades/oferta/${selected.id}`}
+        whatsappUrl="https://wa.me/5515991833448?text=oferta"
+        navigate={navigate}
+      />,
+    );
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "Pacote Maceió 1" })).toBeInTheDocument();
   });
 });
