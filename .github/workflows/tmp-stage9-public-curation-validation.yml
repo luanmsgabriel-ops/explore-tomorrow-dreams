@@ -25,14 +25,14 @@ jobs:
         with:
           node-version: 20
 
+      - name: Install dependencies despite historical lock drift
+        run: npm install --package-lock=false --ignore-scripts
+
       - name: Deno tests for public offers
         run: deno test supabase/functions/travel-offers-public/*_test.ts
 
       - name: Deno check public offers function
         run: deno check supabase/functions/travel-offers-public/index.ts
-
-      - name: Install dependencies despite historical lock drift
-        run: npm install --package-lock=false --ignore-scripts
 
       - name: ESLint client contract
         run: npx eslint src/lib/travelOffersPublic.ts
