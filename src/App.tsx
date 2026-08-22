@@ -33,8 +33,9 @@ const OpportunitiesLive = lazy(() => import("./pages/OpportunitiesLive"));
 const OpportunityDetail = lazy(() => import("./pages/OpportunityDetail"));
 const OpportunityCompare = lazy(() => import("./pages/OpportunityCompare"));
 
-if (typeof window !== "undefined" && window.location.pathname === "/oportunidades/live") {
-  void preloadTomorrowLiveGlobeRuntime();
+if (typeof window !== "undefined") {
+  window.localStorage.setItem("tomorrow-live-realtime-voice", "verse");
+  if (window.location.pathname === "/oportunidades/live") void preloadTomorrowLiveGlobeRuntime();
 }
 
 const queryClient = new QueryClient();
