@@ -44,9 +44,9 @@ export const OfferSyncManager = () => {
     setIsSyncing(true);
     try {
       const { data, error } = await supabase.functions.invoke("travel-offers-sync");
-      
+
       if (error) throw error;
-      
+
       toast.success(`Sincronização concluída: ${data.found} ofertas encontradas!`);
       fetchLastSync();
     } catch (error: unknown) {
@@ -68,8 +68,8 @@ export const OfferSyncManager = () => {
             <RefreshCw className={`h-5 w-5 ${isSyncing ? 'animate-spin' : ''}`} />
             Coletor de Ofertas
           </CardTitle>
-          <Button 
-            onClick={handleSync} 
+          <Button
+            onClick={handleSync}
             disabled={isSyncing}
             className="bg-primary hover:bg-primary/80 text-primary-foreground"
           >
@@ -88,7 +88,7 @@ export const OfferSyncManager = () => {
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10">
                 {lastSync.status === 'success' ? (
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
