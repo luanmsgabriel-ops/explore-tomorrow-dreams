@@ -119,7 +119,7 @@ AS $$
 DECLARE
   audit_offer_id UUID;
 BEGIN
-  audit_offer_id := COALESCE(NEW.offer_id, OLD.offer_id);
+  audit_offer_id := CASE WHEN TG_OP = 'DELETE' THEN OLD.offer_id ELSE NEW.offer_id END;
 
   INSERT INTO public.travel_offer_curation_audit (
     offer_id,
@@ -135,7 +135,10 @@ BEGIN
     auth.uid()
   );
 
-  RETURN COALESCE(NEW, OLD);
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  END IF;
+  RETURN NEW;
 END;
 $$;
 
@@ -165,14 +168,14 @@ ON public.travel_offer_curation
 FOR ALL
 USING (
   EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE profiles.user_id = auth.uid() AND profiles.role = 'admin'
+    SELECT 1 FROM public.user_roles
+    WHERE user_roles.user_id = auth.uid() AND user_roles.role = 'admin'
   )
 )
 WITH CHECK (
   EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE profiles.user_id = auth.uid() AND profiles.role = 'admin'
+    SELECT 1 FROM public.user_roles
+    WHERE user_roles.user_id = auth.uid() AND user_roles.role = 'admin'
   )
 );
 
@@ -181,14 +184,14 @@ ON public.travel_offer_collections
 FOR ALL
 USING (
   EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE profiles.user_id = auth.uid() AND profiles.role = 'admin'
+    SELECT 1 FROM public.user_roles
+    WHERE user_roles.user_id = auth.uid() AND user_roles.role = 'admin'
   )
 )
 WITH CHECK (
   EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE profiles.user_id = auth.uid() AND profiles.role = 'admin'
+    SELECT 1 FROM public.user_roles
+    WHERE user_roles.user_id = auth.uid() AND user_roles.role = 'admin'
   )
 );
 
@@ -197,14 +200,14 @@ ON public.travel_offer_collection_items
 FOR ALL
 USING (
   EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE profiles.user_id = auth.uid() AND profiles.role = 'admin'
+    SELECT 1 FROM public.user_roles
+    WHERE user_roles.user_id = auth.uid() AND user_roles.role = 'admin'
   )
 )
 WITH CHECK (
   EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE profiles.user_id = auth.uid() AND profiles.role = 'admin'
+    SELECT 1 FROM public.user_roles
+    WHERE user_roles.user_id = auth.uid() AND user_roles.role = 'admin'
   )
 );
 
@@ -213,8 +216,8 @@ ON public.travel_offer_curation_audit
 FOR SELECT
 USING (
   EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE profiles.user_id = auth.uid() AND profiles.role = 'admin'
+    SELECT 1 FROM public.user_roles
+    WHERE user_roles.user_id = auth.uid() AND user_roles.role = 'admin'
   )
 );
 
