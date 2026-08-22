@@ -218,7 +218,7 @@ export function createRealtimeSessionConfig(env: RuntimeEnv, requestedVoice: Rea
         },
       },
       output: {
-        voice: requestedVoice ?? env.get("OPENAI_REALTIME_VOICE")?.trim() || DEFAULT_VOICE,
+        voice: requestedVoice ?? (env.get("OPENAI_REALTIME_VOICE")?.trim() || DEFAULT_VOICE),
         speed: 1,
       },
     },
