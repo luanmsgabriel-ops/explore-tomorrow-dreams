@@ -20,7 +20,8 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - name: Install dependencies despite historical lock drift
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Focused Vitest
         run: npx vitest run src/lib/realtimeVoice.test.ts
       - name: Scoped ESLint
