@@ -17,6 +17,21 @@ const DEFAULT_MODEL = "gpt-realtime-2.1";
 const DEFAULT_TRANSCRIPTION_MODEL = "gpt-live-transcribe";
 const DEFAULT_VOICE = "cedar";
 
+export const REALTIME_VOICES = [
+  "alloy",
+  "ash",
+  "ballad",
+  "coral",
+  "echo",
+  "sage",
+  "shimmer",
+  "verse",
+  "marin",
+  "cedar",
+] as const;
+
+export type RealtimeVoice = typeof REALTIME_VOICES[number];
+
 const defaultOrigins = [
   "https://tomorrowtravelbr.com.br",
   "https://www.tomorrowtravelbr.com.br",
@@ -118,6 +133,9 @@ const OFFER_ACTIONS_TOOL = {
 const isRecord = (value: unknown): value is JsonRecord =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
+const isRealtimeVoice = (value: unknown): value is RealtimeVoice =>
+  typeof value === "string" && (REALTIME_VOICES as readonly string[]).includes(value);
+
 const allowedOrigins = (env: RuntimeEnv) => {
   const configured = env.get("TOMORROW_LIVE_ALLOWED_ORIGINS")
     ?.split(",")
@@ -149,13 +167,17 @@ const jsonResponse = (body: unknown, status: number, origin: string | null, env:
     },
   });
 
-const readBody = async (request: Request) => {
+const readBody = async (request: Request): Promise<RealtimeVoice | null> => {
   const contentType = request.headers.get("content-type")?.toLowerCase() ?? "";
   if (!contentType.startsWith("application/json")) throw new Error("invalid_content_type");
   const text = await request.text();
   if (new TextEncoder().encode(text).byteLength > REQUEST_LIMIT) throw new Error("request_too_large");
   const body = text ? JSON.parse(text) : {};
-  if (!isRecord(body) || Object.keys(body).length > 0) throw new Error("invalid_request");
+  if (!isRecord(body)) throw new Error("invalid_request");
+  if (Object.keys(body).some((key) => key !== "voice")) throw new Error("invalid_request");
+  if (body.voice === undefined || body.voice === null || body.voice === "") return null;
+  if (!isRealtimeVoice(body.voice)) throw new Error("invalid_voice");
+  return body.voice;
 };
 
 const sha256 = async (value: string) => {
@@ -173,7 +195,7 @@ const safetyIdentifier = async (request: Request, env: RuntimeEnv) => {
   return sha256(`${salt}|${ip}|${userAgent}`);
 };
 
-export function createRealtimeSessionConfig(env: RuntimeEnv) {
+export function createRealtimeSessionConfig(env: RuntimeEnv, requestedVoice: RealtimeVoice | null = null) {
   const promptId = env.get("OPENAI_REALTIME_PROMPT_ID")?.trim();
   const session: JsonRecord = {
     type: "realtime",
@@ -196,7 +218,7 @@ export function createRealtimeSessionConfig(env: RuntimeEnv) {
         },
       },
       output: {
-        voice: env.get("OPENAI_REALTIME_VOICE")?.trim() || DEFAULT_VOICE,
+        voice: requestedVoice ?? env.get("OPENAI_REALTIME_VOICE")?.trim() || DEFAULT_VOICE,
         speed: 1,
       },
     },
@@ -247,15 +269,18 @@ export function createRealtimeSessionHandler({ env, fetchFn = fetch, now = Date.
       return jsonResponse({ error: { code: "method_not_allowed", message: "Método não permitido." }, request_id: requestId }, 405, origin, env);
     }
 
+    let requestedVoice: RealtimeVoice | null = null;
     try {
-      await readBody(request);
+      requestedVoice = await readBody(request);
       checkRateLimit(request);
     } catch (error) {
       const code = error instanceof Error ? error.message : "invalid_request";
       const status = code === "request_too_large" ? 413 : code === "rate_limited" ? 429 : 400;
       const message = code === "rate_limited"
         ? "Muitas tentativas. Aguarde um instante antes de iniciar outra conversa."
-        : "Solicitação inválida.";
+        : code === "invalid_voice"
+          ? "A voz selecionada não é permitida."
+          : "Solicitação inválida.";
       return jsonResponse({ error: { code, message }, request_id: requestId }, status, origin, env);
     }
 
@@ -272,7 +297,7 @@ export function createRealtimeSessionHandler({ env, fetchFn = fetch, now = Date.
           "Content-Type": "application/json",
           "OpenAI-Safety-Identifier": await safetyIdentifier(request, env),
         },
-        body: JSON.stringify(createRealtimeSessionConfig(env)),
+        body: JSON.stringify(createRealtimeSessionConfig(env, requestedVoice)),
       });
 
       if (!openAiResponse.ok) {
