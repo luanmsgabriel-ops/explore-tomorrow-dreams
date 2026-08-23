@@ -150,6 +150,24 @@ const validIsoDate = (value: string) => {
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 };
 
+const normalizeSearchTerm = (value: string) => value
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, " ")
+  .trim();
+
+const isRedundantOfferTypeSearch = (
+  search: string,
+  offerType: NonNullable<TravelOfferSearchArguments["offer_type"]>,
+) => {
+  const normalized = normalizeSearchTerm(search);
+  const redundantTerms = offerType === "bloqueio_aereo"
+    ? new Set(["bloqueio", "bloqueios", "bloqueio aereo", "bloqueios aereos", "aereo", "aereos", "passagem aerea", "passagens aereas"])
+    : new Set(["pacote", "pacotes"]);
+  return redundantTerms.has(normalized);
+};
+
 export function catalogParamsFromRealtimeTool(call: RealtimeFunctionCall): CatalogParams {
   if (call.name !== "search_travel_offers") throw new RealtimeVoiceError("Ferramenta não permitida.", "unknown_tool");
 
@@ -202,6 +220,9 @@ export function catalogParamsFromRealtimeTool(call: RealtimeFunctionCall): Catal
       throw new RealtimeVoiceError("O tipo de oportunidade é inválido.", "invalid_tool_arguments");
     }
     args.offer_type = parsed.offer_type;
+  }
+  if (args.search && args.offer_type && isRedundantOfferTypeSearch(args.search, args.offer_type)) {
+    delete args.search;
   }
 
   return {
