@@ -95,7 +95,8 @@ describe("Tomorrow Live — Etapa 7: fundação de voz", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "O microfone só é usado enquanto você estiver falando com o Téo.",
     );
-    expect(screen.getByText(/A busca permanece somente de leitura/)).toBeInTheDocument();
+    expect(screen.getByText(/Sua conversa é privada/)).toBeInTheDocument();
+    expect(getUserMedia).not.toHaveBeenCalled();
   });
 
   it("respeita preferência de movimento reduzido", async () => {
