@@ -4,34 +4,14 @@ import {
   applyTranscriptChange,
   catalogParamsFromRealtimeTool,
   clampAudioLevel,
-  DEFAULT_REALTIME_VOICE,
   functionCallFromRealtimeEvent,
-  getSelectedRealtimeVoice,
-  isRealtimeVoiceName,
   offerHandoffFromRealtimeTool,
   parseRealtimeEvent,
-  REALTIME_VOICES,
-  REALTIME_VOICE_STORAGE_KEY,
   realtimeToolContinuationEvents,
-  setSelectedRealtimeVoice,
   transcriptChangeFromEvent,
 } from "./realtimeVoice";
 
 describe("Realtime Voice contract", () => {
-  it("expõe somente as vozes permitidas e persiste a seleção temporária", () => {
-    expect(REALTIME_VOICES).toContain("marin");
-    expect(REALTIME_VOICES).toContain("cedar");
-    expect(isRealtimeVoiceName("voz-inventada")).toBe(false);
-
-    window.localStorage.removeItem(REALTIME_VOICE_STORAGE_KEY);
-    expect(getSelectedRealtimeVoice()).toBe(DEFAULT_REALTIME_VOICE);
-    setSelectedRealtimeVoice("marin");
-    expect(getSelectedRealtimeVoice()).toBe("marin");
-    window.localStorage.setItem(REALTIME_VOICE_STORAGE_KEY, "voz-inventada");
-    expect(getSelectedRealtimeVoice()).toBe(DEFAULT_REALTIME_VOICE);
-    window.localStorage.removeItem(REALTIME_VOICE_STORAGE_KEY);
-  });
-
   it("mantém audioLevel entre zero e um", () => {
     expect(clampAudioLevel(-1)).toBe(0);
     expect(clampAudioLevel(0.42)).toBe(0.42);
@@ -100,6 +80,43 @@ describe("Realtime Voice contract", () => {
     expect(catalogParamsFromRealtimeTool(call!)).toEqual({
       destination: "Maceió",
       passengers: 2,
+      sort: "date_asc",
+      page: 1,
+      per_page: 3,
+    });
+  });
+
+  it("remove busca textual redundante quando o tipo já identifica bloqueio aéreo ou pacote", () => {
+    expect(catalogParamsFromRealtimeTool({
+      callId: "air-1",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({ search: "Bloqueio aéreo", offer_type: "bloqueio_aereo" }),
+    })).toEqual({
+      offer_type: "bloqueio_aereo",
+      sort: "date_asc",
+      page: 1,
+      per_page: 3,
+    });
+
+    expect(catalogParamsFromRealtimeTool({
+      callId: "package-1",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({ search: "pacotes", offer_type: "pacote", destination: "Recife" }),
+    })).toEqual({
+      destination: "Recife",
+      offer_type: "pacote",
+      sort: "date_asc",
+      page: 1,
+      per_page: 3,
+    });
+
+    expect(catalogParamsFromRealtimeTool({
+      callId: "air-2",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({ search: "Maceió", offer_type: "bloqueio_aereo" }),
+    })).toEqual({
+      search: "Maceió",
+      offer_type: "bloqueio_aereo",
       sort: "date_asc",
       page: 1,
       per_page: 3,
