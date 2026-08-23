@@ -35,7 +35,27 @@ jobs:
         run: deno test --node-modules-dir=auto supabase/functions/travel-offers-public/*_test.ts supabase/functions/tomorrow-live-realtime-session/*_test.ts
 
       - name: ESLint
-        run: npx eslint src
+        shell: bash
+        run: |
+          set +e
+          npx eslint src -f json -o eslint-report.json
+          status=$?
+          node - <<'NODE'
+          const fs = require('fs');
+          const report = JSON.parse(fs.readFileSync('eslint-report.json', 'utf8'));
+          const rows = report.flatMap((file) => file.messages
+            .filter((message) => message.severity === 2)
+            .map((message) => ({
+              file: file.filePath.replace(process.cwd() + '/', ''),
+              line: message.line,
+              column: message.column,
+              rule: message.ruleId,
+              message: message.message,
+            })));
+          console.log(`ESLINT_ERRORS=${rows.length}`);
+          for (const row of rows) console.log(JSON.stringify(row));
+          NODE
+          exit $status
 
       - name: TypeScript
         run: npx tsc --noEmit --pretty false
