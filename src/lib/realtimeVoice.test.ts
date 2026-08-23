@@ -106,6 +106,58 @@ describe("Realtime Voice contract", () => {
     });
   });
 
+  it("converte busca pura por bloqueios ou pacotes em filtro de tipo", () => {
+    expect(catalogParamsFromRealtimeTool({
+      callId: "air-1",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({ search: "bloqueios aéreos", destination: "Maceió" }),
+    })).toEqual({
+      destination: "Maceió",
+      offer_type: "bloqueio_aereo",
+      sort: "date_asc",
+      page: 1,
+      per_page: 3,
+    });
+
+    expect(catalogParamsFromRealtimeTool({
+      callId: "air-conflict",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({ search: "bloqueios", offer_type: "pacote", destination: "Maceió" }),
+    })).toEqual({
+      destination: "Maceió",
+      offer_type: "bloqueio_aereo",
+      sort: "date_asc",
+      page: 1,
+      per_page: 3,
+    });
+
+    expect(catalogParamsFromRealtimeTool({
+      callId: "package-1",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({ search: "pacotes", destination: "Maceió" }),
+    })).toEqual({
+      destination: "Maceió",
+      offer_type: "pacote",
+      sort: "date_asc",
+      page: 1,
+      per_page: 3,
+    });
+  });
+
+  it("preserva termo editorial quando ele não representa o tipo da oferta", () => {
+    expect(catalogParamsFromRealtimeTool({
+      callId: "search-1",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({ search: "praia", destination: "Maceió" }),
+    })).toEqual({
+      search: "praia",
+      destination: "Maceió",
+      sort: "date_asc",
+      page: 1,
+      per_page: 3,
+    });
+  });
+
   it("rejeita ferramenta, filtros e datas fora do contrato público", () => {
     expect(() => catalogParamsFromRealtimeTool({ callId: "1", name: "internal_search", arguments: "{}" })).toThrow("Ferramenta não permitida");
     expect(() => catalogParamsFromRealtimeTool({

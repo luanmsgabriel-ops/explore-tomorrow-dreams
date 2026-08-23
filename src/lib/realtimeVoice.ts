@@ -150,6 +150,17 @@ const validIsoDate = (value: string) => {
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 };
 
+const normalizedOfferTypeSearch = (value: string) =>
+  value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+
+const offerTypeFromPureSearch = (value: string | undefined): TravelOfferSearchArguments["offer_type"] => {
+  if (!value) return undefined;
+  const normalized = normalizedOfferTypeSearch(value);
+  if (/^bloqueios?( aereos?)?$/.test(normalized)) return "bloqueio_aereo";
+  if (/^pacotes?( de viagem)?$/.test(normalized)) return "pacote";
+  return undefined;
+};
+
 export function catalogParamsFromRealtimeTool(call: RealtimeFunctionCall): CatalogParams {
   if (call.name !== "search_travel_offers") throw new RealtimeVoiceError("Ferramenta não permitida.", "unknown_tool");
 
@@ -202,6 +213,12 @@ export function catalogParamsFromRealtimeTool(call: RealtimeFunctionCall): Catal
       throw new RealtimeVoiceError("O tipo de oportunidade é inválido.", "invalid_tool_arguments");
     }
     args.offer_type = parsed.offer_type;
+  }
+
+  const pureSearchOfferType = offerTypeFromPureSearch(args.search);
+  if (pureSearchOfferType) {
+    args.offer_type = pureSearchOfferType;
+    delete args.search;
   }
 
   return {
