@@ -136,8 +136,10 @@ describe("Calendário de oportunidades", () => {
       expect.objectContaining({ origin: "São Paulo", offer_type: "pacote" }),
       expect.any(AbortSignal),
     ));
-    expect(screen.getByLabelText("Origem")).toHaveValue("São Paulo");
-    expect(screen.getByLabelText("Destino")).toHaveValue("Recife");
+    await waitFor(() => {
+      expect(screen.getByLabelText("Origem")).toHaveValue("São Paulo");
+      expect(screen.getByLabelText("Destino")).toHaveValue("Recife");
+    });
     expect(api.fetchCalendar).not.toHaveBeenCalled();
   });
 
@@ -152,7 +154,7 @@ describe("Calendário de oportunidades", () => {
     fireEvent.change(screen.getByLabelText("Tipo"), { target: { value: "bloqueio_aereo" } });
 
     await waitFor(() => expect(screen.getByLabelText("Destino")).toHaveValue(""));
-    expect(screen.getByLabelText("Origem")).toHaveValue("São Paulo");
+    await waitFor(() => expect(screen.getByLabelText("Origem")).toHaveValue("São Paulo"));
     expect(screen.getByLabelText("Tipo")).toHaveValue("bloqueio_aereo");
   });
 
