@@ -13,7 +13,18 @@ Deno.test("cria configuração GA sem expor a chave principal", () => {
   const config = createRealtimeSessionConfig(env);
   assertEquals(config.session.type, "realtime");
   assertEquals(config.session.model, "gpt-realtime-2.1");
-  assertEquals((config.session.audio as Record<string, unknown>).output, { voice: "cedar", speed: 1 });
+  const audio = config.session.audio as Record<string, unknown>;
+  assertEquals(audio.output, { voice: "cedar", speed: 1 });
+  const input = audio.input as Record<string, unknown>;
+  assertEquals(input.noise_reduction, { type: "near_field" });
+  assertEquals(input.turn_detection, {
+    type: "server_vad",
+    threshold: 0.72,
+    prefix_padding_ms: 300,
+    silence_duration_ms: 800,
+    create_response: true,
+    interrupt_response: true,
+  });
   const instructions = String(config.session.instructions);
   assertEquals(instructions.includes("português brasileiro (pt-BR)"), true);
   assertEquals(instructions.includes("sotaque brasileiro neutro"), true);
