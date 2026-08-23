@@ -42,7 +42,7 @@ describe("Tomorrow Live — Etapa 7: fundação de voz", () => {
   it("abre a central sem solicitar microfone", () => {
     render(<OpportunitiesLive />);
 
-    expect(screen.getByText("Tomorrow Live · Voz em tempo real")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "A viagem começa antes da primeira pergunta." })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Iniciar conversa por voz" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Pausar microfone" })).toBeDisabled();
     expect(getUserMedia).not.toHaveBeenCalled();
