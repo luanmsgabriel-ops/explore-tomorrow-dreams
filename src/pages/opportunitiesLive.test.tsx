@@ -42,7 +42,7 @@ describe("Tomorrow Live — Etapa 7: fundação de voz", () => {
   it("abre a central sem solicitar microfone", () => {
     render(<OpportunitiesLive />);
 
-    expect(screen.getByText("Tomorrow Live · Voz em tempo real")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "A viagem começa antes da primeira pergunta." })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Iniciar conversa por voz" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Pausar microfone" })).toBeDisabled();
     expect(getUserMedia).not.toHaveBeenCalled();
@@ -69,13 +69,11 @@ describe("Tomorrow Live — Etapa 7: fundação de voz", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Permissão do microfone negada");
   });
 
-  it("permite visualizar estados sem iniciar voz ou alterar dados", () => {
+  it("permite visualizar o estado inicial sem iniciar voz ou alterar dados", () => {
     render(<OpportunitiesLive />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Pensando" }));
-
-    expect(screen.getByLabelText("Globo visual do Tomorrow Live — Pensando")).toHaveAttribute("data-live-state", "thinking");
-    expect(screen.getByText("Menos ruído. Mais clareza sobre o que importa.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Globo visual do Tomorrow Live — Aguardando")).toHaveAttribute("data-live-state", "idle");
+    expect(screen.getByText("Converse com o Téo e descubra oportunidades que combinam com você.")).toBeInTheDocument();
     expect(getUserMedia).not.toHaveBeenCalled();
   });
 
@@ -91,10 +89,14 @@ describe("Tomorrow Live — Etapa 7: fundação de voz", () => {
   it("explica privacidade e não mascara a ausência da voz em tempo real", () => {
     render(<OpportunitiesLive />);
 
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Ver informações de privacidade" }));
 
-    expect(screen.getByRole("status")).toHaveTextContent("nunca é ativado automaticamente");
-    expect(screen.getByText(/A busca permanece somente de leitura/)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "O microfone só é usado enquanto você estiver falando com o Téo.",
+    );
+    expect(screen.getByText(/Sua conversa é privada/)).toBeInTheDocument();
+    expect(getUserMedia).not.toHaveBeenCalled();
   });
 
   it("respeita preferência de movimento reduzido", async () => {
