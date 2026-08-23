@@ -89,9 +89,12 @@ describe("Tomorrow Live — Etapa 7: fundação de voz", () => {
   it("explica privacidade e não mascara a ausência da voz em tempo real", () => {
     render(<OpportunitiesLive />);
 
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Ver informações de privacidade" }));
 
-    expect(screen.getByRole("status")).toHaveTextContent("nunca é ativado automaticamente");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "O microfone só é usado enquanto você estiver falando com o Téo.",
+    );
     expect(screen.getByText(/A busca permanece somente de leitura/)).toBeInTheDocument();
   });
 
