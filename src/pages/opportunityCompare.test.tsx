@@ -126,8 +126,8 @@ describe("Comparação de oportunidades", () => {
 
     await waitFor(() => expect(fetchDetail).toHaveBeenCalledTimes(2));
     expect(screen.getByText("2/3 selecionadas")).toBeInTheDocument();
-    expect(screen.getAllByText("Lisboa terrestre").length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/GOL · Belém/).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Lisboa terrestre")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/GOL · Belém/)).length).toBeGreaterThan(0);
     await waitFor(() => expect(readStoredComparisonIds()).toEqual([airId, packageId]));
   });
 
@@ -143,8 +143,8 @@ describe("Comparação de oportunidades", () => {
     renderCompare(`ids=${encodeURIComponent(`${airId},${packageId}`)}`);
     await screen.findByText("2/3 selecionadas");
 
-    const mobile = screen.getByRole("region", { name: "Comparação adaptada para celular" });
-    const desktop = screen.getByRole("region", { name: "Tabela comparativa de oportunidades" });
+    const mobile = await screen.findByRole("region", { name: "Comparação adaptada para celular" });
+    const desktop = await screen.findByRole("region", { name: "Tabela comparativa de oportunidades" });
     expect(mobile).toHaveClass("md:hidden");
     expect(desktop).toHaveClass("hidden", "md:block");
     expect(within(mobile).getAllByText("Valor por pessoa")).toHaveLength(2);
@@ -155,9 +155,9 @@ describe("Comparação de oportunidades", () => {
     renderCompare(`ids=${encodeURIComponent(`${airId},${packageId}`)}`);
     await screen.findByText("2/3 selecionadas");
 
-    const mobile = screen.getByRole("region", { name: "Comparação adaptada para celular" });
+    const mobile = await screen.findByRole("region", { name: "Comparação adaptada para celular" });
     fireEvent.click(within(mobile).getByRole("link", { name: /Remover GOL · Belém/ }));
-    expect(readStoredComparisonIds()).toEqual([packageId]);
+    await waitFor(() => expect(readStoredComparisonIds()).toEqual([packageId]));
   });
 
   it("não consulta a função para link inválido", () => {
