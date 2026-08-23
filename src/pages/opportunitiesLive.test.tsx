@@ -69,13 +69,11 @@ describe("Tomorrow Live — Etapa 7: fundação de voz", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Permissão do microfone negada");
   });
 
-  it("permite visualizar estados sem iniciar voz ou alterar dados", () => {
+  it("permite visualizar o estado inicial sem iniciar voz ou alterar dados", () => {
     render(<OpportunitiesLive />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Pensando" }));
-
-    expect(screen.getByLabelText("Globo visual do Tomorrow Live — Pensando")).toHaveAttribute("data-live-state", "thinking");
-    expect(screen.getByText("Menos ruído. Mais clareza sobre o que importa.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Globo visual do Tomorrow Live — Aguardando")).toHaveAttribute("data-live-state", "idle");
+    expect(screen.getByText("Converse com o Téo e descubra oportunidades que combinam com você.")).toBeInTheDocument();
     expect(getUserMedia).not.toHaveBeenCalled();
   });
 
