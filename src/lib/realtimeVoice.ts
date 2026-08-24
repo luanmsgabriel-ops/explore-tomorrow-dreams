@@ -1,6 +1,7 @@
 import { FunctionsHttpError } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
+import { airportIataForDestinationCity } from "@/lib/airportDestinations";
 import type { CatalogParams } from "@/lib/travelOffersPublic";
 
 export type RealtimeVoiceStatus = "idle" | "connecting" | "listening" | "thinking" | "speaking" | "offers" | "error";
@@ -204,12 +205,23 @@ export function catalogParamsFromRealtimeTool(call: RealtimeFunctionCall): Catal
     args.offer_type = parsed.offer_type;
   }
 
-  return {
+  const params: CatalogParams = {
     ...args,
     sort: "date_asc",
     page: 1,
     per_page: 3,
   };
+
+  if (args.offer_type === "bloqueio_aereo") {
+    const destinationIata = airportIataForDestinationCity(args.destination) ?? airportIataForDestinationCity(args.search);
+    if (destinationIata) {
+      params.destination_iata = destinationIata;
+      if (airportIataForDestinationCity(args.destination)) delete params.destination;
+      if (airportIataForDestinationCity(args.search)) delete params.search;
+    }
+  }
+
+  return params;
 }
 
 export function offerHandoffFromRealtimeTool(call: RealtimeFunctionCall): OfferHandoffRequest {
