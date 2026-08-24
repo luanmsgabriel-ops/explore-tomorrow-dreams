@@ -148,10 +148,7 @@ export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl, nav
     const nextOffers = offers.slice(0, 3);
     const currentKey = displayedOffers.map((item) => item.id).join(":");
     const nextKey = nextOffers.map((item) => item.id).join(":");
-    if (currentKey === nextKey) {
-      if (nextOffers.length > 0) setDisplayedOffers(nextOffers);
-      return undefined;
-    }
+    if (currentKey === nextKey) return undefined;
 
     setOffersTransitioning(true);
     const swapTimer = window.setTimeout(() => {
