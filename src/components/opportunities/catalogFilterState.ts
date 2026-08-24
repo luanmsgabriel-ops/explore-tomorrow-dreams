@@ -1,3 +1,4 @@
+import { airportIataForDestinationCity } from "@/lib/airportDestinations";
 import type {
   CatalogParams,
   CatalogSort,
@@ -93,7 +94,11 @@ export function catalogParamsFromFilters(
 
   assignText("search", values.search);
   assignText("origin", values.origin);
-  assignText("destination", values.destination);
+  const destinationIata = values.offerType === "bloqueio_aereo"
+    ? airportIataForDestinationCity(values.destination)
+    : null;
+  if (destinationIata) params.destination_iata = destinationIata;
+  else assignText("destination", values.destination);
   assignText("category", values.category);
   assignText("start_date", values.startDate);
   assignText("end_date", values.endDate);
