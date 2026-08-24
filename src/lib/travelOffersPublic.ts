@@ -1,6 +1,11 @@
 import { FunctionsHttpError } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
+import {
+  canonicalAirBlockDestination,
+  canonicalAirBlockFacetDestination,
+  sourceAirBlockDestinationForCity,
+} from "@/lib/airportDestinations";
 
 export const TRAVEL_OFFERS_NOTICE =
   "Preços e disponibilidade estão sujeitos à confirmação no momento da reserva.";
@@ -263,22 +268,67 @@ async function invokeTravelOffers<T>(
   return data;
 }
 
+function mergeFacetValues(values: FacetValue[], transform: (value: string) => string) {
+  const merged = new Map<string, number>();
+  for (const item of values) {
+    const value = transform(item.value);
+    merged.set(value, (merged.get(value) ?? 0) + item.count);
+  }
+  return [...merged.entries()]
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => a.value.localeCompare(b.value, "pt-BR"));
+}
+
+function canonicalizeCatalogItem(item: TravelOfferCatalogItem): TravelOfferCatalogItem {
+  if (item.kind !== "air_block") return item;
+  return {
+    ...item,
+    destination: canonicalAirBlockDestination(item.destination_iata, item.destination),
+  };
+}
+
+function canonicalizeDetailItem(item: TravelOfferDetailItem): TravelOfferDetailItem {
+  if (item.kind !== "air_block") return item;
+  return {
+    ...item,
+    destination: canonicalAirBlockDestination(item.destination_iata, item.destination),
+  };
+}
+
 export const fetchTravelOfferFacets = (signal?: AbortSignal) =>
   invokeTravelOffers<TravelOffersFacets>("facets", {}, signal);
 
-export const fetchTravelCalendarFacets = (params: CalendarFacetParams = {}, signal?: AbortSignal) =>
-  invokeTravelOffers<TravelCalendarFacets>("calendar_facets", params, signal);
+export const fetchTravelCalendarFacets = async (params: CalendarFacetParams = {}, signal?: AbortSignal) => {
+  const requestParams = params.offer_type === "bloqueio_aereo" && params.destination
+    ? { ...params, destination: sourceAirBlockDestinationForCity(params.destination) ?? params.destination }
+    : params;
+  const data = await invokeTravelOffers<TravelCalendarFacets>("calendar_facets", requestParams, signal);
+  if (params.offer_type !== "bloqueio_aereo") return data;
+  return {
+    ...data,
+    destinations: mergeFacetValues(data.destinations, canonicalAirBlockFacetDestination),
+  };
+};
 
-export const fetchTravelOfferCatalog = (params: CatalogParams, signal?: AbortSignal) =>
-  invokeTravelOffers<TravelOffersCatalog>("catalog", params, signal);
+export const fetchTravelOfferCatalog = async (params: CatalogParams, signal?: AbortSignal) => {
+  const data = await invokeTravelOffers<TravelOffersCatalog>("catalog", params, signal);
+  return {
+    ...data,
+    items: data.items.map(canonicalizeCatalogItem),
+  };
+};
 
 const PUBLIC_OFFER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const isPublicOfferId = (value: string) => PUBLIC_OFFER_ID.test(value);
 
-export const fetchTravelOfferDetail = (id: string, signal?: AbortSignal) => {
+export const fetchTravelOfferDetail = async (id: string, signal?: AbortSignal) => {
   if (!isPublicOfferId(id)) {
-    return Promise.reject(new TravelOffersPublicError("Identificador da oportunidade inválido.", "invalid_uuid"));
+    throw new TravelOffersPublicError("Identificador da oportunidade inválido.", "invalid_uuid");
   }
-  return invokeTravelOffers<TravelOfferDetail>("detail", { id }, signal);
+  const data = await invokeTravelOffers<TravelOfferDetail>("detail", { id }, signal);
+  return {
+    ...data,
+    item: canonicalizeDetailItem(data.item),
+  };
 };
