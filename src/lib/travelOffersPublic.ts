@@ -39,6 +39,11 @@ export interface CalendarFacetParams {
   offer_type?: PublicOfferType;
 }
 
+export interface CatalogFacetParams extends CalendarFacetParams {
+  subtype?: PublicOfferSubtype;
+  category?: string;
+}
+
 export interface TravelCalendarFacets {
   origins: FacetValue[];
   destinations: FacetValue[];
@@ -46,6 +51,10 @@ export interface TravelCalendarFacets {
   price_ranges: Array<{ currency: string | null; min: number; max: number }>;
   updated_at: string;
   notice: string;
+}
+
+export interface TravelCatalogFacets extends TravelCalendarFacets {
+  categories: FacetValue[];
 }
 
 export interface TravelOfferCatalogItem {
@@ -250,7 +259,7 @@ async function publicError(error: unknown) {
 }
 
 async function invokeTravelOffers<T>(
-  action: "facets" | "calendar_facets" | "catalog" | "detail",
+  action: "facets" | "calendar_facets" | "catalog_facets" | "catalog" | "detail",
   params: object,
   signal?: AbortSignal,
 ): Promise<T> {
@@ -295,19 +304,33 @@ function canonicalizeDetailItem(item: TravelOfferDetailItem): TravelOfferDetailI
   };
 }
 
-export const fetchTravelOfferFacets = (signal?: AbortSignal) =>
-  invokeTravelOffers<TravelOffersFacets>("facets", {}, signal);
+function sourceFacetParams<T extends CalendarFacetParams>(params: T): T {
+  if (params.offer_type !== "bloqueio_aereo" || !params.destination) return params;
+  return {
+    ...params,
+    destination: sourceAirBlockDestinationForCity(params.destination) ?? params.destination,
+  };
+}
 
-export const fetchTravelCalendarFacets = async (params: CalendarFacetParams = {}, signal?: AbortSignal) => {
-  const requestParams = params.offer_type === "bloqueio_aereo" && params.destination
-    ? { ...params, destination: sourceAirBlockDestinationForCity(params.destination) ?? params.destination }
-    : params;
-  const data = await invokeTravelOffers<TravelCalendarFacets>("calendar_facets", requestParams, signal);
-  if (params.offer_type !== "bloqueio_aereo") return data;
+function canonicalizeAirBlockFacets<T extends TravelCalendarFacets>(data: T, offerType?: PublicOfferType): T {
+  if (offerType !== "bloqueio_aereo") return data;
   return {
     ...data,
     destinations: mergeFacetValues(data.destinations, canonicalAirBlockFacetDestination),
   };
+}
+
+export const fetchTravelOfferFacets = (signal?: AbortSignal) =>
+  invokeTravelOffers<TravelOffersFacets>("facets", {}, signal);
+
+export const fetchTravelCalendarFacets = async (params: CalendarFacetParams = {}, signal?: AbortSignal) => {
+  const data = await invokeTravelOffers<TravelCalendarFacets>("calendar_facets", sourceFacetParams(params), signal);
+  return canonicalizeAirBlockFacets(data, params.offer_type);
+};
+
+export const fetchTravelCatalogFacets = async (params: CatalogFacetParams = {}, signal?: AbortSignal) => {
+  const data = await invokeTravelOffers<TravelCatalogFacets>("catalog_facets", sourceFacetParams(params), signal);
+  return canonicalizeAirBlockFacets(data, params.offer_type);
 };
 
 export const fetchTravelOfferCatalog = async (params: CatalogParams, signal?: AbortSignal) => {
