@@ -1,5 +1,6 @@
 import { ArrowRight, CalendarDays, MapPin, Plane, UsersRound } from "lucide-react";
 
+import { offerCardImageUrl } from "@/lib/offerImages";
 import { cn } from "@/lib/utils";
 import { DeferredOfferImage } from "./DeferredOfferImage";
 import { OpportunityBadge, OpportunityButton, type OpportunityBadgeProps } from "./OpportunityPrimitives";
@@ -77,6 +78,7 @@ export function OpportunityCard({
     typeof availableSeats === "number" && Number.isInteger(availableSeats) && availableSeats >= 0
       ? availableSeats
       : null;
+  const optimizedImageUrl = imageUrl ? offerCardImageUrl(id) : null;
 
   return (
     <article
@@ -90,9 +92,13 @@ export function OpportunityCard({
       <div className="relative aspect-[16/9] overflow-hidden bg-tomorrow-surface-elevated">
         {imageUrl ? (
           <DeferredOfferImage
-            src={imageUrl}
+            src={optimizedImageUrl ?? imageUrl}
+            fallbackSrc={optimizedImageUrl ? imageUrl : undefined}
             alt={imageAlt ?? destination}
-            className="size-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-[1.035]"
+            width={720}
+            height={405}
+            sizes="(min-width: 1280px) 30vw, (min-width: 640px) 48vw, 100vw"
+            className="size-full object-cover transition-[transform,opacity] duration-500 motion-safe:group-hover:scale-[1.035]"
           />
         ) : (
           <div className="opportunity-card-placeholder size-full" aria-hidden="true" />
