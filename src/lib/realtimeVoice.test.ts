@@ -106,6 +106,32 @@ describe("Realtime Voice contract", () => {
     });
   });
 
+  it("resolve Recife pelo aeroporto real quando a busca é por bloqueio aéreo", () => {
+    expect(catalogParamsFromRealtimeTool({
+      callId: "recife-destination",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({ destination: "Recife", offer_type: "bloqueio_aereo" }),
+    })).toEqual({
+      offer_type: "bloqueio_aereo",
+      destination_iata: "REC",
+      sort: "date_asc",
+      page: 1,
+      per_page: 3,
+    });
+
+    expect(catalogParamsFromRealtimeTool({
+      callId: "recife-search",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({ search: "Recife", offer_type: "bloqueio_aereo" }),
+    })).toEqual({
+      offer_type: "bloqueio_aereo",
+      destination_iata: "REC",
+      sort: "date_asc",
+      page: 1,
+      per_page: 3,
+    });
+  });
+
   it("rejeita ferramenta, filtros e datas fora do contrato público", () => {
     expect(() => catalogParamsFromRealtimeTool({ callId: "1", name: "internal_search", arguments: "{}" })).toThrow("Ferramenta não permitida");
     expect(() => catalogParamsFromRealtimeTool({

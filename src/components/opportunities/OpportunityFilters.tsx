@@ -1,7 +1,7 @@
 import type { ChangeEvent, FormEvent } from "react";
 import { Filter, Search, SlidersHorizontal } from "lucide-react";
 
-import type { TravelOffersFacets } from "@/lib/travelOffersPublic";
+import type { PublicOfferSubtype, TravelOffersFacets } from "@/lib/travelOffersPublic";
 import type { CatalogFilterErrors, CatalogFilterValues } from "./catalogFilterState";
 import { OpportunityButton, OpportunityField } from "./OpportunityPrimitives";
 
@@ -9,6 +9,13 @@ const selectClassName =
   "opportunity-focus min-h-11 w-full rounded-tomorrow border border-tomorrow-line bg-tomorrow-surface/88 px-3 py-2 text-base text-tomorrow-text disabled:cursor-not-allowed disabled:opacity-50 md:text-sm";
 
 const fieldLabelClassName = "grid gap-2 text-sm font-semibold text-tomorrow-text";
+
+const packageSubtypeOptions: Array<{ value: PublicOfferSubtype; label: string }> = [
+  { value: "nacional", label: "Pacote nacional" },
+  { value: "internacional", label: "Pacote internacional" },
+  { value: "evento", label: "Evento" },
+  { value: "grupo_guiado", label: "Grupo guiado" },
+];
 
 interface OpportunityFiltersProps {
   values: CatalogFilterValues;
@@ -38,6 +45,12 @@ export function OpportunityFilters({
     onApply();
   };
 
+  const subtypeOptions = values.offerType === "bloqueio_aereo"
+    ? [{ value: "bloqueio" as const, label: "Bloqueio aéreo" }]
+    : values.offerType === "pacote"
+      ? packageSubtypeOptions
+      : [{ value: "bloqueio" as const, label: "Bloqueio aéreo" }, ...packageSubtypeOptions];
+
   return (
     <form
       className="opportunity-surface grid gap-5 rounded-tomorrow-lg border border-tomorrow-line bg-tomorrow-surface/75 p-4 shadow-tomorrow-surface sm:p-6"
@@ -51,37 +64,12 @@ export function OpportunityFilters({
           </span>
           <div>
             <h2 className="font-editorial text-2xl text-tomorrow-text">Refine sua busca</h2>
-            <p className="text-xs text-tomorrow-muted">Filtros aplicados somente ao inventário válido.</p>
+            <p className="text-xs text-tomorrow-muted">Escolha o tipo primeiro; origem e destino mostram apenas combinações válidas.</p>
           </div>
         </div>
       </div>
 
-      <OpportunityField
-        label="Buscar"
-        value={values.search}
-        onChange={setText("search")}
-        placeholder="Destino, origem ou nome do pacote"
-        maxLength={80}
-        leadingIcon={<Search className="size-4" />}
-        error={errors.search}
-        disabled={disabled}
-      />
-
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <label className={fieldLabelClassName}>
-          Origem
-          <select className={selectClassName} value={values.origin} onChange={setText("origin")} disabled={disabled}>
-            <option value="">Todas as origens</option>
-            {facets?.origins.map((item) => <option key={item.value} value={item.value}>{item.value} ({item.count})</option>)}
-          </select>
-        </label>
-        <label className={fieldLabelClassName}>
-          Destino
-          <select className={selectClassName} value={values.destination} onChange={setText("destination")} disabled={disabled}>
-            <option value="">Todos os destinos</option>
-            {facets?.destinations.map((item) => <option key={item.value} value={item.value}>{item.value} ({item.count})</option>)}
-          </select>
-        </label>
         <label className={fieldLabelClassName}>
           Tipo de oferta
           <select className={selectClassName} value={values.offerType} onChange={setText("offerType")} disabled={disabled}>
@@ -91,23 +79,54 @@ export function OpportunityFilters({
           </select>
         </label>
         <label className={fieldLabelClassName}>
-          Subtipo
-          <select className={selectClassName} value={values.subtype} onChange={setText("subtype")} disabled={disabled}>
-            <option value="">Todos os subtipos</option>
-            <option value="bloqueio">Bloqueio aéreo</option>
-            <option value="nacional">Pacote nacional</option>
-            <option value="internacional">Pacote internacional</option>
-            <option value="evento">Evento</option>
-            <option value="grupo_guiado">Grupo guiado</option>
+          Origem
+          <select className={selectClassName} value={values.origin} onChange={setText("origin")} disabled={disabled}>
+            <option value="">Todas as origens</option>
+            {facets?.origins.map((item) => <option key={item.value} value={item.value}>{item.value} ({item.count})</option>)}
           </select>
         </label>
         <label className={fieldLabelClassName}>
-          Categoria
-          <select className={selectClassName} value={values.category} onChange={setText("category")} disabled={disabled}>
-            <option value="">Todas as categorias</option>
-            {facets?.categories.map((item) => <option key={item.value} value={item.value}>{item.value} ({item.count})</option>)}
+          Destino
+          <select
+            className={selectClassName}
+            value={values.destination}
+            onChange={setText("destination")}
+            disabled={disabled || !values.origin}
+          >
+            <option value="">{values.origin ? "Todos os destinos" : "Selecione a origem primeiro"}</option>
+            {facets?.destinations.map((item) => <option key={item.value} value={item.value}>{item.value} ({item.count})</option>)}
           </select>
         </label>
+        <label className={fieldLabelClassName}>
+          Subtipo
+          <select className={selectClassName} value={values.subtype} onChange={setText("subtype")} disabled={disabled}>
+            <option value="">Todos os subtipos</option>
+            {subtypeOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+          </select>
+        </label>
+      </div>
+
+      <OpportunityField
+        label="Buscar por nome ou palavra-chave"
+        value={values.search}
+        onChange={setText("search")}
+        placeholder="Ex.: resort, neve, Beto Carrero"
+        maxLength={80}
+        leadingIcon={<Search className="size-4" />}
+        error={errors.search}
+        disabled={disabled}
+      />
+
+      <div className="grid gap-4 border-t border-tomorrow-line pt-5 sm:grid-cols-2 xl:grid-cols-4">
+        {values.offerType !== "bloqueio_aereo" ? (
+          <label className={fieldLabelClassName}>
+            Categoria
+            <select className={selectClassName} value={values.category} onChange={setText("category")} disabled={disabled}>
+              <option value="">Todas as categorias</option>
+              {facets?.categories.map((item) => <option key={item.value} value={item.value}>{item.value} ({item.count})</option>)}
+            </select>
+          </label>
+        ) : null}
         <OpportunityField
           label="Data inicial"
           type="date"

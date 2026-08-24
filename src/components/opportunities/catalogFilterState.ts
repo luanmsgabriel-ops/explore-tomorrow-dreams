@@ -1,3 +1,4 @@
+import { airportIataForDestinationCity } from "@/lib/airportDestinations";
 import type {
   CatalogParams,
   CatalogSort,
@@ -91,13 +92,18 @@ export function catalogParamsFromFilters(
     if (normalized) Object.assign(params, { [key]: normalized });
   };
 
+  const resolvedOfferType = values.offerType || (values.subtype === "bloqueio" ? "bloqueio_aereo" : "");
   assignText("search", values.search);
   assignText("origin", values.origin);
-  assignText("destination", values.destination);
+  const destinationIata = resolvedOfferType === "bloqueio_aereo"
+    ? airportIataForDestinationCity(values.destination)
+    : null;
+  if (destinationIata) params.destination_iata = destinationIata;
+  else assignText("destination", values.destination);
   assignText("category", values.category);
   assignText("start_date", values.startDate);
   assignText("end_date", values.endDate);
-  if (values.offerType) params.offer_type = values.offerType;
+  if (resolvedOfferType) params.offer_type = resolvedOfferType;
   if (values.subtype) params.subtype = values.subtype;
   const passengers = numericValue(values.passengers);
   const minPrice = numericValue(values.minPrice);

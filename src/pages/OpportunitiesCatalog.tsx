@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Heart, Radar, Scale, SlidersHorizontal, Sparkles, X } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   DEFAULT_CATALOG_FILTERS,
@@ -20,8 +20,10 @@ import {
 import { useOpportunityFavorites } from "@/hooks/useOpportunityFavorites";
 import {
   TRAVEL_OFFERS_NOTICE,
+  fetchTravelCatalogFacets,
   fetchTravelOfferCatalog,
   fetchTravelOfferFacets,
+  type CatalogFacetParams,
   type PublicOfferSubtype,
   type PublicOfferType,
   type TravelOfferCatalogItem,
@@ -97,6 +99,13 @@ function countActiveFilters(filters: CatalogFilterValues) {
   return fields.filter((field) => filters[field] !== PRIORITY_CATALOG_FILTERS[field]).length;
 }
 
+function baseFacetParams(filters: CatalogFilterValues): CatalogFacetParams {
+  return {
+    ...(filters.offerType ? { offer_type: filters.offerType } : {}),
+    ...(filters.subtype ? { subtype: filters.subtype } : {}),
+  };
+}
+
 export default function OpportunitiesCatalog() {
   const [draftFilters, setDraftFilters] = useState<CatalogFilterValues>(PRIORITY_CATALOG_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<CatalogFilterValues>(PRIORITY_CATALOG_FILTERS);
@@ -114,6 +123,72 @@ export default function OpportunitiesCatalog() {
     retry: 1,
   });
 
+  const originFacetParams = useMemo(() => baseFacetParams(draftFilters), [draftFilters.offerType, draftFilters.subtype]);
+  const originFacetsQuery = useQuery({
+    queryKey: ["travel-offers-public", "catalog-facets", "origins", originFacetParams],
+    queryFn: ({ signal }) => fetchTravelCatalogFacets(originFacetParams, signal),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+
+  const destinationFacetParams = useMemo<CatalogFacetParams | null>(() => draftFilters.origin ? {
+    ...baseFacetParams(draftFilters),
+    origin: draftFilters.origin,
+  } : null, [draftFilters.origin, draftFilters.offerType, draftFilters.subtype]);
+  const destinationFacetsQuery = useQuery({
+    queryKey: ["travel-offers-public", "catalog-facets", "destinations", destinationFacetParams],
+    queryFn: ({ signal }) => fetchTravelCatalogFacets(destinationFacetParams!, signal),
+    enabled: Boolean(destinationFacetParams),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+
+  const categoryFacetParams = useMemo<CatalogFacetParams>(() => ({
+    ...baseFacetParams(draftFilters),
+    ...(draftFilters.origin ? { origin: draftFilters.origin } : {}),
+    ...(draftFilters.destination ? { destination: draftFilters.destination } : {}),
+  }), [draftFilters.offerType, draftFilters.subtype, draftFilters.origin, draftFilters.destination]);
+  const categoryFacetsQuery = useQuery({
+    queryKey: ["travel-offers-public", "catalog-facets", "categories", categoryFacetParams],
+    queryFn: ({ signal }) => fetchTravelCatalogFacets(categoryFacetParams, signal),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+
+  useEffect(() => {
+    if (!draftFilters.origin || originFacetsQuery.isPending || !originFacetsQuery.data) return;
+    if (originFacetsQuery.data.origins.some((item) => item.value === draftFilters.origin)) return;
+    setDraftFilters((current) => current.origin === draftFilters.origin
+      ? { ...current, origin: "", destination: "", category: "" }
+      : current);
+  }, [draftFilters.origin, originFacetsQuery.data, originFacetsQuery.isPending]);
+
+  useEffect(() => {
+    if (!draftFilters.origin || !draftFilters.destination || destinationFacetsQuery.isPending || !destinationFacetsQuery.data) return;
+    if (destinationFacetsQuery.data.destinations.some((item) => item.value === draftFilters.destination)) return;
+    setDraftFilters((current) => current.origin === draftFilters.origin && current.destination === draftFilters.destination
+      ? { ...current, destination: "", category: "" }
+      : current);
+  }, [draftFilters.origin, draftFilters.destination, destinationFacetsQuery.data, destinationFacetsQuery.isPending]);
+
+  useEffect(() => {
+    if (!draftFilters.category || categoryFacetsQuery.isPending || !categoryFacetsQuery.data) return;
+    if (categoryFacetsQuery.data.categories.some((item) => item.value === draftFilters.category)) return;
+    setDraftFilters((current) => current.category === draftFilters.category ? { ...current, category: "" } : current);
+  }, [draftFilters.category, categoryFacetsQuery.data, categoryFacetsQuery.isPending]);
+
+  const contextualFacets = useMemo(() => {
+    if (!facetsQuery.data) return undefined;
+    return {
+      ...facetsQuery.data,
+      origins: originFacetsQuery.data?.origins ?? [],
+      destinations: draftFilters.origin ? destinationFacetsQuery.data?.destinations ?? [] : [],
+      categories: categoryFacetsQuery.data?.categories ?? [],
+      date_range: categoryFacetsQuery.data?.date_range ?? facetsQuery.data.date_range,
+      price_ranges: categoryFacetsQuery.data?.price_ranges ?? facetsQuery.data.price_ranges,
+    };
+  }, [draftFilters.origin, categoryFacetsQuery.data, destinationFacetsQuery.data, facetsQuery.data, originFacetsQuery.data]);
+
   const catalogParams = useMemo(
     () => catalogParamsFromFilters(appliedFilters, page, PAGE_SIZE),
     [appliedFilters, page],
@@ -126,6 +201,21 @@ export default function OpportunitiesCatalog() {
     staleTime: 30_000,
     retry: 1,
   });
+
+  const handleDraftFiltersChange = (next: CatalogFilterValues) => {
+    setDraftFilters((current) => {
+      if (next.offerType !== current.offerType) {
+        return { ...next, subtype: "", category: "", origin: "", destination: "" };
+      }
+      if (next.subtype !== current.subtype) {
+        return { ...next, category: "", origin: "", destination: "" };
+      }
+      if (next.origin !== current.origin) return { ...next, destination: "", category: "" };
+      if (next.destination !== current.destination) return { ...next, category: "" };
+      return next;
+    });
+    setFilterErrors({});
+  };
 
   const applyFilters = () => {
     const errors = validateCatalogFilters(draftFilters);
@@ -295,7 +385,7 @@ export default function OpportunitiesCatalog() {
                 <div className="mb-3 flex items-center justify-between gap-4 px-1">
                   <div>
                     <p id="catalog-filter-dialog-title" className="font-editorial text-2xl text-tomorrow-text">Filtrar oportunidades</p>
-                    <p className="mt-1 text-xs text-tomorrow-muted">A vitrine permanece priorizada por pacotes e menor preço.</p>
+                    <p className="mt-1 text-xs text-tomorrow-muted">Os filtros exibem somente combinações válidas do inventário atual.</p>
                   </div>
                   <button
                     type="button"
@@ -308,10 +398,10 @@ export default function OpportunitiesCatalog() {
                 </div>
                 <OpportunityFilters
                   values={draftFilters}
-                  facets={facetsQuery.data}
+                  facets={contextualFacets}
                   errors={filterErrors}
                   disabled={catalogQuery.isFetching && !catalogQuery.data}
-                  onChange={setDraftFilters}
+                  onChange={handleDraftFiltersChange}
                   onApply={applyFilters}
                   onClear={clearFilters}
                 />
