@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Heart, Radar, Scale, SlidersHorizontal, Sparkles, X } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   DEFAULT_CATALOG_FILTERS,
@@ -20,6 +20,7 @@ import {
 import { useOpportunityFavorites } from "@/hooks/useOpportunityFavorites";
 import {
   TRAVEL_OFFERS_NOTICE,
+  fetchTravelCalendarFacets,
   fetchTravelOfferCatalog,
   fetchTravelOfferFacets,
   type PublicOfferSubtype,
@@ -114,6 +115,60 @@ export default function OpportunitiesCatalog() {
     retry: 1,
   });
 
+  const originFacetParams = useMemo(
+    () => draftFilters.offerType ? { offer_type: draftFilters.offerType } : {},
+    [draftFilters.offerType],
+  );
+
+  const originFacetsQuery = useQuery({
+    queryKey: ["travel-offers-public", "catalog-facets", "origins", originFacetParams],
+    queryFn: ({ signal }) => fetchTravelCalendarFacets(originFacetParams, signal),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+
+  const destinationFacetParams = useMemo(() => draftFilters.origin ? {
+    origin: draftFilters.origin,
+    ...(draftFilters.offerType ? { offer_type: draftFilters.offerType } : {}),
+  } : null, [draftFilters.origin, draftFilters.offerType]);
+
+  const destinationFacetsQuery = useQuery({
+    queryKey: ["travel-offers-public", "catalog-facets", "destinations", destinationFacetParams],
+    queryFn: ({ signal }) => fetchTravelCalendarFacets(destinationFacetParams!, signal),
+    enabled: Boolean(destinationFacetParams),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+
+  useEffect(() => {
+    if (!draftFilters.origin || originFacetsQuery.isPending || !originFacetsQuery.data) return;
+    const originStillAvailable = originFacetsQuery.data.origins.some((item) => item.value === draftFilters.origin);
+    if (originStillAvailable) return;
+    setDraftFilters((current) => current.origin === draftFilters.origin
+      ? { ...current, origin: "", destination: "" }
+      : current);
+  }, [draftFilters.origin, originFacetsQuery.data, originFacetsQuery.isPending]);
+
+  useEffect(() => {
+    if (!draftFilters.origin || !draftFilters.destination || destinationFacetsQuery.isPending || !destinationFacetsQuery.data) return;
+    const destinationStillAvailable = destinationFacetsQuery.data.destinations.some((item) => item.value === draftFilters.destination);
+    if (destinationStillAvailable) return;
+    setDraftFilters((current) => current.origin === draftFilters.origin && current.destination === draftFilters.destination
+      ? { ...current, destination: "" }
+      : current);
+  }, [draftFilters.origin, draftFilters.destination, destinationFacetsQuery.data, destinationFacetsQuery.isPending]);
+
+  const contextualFacets = useMemo(() => {
+    if (!facetsQuery.data) return undefined;
+    return {
+      ...facetsQuery.data,
+      origins: originFacetsQuery.data?.origins ?? [],
+      destinations: draftFilters.origin ? destinationFacetsQuery.data?.destinations ?? [] : [],
+      date_range: destinationFacetsQuery.data?.date_range ?? originFacetsQuery.data?.date_range ?? facetsQuery.data.date_range,
+      price_ranges: destinationFacetsQuery.data?.price_ranges ?? originFacetsQuery.data?.price_ranges ?? facetsQuery.data.price_ranges,
+    };
+  }, [draftFilters.origin, destinationFacetsQuery.data, facetsQuery.data, originFacetsQuery.data]);
+
   const catalogParams = useMemo(
     () => catalogParamsFromFilters(appliedFilters, page, PAGE_SIZE),
     [appliedFilters, page],
@@ -126,6 +181,17 @@ export default function OpportunitiesCatalog() {
     staleTime: 30_000,
     retry: 1,
   });
+
+  const handleDraftFiltersChange = (next: CatalogFilterValues) => {
+    setDraftFilters((current) => {
+      if (next.offerType !== current.offerType) {
+        return { ...next, subtype: "", category: "", origin: "", destination: "" };
+      }
+      if (next.origin !== current.origin) return { ...next, destination: "" };
+      return next;
+    });
+    setFilterErrors({});
+  };
 
   const applyFilters = () => {
     const errors = validateCatalogFilters(draftFilters);
@@ -295,7 +361,7 @@ export default function OpportunitiesCatalog() {
                 <div className="mb-3 flex items-center justify-between gap-4 px-1">
                   <div>
                     <p id="catalog-filter-dialog-title" className="font-editorial text-2xl text-tomorrow-text">Filtrar oportunidades</p>
-                    <p className="mt-1 text-xs text-tomorrow-muted">A vitrine permanece priorizada por pacotes e menor preço.</p>
+                    <p className="mt-1 text-xs text-tomorrow-muted">Os destinos agora acompanham o tipo e a origem selecionados.</p>
                   </div>
                   <button
                     type="button"
@@ -308,10 +374,10 @@ export default function OpportunitiesCatalog() {
                 </div>
                 <OpportunityFilters
                   values={draftFilters}
-                  facets={facetsQuery.data}
+                  facets={contextualFacets}
                   errors={filterErrors}
                   disabled={catalogQuery.isFetching && !catalogQuery.data}
-                  onChange={setDraftFilters}
+                  onChange={handleDraftFiltersChange}
                   onApply={applyFilters}
                   onClear={clearFilters}
                 />
