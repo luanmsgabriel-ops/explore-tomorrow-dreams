@@ -78,7 +78,7 @@ async function fetchSource(sourceUrl: string) {
   try {
     const source = await fetch(sourceUrl, {
       signal: controller.signal,
-      redirect: "follow",
+      redirect: "error",
       headers: { Accept: "image/avif,image/webp,image/png,image/jpeg,image/*;q=0.8" },
     });
     if (!source.ok) throw new OfferImageError("Imagem temporariamente indisponível.", "source_unavailable", 404);
