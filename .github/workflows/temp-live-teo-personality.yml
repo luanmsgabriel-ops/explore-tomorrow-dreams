@@ -1,0 +1,22 @@
+name: Temporary Téo Live personality quality gate
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/functions/tomorrow-live-realtime-session/**'
+      - '.github/workflows/temp-live-teo-personality.yml'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Deno check
+        run: deno check supabase/functions/tomorrow-live-realtime-session/core.ts supabase/functions/tomorrow-live-realtime-session/index.ts
+      - name: Deno tests
+        run: deno test supabase/functions/tomorrow-live-realtime-session/index_test.ts
+      - name: Whitespace check
+        run: |
+          ! grep -nE '[[:blank:]]+$' supabase/functions/tomorrow-live-realtime-session/core.ts supabase/functions/tomorrow-live-realtime-session/index_test.ts
