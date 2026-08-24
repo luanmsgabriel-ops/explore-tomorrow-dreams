@@ -10,6 +10,8 @@ Preparação de publicação controlada em andamento. Este documento consolida o
 - Etapa 10: encerrada pelo usuário após validação funcional em produção.
 - Correção contextual de filtros/Recife: mergeada anteriormente e informada pelo usuário como corrigida em produção.
 - Performance de imagens: implementada, testada e mergeada no PR #68; implantação da nova infraestrutura ainda pendente.
+- Release smoke/rollback: implementado e mergeado no PR #69.
+- Code splitting de rotas: validado no PR #70; chunk inicial reduziu de aproximadamente 2,22 MB / 627 KB gzip para 1,10 MB / 336 KB gzip, sem alterar comportamento das rotas.
 
 ## Pendências acumuladas para a próxima rodada Lovable/Supabase
 
@@ -31,7 +33,8 @@ Preparação de publicação controlada em andamento. Este documento consolida o
 ### Frontend
 
 - alterações de miniatura/cache responsivo já estão na `main` desde o PR #68;
-- a publicação deverá usar o SHA final acumulado da Etapa 11, não o SHA intermediário deste documento.
+- code splitting das rotas não iniciais e do chat flutuante será incluído no SHA final acumulado da Etapa 11;
+- a publicação deverá usar o SHA final acumulado da Etapa 11, não um SHA intermediário deste documento.
 
 ## Smoke test pós-publicação
 
@@ -63,6 +66,10 @@ Interromper a publicação e voltar ao último SHA publicado validado se ocorrer
 - regressão no Téo, voz ou handoff.
 
 A migration do bucket é aditiva e não deve exigir remoção imediata para rollback do frontend. Em rollback, o frontend pode voltar a usar a imagem original; o bucket pode permanecer sem ser consumido até investigação.
+
+## Segurança do `.env`
+
+A revisão da `main` confirmou que o `.env` versionado contém apenas variáveis `VITE_` destinadas ao frontend: identificação/URL do projeto Supabase e chave pública/anon. Nenhuma Service Role foi encontrada nesse arquivo. O arquivo não foi removido nesta etapa para não alterar o contrato de build do Lovable sem necessidade comprovada. Nenhum valor de credencial deve ser copiado para documentação ou respostas públicas.
 
 ## Ordem recomendada da futura rodada única no Lovable
 
