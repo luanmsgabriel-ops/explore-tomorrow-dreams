@@ -366,7 +366,12 @@ function LiveParticleGlobeComponent({
         resize();
 
         const startedAt = performance.now();
+        let previousFrameAt = startedAt;
         let appliedState = stateRef.current;
+        let smoothedLevel = audioLevelRef.current;
+        let smoothedRotation = stateStyle[stateRef.current].rotation;
+        let smoothedPulse = stateStyle[stateRef.current].pulse;
+        let smoothedPulseSpeed = 1.65;
 
         const applyStateDynamics = (nextState: TomorrowLiveState) => {
           const activeAudioState = nextState === "listening" || nextState === "speaking";
@@ -374,15 +379,27 @@ function LiveParticleGlobeComponent({
             .ringMaxRadius(activeAudioState ? 7.2 : 4.8)
             .ringPropagationSpeed(activeAudioState ? 2.8 : 1.45)
             .ringRepeatPeriod(reducedMotion ? 0 : activeAudioState ? 620 : 1120);
-          goldRim.intensity = nextState === "offers" ? 0.52 : nextState === "speaking" ? 0.34 : 0.24;
         };
 
         const animate = (now: number) => {
           if (disposed || !renderer || !globeObject) return;
           const elapsed = (now - startedAt) / 1000;
-          const currentLevel = audioLevelRef.current;
+          const deltaSeconds = Math.min(0.05, Math.max(0.001, (now - previousFrameAt) / 1000));
+          previousFrameAt = now;
+          const targetLevel = audioLevelRef.current;
           const currentState = stateRef.current;
           const currentStyle = stateStyle[currentState];
+          const levelBlend = 1 - Math.exp(-deltaSeconds * 8.5);
+          const motionBlend = 1 - Math.exp(-deltaSeconds * 5.2);
+          const lightBlend = 1 - Math.exp(-deltaSeconds * 4.4);
+
+          smoothedLevel += (targetLevel - smoothedLevel) * levelBlend;
+          smoothedRotation += (currentStyle.rotation - smoothedRotation) * motionBlend;
+          smoothedPulse += (currentStyle.pulse - smoothedPulse) * motionBlend;
+          const targetPulseSpeed = currentState === "speaking" ? 3.8 : currentState === "listening" ? 3 : currentState === "thinking" ? 1.3 : 1.65;
+          smoothedPulseSpeed += (targetPulseSpeed - smoothedPulseSpeed) * motionBlend;
+          const targetGoldIntensity = currentState === "offers" ? 0.52 : currentState === "speaking" ? 0.34 : 0.24;
+          goldRim.intensity += (targetGoldIntensity - goldRim.intensity) * lightBlend;
 
           if (appliedState !== currentState) {
             appliedState = currentState;
@@ -390,13 +407,12 @@ function LiveParticleGlobeComponent({
           }
 
           if (!reducedMotion) {
-            globeObject.rotation.y += currentStyle.rotation * (0.82 + currentLevel * 0.38);
-            const reactivePulse = currentStyle.pulse * (0.34 + currentLevel * 0.94);
-            const pulseSpeed = currentState === "speaking" ? 3.8 : currentState === "listening" ? 3 : currentState === "thinking" ? 1.3 : 1.65;
-            globeObject.scale.setScalar(baseScale + Math.sin(elapsed * pulseSpeed) * reactivePulse);
+            globeObject.rotation.y += smoothedRotation * (0.82 + smoothedLevel * 0.38);
+            const reactivePulse = smoothedPulse * (0.34 + smoothedLevel * 0.94);
+            globeObject.scale.setScalar(baseScale + Math.sin(elapsed * smoothedPulseSpeed) * reactivePulse);
           }
 
-          visualEffects?.update(elapsed, currentLevel, currentState === "offers", reducedMotion, currentState === "speaking");
+          visualEffects?.update(elapsed, smoothedLevel, currentState === "offers", reducedMotion, currentState === "speaking");
           renderer.render(scene, camera);
           animationFrame = requestAnimationFrame(animate);
         };
@@ -450,7 +466,7 @@ function LiveParticleGlobeComponent({
         />
 
         <div
-          className="pointer-events-none absolute inset-x-[19%] top-[9%] bottom-[19%] z-[1] rounded-full blur-[82px] transition-opacity duration-500"
+          className="pointer-events-none absolute inset-x-[19%] top-[9%] bottom-[19%] z-[1] rounded-full blur-[82px] transition-opacity duration-700 ease-out"
           style={{
             background: `radial-gradient(circle, ${style.glow} 0%, rgba(3,18,22,0.06) 48%, rgba(3,18,22,0) 72%)`,
             opacity: 0.5 + visualLevel * 0.28,
@@ -492,7 +508,7 @@ function LiveParticleGlobeComponent({
                 <span
                   key={`left-${index}-${height}`}
                   className={cn(
-                    "block w-[2px] rounded-full bg-tomorrow-teal-soft/85 shadow-[0_0_7px_rgba(104,232,224,0.45)] transition-[height,opacity] duration-300 sm:w-[3px]",
+                    "block w-[2px] rounded-full bg-tomorrow-teal-soft/85 shadow-[0_0_7px_rgba(104,232,224,0.45)] transition-[height,opacity] duration-500 ease-out sm:w-[3px]",
                     activeWaveform && !reducedMotion && "animate-pulse",
                   )}
                   style={{
@@ -512,7 +528,7 @@ function LiveParticleGlobeComponent({
               disabled={!onMicrophoneClick || microphoneState === "connecting"}
               onClick={onMicrophoneClick}
               className={cn(
-                "opportunity-focus mx-2 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-tomorrow-teal/55 bg-[#062d32]/90 text-tomorrow-teal-soft shadow-[0_0_20px_rgba(83,238,229,0.28),inset_0_0_16px_rgba(83,238,229,0.08)] transition-[transform,border-color,box-shadow,opacity] duration-200 active:scale-95 disabled:cursor-wait disabled:opacity-70 sm:mx-3 sm:size-14 motion-safe:hover:scale-105 motion-safe:hover:border-tomorrow-teal-soft/90",
+                "opportunity-focus mx-2 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-tomorrow-teal/55 bg-[#062d32]/90 text-tomorrow-teal-soft shadow-[0_0_20px_rgba(83,238,229,0.28),inset_0_0_16px_rgba(83,238,229,0.08)] transition-[transform,border-color,box-shadow,opacity] duration-300 ease-out active:scale-95 disabled:cursor-wait disabled:opacity-70 sm:mx-3 sm:size-14 motion-safe:hover:scale-105 motion-safe:hover:border-tomorrow-teal-soft/90",
                 activeWaveform && "border-tomorrow-teal-soft/85 shadow-[0_0_34px_rgba(83,238,229,0.48),inset_0_0_20px_rgba(83,238,229,0.12)]",
                 activeWaveform && !reducedMotion && "animate-pulse",
                 microphoneState === "muted" && "border-tomorrow-gold/65 text-tomorrow-gold-soft shadow-[0_0_24px_rgba(212,175,55,0.28)]",
@@ -532,7 +548,7 @@ function LiveParticleGlobeComponent({
                 <span
                   key={`right-${index}-${height}`}
                   className={cn(
-                    "block w-[2px] rounded-full bg-tomorrow-teal-soft/85 shadow-[0_0_7px_rgba(104,232,224,0.45)] transition-[height,opacity] duration-300 sm:w-[3px]",
+                    "block w-[2px] rounded-full bg-tomorrow-teal-soft/85 shadow-[0_0_7px_rgba(104,232,224,0.45)] transition-[height,opacity] duration-500 ease-out sm:w-[3px]",
                     activeWaveform && !reducedMotion && "animate-pulse",
                     state === "offers" && index % 6 === 0 && "bg-tomorrow-gold-soft/85 shadow-[0_0_7px_rgba(221,184,92,0.38)]",
                   )}

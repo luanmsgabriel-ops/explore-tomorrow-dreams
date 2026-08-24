@@ -32,6 +32,7 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
 });
 
 const defaultNavigate = (target: string) => window.location.assign(target);
+const OFFER_SWAP_MS = 150;
 
 export function automaticHandoffTarget(
   handoff: OfferHandoffSelection | null,
@@ -76,7 +77,7 @@ function FloatingOfferCard({ item, index }: { item: TravelOfferCatalogItem; inde
 
   return (
     <article
-      className="live-offer-float-card opportunity-scope group relative flex min-h-[19.5rem] w-[17rem] flex-none snap-center flex-col overflow-hidden rounded-2xl border border-tomorrow-gold/40 bg-[#071f23] shadow-[0_24px_65px_rgba(0,0,0,0.62),0_0_22px_rgba(76,198,190,0.10)] sm:w-[18rem] lg:min-h-[20rem] lg:w-auto lg:min-w-0"
+      className="live-offer-float-card opportunity-scope group relative flex min-h-[19.5rem] w-[17rem] flex-none snap-center flex-col overflow-hidden rounded-2xl border border-tomorrow-gold/40 bg-[#071f23] shadow-[0_24px_65px_rgba(0,0,0,0.62),0_0_22px_rgba(76,198,190,0.10)] transition-[opacity,transform,box-shadow] duration-500 ease-out sm:w-[18rem] lg:min-h-[20rem] lg:w-auto lg:min-w-0 motion-reduce:transition-none"
       style={style}
       data-floating-offer-id={item.id}
     >
@@ -135,11 +136,28 @@ function FloatingOfferCard({ item, index }: { item: TravelOfferCatalogItem; inde
 export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl, navigate = defaultNavigate }: LiveOfferOverlayProps) {
   const [deckOpen, setDeckOpen] = useState(offers.length > 0);
   const [handoffOpen, setHandoffOpen] = useState(Boolean(handoff));
+  const [displayedOffers, setDisplayedOffers] = useState(() => offers.slice(0, 3));
+  const [offersTransitioning, setOffersTransitioning] = useState(false);
   const automaticNavigationRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (offers.length > 0) setDeckOpen(true);
   }, [offers]);
+
+  useEffect(() => {
+    const nextOffers = offers.slice(0, 3);
+    const currentKey = displayedOffers.map((item) => item.id).join(":");
+    const nextKey = nextOffers.map((item) => item.id).join(":");
+    if (currentKey === nextKey) return undefined;
+
+    setOffersTransitioning(true);
+    const swapTimer = window.setTimeout(() => {
+      setDisplayedOffers(nextOffers);
+      window.requestAnimationFrame(() => setOffersTransitioning(false));
+    }, displayedOffers.length > 0 ? OFFER_SWAP_MS : 0);
+
+    return () => window.clearTimeout(swapTimer);
+  }, [offers, displayedOffers]);
 
   useEffect(() => {
     if (handoff) setHandoffOpen(true);
@@ -163,15 +181,18 @@ export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl, nav
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [handoffOpen]);
 
-  if (offers.length === 0 && !handoff) return null;
-  const visibleOffers = offers.slice(0, 3);
+  if (offers.length === 0 && displayedOffers.length === 0 && !handoff) return null;
+  const visibleOffers = displayedOffers;
 
   return (
     <>
       <div className="pointer-events-none absolute inset-x-0 top-[18%] z-30 px-2 sm:top-[22%] sm:px-3 lg:top-[26%]">
         {deckOpen && visibleOffers.length > 0 ? (
           <section
-            className="pointer-events-auto rounded-2xl border border-tomorrow-teal/30 bg-[#06191d] p-3 shadow-[0_22px_72px_rgba(0,0,0,0.60),0_0_26px_rgba(76,198,190,0.08)] sm:p-4"
+            className={cn(
+              "pointer-events-auto rounded-2xl border border-tomorrow-teal/30 bg-[#06191d] p-3 shadow-[0_22px_72px_rgba(0,0,0,0.60),0_0_26px_rgba(76,198,190,0.08)] transition-[opacity,transform] duration-300 ease-out sm:p-4 motion-reduce:transition-none",
+              offersTransitioning ? "translate-y-1 opacity-55" : "translate-y-0 opacity-100",
+            )}
             aria-label="Ofertas encontradas pelo Téo"
             aria-live="polite"
           >
@@ -184,7 +205,7 @@ export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl, nav
                 type="button"
                 onClick={() => setDeckOpen(false)}
                 aria-label="Minimizar ofertas encontradas"
-                className="opportunity-focus grid size-8 place-items-center rounded-lg border border-tomorrow-line bg-[#0a2529] text-tomorrow-muted hover:text-tomorrow-text"
+                className="opportunity-focus grid size-8 place-items-center rounded-lg border border-tomorrow-line bg-[#0a2529] text-tomorrow-muted transition-colors duration-300 hover:text-tomorrow-text"
               >
                 <X className="size-4" aria-hidden="true" />
               </button>
@@ -198,7 +219,7 @@ export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl, nav
           <button
             type="button"
             onClick={() => setDeckOpen(true)}
-            className="opportunity-focus pointer-events-auto mx-auto flex items-center gap-2 rounded-full border border-tomorrow-gold/40 bg-[#071f23] px-4 py-2 text-xs font-semibold text-tomorrow-gold-soft shadow-tomorrow-surface"
+            className="opportunity-focus pointer-events-auto mx-auto flex items-center gap-2 rounded-full border border-tomorrow-gold/40 bg-[#071f23] px-4 py-2 text-xs font-semibold text-tomorrow-gold-soft shadow-tomorrow-surface transition-[transform,opacity,border-color] duration-300 ease-out motion-safe:hover:-translate-y-0.5"
           >
             <ChevronUp className="size-4" aria-hidden="true" />
             Mostrar {visibleOffers.length} {visibleOffers.length === 1 ? "oferta" : "ofertas"}

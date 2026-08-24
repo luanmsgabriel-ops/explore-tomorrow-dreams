@@ -38,30 +38,27 @@ const navItems = [
   { label: "Comparar", href: "/oportunidades/comparar" },
 ];
 
-const stateCopy: Record<TomorrowLiveState, { eyebrow: string; title: string; body: string }> = {
+const LIVE_TITLE = "A conversa continua enquanto a rota ganha forma.";
+
+const stateCopy: Record<TomorrowLiveState, { eyebrow: string; body: string }> = {
   idle: {
     eyebrow: "Téo pronto",
-    title: "A viagem começa antes da primeira pergunta.",
     body: "Converse com o Téo e descubra oportunidades que combinam com você.",
   },
   listening: {
     eyebrow: "Estou ouvindo",
-    title: "Pode falar. O Téo está com você.",
     body: "Conte o que você procura e deixe a conversa seguir de forma natural.",
   },
   thinking: {
     eyebrow: "Buscando possibilidades",
-    title: "O próximo destino está ganhando forma.",
     body: "O Téo organiza suas preferências e procura as melhores opções disponíveis.",
   },
   speaking: {
     eyebrow: "Téo falando",
-    title: "A conversa continua enquanto a rota ganha forma.",
     body: "Ouça as opções e interrompa quando quiser para ajustar sua busca.",
   },
   offers: {
     eyebrow: "Opções encontradas",
-    title: "Agora ficou mais fácil escolher.",
     body: "Compare as oportunidades na tela e peça ao Téo para abrir a que mais gostar.",
   },
 };
@@ -178,11 +175,11 @@ export default function OpportunitiesLive() {
                   <Sparkles className="size-3.5" aria-hidden="true" />
                   Tomorrow Live
                 </OpportunityBadge>
-                <p className="mt-5 text-xs font-bold uppercase tracking-[0.22em] text-tomorrow-teal-soft">{copy.eyebrow}</p>
+                <p className="mt-5 min-h-4 text-xs font-bold uppercase tracking-[0.22em] text-tomorrow-teal-soft transition-opacity duration-300">{copy.eyebrow}</p>
                 <h1 className="mt-3 max-w-3xl font-editorial text-5xl leading-[0.9] text-tomorrow-text sm:text-6xl lg:text-7xl">
-                  {copy.title}
+                  {LIVE_TITLE}
                 </h1>
-                <p className="mt-5 max-w-2xl text-sm leading-relaxed text-tomorrow-muted sm:text-base">
+                <p className="mt-5 min-h-[2.8rem] max-w-2xl text-sm leading-relaxed text-tomorrow-muted transition-opacity duration-300 sm:text-base">
                   {copy.body}
                 </p>
               </div>
