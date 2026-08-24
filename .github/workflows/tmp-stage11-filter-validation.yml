@@ -1,0 +1,79 @@
+name: Temporary Stage 11 filter validation
+
+on:
+  push:
+    branches:
+      - fix/catalog-filters-airport-destination
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies despite historical lock drift
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Focused Vitest
+        run: >-
+          npx vitest run
+          src/lib/airportDestinations.test.ts
+          src/components/opportunities/catalogFilterState.test.ts
+          src/lib/realtimeVoice.test.ts
+          src/lib/travelOffersPublic.test.ts
+          src/pages/opportunitiesLive.test.tsx
+
+      - name: Scoped ESLint
+        run: >-
+          npx eslint
+          src/lib/airportDestinations.ts
+          src/lib/airportDestinations.test.ts
+          src/components/opportunities/catalogFilterState.ts
+          src/components/opportunities/catalogFilterState.test.ts
+          src/components/opportunities/OpportunityFilters.tsx
+          src/lib/realtimeVoice.ts
+          src/lib/realtimeVoice.test.ts
+          src/lib/travelOffersPublic.ts
+          src/lib/travelOffersPublic.test.ts
+          src/pages/OpportunitiesCatalog.tsx
+
+      - name: TypeScript excluding known historical error
+        shell: bash
+        run: |
+          set +e
+          npx tsc --noEmit --pretty false > /tmp/tsc.log 2>&1
+          code=$?
+          set -e
+          cat /tmp/tsc.log
+          unexpected=$(grep "error TS" /tmp/tsc.log | grep -v "src/components/admin/QuoteEditForm.tsx" || true)
+          if [ -n "$unexpected" ]; then
+            echo "$unexpected"
+            exit 1
+          fi
+          if [ "$code" -ne 0 ] && ! grep -q "src/components/admin/QuoteEditForm.tsx" /tmp/tsc.log; then
+            exit "$code"
+          fi
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Edge Function contract tests
+        run: deno test --allow-env --allow-net supabase/functions/travel-offers-public/*_test.ts
+
+      - name: Production build
+        run: npm run build
+
+      - name: Diff check
+        run: git diff --check origin/main...HEAD
