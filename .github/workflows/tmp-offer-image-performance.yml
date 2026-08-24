@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - perf/offer-image-cache
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
