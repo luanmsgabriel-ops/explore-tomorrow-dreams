@@ -17,5 +17,6 @@ jobs:
         run: deno check supabase/functions/tomorrow-live-realtime-session/core.ts supabase/functions/tomorrow-live-realtime-session/index.ts
       - name: Deno tests
         run: deno test supabase/functions/tomorrow-live-realtime-session/index_test.ts
-      - name: Diff check
-        run: git diff --check HEAD^ -- supabase/functions/tomorrow-live-realtime-session/core.ts supabase/functions/tomorrow-live-realtime-session/index_test.ts
+      - name: Whitespace check
+        run: |
+          ! grep -nE '[[:blank:]]+$' supabase/functions/tomorrow-live-realtime-session/core.ts supabase/functions/tomorrow-live-realtime-session/index_test.ts
