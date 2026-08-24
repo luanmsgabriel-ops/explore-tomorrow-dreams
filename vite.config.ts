@@ -58,12 +58,29 @@ export default defineConfig(({ mode }) => ({
         cleanupOutdatedCaches: true,
         navigateFallback: "/index.html",
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        globPatterns: ["**/*.{js,css,html,ico,png,jpg,jpeg,svg,webp}"],
+        // Keep the install/update payload focused on the app shell. Large editorial
+        // images are cached on first use instead of blocking Service Worker install.
+        globPatterns: ["**/*.{js,css,html,ico,svg}"],
         navigateFallbackDenylist: [/^\/rest\//, /supabase/],
         runtimeCaching: [
           {
             urlPattern: /\.supabase\.co/,
             handler: "NetworkOnly",
+          },
+          {
+            urlPattern: ({ request, url }) =>
+              request.destination === "image" && url.origin === self.location.origin,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "tomorrow-local-images-v1",
+              expiration: {
+                maxEntries: 120,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
           },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
