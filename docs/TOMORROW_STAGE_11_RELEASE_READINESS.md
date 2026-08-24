@@ -11,7 +11,8 @@ Preparação de publicação controlada em andamento. Este documento consolida o
 - Correção contextual de filtros/Recife: mergeada anteriormente e informada pelo usuário como corrigida em produção.
 - Performance de imagens: implementada, testada e mergeada no PR #68; implantação da nova infraestrutura ainda pendente.
 - Release smoke/rollback: implementado e mergeado no PR #69.
-- Code splitting de rotas: validado no PR #70; chunk inicial reduziu de aproximadamente 2,22 MB / 627 KB gzip para 1,10 MB / 336 KB gzip, sem alterar comportamento das rotas.
+- Code splitting de rotas: validado e mergeado no PR #70; chunk inicial reduziu de aproximadamente 2,22 MB / 627 KB gzip para 1,10 MB / 336 KB gzip, sem alterar comportamento das rotas.
+- PWA asset cache: validado no PR #71; o precache obrigatório reduziu de aproximadamente 11,75 MB para 4,69 MB. Fotos editoriais passam a ser armazenadas sob demanda com StaleWhileRevalidate, enquanto ícones PWA permanecem explicitamente incluídos.
 
 ## Pendências acumuladas para a próxima rodada Lovable/Supabase
 
@@ -33,7 +34,8 @@ Preparação de publicação controlada em andamento. Este documento consolida o
 ### Frontend
 
 - alterações de miniatura/cache responsivo já estão na `main` desde o PR #68;
-- code splitting das rotas não iniciais e do chat flutuante será incluído no SHA final acumulado da Etapa 11;
+- code splitting das rotas não iniciais e do chat flutuante foi mergeado no PR #70;
+- ajuste de precache/runtime cache do PWA será incluído no SHA final acumulado da Etapa 11;
 - a publicação deverá usar o SHA final acumulado da Etapa 11, não um SHA intermediário deste documento.
 
 ## Smoke test pós-publicação
