@@ -25,6 +25,9 @@ Deno.test("cria configuração GA sem expor a chave principal", () => {
   assertEquals(instructions.includes("pergunte o nome da pessoa"), true);
   assertEquals(instructions.includes("passe a chamá-la pelo primeiro nome"), true);
   assertEquals(instructions.includes("não volte a perguntar"), true);
+  assertEquals(instructions.includes("não pressione venda"), true);
+  assertEquals(instructions.includes("acolha a objeção"), true);
+  assertEquals(instructions.includes("pergunta curta"), true);
   assertEquals(instructions.includes("present_offer_actions"), true);
   const tools = config.session.tools as Array<Record<string, unknown>>;
   assertEquals(tools.length, 2);
