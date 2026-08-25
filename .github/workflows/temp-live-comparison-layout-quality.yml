@@ -1,0 +1,28 @@
+name: Temporary Tomorrow Live comparison and layout quality gate
+on:
+  push:
+    branches: [fix/live-comparison-clarification-layout]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: bun install --frozen-lockfile
+      - name: Realtime Edge tests
+        run: deno test supabase/functions/tomorrow-live-realtime-session/index_test.ts
+      - name: Focused frontend tests
+        run: bunx vitest run src/components/opportunities/live/LiveOfferOverlay.test.tsx src/lib/realtimeVoice.test.ts src/hooks/useRealtimeVoice.test.tsx
+      - name: TypeScript
+        run: bunx tsc --noEmit -p tsconfig.app.json
+      - name: ESLint scope
+        run: bunx eslint src/pages/OpportunitiesLive.tsx src/components/opportunities/live/LiveOfferOverlay.tsx src/components/opportunities/live/LiveOfferOverlay.test.tsx
+      - name: Build
+        run: bun run build
+      - name: Diff check
+        run: git diff --check origin/main...HEAD -- supabase/functions/tomorrow-live-realtime-session/core.ts supabase/functions/tomorrow-live-realtime-session/index_test.ts src/pages/OpportunitiesLive.tsx src/components/opportunities/live/LiveOfferOverlay.tsx src/components/opportunities/live/LiveOfferOverlay.test.tsx
