@@ -3,6 +3,8 @@
 > PRD e roadmap oficial da nova frente de planejamento interativo de viagens do Tomorrow Live.
 >
 > Este documento deve ser lido junto com `docs/TOMORROW_LIVE_MASTER_PLAN.md` antes de qualquer implementação do Trip Composer. O Trip Composer possui roadmap próprio e não altera silenciosamente as etapas existentes do Tomorrow Live.
+>
+> **Etapa atual:** Etapa 0 — Especificação e Arquitetura em andamento. Checkpoint técnico: `docs/TOMORROW_LIVE_TRIP_COMPOSER_STAGE_0.md`.
 
 ## 1. Visão do produto
 
@@ -291,6 +293,8 @@ Exemplo: se o cliente terminar uma atividade antes do previsto e tiver duas hora
 
 Definir arquitetura, contratos, fontes de dados, APIs, política de cache, privacidade/LGPD, regras do motor e fronteiras com sistemas existentes.
 
+**Estado atual:** em andamento. Ver `docs/TOMORROW_LIVE_TRIP_COMPOSER_STAGE_0.md`.
+
 **Critério de conclusão:** arquitetura e contratos aprovados antes de migrations.
 
 #### Etapa 1 — Fundação de dados
@@ -341,98 +345,94 @@ Sincronizar representação geográfica com roteiro e timeline.
 
 #### Etapa 8 — Identificação e compartilhamento
 
-Implementar gate de nome completo, WhatsApp e e-mail somente no momento de compartilhar/levar o roteiro.
+Manter construção/visualização sem cadastro e solicitar nome completo, WhatsApp e e-mail apenas quando o cliente desejar compartilhar/levar o roteiro.
 
-**Critério de conclusão:** roteiro pode ser compartilhado por link persistente e associado corretamente ao viajante.
+**Critério de conclusão:** um roteiro identificado pode ser compartilhado por link seguro e visualizado corretamente.
 
 #### Etapa 9 — Solicitação de cotação
 
-Implementar consentimento explícito para enviar experiências selecionadas à Tomorrow Travel.
+Criar fluxo opcional para enviar experiências selecionadas à Tomorrow Travel.
 
-**Critério de conclusão:** solicitação estruturada corresponde exatamente às escolhas do cliente, sem inventar disponibilidade ou preço.
+**Critério de conclusão:** solicitação estruturada reflete somente escolhas reais do cliente e não cria promessa de preço/disponibilidade.
 
 ### FASE D — Ecossistema Téo
 
-#### Etapa 10 — Integração com WhatsApp
+#### Etapa 10 — Integração WhatsApp
 
-Conectar `trip_session` ao concierge existente, preservando contexto entre Live e WhatsApp.
+Conectar a viagem ao mesmo Téo no WhatsApp sem exigir repetição de dados já coletados.
 
-**Critério de conclusão:** WhatsApp recupera corretamente a viagem sem solicitar novamente dados já conhecidos.
+**Critério de conclusão:** o WhatsApp consegue recuperar, de forma autorizada, o contexto da viagem criada no Live.
 
-#### Etapa 11 — Pré-viagem
+#### Etapa 11 — Pré-Viagem
 
-Reutilizar e ampliar capacidades de concierge para checklist, documentação, clima próximo, bagagem, lembretes e roteiro.
+Usar roteiro e contexto para checklist, documentação, clima próximo, bagagem e lembretes.
+
+**Critério de conclusão:** o Téo consegue prestar concierge pré-viagem usando a viagem correta.
 
 #### Etapa 12 — Modo Viagem
 
-Ativar comportamento contextual durante as datas da viagem.
+Transformar o roteiro em contexto operacional durante `IN_TRIP`.
 
-**Critério de conclusão:** Téo utiliza roteiro e contexto atual para acompanhar o viajante.
+**Critério de conclusão:** o concierge usa agenda, localização informada/autorizada, clima e janelas livres sem perder contexto.
 
 ### FASE E — Inteligência contínua
 
-#### Etapa 13 — Replanejamento em tempo real
+#### Etapa 13 — Replanejamento
 
-Recalcular trechos do roteiro diante de chuva, fechamento, cancelamento, atraso, cansaço ou mudança de preferência, sempre com aprovação do cliente quando houver alteração do roteiro.
+Recalcular partes do roteiro diante de chuva, fechamento, atraso, cancelamento ou mudança do cliente.
+
+**Critério de conclusão:** alteração contextual gera alternativas compatíveis sem destruir decisões não afetadas.
 
 #### Etapa 14 — Pós-viagem
 
-Preservar roteiro, coletar feedback e utilizar preferências autorizadas como contexto para futuras viagens.
+Registrar feedback e preferências úteis para futuras viagens.
 
-## 16. Fora do escopo inicial
+**Critério de conclusão:** encerramento da viagem preserva memória útil sem transformar inferências em fatos declarados pelo cliente.
 
-- reserva automática de passeios sem integração comercial confiável;
-- promessa de disponibilidade ou preço sem fonte real;
-- vídeos obrigatórios nos Experience Cards;
-- preenchimento automático de todos os horários do roteiro;
-- substituição antecipada do concierge existente;
-- alteração do prompt/tom do Téo fora da etapa explicitamente autorizada;
-- publicação automática em produção.
+## 16. Critérios gerais de qualidade
 
-## 17. Dependências a decidir antes da implementação
+Em todas as etapas:
 
-A Etapa 0 deverá fechar explicitamente:
+- nenhuma informação factual de fornecedor pode ser inventada;
+- testes focados devem acompanhar regras determinísticas;
+- TypeScript e ESLint do escopo devem passar;
+- build deve ser validado quando houver alteração de frontend;
+- diff deve ser revisado antes do merge;
+- migrations devem ser aditivas e auditáveis sempre que possível;
+- nenhum segredo pode chegar ao frontend;
+- alterações no Téo, WhatsApp ou publicação exigem sua etapa e autorização explícita;
+- IMPLEMENTADO, TESTADO, MERGEADO, SINCRONIZADO, PUBLICADO e VALIDADO devem permanecer estados separados.
 
-1. fonte de atrações e lugares;
-2. fonte e direitos de uso das fotografias;
-3. fonte de restaurantes;
-4. fonte de horários de funcionamento;
-5. mapas/geocoding/rotas e cálculo de deslocamento;
-6. API meteorológica e horizonte confiável;
-7. estratégia de conteúdo editorial próprio;
-8. política de cache e atualização;
-9. estrutura de consentimento e LGPD;
-10. mecanismo de compartilhamento do roteiro;
-11. mecanismo de criação da solicitação de cotação;
-12. fronteira de integração com concierge/WhatsApp.
+## 17. Documentação e checkpoints
 
-## 18. Governança de implementação
+Cada etapa deve possuir checkpoint próprio quando iniciar trabalho técnico relevante.
 
-Antes de qualquer alteração relacionada ao Trip Composer:
+O checkpoint deve registrar:
 
-1. ler `docs/TOMORROW_LIVE_MASTER_PLAN.md`;
-2. ler este PRD;
-3. ler o checkpoint mais recente da área em desenvolvimento;
-4. conferir o HEAD atual de `main`;
-5. verificar commits posteriores ao último SHA validado;
-6. verificar PRs/branches relevantes;
-7. ler a implementação atual antes de editar;
-8. trabalhar em branch pequena, isolada e auditável;
-9. executar testes focados, TypeScript, ESLint do escopo, build e revisão de diff quando houver código;
-10. separar claramente IMPLEMENTADO, TESTADO, MERGEADO, SINCRONIZADO NO LOVABLE, PUBLICADO e VALIDADO EM PRODUÇÃO.
+- baseline da `main`;
+- branch/PR;
+- objetivo;
+- decisões;
+- arquivos alterados;
+- migrations;
+- testes;
+- run IDs;
+- SHA completo;
+- estado de sync Lovable;
+- estado de publicação;
+- estado de validação;
+- riscos;
+- próxima ação exata.
 
-Este documento deve ser atualizado quando uma decisão arquitetural do Trip Composer for aprovada ou quando uma etapa mudar de estado.
+## 18. Fora do escopo inicial
 
-## 19. Estado atual
+Não fazem parte do MVP inicial do Trip Composer:
 
-**Status:** PLANEJAMENTO — PRD inicial aprovado conceitualmente em 25/08/2026.
-
-**Implementação:** não iniciada.
-
-**Banco:** nenhuma migration do Trip Composer criada.
-
-**Téo/WhatsApp:** nenhuma alteração autorizada ou realizada por este roadmap.
-
-**Produção:** nenhuma alteração.
-
-**Próximo passo exato:** executar a Etapa 0 — Especificação e arquitetura, começando pela decisão das fontes de atrações, fotografias, restaurantes, horários, mapas/deslocamentos e clima; somente depois fechar o modelo físico de dados e contratos.
+- reserva automática de passeios;
+- pagamento de experiências dentro do Composer;
+- inventar preço estimado para atração sem fonte;
+- vídeo obrigatório nos Experience Cards;
+- substituir `travel_offers` por catálogo de lugares;
+- criar outro agente concorrente ao Téo;
+- modificar antecipadamente o fluxo principal do WhatsApp;
+- publicar automaticamente mudanças em produção.
