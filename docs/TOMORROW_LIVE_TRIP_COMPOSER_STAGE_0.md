@@ -4,7 +4,7 @@
 
 ## 1. Estado
 
-**ETAPA 0 INICIADA — diagnóstico e arquitetura base definidos; nenhuma migration ou alteração funcional executada.**
+**ETAPA 0 CONCLUÍDA NO PLANEJAMENTO TÉCNICO — arquitetura e contratos-base definidos; nenhuma migration ou alteração funcional executada.**
 
 Data: 25/08/2026.
 
@@ -18,336 +18,121 @@ O `TOMORROW_LIVE_MASTER_PLAN.md` ainda registra `32e00a7fd70d4aa4b9d9bae609361ef
 
 ## 2. Escopo da Etapa 0
 
-A Etapa 0 existe para fechar contratos e fronteiras antes de alterar banco ou produto.
+A Etapa 0 fecha contratos e fronteiras antes de alterar banco ou produto.
 
-Ela deve definir:
+Foram definidos: reaproveitamento do sistema atual; domínio próprio; fontes de lugares, restaurantes e atrações; política de fotografias; mapas e deslocamentos; clima; modelo conceitual; responsabilidades do Smart Day Planner; fronteira entre dados factuais, curadoria e linguagem do Téo; sessão anônima; identificação; compartilhamento; cotação; futura ponte com concierge/WhatsApp; segurança, privacidade e cache.
 
-- o que será reaproveitado do sistema atual;
-- o que precisa de domínio próprio;
-- fontes de lugares, restaurantes e atrações;
-- fonte e política de fotografias;
-- mapas, coordenadas e deslocamentos;
-- clima;
-- modelo conceitual de dados;
-- responsabilidades do Smart Day Planner;
-- fronteira entre dados factuais, curadoria própria e linguagem do Téo;
-- persistência de sessão anônima e identificação posterior;
-- compartilhamento;
-- handoff para cotação;
-- futura ponte com concierge/WhatsApp;
-- segurança, privacidade e política de cache.
-
-Nenhuma migration deve começar antes do fechamento deste checkpoint.
+Nenhuma migration foi criada ou aplicada nesta etapa.
 
 ## 3. Diagnóstico do sistema existente
 
 ### 3.1 Gerador de roteiro atual
 
-O projeto já possui:
+O projeto já possui `ItineraryGenerator`, `ItineraryMapView`, `ClientItineraryGenerator`, `useItineraryCache`, as Edge Functions `generate-itinerary`/`generate-itinerary-visual` e a tabela `public.ai_itineraries`.
 
-- `src/components/ItineraryGenerator.tsx`;
-- `src/components/ItineraryMapView.tsx`;
-- `src/components/client/ClientItineraryGenerator.tsx`;
-- `src/hooks/useItineraryCache.ts`;
-- `supabase/functions/generate-itinerary/index.ts`;
-- `supabase/functions/generate-itinerary-visual/index.ts`;
-- tabela `public.ai_itineraries`.
+O fluxo atual gera um roteiro completo de 5–7 dias via modelo, com atividades, restaurantes e dicas. O frontend solicita contato antes da geração e persiste o resultado como conteúdo/JSON estruturado.
 
-O fluxo atual gera um roteiro completo de 5–7 dias via modelo, com atividades, restaurantes e dicas. O frontend solicita contato antes da geração e persiste o resultado como um bloco de conteúdo/JSON estruturado.
-
-**Decisão:** não usar esse fluxo como núcleo do Trip Composer.
-
-Motivos:
-
-- o Composer é incremental, dia a dia;
-- o usuário pode permanecer anônimo durante a construção;
-- cada atividade deve ter identidade factual e verificável;
-- logística e clima precisam influenciar a seleção antes de o Téo explicar a alternativa;
-- o roteiro precisa ser mutável por item e por janela temporal, não apenas um texto final.
-
-Partes visuais e utilitárias podem ser reaproveitadas seletivamente, mas o contrato do Composer será novo.
+**Decisão:** não usar esse fluxo como núcleo do Trip Composer. O Composer é incremental, pode permanecer anônimo durante a construção, exige identidade factual das atividades e precisa de logística/clima antes da explicação do Téo. Partes visuais/utilitárias podem ser reaproveitadas seletivamente.
 
 ### 3.2 Fotos atuais
 
 `supabase/functions/search-place-photos/index.ts` usa Pexels, faz busca textual genérica e retorna uma única imagem por consulta.
 
-**Decisão:** Pexels não será a fonte canônica dos Experience Cards.
-
-Ele pode permanecer como fallback editorial de destino quando não houver necessidade de representar uma atração específica, mas não deve ser usado para fazer uma imagem genérica parecer fotografia da experiência selecionada.
+**Decisão:** Pexels não será a fonte canônica dos Experience Cards. Pode permanecer como fallback editorial de destino, mas não pode representar como específica uma imagem genérica.
 
 ### 3.3 Tomorrow Live atual
 
 O Live já possui sessão Realtime, ferramentas de inventário, cards flutuantes e handoff visual. A função `tomorrow-live-realtime-session` mantém regras de segurança e ferramentas server-side.
 
-**Decisão:** o Trip Composer será uma extensão de capacidades do mesmo Tomorrow Live, mas ferramentas do Composer serão adicionadas somente na etapa prevista de integração. A Etapa 0 não modifica prompt, voz ou ferramentas atuais do Téo.
+**Decisão:** o Trip Composer será extensão do mesmo Tomorrow Live, mas suas ferramentas só serão adicionadas na etapa própria de integração. A Etapa 0 não modifica prompt, voz ou ferramentas atuais do Téo.
 
 ### 3.4 Concierge existente
 
-O projeto já possui `supabase/functions/concierge-engine/index.ts` e estruturas como:
+O projeto já possui `concierge-engine` e estruturas como `active_trips`, `concierge_alerts`, `concierge_contacts`, `location_recommendations`, `flight_tracking_subscriptions`, `client_memory` e `client_trips`.
 
-- `active_trips`;
-- `concierge_alerts`;
-- `concierge_contacts`;
-- `location_recommendations`;
-- `flight_tracking_subscriptions`;
-- `client_memory`;
-- `client_trips`.
+O concierge já usa OpenWeather One Call 3.0, Google Maps, AviationStack e WhatsApp Cloud API.
 
-O concierge já usa:
-
-- OpenWeather One Call 3.0 por `OPENWEATHERMAP_API_KEY`;
-- Google Maps por `GOOGLE_MAPS_API_KEY`;
-- AviationStack para voo;
-- WhatsApp Cloud API.
-
-**Decisão:** não reconstruir essas capacidades para o Modo Viagem. O Composer deverá fornecer um contrato de handoff para que uma viagem planejada possa, em etapa futura e autorizada, alimentar o domínio operacional do concierge.
+**Decisão:** não reconstruir essas capacidades para o Modo Viagem. O Composer terá contrato de handoff futuro para alimentar apenas o necessário ao domínio operacional do concierge.
 
 ### 3.5 Viagens e identidade já existentes
 
-Há três conceitos atuais distintos:
+`client_trips` representa viagem do portal autenticado e exige `user_id`; `active_trips` representa viagem operacional do concierge; `client_memory` guarda memória por WhatsApp. Nenhum deles representa corretamente uma sessão anônima de construção colaborativa.
 
-- `client_trips`: viagem do portal autenticado, exige `user_id`;
-- `active_trips`: viagem operacional do concierge, identificada principalmente por telefone e datas;
-- `client_memory`: memória de preferências por WhatsApp.
-
-Nenhum deles representa corretamente uma sessão anônima de construção colaborativa que pode ser abandonada, retomada e só depois identificada.
-
-**Decisão:** manter domínio próprio para o Trip Composer e usar adapters de integração, evitando transformar `active_trips` ou `client_trips` em tabela genérica de planejamento.
+**Decisão:** manter domínio próprio para o Trip Composer e usar adapters, evitando transformar tabelas operacionais existentes em armazenamento genérico de planejamento.
 
 ## 4. Arquitetura alvo
 
-Fluxo lógico:
+`Tomorrow Live UI` → `Trip Composer Session API` → `Experience Discovery` → `Smart Day Planner` → `Weather Context` + `Route/Travel-Time Context` → três candidatos viáveis → Téo explica/interface apresenta → cliente seleciona/rejeita/pede detalhe → `Trip Timeline Store` → próximo slot/dia.
 
-`Tomorrow Live UI`
-
-→ `Trip Composer Session API`
-
-→ `Experience Discovery`
-
-→ `Smart Day Planner`
-
-→ `Weather Context`
-
-→ `Route/Travel-Time Context`
-
-→ `3 candidatos viáveis`
-
-→ `Téo explica e interface apresenta`
-
-→ `cliente seleciona/rejeita/pede detalhe`
-
-→ `Trip Timeline Store`
-
-→ próximo slot ou próximo dia.
-
-O modelo de linguagem não será a autoridade para existência, horário, preço, distância, duração factual ou disponibilidade. Ele recebe dados estruturados e explica as opções.
+O modelo de linguagem não é autoridade para existência, horário, preço, distância, duração factual ou disponibilidade. Ele recebe dados estruturados e explica as opções.
 
 ## 5. Domínios e responsabilidades
 
-### 5.1 Trip Composer Session
+### Trip Composer Session
 
-Responsável por:
+Sessão anônima/identificada, destino, datas, passageiros, hotel/base, estado, dia/slot atual, decisões, preferências e retomada.
 
-- sessão anônima ou identificada;
-- destino e datas;
-- composição de viajantes;
-- hotel/base da viagem quando conhecido;
-- estado do planejamento;
-- dia atual em construção;
-- decisões já tomadas;
-- preferências declaradas e aprendidas;
-- histórico mínimo necessário para retomar a sessão.
+### Experience Discovery
 
-### 5.2 Experience Discovery
+Descobre candidatos reais por destino/coordenadas, categoria, raio, texto e proximidade. Não decide o roteiro.
 
-Responsável por descobrir candidatos reais a partir de:
+### Smart Day Planner
 
-- destino ou coordenadas;
-- categoria;
-- raio;
-- texto livre;
-- contexto gastronômico;
-- proximidade do hotel ou atividade anterior.
+Recebe janela, origem, próximo compromisso, candidatos, preferências, clima, horários, deslocamentos, passageiros, ritmo, orçamento e escolhas/rejeições. Retorna normalmente três candidatos, score, razões, alertas, duração e deslocamento estimados, preservando a fonte de cada dado factual.
 
-Não decide sozinho o roteiro.
+### Live Visual Composer
 
-### 5.3 Smart Day Planner
+Apresenta timeline, cards vivos, galerias automáticas, foco, seleção, remoção, revisão, mapa e estados de UX.
 
-Responsável por viabilidade e ranking.
+### Integration Adapters
 
-Entrada conceitual:
-
-- janela disponível;
-- origem física do slot;
-- destino físico seguinte, quando existir;
-- candidatos;
-- preferências;
-- clima;
-- horários de funcionamento;
-- deslocamentos;
-- composição dos passageiros;
-- ritmo;
-- orçamento quando informado;
-- atividades já escolhidas/rejeitadas.
-
-Saída conceitual:
-
-- normalmente três candidatos;
-- score;
-- razões estruturadas;
-- alertas/restrições;
-- duração estimada do slot;
-- deslocamento estimado;
-- fonte de cada dado factual.
-
-### 5.4 Live Visual Composer
-
-Responsável apenas por apresentação e interação:
-
-- timeline;
-- cards vivos;
-- galerias automáticas;
-- foco do card citado pelo Téo;
-- seleção;
-- remoção;
-- revisão;
-- mapa contextual;
-- estados de carregamento/erro/sem resultado.
-
-### 5.5 Integration Adapters
-
-Camada futura para integrar o roteiro aprovado a:
-
-- `client_memory`;
-- `active_trips`;
-- `client_trips` quando houver usuário autenticado;
-- concierge do WhatsApp;
-- solicitação comercial de cotação.
-
-Essa camada evita acoplamento direto do domínio de planejamento ao webhook principal do WhatsApp.
+Camada futura para integrar com `client_memory`, `active_trips`, `client_trips`, concierge WhatsApp e solicitação comercial sem acoplamento direto ao webhook principal.
 
 ## 6. Fonte de lugares, atrações e restaurantes
 
-### Decisão base
+**Decisão final da Etapa 0:** usar **Google Places API (New)** como fonte principal de discovery factual no MVP, por backend próprio.
 
-Usar **Google Places API (New)** como principal fonte de descoberta factual de lugares no MVP, via backend próprio.
+Usos previstos: Text Search (New), Nearby Search (New), Place Details (New) e Place Photos (New). As chamadas serão server-side, com FieldMask mínimo, controle de custo/rate limit e observabilidade.
 
-Motivos:
+`Google Place ID` será o identificador externo principal persistível para lugares Google.
 
-- Text Search (New) para buscas semânticas;
-- Nearby Search (New) para proximidade;
-- Place Details (New) quando o Place ID já for conhecido;
-- dados de localização, tipos, endereço, rating, horários e outros campos selecionáveis por FieldMask;
-- Place Photos (New) para múltiplas fotografias do mesmo local.
-
-As chamadas devem ser server-side para evitar expor chave e para controlar FieldMask, custo, rate limiting e observabilidade.
-
-`Google Place ID` será o principal identificador externo persistível para um lugar Google.
-
-### Política de persistência
-
-Não transformar resposta completa do Google Places em banco próprio permanente.
-
-Persistir apenas o que a política permitir e o que for dado próprio da Tomorrow, por exemplo:
-
-- identificador interno;
-- `google_place_id`;
-- classificação editorial própria;
-- tags próprias;
-- duração editorial própria quando realmente curada;
-- regras próprias como sensibilidade à chuva ou ritmo;
-- vínculo com experiência comercial própria quando houver;
-- timestamps internos de revisão.
-
-Campos dinâmicos do provedor devem ser buscados/revalidados conforme política aplicável.
+Não transformar respostas completas do Places em banco permanente. Persistir somente o que for permitido e os dados próprios da Tomorrow, como identificador interno, Place ID, classificação/tags editoriais, duração curada, sensibilidade à chuva/ritmo, vínculo comercial e timestamps internos de revisão.
 
 ## 7. Fotografias dos Experience Cards
 
-### Decisão base
+**Decisão final da Etapa 0:** para lugar identificado por Place ID, obter `photos` via Places API (New) e carregar múltiplas fotos por Place Photos (New). A API atual pode devolver até 10 fotos por lugar.
 
-Para uma experiência/lugar identificado pelo Google Place ID, buscar `photos` via Places API (New) e carregar múltiplas fotos via Place Photos (New).
+MVP: normalmente 3–6 fotos por card, rotação automática, atribuições obrigatórias, acesso à origem quando exigido e fallback visual sem inventar imagem.
 
-Cada Place pode retornar até 10 fotos conforme a API atual, suficiente para o comportamento aprovado de rotação automática.
-
-### Regras obrigatórias
-
-- normalmente usar 3–6 fotos por card no MVP;
-- não armazenar `photo name` como identificador duradouro;
-- respeitar atribuições retornadas pelo provedor;
-- manter acesso à origem quando exigido pela política;
-- não misturar foto genérica com foto específica sem rotulagem clara;
-- fallback sem foto deve ser elegante e não inventar imagem do local.
-
-`experience_media` permanece um conceito válido apenas para mídia própria/licenciada/editorial da Tomorrow ou referências compatíveis com a política do provedor. Não deve virar cache permanente indiscriminado de conteúdo Google.
+Não armazenar `photo name` como referência duradoura. `experience_media` fica reservado a mídia própria/licenciada/editorial ou referências cuja persistência seja permitida.
 
 ## 8. Mapas e deslocamentos
 
-### Decisão base
+**Decisão final da Etapa 0:** usar **Google Routes API**.
 
-Usar **Google Routes API** para tempo e distância entre pontos relevantes.
+`Compute Routes` atende rota pontual; `Compute Route Matrix` compara candidatos e permite penalizar combinações logisticamente ruins entre hotel/atividade atual, candidatos e próximo compromisso.
 
-- `Compute Routes` para rota pontual;
-- `Compute Route Matrix` para comparar candidatos e reduzir combinações logisticamente ruins.
+O mapa cinematográfico do Live continua camada visual própria. Quando houver conteúdo Google Maps, cumprir atribuição/políticas aplicáveis.
 
-A matriz será especialmente útil para comparar, em uma única rodada lógica, hotel/atividade atual → candidatos → próximo compromisso.
-
-O mapa cinematográfico do Tomorrow Live é camada visual própria. Quando exibir conteúdo Google Maps, cumprir requisitos de atribuição e uso aplicáveis.
-
-O componente atual `ItineraryMapView` usa Static Maps com marcadores baseados em nomes. Ele pode servir como referência, mas o Trip Composer deve trabalhar internamente com coordenadas/IDs, não depender apenas de strings de lugar.
+O `ItineraryMapView` atual pode servir de referência, mas o Composer deve operar por coordenadas/IDs, não apenas nomes de lugar.
 
 ## 9. Clima
 
-### Decisão base
+**Decisão final da Etapa 0:** reutilizar **OpenWeather One Call 3.0**, já existente no `concierge-engine`.
 
-Reutilizar **OpenWeather One Call 3.0**, já configurado no `concierge-engine`, em vez de introduzir um segundo fornecedor meteorológico sem necessidade.
+Política inicial: previsão diária influencia o score dentro da janela operacional de até 8 dias; quando muito próximo, granularidade horária pode ser usada; fora dessa janela não afirmar clima exato; viagens distantes usam contexto histórico/sazonal/agregado claramente rotulado.
 
-Política de produto:
-
-- até 8 dias: previsão diária do One Call pode influenciar diretamente o score;
-- janela muito próxima: quando necessário, usar também granularidade horária disponível;
-- acima da janela de previsão operacional confiável: não afirmar clima exato do dia;
-- viagens distantes: usar contexto histórico/sazonal ou agregações explicitamente rotuladas, nunca apresentar isso como previsão certa.
-
-A futura Etapa 4 deve definir o cálculo sazonal e os thresholds meteorológicos de scoring.
+A Etapa 4 fechará cálculo sazonal, thresholds e TTLs meteorológicos.
 
 ## 10. Modelo conceitual de dados revisado
 
-Após confronto com o schema atual, a proposta permanece com domínio próprio, mas com nomes/relacionamentos a serem fechados na Etapa 1.
-
 ### `traveler_profiles`
 
-Perfil leve do viajante identificado pelo Composer.
-
-Não exige conta autenticada.
-
-Campos conceituais:
-
-- id;
-- full_name;
-- email normalizado;
-- whatsapp normalizado;
-- consent timestamps;
-- timestamps.
-
-Deve permitir futura vinculação opcional a `profiles/user_id` quando existir autenticação, sem exigir isso no compartilhamento.
+Perfil leve, sem exigir autenticação, com nome completo, e-mail/WhatsApp normalizados, consentimentos e timestamps; pode futuramente vincular-se a `profiles/user_id`.
 
 ### `trip_sessions`
 
-Raiz do planejamento.
-
-Campos conceituais:
-
-- id público não sequencial;
-- traveler_profile_id opcional;
-- destination identity/coordinates;
-- start_date/end_date;
-- arrival/departure context;
-- hotel/base opcional;
-- passenger composition;
-- status;
-- current_day/current_slot;
-- share token ou mecanismo equivalente seguro;
-- created_at/updated_at/last_activity_at.
+Raiz do planejamento: traveler opcional, destino/coordenadas, datas, chegada/saída, hotel/base, passageiros, status, dia/slot atual, mecanismo seguro de compartilhamento e timestamps.
 
 ### `trip_days`
 
@@ -355,285 +140,99 @@ Um registro por dia planejável.
 
 ### `trip_day_items`
 
-Itens estruturados da timeline, incluindo:
-
-- experience;
-- restaurant;
-- transport;
-- hotel/base;
-- free_time;
-- custom item.
+Itens da timeline: experience, restaurant, transport, hotel/base, free_time e custom.
 
 ### `trip_preferences`
 
-Preferências e sinais da sessão com origem explícita:
-
-- declarada pelo cliente;
-- inferida de escolhas;
-- inferida de rejeições.
-
-Preferência inferida nunca deve apagar uma preferência explicitamente declarada.
+Preferências/sinais com origem explícita: declarada, inferida por escolha ou inferida por rejeição. Inferência nunca apaga preferência declarada.
 
 ### `travel_places`
 
-Identidade interna e metadados próprios de lugares que precisam de continuidade no produto.
-
-Não é cópia integral do Google Places.
+Identidade interna + metadados próprios. Não é cópia integral do Google Places.
 
 ### `travel_experiences`
 
-Camada própria de experiência/curadoria, opcionalmente vinculada a um `travel_place` e, futuramente, a fornecedor ou produto comercial.
-
-Não substituir `public.travel_offers`.
+Curadoria/experiência própria, opcionalmente vinculada a `travel_place` e, futuramente, fornecedor/produto comercial. Não substitui `public.travel_offers`.
 
 ### `experience_media`
 
-Somente para ativos próprios/licenciados ou referências que possam legalmente ser persistidas. Fotos Google serão tratadas de acordo com a política do Places e não presumidas como mídia permanente local.
+Somente ativos próprios/licenciados ou referências legalmente persistíveis; fotos Google não são presumidas como mídia permanente local.
 
 ## 11. Estados da sessão
 
-Estados de produto aprovados conceitualmente:
+`PLANNING` → `CONFIRMED_ITINERARY` → `PRE_TRIP` → `IN_TRIP` → `COMPLETED`.
 
-- `PLANNING`;
-- `CONFIRMED_ITINERARY`;
-- `PRE_TRIP`;
-- `IN_TRIP`;
-- `COMPLETED`.
-
-Durante `PLANNING`, a sessão pode estar anônima.
-
-A mudança para `CONFIRMED_ITINERARY` não exige automaticamente solicitação de cotação.
+A sessão pode permanecer anônima durante `PLANNING`. Confirmar roteiro não solicita cotação automaticamente.
 
 ## 12. Identificação, compartilhamento e LGPD
 
-Princípio:
+Princípio: **construir/visualizar é livre; levar/compartilhar exige identificação.**
 
-**visualizar e construir é livre; levar/compartilhar exige identificação.**
+Gate: nome completo + WhatsApp + e-mail. Compartilhamento e solicitação comercial são consentimentos distintos.
 
-Gate de compartilhamento:
-
-- nome completo;
-- WhatsApp;
-- e-mail.
-
-A identificação deve registrar finalidade clara para entrega/continuidade do roteiro.
-
-Compartilhamento e solicitação comercial são ações distintas.
-
-A Etapa 1 deverá incluir:
-
-- normalização de telefone/e-mail;
-- consentimento/finalidade;
-- RLS;
-- token de compartilhamento não adivinhável;
-- política de expiração/revogação do link;
-- limitação de dados expostos no link público;
-- política de retenção da sessão anônima abandonada.
-
-Não incluir dados sensíveis ou credenciais no payload compartilhável.
+A Etapa 1 deverá formalizar normalização, consentimento/finalidade, RLS, token não adivinhável ou mecanismo equivalente, expiração/revogação do link, DTO público mínimo e retenção de sessão anônima abandonada.
 
 ## 13. Solicitação de cotação
 
-O Trip Composer não reserva passeio no MVP.
+O Composer não reserva passeio no MVP. Mediante autorização explícita, cria apenas uma solicitação estruturada contendo viajante, viagem, datas, passageiros e experiências elegíveis escolhidas.
 
-Ao final, mediante autorização explícita, cria uma solicitação estruturada com:
-
-- viajante identificado;
-- viagem;
-- datas;
-- passageiros;
-- experiências selecionadas elegíveis;
-- observações comerciais relevantes.
-
-A solicitação significa apenas **pedido de cotação**.
-
-Não significa:
-
-- disponibilidade confirmada;
-- preço confirmado;
-- reserva;
-- ingresso emitido;
-- fornecedor definido.
-
-A integração comercial será etapa própria.
+Solicitação não significa disponibilidade, preço, reserva, ingresso ou fornecedor confirmados.
 
 ## 14. Contrato futuro com concierge/WhatsApp
 
-O Trip Composer não escreverá diretamente no `whatsapp-webhook` durante as etapas de fundação.
+O Composer não escreverá diretamente em `whatsapp-webhook` nas etapas de fundação. Um adapter futuro transformará a viagem aprovada em contexto compatível com `client_memory`, `active_trips` e, quando aplicável, `client_trips`.
 
-Quando o usuário optar por continuar no WhatsApp ou entrar no Modo Viagem, um adapter deverá transformar a viagem aprovada em contexto compatível com o concierge existente.
-
-Possíveis alvos:
-
-- `client_memory`: preferências e memória persistente do viajante;
-- `active_trips`: execução operacional do concierge durante a viagem;
-- `client_trips`: vínculo com portal quando houver usuário autenticado.
-
-A origem canônica do roteiro continua sendo a sessão do Composer; o adapter copia apenas os dados necessários ao domínio de destino.
+A sessão do Composer permanece origem canônica do roteiro; o adapter copia apenas o necessário.
 
 ## 15. Segurança e frontend público
 
-Regras:
-
-- todas as chaves de Places, Routes e OpenWeather usadas pelo motor devem ficar server-side, exceto APIs especificamente desenhadas para browser e restritas adequadamente;
-- respostas públicas devem ser DTOs sanitizados;
-- não retornar payload bruto de fornecedor ao navegador;
-- não retornar `raw_data`, `source_url`, Service Role, tokens ou chaves;
-- aplicar FieldMask mínimo em Google Places para reduzir custo e exposição;
-- rate limiting por sessão/IP para discovery e planner;
-- logs devem usar IDs internos e métricas, não despejar payloads pessoais desnecessariamente;
-- compartilhamento deve expor somente dados necessários à visualização do roteiro.
+Chaves do motor ficam server-side; respostas públicas são DTOs sanitizados; nunca retornar payload bruto de fornecedor, `raw_data`, `source_url`, Service Role, tokens ou chaves; usar FieldMask mínimo; rate limiting por sessão/IP; logs sem despejo desnecessário de PII; link compartilhável expõe somente o necessário.
 
 ## 16. Cache
 
-### Dados próprios
-
-Podem seguir cache normal definido pelo produto.
-
-### Google Places
-
-- Place IDs podem ser persistidos conforme a política atual;
-- não presumir que outros campos ou nomes de fotos possam ser cacheados indefinidamente;
-- `photo name` não deve ser cacheado como referência permanente;
-- a implementação deve preservar atribuição e regras de exibição exigidas.
-
-### Rotas
-
-Cache curto por par de coordenadas/modo pode ser considerado na Etapa 3, respeitando termos do fornecedor e evitando tratar estimativa antiga como tempo atual.
-
-### Clima
-
-Cache curto por coordenada/janela temporal para evitar chamadas repetidas dentro da mesma sessão. A duração exata será definida na Etapa 4 conforme granularidade utilizada.
+Dados próprios seguem política interna. Para Google Places, Place IDs podem ser persistidos conforme política atual; outros campos e nomes de fotos não são presumidos como cache permanente, e `photo name` não deve ser referência permanente. Rotas e clima podem usar cache curto, com TTLs definidos nas etapas correspondentes e sem tratar dados antigos como atuais.
 
 ## 17. Estratégia de custo e performance
 
-O Composer não deve consultar todos os campos de todos os lugares a cada turno.
+Discovery com FieldMask enxuto → shortlist → Route Matrix para candidatos relevantes → detalhes/fotos somente dos finalistas → clima reutilizado na rodada → Place Details adicional apenas quando o cliente pedir aprofundamento.
 
-Estratégia prevista:
-
-1. discovery com FieldMask enxuto;
-2. shortlist inicial;
-3. route matrix para candidatos relevantes;
-4. detalhes/fotos somente dos finalistas apresentados;
-5. clima uma vez por janela/localidade e reaproveitado na rodada;
-6. Place Details sob demanda quando o cliente pedir aprofundamento.
-
-Isso reduz latência e custo sem reduzir qualidade factual.
-
-## 18. Contratos iniciais sugeridos
-
-Esses contratos são conceituais e serão formalizados em tipos/testes na Etapa 1/2.
+## 18. Contratos iniciais
 
 ### `DiscoverRequest`
 
-- `trip_session_id`;
-- `slot_start`;
-- `slot_end`;
-- `origin`;
-- `next_anchor` opcional;
-- `categories`;
-- `query` opcional;
-- `radius_meters`;
-- `limit`.
+`trip_session_id`, `slot_start`, `slot_end`, `origin`, `next_anchor?`, `categories`, `query?`, `radius_meters`, `limit`.
 
 ### `ExperienceCandidate`
 
-- `candidate_id` interno da rodada;
-- `place_id` externo quando aplicável;
-- `name`;
-- `category`;
-- `coordinates`;
-- `opening_context`;
-- `rating_context` opcional;
-- `price_level_context` opcional;
-- `photos` transitórias;
-- `attributions`;
-- `source`.
+`candidate_id`, `place_id?`, `name`, `category`, `coordinates`, `opening_context`, `rating_context?`, `price_level_context?`, fotos transitórias, atribuições e fonte.
 
 ### `PlannedCandidate`
 
-Adiciona:
-
-- `estimated_visit_minutes`;
-- `travel_minutes_from_origin`;
-- `travel_minutes_to_next_anchor` quando aplicável;
-- `weather_fit`;
-- `preference_fit`;
-- `logistics_fit`;
-- `total_score`;
-- `reasons`;
-- `warnings`.
+Adiciona `estimated_visit_minutes`, `travel_minutes_from_origin`, `travel_minutes_to_next_anchor?`, `weather_fit`, `preference_fit`, `logistics_fit`, `total_score`, `reasons` e `warnings`.
 
 ### `TripDayItem`
 
-- identidade;
-- tipo;
-- início/fim;
-- lugar/experiência;
-- fonte;
-- status;
-- notas do cliente;
-- snapshots mínimos necessários para preservar o roteiro sem depender de texto gerado.
+Identidade, tipo, início/fim, lugar/experiência, fonte, status, notas e snapshots mínimos necessários para preservar o roteiro sem depender de texto gerado.
 
 ## 19. Fronteiras explícitas
 
-Nesta etapa não serão alterados:
+Nesta etapa não foram alterados prompt/sistema/tom do Téo, `whatsapp-webhook`, banco de produção, `travel_offers`, `travel-offers-public`, fluxo atual de cotação, publicação, Lovable ou integrações comerciais.
 
-- prompt/sistema/tom do Téo;
-- `whatsapp-webhook`;
-- banco de produção;
-- `travel_offers`;
-- `travel-offers-public`;
-- fluxo de cotação atual;
-- publicação em produção;
-- Lovable;
-- integrações comerciais de fornecedores.
+## 20. Riscos e mitigação
 
-## 20. Riscos identificados
+Licenciamento/caching de Places e fotos → persistir principalmente Place ID + dados próprios e implementar atribuição. Custo Places/Routes → FieldMask, shortlist e observabilidade. Latência em voz → discovery em camadas/pré-busca e UI independente. Recomendação versus disponibilidade → separar `travel_experiences` de `travel_offers`. Duplicação de viagens → adapters para domínios atuais. Clima distante → separar previsão de contexto sazonal.
 
-### Licenciamento/caching de Places e fotos
+## 21. Critérios de conclusão — resultado
 
-Mitigação: armazenar principalmente Place ID + dados próprios, buscar conteúdo dinâmico conforme política e implementar atribuição correta.
+Google Places (New) — **definido**. Múltiplas fotos/atribuição — **definido**. Google Routes — **definido**. OpenWeather atual — **definido**. Domínio próprio de sessões — **definido**. Identificação somente no compartilhamento — **definida**. Fronteira concierge/WhatsApp — **definida**. Cache/segurança — **baseline definido; TTLs específicos ficam nas etapas responsáveis**. Contratos discovery/planner/timeline — **definidos**. Nenhuma dependência de preço/disponibilidade inventados — **preservada**.
 
-### Custo por chamadas de Places/Routes
-
-Mitigação: FieldMask mínimo, shortlist antes de detalhes, route matrix somente nos candidatos relevantes e observabilidade por sessão.
-
-### Latência durante voz
-
-Mitigação: discovery em camadas, pré-busca quando houver contexto suficiente e UI com estados visuais independentes da fala.
-
-### Confundir recomendação com disponibilidade comercial
-
-Mitigação: separar `travel_experiences` de `travel_offers` e cotação somente sob autorização.
-
-### Duplicação de domínios de viagem existentes
-
-Mitigação: `trip_sessions` representa planejamento; adapters conectam posteriormente a `client_trips`, `active_trips` e `client_memory`.
-
-### Previsão meteorológica distante
-
-Mitigação: previsão operacional somente na janela adequada e rótulo distinto para contexto histórico/sazonal.
-
-## 21. Critérios para encerrar a Etapa 0
-
-Antes de marcar a Etapa 0 como concluída, confirmar:
-
-- fonte principal de lugares/restaurantes: Google Places API (New);
-- estratégia de múltiplas fotos e atribuição;
-- Google Routes como motor de deslocamento;
-- OpenWeather já existente como fonte meteorológica inicial;
-- domínio próprio de `trip_sessions` em vez de reutilização indevida das tabelas atuais;
-- política de identificação apenas no compartilhamento;
-- fronteira com concierge/WhatsApp;
-- política de cache e segurança;
-- contratos conceituais de discovery/planner/timeline;
-- ausência de dependência de preço/disponibilidade inventados.
+A Etapa 0 está concluída no planejamento técnico e pronta para revisão/merge de documentação. Isso não significa que a Etapa 1 foi iniciada nem que migrations foram autorizadas/aplicadas.
 
 ## 22. Próxima ação exata
 
-1. revisar este checkpoint contra o PRD e o schema atual;
-2. fechar qualquer pendência de arquitetura descoberta nessa revisão;
-3. atualizar o PRD se algum conceito tiver mudado materialmente;
-4. marcar a Etapa 0 como concluída somente após o contrato estar consistente;
-5. então iniciar a Etapa 1 em branch própria com desenho da migration e testes de schema, sem aplicá-la antes da revisão de diff.
+1. revisar e mergear o PR #77 com PRD + checkpoint da Etapa 0;
+2. reconfirmar `main` após o merge;
+3. criar branch isolada da Etapa 1;
+4. desenhar migrations de fundação somente após confronto final com o schema real;
+5. definir RLS e contratos de sessão anônima/identificada;
+6. validar diff/testes de schema antes de qualquer aplicação no Lovable Cloud/Supabase.
