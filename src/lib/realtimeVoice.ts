@@ -151,36 +151,7 @@ const validIsoDate = (value: string) => {
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 };
 
-function normalizeSpokenText(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-export function userExplicitlyAllowsAnyDate(entries: VoiceTranscriptEntry[]) {
-  const lastUserEntry = [...entries].reverse().find((entry) => entry.role === "user" && entry.final);
-  if (!lastUserEntry) return false;
-  const text = normalizeSpokenText(lastUserEntry.text);
-  return [
-    "qualquer data",
-    "qualquer periodo",
-    "todo o periodo",
-    "todo periodo",
-    "todo o inventario",
-    "todo inventario",
-    "sem data definida",
-    "independente da data",
-    "independentemente da data",
-  ].some((phrase) => text.includes(phrase));
-}
-
-export function catalogParamsFromRealtimeTool(
-  call: RealtimeFunctionCall,
-  options: { allowAnyDate?: boolean } = {},
-): CatalogParams {
+export function catalogParamsFromRealtimeTool(call: RealtimeFunctionCall): CatalogParams {
   if (call.name !== "search_travel_offers") throw new RealtimeVoiceError("Ferramenta não permitida.", "unknown_tool");
 
   let parsed: unknown;
@@ -232,21 +203,6 @@ export function catalogParamsFromRealtimeTool(
       throw new RealtimeVoiceError("O tipo de oportunidade é inválido.", "invalid_tool_arguments");
     }
     args.offer_type = parsed.offer_type;
-  }
-
-  if (!args.origin) {
-    throw new RealtimeVoiceError(
-      "Antes de pesquisar, pergunte ao cliente qual é a origem de saída e aguarde a resposta.",
-      "missing_origin",
-    );
-  }
-
-  const hasCompletePeriod = Boolean(args.start_date && args.end_date);
-  if (!hasCompletePeriod && !options.allowAnyDate) {
-    throw new RealtimeVoiceError(
-      "Antes de pesquisar, pergunte ao cliente qual período deseja viajar. Só pesquise sem datas quando ele disser explicitamente que aceita qualquer data, todo o período disponível ou todo o inventário.",
-      "missing_period",
-    );
   }
 
   const params: CatalogParams = {
