@@ -226,7 +226,7 @@ export default function OpportunityCompare() {
             </section>
 
             <section className="hidden max-w-full overflow-x-auto rounded-tomorrow-lg border border-tomorrow-line bg-tomorrow-surface/70 md:block" aria-label="Tabela comparativa de oportunidades">
-              <table className="w-full min-w-[52rem] border-collapse text-left text-sm">
+              <table className="w-full min-w-[52rem] table-fixed border-collapse text-left text-sm">
                 <thead>
                   <tr>
                     <th className="sticky left-0 z-10 w-44 border-b border-r border-tomorrow-line bg-tomorrow-surface p-4 text-xs uppercase tracking-[0.12em] text-tomorrow-muted">Critério</th>
@@ -234,20 +234,22 @@ export default function OpportunityCompare() {
                       const remainingIds = selectedIds.filter((id) => id !== item.id);
                       return (
                         <th key={item.id} className="min-w-64 border-b border-tomorrow-line p-4 align-top">
-                          <OpportunityBadge variant={itemBadgeVariant(item)}>{opportunityTypeLabel(item)}</OpportunityBadge>
-                          <p className="mt-3 break-words font-editorial text-2xl leading-tight text-tomorrow-text [overflow-wrap:anywhere]">{opportunityTitle(item)}</p>
-                          <div className="mt-4 grid gap-2">
-                            <OpportunityButton asChild variant="outline" size="sm" fullWidth>
-                              <a href={`/oportunidades/oferta/${encodeURIComponent(item.id)}`}>Ver detalhes</a>
-                            </OpportunityButton>
-                            <a
-                              href={comparisonHref(remainingIds)}
-                              onClick={() => writeStoredComparisonIds(remainingIds)}
-                              className="opportunity-focus inline-flex min-h-9 items-center justify-center gap-2 rounded-lg text-xs font-semibold text-tomorrow-muted hover:text-tomorrow-text"
-                              aria-label={`Remover ${opportunityTitle(item)} da comparação`}
-                            >
-                              <X className="size-4" aria-hidden="true" />Remover
-                            </a>
+                          <div className="grid min-h-[11.5rem] grid-rows-[auto_1fr_auto] gap-3">
+                            <OpportunityBadge variant={itemBadgeVariant(item)}>{opportunityTypeLabel(item)}</OpportunityBadge>
+                            <p className="break-words font-editorial text-2xl leading-tight text-tomorrow-text [overflow-wrap:anywhere]">{opportunityTitle(item)}</p>
+                            <div className="grid gap-2 self-end">
+                              <OpportunityButton asChild variant="outline" size="sm" fullWidth>
+                                <a href={`/oportunidades/oferta/${encodeURIComponent(item.id)}`}>Ver detalhes</a>
+                              </OpportunityButton>
+                              <a
+                                href={comparisonHref(remainingIds)}
+                                onClick={() => writeStoredComparisonIds(remainingIds)}
+                                className="opportunity-focus inline-flex min-h-9 items-center justify-center gap-2 rounded-lg text-xs font-semibold text-tomorrow-muted hover:text-tomorrow-text"
+                                aria-label={`Remover ${opportunityTitle(item)} da comparação`}
+                              >
+                                <X className="size-4" aria-hidden="true" />Remover
+                              </a>
+                            </div>
                           </div>
                         </th>
                       );
@@ -267,9 +269,9 @@ export default function OpportunityCompare() {
               </table>
             </section>
 
-            <section className="grid min-w-0 gap-4 md:grid-cols-3" aria-label="Escolher oportunidade">
+            <section className="grid min-w-0 items-stretch gap-4 md:grid-cols-3" aria-label="Escolher oportunidade">
               {items.map((item) => (
-                <div key={item.id} className="opportunity-surface grid min-w-0 content-between gap-4 rounded-tomorrow border border-tomorrow-gold/30 bg-tomorrow-gold/5 p-5">
+                <div key={item.id} className="opportunity-surface grid h-full min-w-0 grid-rows-[1fr_auto] gap-4 rounded-tomorrow border border-tomorrow-gold/30 bg-tomorrow-gold/5 p-5">
                   <div className="min-w-0">
                     <p className="break-words font-semibold text-tomorrow-text [overflow-wrap:anywhere]">{opportunityTitle(item)}</p>
                     <p className="mt-2 break-words text-sm text-tomorrow-muted [overflow-wrap:anywhere]">{formatOpportunityCurrency(item.price_per_person, item.currency)} por pessoa</p>
