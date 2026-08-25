@@ -15,6 +15,7 @@ import {
   realtimeToolContinuationEvents,
   setSelectedRealtimeVoice,
   transcriptChangeFromEvent,
+  userExplicitlyAllowsAnyDate,
 } from "./realtimeVoice";
 
 describe("Realtime Voice contract", () => {
@@ -81,26 +82,68 @@ describe("Realtime Voice contract", () => {
     ]);
   });
 
-  it("reconhece a chamada oficial da ferramenta e limita a consulta a três resultados pelo menor preço", () => {
+  it("ordena a consulta pelo menor preço quando origem e período estão completos", () => {
     const call = functionCallFromRealtimeEvent({
       type: "response.output_item.done",
       item: {
         type: "function_call",
         call_id: "call-1",
         name: "search_travel_offers",
-        arguments: JSON.stringify({ origin: "São Paulo", destination: "Maceió", passengers: 2 }),
+        arguments: JSON.stringify({
+          origin: "São Paulo",
+          destination: "Maceió",
+          start_date: "2026-09-01",
+          end_date: "2026-09-30",
+          passengers: 2,
+        }),
       },
     });
 
-    expect(call).toEqual({
-      callId: "call-1",
-      name: "search_travel_offers",
-      arguments: JSON.stringify({ origin: "São Paulo", destination: "Maceió", passengers: 2 }),
-    });
     expect(catalogParamsFromRealtimeTool(call!)).toEqual({
       origin: "São Paulo",
       destination: "Maceió",
+      start_date: "2026-09-01",
+      end_date: "2026-09-30",
       passengers: 2,
+      sort: "price_asc",
+      page: 1,
+      per_page: 3,
+    });
+  });
+
+  it("não deixa iniciar busca sem origem", () => {
+    expect(() => catalogParamsFromRealtimeTool({
+      callId: "missing-origin",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({
+        destination: "Maceió",
+        start_date: "2026-09-01",
+        end_date: "2026-09-30",
+      }),
+    })).toThrow("qual é a origem de saída");
+  });
+
+  it("não deixa iniciar busca sem período quando o cliente não autorizou qualquer data", () => {
+    expect(() => catalogParamsFromRealtimeTool({
+      callId: "missing-period",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({ origin: "GRU", destination: "Maceió" }),
+    })).toThrow("qual período deseja viajar");
+  });
+
+  it("aceita consulta sem datas somente após autorização explícita do cliente", () => {
+    const transcript = [
+      { id: "u1", role: "user" as const, text: "Quero o menor preço em todo o inventário", final: true },
+    ];
+    expect(userExplicitlyAllowsAnyDate(transcript)).toBe(true);
+
+    expect(catalogParamsFromRealtimeTool({
+      callId: "any-date",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({ origin: "GRU", destination: "Maceió" }),
+    }, { allowAnyDate: userExplicitlyAllowsAnyDate(transcript) })).toEqual({
+      origin: "GRU",
+      destination: "Maceió",
       sort: "price_asc",
       page: 1,
       per_page: 3,
@@ -111,23 +154,18 @@ describe("Realtime Voice contract", () => {
     expect(catalogParamsFromRealtimeTool({
       callId: "recife-destination",
       name: "search_travel_offers",
-      arguments: JSON.stringify({ origin: "São Paulo", destination: "Recife", offer_type: "bloqueio_aereo" }),
+      arguments: JSON.stringify({
+        origin: "GRU",
+        destination: "Recife",
+        offer_type: "bloqueio_aereo",
+        start_date: "2026-09-01",
+        end_date: "2026-09-30",
+      }),
     })).toEqual({
-      origin: "São Paulo",
+      origin: "GRU",
       offer_type: "bloqueio_aereo",
-      destination_iata: "REC",
-      sort: "price_asc",
-      page: 1,
-      per_page: 3,
-    });
-
-    expect(catalogParamsFromRealtimeTool({
-      callId: "recife-search",
-      name: "search_travel_offers",
-      arguments: JSON.stringify({ origin: "São Paulo", search: "Recife", offer_type: "bloqueio_aereo" }),
-    })).toEqual({
-      origin: "São Paulo",
-      offer_type: "bloqueio_aereo",
+      start_date: "2026-09-01",
+      end_date: "2026-09-30",
       destination_iata: "REC",
       sort: "price_asc",
       page: 1,
@@ -145,7 +183,7 @@ describe("Realtime Voice contract", () => {
     expect(() => catalogParamsFromRealtimeTool({
       callId: "3",
       name: "search_travel_offers",
-      arguments: JSON.stringify({ start_date: "21/08/2026" }),
+      arguments: JSON.stringify({ origin: "GRU", start_date: "21/08/2026" }),
     })).toThrow("datas da consulta são inválidas");
   });
 
