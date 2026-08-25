@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
@@ -18,4 +20,4 @@ jobs:
       - name: Deno tests
         run: deno test supabase/functions/travel-offers-sync/sanitize_test.ts
       - name: Diff check
-        run: git diff --check HEAD^ -- supabase/functions/travel-offers-sync/index.ts supabase/functions/travel-offers-sync/sanitize.ts supabase/functions/travel-offers-sync/sanitize_test.ts
+        run: git diff --check origin/main...HEAD -- supabase/functions/travel-offers-sync/index.ts supabase/functions/travel-offers-sync/sanitize.ts supabase/functions/travel-offers-sync/sanitize_test.ts
