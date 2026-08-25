@@ -34,12 +34,13 @@ const offer = (index: number): TravelOfferCatalogItem => ({
 });
 
 describe("LiveOfferOverlay", () => {
-  it("apresenta até três ofertas flutuantes sobre o Live e permite minimizar", () => {
-    const offers = [offer(1), offer(2), offer(3)];
+  it("apresenta até nove ofertas da mesma rodada de comparação e permite minimizar", () => {
+    const offers = Array.from({ length: 9 }, (_, index) => offer(index + 1));
     render(<LiveOfferOverlay offers={offers} handoff={null} detailPath={null} whatsappUrl={null} />);
 
     expect(screen.getByRole("region", { name: "Ofertas encontradas pelo Téo" })).toBeInTheDocument();
-    expect(screen.getAllByRole("article")).toHaveLength(3);
+    expect(screen.getAllByRole("article")).toHaveLength(9);
+    expect(screen.getByText("9 oportunidades encontradas")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Abrir oferta: Pacote Maceió 1" })).toHaveAttribute(
       "href",
       `/oportunidades/oferta/${offers[0].id}`,
@@ -47,7 +48,7 @@ describe("LiveOfferOverlay", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Minimizar ofertas encontradas" }));
     expect(screen.queryByRole("region", { name: "Ofertas encontradas pelo Téo" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Mostrar 3 ofertas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mostrar 9 ofertas" }));
     expect(screen.getByRole("region", { name: "Ofertas encontradas pelo Téo" })).toBeInTheDocument();
   });
 
