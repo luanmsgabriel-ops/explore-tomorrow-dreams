@@ -1,0 +1,28 @@
+name: Temporary Live greeting and cards quality gate
+on:
+  push:
+    branches: [fix/live-greeting-multidestination-cards]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: bun install --frozen-lockfile
+      - name: Focused Vitest
+        run: bunx vitest run src/hooks/useRealtimeVoice.test.tsx src/components/opportunities/live/LiveOfferOverlay.test.tsx
+      - name: TypeScript
+        run: bunx tsc --noEmit -p tsconfig.app.json
+      - name: ESLint scope
+        run: bunx eslint src/hooks/useRealtimeVoice.ts src/hooks/useRealtimeVoice.test.tsx src/components/opportunities/live/LiveOfferOverlay.tsx src/components/opportunities/live/LiveOfferOverlay.test.tsx
+      - name: Deno check
+        run: deno check supabase/functions/tomorrow-live-realtime-session/core.ts supabase/functions/tomorrow-live-realtime-session/index.ts
+      - name: Deno tests
+        run: deno test supabase/functions/tomorrow-live-realtime-session/index_test.ts
+      - name: Build
+        run: bun run build
+      - name: Diff check
+        run: git diff --check HEAD~1 -- src/hooks/useRealtimeVoice.ts src/hooks/useRealtimeVoice.test.tsx src/components/opportunities/live/LiveOfferOverlay.tsx src/components/opportunities/live/LiveOfferOverlay.test.tsx supabase/functions/tomorrow-live-realtime-session/core.ts supabase/functions/tomorrow-live-realtime-session/index_test.ts
