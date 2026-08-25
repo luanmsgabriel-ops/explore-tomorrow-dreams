@@ -46,11 +46,29 @@ const AUDIO_PUBLISH_MIN_DELTA = 0.025;
 const OUTPUT_ACTIVITY_THRESHOLD = 0.012;
 const OUTPUT_SILENCE_HOLD_MS = 900;
 const TRANSCRIPT_FLUSH_INTERVAL_MS = 120;
+const MAX_LIVE_COMPARISON_OFFERS = 9;
+const INITIAL_GREETING_EVENT = {
+  type: "response.create",
+  response: {
+    instructions: [
+      "Esta é a primeira fala da sessão. Comece obrigatoriamente com a palavra 'Olá' — nunca use 'Oi'.",
+      "Apresente-se como Téo, da Tomorrow Travel, e pergunte de forma breve como a pessoa se chama.",
+      "Fale em português brasileiro natural, com sotaque brasileiro neutro; não use pronúncia, cadência ou vocabulário de Portugal.",
+      "Depois que a pessoa disser o nome, use o primeiro nome naturalmente ao longo desta sessão, sem repetir em toda frase e sem perguntar novamente.",
+    ].join(" "),
+  },
+} as const;
 
 export interface OfferHandoffSelection {
   offer: TravelOfferCatalogItem;
   requestedChannel: OfferHandoffChannel;
   searchContext: TravelHandoffContext | null;
+}
+
+function mergeOfferBatch(current: TravelOfferCatalogItem[], incoming: TravelOfferCatalogItem[]) {
+  const merged = new Map<string, TravelOfferCatalogItem>();
+  [...current, ...incoming].forEach((item) => merged.set(item.id, item));
+  return Array.from(merged.values()).slice(0, MAX_LIVE_COMPARISON_OFFERS);
 }
 
 function releaseResources(resources: RealtimeResources | null) {
@@ -113,7 +131,9 @@ export function useRealtimeVoice() {
   const lastOutputActivityAtRef = useRef(0);
   const handledToolCallsRef = useRef(new Set<string>());
   const offersRef = useRef<TravelOfferCatalogItem[]>([]);
-  const offersContextRef = useRef<TravelHandoffContext | null>(null);
+  const offerContextsRef = useRef(new Map<string, TravelHandoffContext | null>());
+  const customerTurnRef = useRef(0);
+  const offerBatchTurnRef = useRef<number | null>(null);
 
   const updateStatus = useCallback((next: RealtimeVoiceStatus) => {
     if (statusRef.current === next) return;
@@ -138,6 +158,14 @@ export function useRealtimeVoice() {
     lastOutputActivityAtRef.current = 0;
   }, []);
 
+  const resetOfferBatch = useCallback(() => {
+    setOffers([]);
+    offersRef.current = [];
+    offerContextsRef.current.clear();
+    offerBatchTurnRef.current = null;
+    setOfferHandoff(null);
+  }, []);
+
   const failConversation = useCallback((message: string) => {
     startAttemptRef.current += 1;
     pendingAbortControllerRef.current?.abort();
@@ -147,21 +175,19 @@ export function useRealtimeVoice() {
     releaseResources(resources);
     userSpeakingRef.current = false;
     mutedRef.current = false;
+    customerTurnRef.current = 0;
     resetOutputActivity();
     handledToolCallsRef.current.clear();
     if (mountedRef.current) {
       setConnected(false);
       setMuted(false);
       setAudioLevel(0);
-      setOffers([]);
-      offersRef.current = [];
-      offersContextRef.current = null;
-      setOfferHandoff(null);
+      resetOfferBatch();
       setToolError(null);
       setError(message);
       updateStatus("error");
     }
-  }, [resetOutputActivity, updateStatus]);
+  }, [resetOfferBatch, resetOutputActivity, updateStatus]);
 
   const endConversation = useCallback(() => {
     startAttemptRef.current += 1;
@@ -171,21 +197,19 @@ export function useRealtimeVoice() {
     resourcesRef.current = null;
     releaseResources(resources);
     userSpeakingRef.current = false;
+    customerTurnRef.current = 0;
     resetOutputActivity();
     if (mountedRef.current) {
       setConnected(false);
       setMuted(false);
       mutedRef.current = false;
       setAudioLevel(0);
-      setOffers([]);
-      offersRef.current = [];
-      offersContextRef.current = null;
-      setOfferHandoff(null);
+      resetOfferBatch();
       setToolError(null);
       handledToolCallsRef.current.clear();
       updateStatus("idle");
     }
-  }, [resetOutputActivity, updateStatus]);
+  }, [resetOfferBatch, resetOutputActivity, updateStatus]);
 
   useEffect(() => () => {
     mountedRef.current = false;
@@ -212,17 +236,24 @@ export function useRealtimeVoice() {
     let output: unknown;
     try {
       if (call.name === "search_travel_offers") {
-        setOffers([]);
-        offersRef.current = [];
-        offersContextRef.current = null;
-        setOfferHandoff(null);
         const params = catalogParamsFromRealtimeTool(call);
         const result = await fetchTravelOfferCatalog(params, resources.abortController.signal);
         if (resourcesRef.current !== resources || !mountedRef.current) return;
-        offersRef.current = result.items;
-        offersContextRef.current = travelHandoffContextFromCatalogParams(params);
-        setOffers(result.items);
-        if (result.items.length > 0) updateStatus("offers");
+
+        const turn = customerTurnRef.current;
+        const startsNewBatch = offerBatchTurnRef.current !== turn;
+        const baseOffers = startsNewBatch ? [] : offersRef.current;
+        if (startsNewBatch) {
+          offerContextsRef.current.clear();
+          setOfferHandoff(null);
+        }
+        const context = travelHandoffContextFromCatalogParams(params);
+        result.items.forEach((item) => offerContextsRef.current.set(item.id, context));
+        const mergedOffers = mergeOfferBatch(baseOffers, result.items);
+        offerBatchTurnRef.current = turn;
+        offersRef.current = mergedOffers;
+        setOffers(mergedOffers);
+        if (mergedOffers.length > 0) updateStatus("offers");
         output = {
           ok: true,
           total: result.total,
@@ -238,7 +269,7 @@ export function useRealtimeVoice() {
         setOfferHandoff({
           offer,
           requestedChannel: request.requestedChannel,
-          searchContext: offersContextRef.current,
+          searchContext: offerContextsRef.current.get(offer.id) ?? null,
         });
         updateStatus("offers");
         output = {
@@ -290,6 +321,7 @@ export function useRealtimeVoice() {
         break;
       case "input_audio_buffer.speech_started":
         userSpeakingRef.current = true;
+        customerTurnRef.current += 1;
         resetOutputActivity();
         updateStatus("listening");
         break;
@@ -331,10 +363,8 @@ export function useRealtimeVoice() {
     transcriptBufferRef.current = [];
     setTranscript([]);
     setAudioLevel(0);
-    setOffers([]);
-    offersRef.current = [];
-    offersContextRef.current = null;
-    setOfferHandoff(null);
+    customerTurnRef.current = 0;
+    resetOfferBatch();
     setToolError(null);
     handledToolCallsRef.current.clear();
     resetOutputActivity();
@@ -396,7 +426,8 @@ export function useRealtimeVoice() {
       dataChannel.onopen = () => {
         if (!mountedRef.current) return;
         setConnected(true);
-        updateStatus("idle");
+        updateStatus("thinking");
+        dataChannel.send(JSON.stringify(INITIAL_GREETING_EVENT));
       };
       dataChannel.onmessage = (message) => {
         const event = parseRealtimeEvent(message.data);
@@ -512,7 +543,7 @@ export function useRealtimeVoice() {
         updateStatus("error");
       }
     }
-  }, [clearTranscriptFlush, failConversation, handleEvent, resetOutputActivity, speakerEnabled, updateStatus]);
+  }, [clearTranscriptFlush, failConversation, handleEvent, resetOfferBatch, resetOutputActivity, speakerEnabled, updateStatus]);
 
   const toggleMute = useCallback(() => {
     const resources = resourcesRef.current;
