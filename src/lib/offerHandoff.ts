@@ -1,7 +1,6 @@
 import {
   TRAVEL_OFFERS_NOTICE,
   type CatalogParams,
-  type TravelOfferCatalogItem,
 } from "@/lib/travelOffersPublic";
 
 export const TOMORROW_WHATSAPP_NUMBER = "5515991833448";
@@ -20,6 +19,22 @@ export interface OfferWhatsAppOptions {
   context?: TravelHandoffContext | null;
   origin?: string;
   phone?: string;
+}
+
+export interface OfferHandoffItem {
+  id: string;
+  kind: "air_block" | "package" | "guided_group";
+  name?: string | null;
+  category?: string | null;
+  airline?: string | null;
+  origin: string | null;
+  origin_iata: string | null;
+  destination: string | null;
+  destination_iata: string | null;
+  departure_date: string | null;
+  return_date: string | null;
+  price_per_person: number;
+  currency: string | null;
 }
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
@@ -50,7 +65,7 @@ const currencyLabel = (value: number, currency: string | null) => {
   }
 };
 
-export function offerHandoffTitle(item: TravelOfferCatalogItem) {
+export function offerHandoffTitle(item: OfferHandoffItem) {
   return item.name || item.destination || item.destination_iata ||
     (item.kind === "air_block" ? item.airline : item.category) ||
     "Oportunidade Tomorrow Travel";
@@ -97,7 +112,7 @@ function appendHandoffContext(lines: string[], context?: TravelHandoffContext | 
 }
 
 export function buildOfferWhatsAppMessage(
-  item: TravelOfferCatalogItem,
+  item: OfferHandoffItem,
   offerUrl: string,
   context?: TravelHandoffContext | null,
 ) {
@@ -128,7 +143,7 @@ export function buildOfferWhatsAppMessage(
 }
 
 export function buildOfferWhatsAppUrl(
-  item: TravelOfferCatalogItem,
+  item: OfferHandoffItem,
   options: OfferWhatsAppOptions = {},
 ) {
   const origin = options.origin ?? TOMORROW_PUBLIC_ORIGIN;
