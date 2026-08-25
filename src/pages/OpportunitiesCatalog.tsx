@@ -19,6 +19,12 @@ import {
 } from "@/components/opportunities";
 import { useOpportunityFavorites } from "@/hooks/useOpportunityFavorites";
 import {
+  addComparisonId,
+  comparisonHref,
+  readStoredComparisonIds,
+  writeStoredComparisonIds,
+} from "@/lib/opportunityComparison";
+import {
   TRAVEL_OFFERS_NOTICE,
   fetchTravelCatalogFacets,
   fetchTravelOfferCatalog,
@@ -112,7 +118,7 @@ export default function OpportunitiesCatalog() {
   const [filterErrors, setFilterErrors] = useState<CatalogFilterErrors>({});
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
-  const [comparisonIds, setComparisonIds] = useState<string[]>([]);
+  const [comparisonIds, setComparisonIds] = useState<string[]>(() => readStoredComparisonIds());
   const resultsRef = useRef<HTMLElement>(null);
   const { favoriteCount, isFavorite, toggleFavorite } = useOpportunityFavorites();
 
@@ -255,11 +261,17 @@ export default function OpportunitiesCatalog() {
     resultsRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   };
 
+  const updateComparison = (nextIds: string[]) => {
+    const persisted = writeStoredComparisonIds(nextIds);
+    setComparisonIds(persisted);
+  };
+
   const toggleComparison = (id: string) => {
-    setComparisonIds((current) => {
-      if (current.includes(id)) return current.filter((item) => item !== id);
-      return current.length < 3 ? [...current, id] : current;
-    });
+    if (comparisonIds.includes(id)) {
+      updateComparison(comparisonIds.filter((item) => item !== id));
+      return;
+    }
+    updateComparison(addComparisonId(comparisonIds, id));
   };
 
   const total = catalogQuery.data?.total ?? 0;
@@ -442,13 +454,13 @@ export default function OpportunitiesCatalog() {
 
             {catalogQuery.data && catalogQuery.data.items.length > 0 ? (
               <>
-                <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-3">
                   {catalogQuery.data.items.map((item) => {
                     const favorite = isFavorite(item.id);
                     const selectedForComparison = comparisonIds.includes(item.id);
                     const comparisonLimitReached = comparisonIds.length >= 3 && !selectedForComparison;
                     return (
-                      <div key={item.id} className="relative grid gap-3">
+                      <div key={item.id} className="relative grid h-full grid-rows-[1fr_auto] gap-3">
                         <OpportunityCard
                           id={item.id}
                           kind={item.kind === "air_block" ? "air_block" : "package"}
@@ -470,6 +482,7 @@ export default function OpportunitiesCatalog() {
                           badges={badgesFor(item)}
                           actionHref={`/oportunidades/oferta/${encodeURIComponent(item.id)}`}
                           actionLabel="Ver detalhes"
+                          className="h-full"
                         />
                         <button
                           type="button"
@@ -501,9 +514,9 @@ export default function OpportunitiesCatalog() {
                       <p className="mt-1 text-xs text-tomorrow-muted">Escolha até três opções para comparar dados reais lado a lado.</p>
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row">
-                      <OpportunityButton variant="ghost" onClick={() => setComparisonIds([])}>Limpar</OpportunityButton>
+                      <OpportunityButton variant="ghost" onClick={() => updateComparison([])}>Limpar</OpportunityButton>
                       <OpportunityButton asChild>
-                        <a href={`/oportunidades/comparar?ids=${encodeURIComponent(comparisonIds.join(","))}`}><Scale aria-hidden="true" />Comparar agora</a>
+                        <a href={comparisonHref(comparisonIds)}><Scale aria-hidden="true" />Comparar agora</a>
                       </OpportunityButton>
                     </div>
                   </aside>
