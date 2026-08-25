@@ -1,0 +1,23 @@
+name: Temporary comparison quality gate
+on:
+  push:
+    branches: [fix/opportunity-comparison-layout-persistence]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Focused tests
+        run: bunx vitest run src/lib/opportunityComparison.test.ts
+      - name: TypeScript
+        run: bunx tsc --noEmit -p tsconfig.app.json
+      - name: ESLint scope
+        run: bunx eslint src/components/opportunities/OpportunityCard.tsx src/pages/OpportunitiesCatalog.tsx src/pages/OpportunityCompare.tsx src/lib/opportunityComparison.test.ts
+      - name: Build
+        run: bun run build
+      - name: Diff check
+        run: git diff --check origin/main...HEAD -- src/components/opportunities/OpportunityCard.tsx src/pages/OpportunitiesCatalog.tsx src/pages/OpportunityCompare.tsx src/lib/opportunityComparison.test.ts
