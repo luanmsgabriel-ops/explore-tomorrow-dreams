@@ -11,11 +11,16 @@ import {
   parseRealtimeEvent,
   realtimeToolContinuationEvents,
   transcriptChangeFromEvent,
+  userExplicitlyAllowsAnyDate,
   type RealtimeServerEvent,
   type RealtimeVoiceStatus,
   type OfferHandoffChannel,
   type VoiceTranscriptEntry,
 } from "@/lib/realtimeVoice";
+import {
+  curateLiveOfferBatch,
+  userRequestsDestinationComparison,
+} from "@/lib/liveOfferCuration";
 import {
   fetchTravelOfferCatalog,
   type TravelOfferCatalogItem,
@@ -46,7 +51,6 @@ const AUDIO_PUBLISH_MIN_DELTA = 0.025;
 const OUTPUT_ACTIVITY_THRESHOLD = 0.012;
 const OUTPUT_SILENCE_HOLD_MS = 900;
 const TRANSCRIPT_FLUSH_INTERVAL_MS = 120;
-const MAX_LIVE_COMPARISON_OFFERS = 9;
 const INITIAL_GREETING_EVENT = {
   type: "response.create",
   response: {
@@ -63,12 +67,6 @@ export interface OfferHandoffSelection {
   offer: TravelOfferCatalogItem;
   requestedChannel: OfferHandoffChannel;
   searchContext: TravelHandoffContext | null;
-}
-
-function mergeOfferBatch(current: TravelOfferCatalogItem[], incoming: TravelOfferCatalogItem[]) {
-  const merged = new Map<string, TravelOfferCatalogItem>();
-  [...current, ...incoming].forEach((item) => merged.set(item.id, item));
-  return Array.from(merged.values()).slice(0, MAX_LIVE_COMPARISON_OFFERS);
 }
 
 function releaseResources(resources: RealtimeResources | null) {
@@ -236,7 +234,11 @@ export function useRealtimeVoice() {
     let output: unknown;
     try {
       if (call.name === "search_travel_offers") {
-        const params = catalogParamsFromRealtimeTool(call);
+        const transcriptSnapshot = transcriptBufferRef.current;
+        const comparisonRequested = userRequestsDestinationComparison(transcriptSnapshot);
+        const params = catalogParamsFromRealtimeTool(call, {
+          allowAnyDate: userExplicitlyAllowsAnyDate(transcriptSnapshot),
+        });
         const result = await fetchTravelOfferCatalog(params, resources.abortController.signal);
         if (resourcesRef.current !== resources || !mountedRef.current) return;
 
@@ -248,8 +250,9 @@ export function useRealtimeVoice() {
           setOfferHandoff(null);
         }
         const context = travelHandoffContextFromCatalogParams(params);
-        result.items.forEach((item) => offerContextsRef.current.set(item.id, context));
-        const mergedOffers = mergeOfferBatch(baseOffers, result.items);
+        const incomingOffers = comparisonRequested ? result.items.slice(0, 1) : result.items;
+        incomingOffers.forEach((item) => offerContextsRef.current.set(item.id, context));
+        const mergedOffers = curateLiveOfferBatch(baseOffers, incomingOffers, comparisonRequested);
         offerBatchTurnRef.current = turn;
         offersRef.current = mergedOffers;
         setOffers(mergedOffers);
@@ -257,8 +260,9 @@ export function useRealtimeVoice() {
         output = {
           ok: true,
           total: result.total,
-          items: result.items,
+          items: comparisonRequested ? incomingOffers : result.items,
           notice: result.notice,
+          comparison_mode: comparisonRequested,
         };
       } else {
         const request = offerHandoffFromRealtimeTool(call);
@@ -288,8 +292,9 @@ export function useRealtimeVoice() {
       setToolError(message);
       output = {
         ok: false,
+        clarification_required: call.name === "search_travel_offers",
         error: call.name === "search_travel_offers"
-          ? "Não foi possível consultar as oportunidades reais agora. Informe isso ao cliente sem sugerir dados alternativos."
+          ? message
           : "Não foi possível preparar a ação para essa oferta. Peça ao cliente para escolher uma das oportunidades exibidas, sem inventar alternativas.",
       };
     }
