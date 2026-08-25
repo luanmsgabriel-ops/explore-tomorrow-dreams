@@ -17,10 +17,16 @@ Deno.test("cria configuração GA sem expor a chave principal", () => {
   const instructions = String(config.session.instructions);
   assertEquals(instructions.includes("português brasileiro (pt-BR)"), true);
   assertEquals(instructions.includes("sotaque brasileiro neutro"), true);
-  assertEquals(instructions.includes("português europeu"), true);
+  assertEquals(instructions.includes("português de Portugal"), true);
+  assertEquals(instructions.includes("primeira fala deve começar obrigatoriamente com 'Olá'"), true);
+  assertEquals(instructions.includes("Nunca inicie com 'Oi'"), true);
+  assertEquals(instructions.includes("como posso te chamar"), true);
+  assertEquals(instructions.includes("memorize o primeiro nome"), true);
+  assertEquals(instructions.includes("sofisticado mas caloroso"), true);
   assertEquals(instructions.includes("padrão brasileiro dia-mês-ano"), true);
   assertEquals(instructions.includes("2 de setembro de 2026"), true);
   assertEquals(instructions.includes("present_offer_actions"), true);
+  assertEquals(instructions.includes("até nove oportunidades"), true);
   const tools = config.session.tools as Array<Record<string, unknown>>;
   assertEquals(tools.length, 2);
   assertEquals(tools[0].name, "search_travel_offers");
@@ -29,6 +35,20 @@ Deno.test("cria configuração GA sem expor a chave principal", () => {
   assertEquals(tools[1].type, "function");
   assertEquals(config.session.tool_choice, "auto");
   assertEquals(JSON.stringify(config).includes("server-key"), false);
+});
+
+Deno.test("mantém os guardrails locais mesmo com prompt versionado configurado", () => {
+  const promptEnv = {
+    get: (name: string) => name === "OPENAI_REALTIME_PROMPT_ID"
+      ? "pmpt_teo_live"
+      : env.get(name),
+  };
+  const config = createRealtimeSessionConfig(promptEnv);
+  assertEquals(config.session.prompt, { id: "pmpt_teo_live" });
+  const instructions = String(config.session.instructions);
+  assertEquals(instructions.includes("Olá"), true);
+  assertEquals(instructions.includes("sotaque brasileiro neutro"), true);
+  assertEquals(instructions.includes("português de Portugal"), true);
 });
 
 Deno.test("aceita somente vozes temporárias conhecidas", () => {
