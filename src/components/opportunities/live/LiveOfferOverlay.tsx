@@ -33,6 +33,7 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
 
 const defaultNavigate = (target: string) => window.location.assign(target);
 const OFFER_SWAP_MS = 150;
+const MAX_VISIBLE_COMPARISON_OFFERS = 9;
 
 export function automaticHandoffTarget(
   handoff: OfferHandoffSelection | null,
@@ -136,7 +137,7 @@ function FloatingOfferCard({ item, index }: { item: TravelOfferCatalogItem; inde
 export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl, navigate = defaultNavigate }: LiveOfferOverlayProps) {
   const [deckOpen, setDeckOpen] = useState(offers.length > 0);
   const [handoffOpen, setHandoffOpen] = useState(Boolean(handoff));
-  const [displayedOffers, setDisplayedOffers] = useState(() => offers.slice(0, 3));
+  const [displayedOffers, setDisplayedOffers] = useState(() => offers.slice(0, MAX_VISIBLE_COMPARISON_OFFERS));
   const [offersTransitioning, setOffersTransitioning] = useState(false);
   const automaticNavigationRef = useRef<string | null>(null);
 
@@ -145,7 +146,7 @@ export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl, nav
   }, [offers]);
 
   useEffect(() => {
-    const nextOffers = offers.slice(0, 3);
+    const nextOffers = offers.slice(0, MAX_VISIBLE_COMPARISON_OFFERS);
     const currentKey = displayedOffers.map((item) => item.id).join(":");
     const nextKey = nextOffers.map((item) => item.id).join(":");
     if (currentKey === nextKey) return undefined;
@@ -210,7 +211,7 @@ export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl, nav
                 <X className="size-4" aria-hidden="true" />
               </button>
             </div>
-            <div className="flex snap-x snap-mandatory items-stretch gap-3 overflow-x-auto px-1 pb-2 pt-1 lg:grid lg:grid-cols-3 lg:overflow-visible">
+            <div className="flex snap-x snap-mandatory items-stretch gap-3 overflow-x-auto px-1 pb-2 pt-1 lg:grid lg:grid-cols-3 lg:overflow-y-auto lg:max-h-[43rem]">
               {visibleOffers.map((item, index) => <FloatingOfferCard key={item.id} item={item} index={index} />)}
             </div>
             <p className="px-1 pt-1 text-center text-[0.62rem] text-tomorrow-muted">O Téo continua falando enquanto você compara as opções.</p>
