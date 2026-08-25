@@ -16,7 +16,7 @@ Deno.test("cria configuração GA sem expor a chave principal", () => {
   assertEquals((config.session.audio as Record<string, unknown>).output, { voice: "cedar", speed: 1 });
   const instructions = String(config.session.instructions);
   assertEquals(instructions.includes("português brasileiro (pt-BR)"), true);
-  assertEquals(instructions.includes("sotaque brasileiro neutro"), true);
+  assertEquals(instructions.includes("sotaque deve ser brasileiro neutro"), true);
   assertEquals(instructions.includes("português de Portugal"), true);
   assertEquals(instructions.includes("primeira fala deve começar obrigatoriamente com 'Olá'"), true);
   assertEquals(instructions.includes("Nunca inicie com 'Oi'"), true);
@@ -47,7 +47,7 @@ Deno.test("mantém os guardrails locais mesmo com prompt versionado configurado"
   assertEquals(config.session.prompt, { id: "pmpt_teo_live" });
   const instructions = String(config.session.instructions);
   assertEquals(instructions.includes("Olá"), true);
-  assertEquals(instructions.includes("sotaque brasileiro neutro"), true);
+  assertEquals(instructions.includes("sotaque deve ser brasileiro neutro"), true);
   assertEquals(instructions.includes("português de Portugal"), true);
 });
 
