@@ -1,0 +1,23 @@
+name: Temporary opportunity WhatsApp quality gate
+on:
+  push:
+    branches: [fix/opportunity-cta-whatsapp]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Focused tests
+        run: bunx vitest run src/lib/offerHandoff.test.ts src/pages/opportunityDetail.test.tsx src/pages/opportunityCompare.test.tsx
+      - name: TypeScript
+        run: bunx tsc --noEmit -p tsconfig.app.json
+      - name: ESLint scope
+        run: bunx eslint src/lib/offerHandoff.ts src/pages/OpportunityDetail.tsx src/pages/OpportunityCompare.tsx src/pages/opportunityDetail.test.tsx src/pages/opportunityCompare.test.tsx
+      - name: Build
+        run: bun run build
+      - name: Diff check
+        run: git diff --check origin/main...HEAD -- src/lib/offerHandoff.ts src/pages/OpportunityDetail.tsx src/pages/OpportunityCompare.tsx src/pages/opportunityDetail.test.tsx src/pages/opportunityCompare.test.tsx
