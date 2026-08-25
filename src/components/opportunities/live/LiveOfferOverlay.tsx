@@ -33,7 +33,7 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
 
 const defaultNavigate = (target: string) => window.location.assign(target);
 const OFFER_SWAP_MS = 150;
-const MAX_VISIBLE_COMPARISON_OFFERS = 9;
+const MAX_VISIBLE_COMPARISON_OFFERS = 3;
 
 export function automaticHandoffTarget(
   handoff: OfferHandoffSelection | null,
@@ -66,6 +66,37 @@ function offerRoute(item: TravelOfferCatalogItem) {
 
 function offerPeriod(item: TravelOfferCatalogItem) {
   return [formatDate(item.departure_date), formatDate(item.return_date)].filter(Boolean).join(" a ");
+}
+
+function destinationKey(item: TravelOfferCatalogItem) {
+  return (item.destination_iata || item.destination || item.id)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+export function selectLiveComparisonOffers(offers: TravelOfferCatalogItem[]) {
+  const distinctDestinations = new Set(offers.map(destinationKey));
+  if (distinctDestinations.size <= 1) return offers.slice(0, MAX_VISIBLE_COMPARISON_OFFERS);
+
+  const cheapestByDestination = new Map<string, TravelOfferCatalogItem>();
+  const destinationOrder: string[] = [];
+  for (const offer of offers) {
+    const key = destinationKey(offer);
+    const current = cheapestByDestination.get(key);
+    if (!current) {
+      cheapestByDestination.set(key, offer);
+      destinationOrder.push(key);
+      continue;
+    }
+    if (offer.price_per_person < current.price_per_person) cheapestByDestination.set(key, offer);
+  }
+
+  return destinationOrder
+    .map((key) => cheapestByDestination.get(key))
+    .filter((item): item is TravelOfferCatalogItem => Boolean(item))
+    .slice(0, MAX_VISIBLE_COMPARISON_OFFERS);
 }
 
 function FloatingOfferCard({ item, index }: { item: TravelOfferCatalogItem; index: number }) {
@@ -135,18 +166,19 @@ function FloatingOfferCard({ item, index }: { item: TravelOfferCatalogItem; inde
 }
 
 export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl, navigate = defaultNavigate }: LiveOfferOverlayProps) {
-  const [deckOpen, setDeckOpen] = useState(offers.length > 0);
+  const curatedOffers = selectLiveComparisonOffers(offers);
+  const [deckOpen, setDeckOpen] = useState(curatedOffers.length > 0);
   const [handoffOpen, setHandoffOpen] = useState(Boolean(handoff));
-  const [displayedOffers, setDisplayedOffers] = useState(() => offers.slice(0, MAX_VISIBLE_COMPARISON_OFFERS));
+  const [displayedOffers, setDisplayedOffers] = useState(() => curatedOffers);
   const [offersTransitioning, setOffersTransitioning] = useState(false);
   const automaticNavigationRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (offers.length > 0) setDeckOpen(true);
-  }, [offers]);
+    if (curatedOffers.length > 0) setDeckOpen(true);
+  }, [curatedOffers.length]);
 
   useEffect(() => {
-    const nextOffers = offers.slice(0, MAX_VISIBLE_COMPARISON_OFFERS);
+    const nextOffers = curatedOffers;
     const currentKey = displayedOffers.map((item) => item.id).join(":");
     const nextKey = nextOffers.map((item) => item.id).join(":");
     if (currentKey === nextKey) return undefined;
@@ -158,7 +190,7 @@ export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl, nav
     }, displayedOffers.length > 0 ? OFFER_SWAP_MS : 0);
 
     return () => window.clearTimeout(swapTimer);
-  }, [offers, displayedOffers]);
+  }, [curatedOffers, displayedOffers]);
 
   useEffect(() => {
     if (handoff) setHandoffOpen(true);
@@ -211,7 +243,7 @@ export function LiveOfferOverlay({ offers, handoff, detailPath, whatsappUrl, nav
                 <X className="size-4" aria-hidden="true" />
               </button>
             </div>
-            <div className="flex snap-x snap-mandatory items-stretch gap-3 overflow-x-auto px-1 pb-2 pt-1 lg:grid lg:grid-cols-3 lg:overflow-y-auto lg:max-h-[43rem]">
+            <div className="flex snap-x snap-mandatory items-stretch gap-3 overflow-x-auto px-1 pb-2 pt-1 lg:grid lg:grid-cols-3 lg:overflow-visible">
               {visibleOffers.map((item, index) => <FloatingOfferCard key={item.id} item={item} index={index} />)}
             </div>
             <p className="px-1 pt-1 text-center text-[0.62rem] text-tomorrow-muted">O Téo continua falando enquanto você compara as opções.</p>
