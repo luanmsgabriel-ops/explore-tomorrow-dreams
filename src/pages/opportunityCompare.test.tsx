@@ -108,7 +108,7 @@ describe("Comparação de oportunidades", () => {
     expect(mergeComparisonIds([airId], [packageId, airId])).toEqual([airId, packageId]);
   });
 
-  it("compara ofertas heterogêneas sem inventar taxa, vagas ou aéreo", async () => {
+  it("compara ofertas heterogêneas e envia a escolha diretamente ao WhatsApp", async () => {
     renderCompare(`ids=${encodeURIComponent(`${airId},${packageId}`)}`);
 
     expect((await screen.findAllByText(/GOL · Belém/)).length).toBeGreaterThan(0);
@@ -117,7 +117,16 @@ describe("Comparação de oportunidades", () => {
     expect(screen.getAllByText("Não calculável sem taxa").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Não incluído").length).toBeGreaterThan(0);
     expect(fetchDetail).toHaveBeenCalledTimes(2);
-    expect(screen.getAllByRole("link", { name: "Quero esta oportunidade" })).toHaveLength(2);
+
+    const ctas = screen.getAllByRole("link", { name: "Quero esta oportunidade" });
+    expect(ctas).toHaveLength(2);
+    for (const cta of ctas) {
+      const url = new URL(cta.getAttribute("href") ?? "");
+      expect(url.origin).toBe("https://wa.me");
+      expect(url.pathname).toBe("/5515991833448");
+      expect(url.searchParams.get("text")).toContain("Código da oferta:");
+      expect(cta.getAttribute("href")).not.toContain("/teo?offer_id=");
+    }
   });
 
   it("preserva a oportunidade anterior ao abrir uma nova comparação", async () => {

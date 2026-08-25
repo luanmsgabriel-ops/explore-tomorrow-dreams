@@ -17,6 +17,7 @@ import {
   opportunityTotalPerPerson,
   opportunityTypeLabel,
 } from "@/components/opportunities/detailFormatters";
+import { buildOfferWhatsAppUrl } from "@/lib/offerHandoff";
 import {
   TRAVEL_OFFERS_NOTICE,
   fetchTravelOfferDetail,
@@ -277,7 +278,7 @@ export default function OpportunityCompare() {
                     <p className="mt-2 break-words text-sm text-tomorrow-muted [overflow-wrap:anywhere]">{formatOpportunityCurrency(item.price_per_person, item.currency)} por pessoa</p>
                   </div>
                   <OpportunityButton asChild fullWidth>
-                    <a className="max-w-full whitespace-normal text-center" href={`/teo?offer_id=${encodeURIComponent(item.id)}`}><Check aria-hidden="true" />Quero esta oportunidade</a>
+                    <a className="max-w-full whitespace-normal text-center" href={buildOfferWhatsAppUrl(item)} target="_blank" rel="noopener noreferrer"><Check aria-hidden="true" />Quero esta oportunidade</a>
                   </OpportunityButton>
                 </div>
               ))}

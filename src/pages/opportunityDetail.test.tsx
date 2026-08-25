@@ -73,12 +73,19 @@ describe("Detalhe público da oportunidade", () => {
     expect(fetchDetail).not.toHaveBeenCalled();
   });
 
-  it("mostra bloqueio, total calculado e compartilhamento somente pelo UUID", async () => {
+  it("mostra bloqueio, total calculado e direciona o CTA diretamente ao WhatsApp", async () => {
     renderDetail();
     expect(await screen.findByText(/GOL · Ribeirão Preto/)).toBeInTheDocument();
     expect(screen.getByText("10:00 → 13:00")).toBeInTheDocument();
     expect(screen.getByText(/Total por pessoa:/)).toHaveTextContent("R$ 1.498,00");
-    expect(screen.getByRole("link", { name: "Quero esta oportunidade" })).toHaveAttribute("href", `/teo?offer_id=${airId}`);
+
+    const cta = screen.getByRole("link", { name: "Quero esta oportunidade" });
+    const whatsappUrl = new URL(cta.getAttribute("href") ?? "");
+    expect(whatsappUrl.origin).toBe("https://wa.me");
+    expect(whatsappUrl.pathname).toBe("/5515991833448");
+    expect(whatsappUrl.searchParams.get("text")).toContain(airId);
+    expect(cta).toHaveAttribute("target", "_blank");
+    expect(cta.getAttribute("href")).not.toContain("/teo?offer_id=");
 
     fireEvent.click(screen.getByRole("button", { name: "Copiar link" }));
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
