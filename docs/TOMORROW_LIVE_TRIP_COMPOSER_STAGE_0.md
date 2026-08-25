@@ -18,9 +18,7 @@ O `TOMORROW_LIVE_MASTER_PLAN.md` ainda registra `32e00a7fd70d4aa4b9d9bae609361ef
 
 ## 2. Escopo da Etapa 0
 
-A Etapa 0 fecha contratos e fronteiras antes de alterar banco ou produto.
-
-Foram definidos: reaproveitamento do sistema atual; domínio próprio; fontes de lugares, restaurantes e atrações; política de fotografias; mapas e deslocamentos; clima; modelo conceitual; responsabilidades do Smart Day Planner; fronteira entre dados factuais, curadoria e linguagem do Téo; sessão anônima; identificação; compartilhamento; cotação; futura ponte com concierge/WhatsApp; segurança, privacidade e cache.
+A Etapa 0 fechou contratos e fronteiras antes de qualquer alteração de banco ou produto: reaproveitamento do sistema atual, domínio próprio, fontes de lugares/restaurantes/atrações, fotografias, mapas/deslocamentos, clima, modelo conceitual, Smart Day Planner, sessão anônima, identificação, compartilhamento, cotação, ponte futura com concierge/WhatsApp, segurança, privacidade e cache.
 
 Nenhuma migration foi criada ou aplicada nesta etapa.
 
@@ -30,7 +28,7 @@ Nenhuma migration foi criada ou aplicada nesta etapa.
 
 O projeto já possui `ItineraryGenerator`, `ItineraryMapView`, `ClientItineraryGenerator`, `useItineraryCache`, as Edge Functions `generate-itinerary`/`generate-itinerary-visual` e a tabela `public.ai_itineraries`.
 
-O fluxo atual gera um roteiro completo de 5–7 dias via modelo, com atividades, restaurantes e dicas. O frontend solicita contato antes da geração e persiste o resultado como conteúdo/JSON estruturado.
+O fluxo atual gera um roteiro completo de 5–7 dias via modelo, solicita contato antes da geração e persiste o resultado como conteúdo/JSON estruturado.
 
 **Decisão:** não usar esse fluxo como núcleo do Trip Composer. O Composer é incremental, pode permanecer anônimo durante a construção, exige identidade factual das atividades e precisa de logística/clima antes da explicação do Téo. Partes visuais/utilitárias podem ser reaproveitadas seletivamente.
 
@@ -54,7 +52,7 @@ O concierge já usa OpenWeather One Call 3.0, Google Maps, AviationStack e Whats
 
 **Decisão:** não reconstruir essas capacidades para o Modo Viagem. O Composer terá contrato de handoff futuro para alimentar apenas o necessário ao domínio operacional do concierge.
 
-### 3.5 Viagens e identidade já existentes
+### 3.5 Viagens e identidade existentes
 
 `client_trips` representa viagem do portal autenticado e exige `user_id`; `active_trips` representa viagem operacional do concierge; `client_memory` guarda memória por WhatsApp. Nenhum deles representa corretamente uma sessão anônima de construção colaborativa.
 
