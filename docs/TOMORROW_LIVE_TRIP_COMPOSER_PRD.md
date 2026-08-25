@@ -4,7 +4,7 @@
 >
 > Este documento deve ser lido junto com `docs/TOMORROW_LIVE_MASTER_PLAN.md` antes de qualquer implementação do Trip Composer. O Trip Composer possui roadmap próprio e não altera silenciosamente as etapas existentes do Tomorrow Live.
 >
-> **Etapa atual:** Etapa 0 — Especificação e Arquitetura em andamento. Checkpoint técnico: `docs/TOMORROW_LIVE_TRIP_COMPOSER_STAGE_0.md`.
+> **Etapa atual:** Etapa 0 — Especificação e Arquitetura concluída no planejamento técnico. Checkpoint: `docs/TOMORROW_LIVE_TRIP_COMPOSER_STAGE_0.md`. Etapa 1 ainda não iniciada.
 
 ## 1. Visão do produto
 
@@ -202,6 +202,8 @@ A arquitetura deve permitir combinar fontes distintas sem misturar responsabilid
 - experiências comercializáveis;
 - conteúdo editorial próprio da Tomorrow Travel.
 
+A Etapa 0 definiu como baseline do MVP: Google Places API (New) para discovery/dados de lugar/fotos, Google Routes API para deslocamentos e OpenWeather One Call 3.0 — já usado pelo concierge existente — para clima. As políticas e contratos detalhados estão no checkpoint da Etapa 0.
+
 Dados atuais e sensíveis à mudança devem vir de fonte apropriada. Dados editoriais próprios devem ser explicitamente diferenciados.
 
 Nunca expor `raw_data`, `source_url`, tokens, Service Role, API keys, credenciais ou links internos de fornecedor ao frontend público.
@@ -293,7 +295,7 @@ Exemplo: se o cliente terminar uma atividade antes do previsto e tiver duas hora
 
 Definir arquitetura, contratos, fontes de dados, APIs, política de cache, privacidade/LGPD, regras do motor e fronteiras com sistemas existentes.
 
-**Estado atual:** em andamento. Ver `docs/TOMORROW_LIVE_TRIP_COMPOSER_STAGE_0.md`.
+**Estado atual:** concluída no planejamento técnico. Ver `docs/TOMORROW_LIVE_TRIP_COMPOSER_STAGE_0.md`.
 
 **Critério de conclusão:** arquitetura e contratos aprovados antes de migrations.
 
