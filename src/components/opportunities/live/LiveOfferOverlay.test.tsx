@@ -3,11 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { OfferHandoffSelection } from "@/hooks/useRealtimeVoice";
 import type { TravelOfferCatalogItem } from "@/lib/travelOffersPublic";
-import { LiveOfferOverlay } from "./LiveOfferOverlay";
+import { LiveOfferOverlay, selectLiveComparisonOffers } from "./LiveOfferOverlay";
 
-const offer = (index: number): TravelOfferCatalogItem => ({
+const offer = (
+  index: number,
+  overrides: Partial<TravelOfferCatalogItem> = {},
+): TravelOfferCatalogItem => ({
   kind: "package",
-  id: `0191a5f2-ccaa-7f03-8f00-1234567890a${index}`,
+  id: `0191a5f2-ccaa-7f03-8f00-${String(index).padStart(12, "0")}`,
   offer_type: "pacote",
   offer_subtype: "nacional",
   name: `Pacote Maceió ${index}`,
@@ -31,25 +34,42 @@ const offer = (index: number): TravelOfferCatalogItem => ({
   campaign_label: null,
   editorial_subtitle: null,
   updated_at: "2026-08-21T12:00:00Z",
+  ...overrides,
 });
 
 describe("LiveOfferOverlay", () => {
-  it("apresenta até nove ofertas da mesma rodada de comparação e permite minimizar", () => {
-    const offers = Array.from({ length: 9 }, (_, index) => offer(index + 1));
+  it("mostra um menor preço por destino em comparação, limitado a três cards", () => {
+    const offers = [
+      offer(1, { name: "Maceió caro", destination: "Maceió", destination_iata: "MCZ", price_per_person: 2400 }),
+      offer(2, { name: "Maceió menor", destination: "Maceió", destination_iata: "MCZ", price_per_person: 1700 }),
+      offer(3, { name: "Fortaleza caro", destination: "Fortaleza", destination_iata: "FOR", price_per_person: 2100 }),
+      offer(4, { name: "Fortaleza menor", destination: "Fortaleza", destination_iata: "FOR", price_per_person: 1500 }),
+      offer(5, { name: "Porto de Galinhas caro", destination: "Porto de Galinhas", destination_iata: null, price_per_person: 2300 }),
+      offer(6, { name: "Porto de Galinhas menor", destination: "Porto de Galinhas", destination_iata: null, price_per_person: 1600 }),
+    ];
+
+    const curated = selectLiveComparisonOffers(offers);
+    expect(curated.map((item) => item.id)).toEqual([offers[1].id, offers[3].id, offers[5].id]);
+
     render(<LiveOfferOverlay offers={offers} handoff={null} detailPath={null} whatsappUrl={null} />);
 
     expect(screen.getByRole("region", { name: "Ofertas encontradas pelo Téo" })).toBeInTheDocument();
-    expect(screen.getAllByRole("article")).toHaveLength(9);
-    expect(screen.getByText("9 oportunidades encontradas")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Abrir oferta: Pacote Maceió 1" })).toHaveAttribute(
-      "href",
-      `/oportunidades/oferta/${offers[0].id}`,
-    );
+    expect(screen.getAllByRole("article")).toHaveLength(3);
+    expect(screen.getByText("3 oportunidades encontradas")).toBeInTheDocument();
+    expect(screen.getByText("Maceió menor")).toBeInTheDocument();
+    expect(screen.getByText("Fortaleza menor")).toBeInTheDocument();
+    expect(screen.getByText("Porto de Galinhas menor")).toBeInTheDocument();
+    expect(screen.queryByText("Maceió caro")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Minimizar ofertas encontradas" }));
     expect(screen.queryByRole("region", { name: "Ofertas encontradas pelo Téo" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Mostrar 9 ofertas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mostrar 3 ofertas" }));
     expect(screen.getByRole("region", { name: "Ofertas encontradas pelo Téo" })).toBeInTheDocument();
+  });
+
+  it("mantém até três opções quando a busca é de um único destino", () => {
+    const offers = Array.from({ length: 5 }, (_, index) => offer(index + 10));
+    expect(selectLiveComparisonOffers(offers)).toHaveLength(3);
   });
 
   it("mantém o pop-up como fallback depois de escolher uma oferta", () => {
