@@ -83,7 +83,7 @@ export function OpportunityCard({
   return (
     <article
       className={cn(
-        "opportunity-scope opportunity-card group grid min-h-full overflow-hidden rounded-tomorrow-lg border border-tomorrow-line bg-tomorrow-surface text-tomorrow-text shadow-tomorrow-surface [content-visibility:auto] [contain-intrinsic-size:30rem]",
+        "opportunity-scope opportunity-card group grid h-full min-h-full grid-rows-[auto_1fr] overflow-hidden rounded-tomorrow-lg border border-tomorrow-line bg-tomorrow-surface text-tomorrow-text shadow-tomorrow-surface [content-visibility:auto] [contain-intrinsic-size:30rem]",
         className,
       )}
       data-offer-id={id}
@@ -117,8 +117,8 @@ export function OpportunityCard({
         </div>
       </div>
 
-      <div className="grid content-between gap-6 p-5 sm:p-6">
-        <div className="grid gap-4">
+      <div className="grid h-full grid-rows-[1fr_auto] gap-6 p-5 sm:p-6">
+        <div className="grid content-start gap-4">
           <div className="grid gap-2">
             {title ? <h3 className="font-editorial text-3xl leading-none text-tomorrow-text">{title}</h3> : null}
             <p className="flex items-start gap-2 text-sm font-medium text-tomorrow-text">
