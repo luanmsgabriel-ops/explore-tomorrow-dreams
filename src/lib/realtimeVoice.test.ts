@@ -81,26 +81,27 @@ describe("Realtime Voice contract", () => {
     ]);
   });
 
-  it("reconhece a chamada oficial da ferramenta e limita a consulta a três resultados", () => {
+  it("reconhece a chamada oficial da ferramenta e limita a consulta a três resultados pelo menor preço", () => {
     const call = functionCallFromRealtimeEvent({
       type: "response.output_item.done",
       item: {
         type: "function_call",
         call_id: "call-1",
         name: "search_travel_offers",
-        arguments: JSON.stringify({ destination: "Maceió", passengers: 2 }),
+        arguments: JSON.stringify({ origin: "São Paulo", destination: "Maceió", passengers: 2 }),
       },
     });
 
     expect(call).toEqual({
       callId: "call-1",
       name: "search_travel_offers",
-      arguments: JSON.stringify({ destination: "Maceió", passengers: 2 }),
+      arguments: JSON.stringify({ origin: "São Paulo", destination: "Maceió", passengers: 2 }),
     });
     expect(catalogParamsFromRealtimeTool(call!)).toEqual({
+      origin: "São Paulo",
       destination: "Maceió",
       passengers: 2,
-      sort: "date_asc",
+      sort: "price_asc",
       page: 1,
       per_page: 3,
     });
@@ -110,11 +111,12 @@ describe("Realtime Voice contract", () => {
     expect(catalogParamsFromRealtimeTool({
       callId: "recife-destination",
       name: "search_travel_offers",
-      arguments: JSON.stringify({ destination: "Recife", offer_type: "bloqueio_aereo" }),
+      arguments: JSON.stringify({ origin: "São Paulo", destination: "Recife", offer_type: "bloqueio_aereo" }),
     })).toEqual({
+      origin: "São Paulo",
       offer_type: "bloqueio_aereo",
       destination_iata: "REC",
-      sort: "date_asc",
+      sort: "price_asc",
       page: 1,
       per_page: 3,
     });
@@ -122,11 +124,12 @@ describe("Realtime Voice contract", () => {
     expect(catalogParamsFromRealtimeTool({
       callId: "recife-search",
       name: "search_travel_offers",
-      arguments: JSON.stringify({ search: "Recife", offer_type: "bloqueio_aereo" }),
+      arguments: JSON.stringify({ origin: "São Paulo", search: "Recife", offer_type: "bloqueio_aereo" }),
     })).toEqual({
+      origin: "São Paulo",
       offer_type: "bloqueio_aereo",
       destination_iata: "REC",
-      sort: "date_asc",
+      sort: "price_asc",
       page: 1,
       per_page: 3,
     });
