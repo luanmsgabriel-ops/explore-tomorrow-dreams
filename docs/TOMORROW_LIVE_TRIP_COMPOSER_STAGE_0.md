@@ -132,7 +132,7 @@ Não foram alterados: prompt/sistema/tom do Téo, `whatsapp-webhook`, banco de p
 
 ## 13. Riscos principais
 
-Licenciamento/caching de Places e fotos; custo Places/Routes; latência em voz; confusão recomendação × disponibilidade; duplicação de domínios de viagem; clima distante tratado como previsão. As mitigações correspondentes estão incorporadas nas decisões acima.
+Licenciamento/caching de Places e fotos; custo Places/Routes; latência em voz; confusão recomendação × disponibilidade; duplicação de domínios de viagem; clima distante tratado como previsão. As mitigações correspondentes estão incorporadas nas decisões acima.
 
 ## 14. Critério de conclusão — resultado
 
