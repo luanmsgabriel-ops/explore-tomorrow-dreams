@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { sanitizeForPostgresJson } from "./sanitize.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -459,7 +460,7 @@ serve(async (req) => {
 
     const CHUNK_SIZE = 200;
     for (let i = 0; i < finalOffers.length; i += CHUNK_SIZE) {
-      const chunk = finalOffers.slice(i, i + CHUNK_SIZE);
+      const chunk = finalOffers.slice(i, i + CHUNK_SIZE).map((offer) => sanitizeForPostgresJson(offer));
       
       // We need to know which are new and which are updates for the log
       const { data: existing } = await supabaseClient
