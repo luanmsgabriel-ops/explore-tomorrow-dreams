@@ -32,6 +32,7 @@ import {
   opportunityTotalPerPerson,
   opportunityTypeLabel,
 } from "@/components/opportunities/detailFormatters";
+import { buildOfferWhatsAppUrl } from "@/lib/offerHandoff";
 import {
   TRAVEL_OFFERS_NOTICE,
   fetchTravelOfferDetail,
@@ -324,7 +325,7 @@ export default function OpportunityDetail() {
                   </div>
                   <div className="grid min-w-0 gap-3">
                     <OpportunityButton asChild fullWidth size="lg">
-                      <a className="max-w-full whitespace-normal text-center" href={`/teo?offer_id=${encodeURIComponent(item.id)}`}>Quero esta oportunidade</a>
+                      <a className="max-w-full whitespace-normal text-center" href={buildOfferWhatsAppUrl(item)} target="_blank" rel="noopener noreferrer">Quero esta oportunidade</a>
                     </OpportunityButton>
                     <OpportunityButton variant="outline" fullWidth onClick={copyLink}>
                       {copyStatus === "copied" ? <Check aria-hidden="true" /> : copyStatus === "error" ? <Share2 aria-hidden="true" /> : <Copy aria-hidden="true" />}
