@@ -26,11 +26,20 @@ Deno.test("cria configuração GA sem expor a chave principal", () => {
   assertEquals(instructions.includes("padrão brasileiro dia-mês-ano"), true);
   assertEquals(instructions.includes("2 de setembro de 2026"), true);
   assertEquals(instructions.includes("present_offer_actions"), true);
-  assertEquals(instructions.includes("até nove oportunidades"), true);
+  assertEquals(instructions.includes("confirme a origem de saída"), true);
+  assertEquals(instructions.includes("confirme o período de viagem"), true);
+  assertEquals(instructions.includes("todo o inventário"), true);
+  assertEquals(instructions.includes("Itapetininga"), true);
+  assertEquals(instructions.includes("Viracopos (VCP)"), true);
+  assertEquals(instructions.includes("um card por destino"), true);
+  assertEquals(instructions.includes("menor preço"), true);
+  assertEquals(instructions.includes("até nove oportunidades"), false);
   const tools = config.session.tools as Array<Record<string, unknown>>;
   assertEquals(tools.length, 2);
   assertEquals(tools[0].name, "search_travel_offers");
   assertEquals(tools[0].type, "function");
+  const searchParameters = tools[0].parameters as Record<string, unknown>;
+  assertEquals(searchParameters.required, ["origin"]);
   assertEquals(tools[1].name, "present_offer_actions");
   assertEquals(tools[1].type, "function");
   assertEquals(config.session.tool_choice, "auto");
@@ -49,6 +58,8 @@ Deno.test("mantém os guardrails locais mesmo com prompt versionado configurado"
   assertEquals(instructions.includes("Olá"), true);
   assertEquals(instructions.includes("sotaque deve ser brasileiro neutro"), true);
   assertEquals(instructions.includes("português de Portugal"), true);
+  assertEquals(instructions.includes("confirme a origem de saída"), true);
+  assertEquals(instructions.includes("um card por destino"), true);
 });
 
 Deno.test("aceita somente vozes temporárias conhecidas", () => {
