@@ -1,0 +1,31 @@
+name: Temporary PWA freshness quality gate
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'vite.config.ts'
+      - '.github/workflows/temp-pwa-fresh-routes.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --legacy-peer-deps --no-audit --no-fund
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: ESLint config
+        run: npx eslint vite.config.ts
+      - name: Production build
+        run: npm run build
+      - name: Assert NetworkFirst navigation policy
+        run: |
+          grep -q 'tomorrow-navigation-v2' dist/sw.js
+          grep -q 'NetworkFirst' dist/sw.js
+      - name: Diff check
+        run: git diff --check origin/main...HEAD
