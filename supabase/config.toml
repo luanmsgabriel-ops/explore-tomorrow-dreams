@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.travel-offer-image]
 verify_jwt = false
+
+[functions.travel-offer-selection]
+verify_jwt = false
