@@ -1,5 +1,4 @@
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { TripComposerPanel } from "./TripComposerPanel";
 
@@ -30,14 +29,13 @@ describe("TripComposerPanel", () => {
     expect(screen.queryByText("Mercado C")).not.toBeInTheDocument();
   });
 
-  it("emits selection and day navigation actions", async () => {
-    const user = userEvent.setup();
+  it("emits selection and day navigation actions", () => {
     const onSelectCandidate = vi.fn();
     const onDayChange = vi.fn();
     render(<TripComposerPanel days={days} activeDay={1} candidates={candidates.slice(0, 1)} onSelectCandidate={onSelectCandidate} onDayChange={onDayChange} reducedMotion />);
-    await user.click(screen.getByRole("button", { name: /adicionar/i }));
+    fireEvent.click(screen.getByRole("button", { name: /adicionar/i }));
     expect(onSelectCandidate).toHaveBeenCalledWith("a");
-    await user.click(screen.getByRole("button", { name: /dia 2/i }));
+    fireEvent.click(screen.getByRole("button", { name: /dia 2/i }));
     expect(onDayChange).toHaveBeenCalledWith(2);
   });
 });
