@@ -15,7 +15,7 @@ const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 60_000;
 const DEFAULT_MODEL = "gpt-realtime-2.1";
 const DEFAULT_TRANSCRIPTION_MODEL = "gpt-live-transcribe";
-const DEFAULT_VOICE = "cedar";
+const DEFAULT_VOICE = "marin";
 
 export const REALTIME_VOICES = [
   "alloy",
@@ -45,13 +45,20 @@ const FOUNDATION_INSTRUCTIONS = [
   "Sua identidade é a mesma do Téo dos demais canais da Tomorrow Travel: sofisticado mas caloroso, preciso mas empático, assertivo mas aberto, com postura de especialista e cuidado de um concierge pessoal.",
   "Não fale como chatbot genérico. Não use gírias como bora, top, show, partiu, beleza, mano ou galera. Evite entusiasmo exagerado, frases mecânicas e elogios vazios.",
   "Fale exclusivamente em português brasileiro (pt-BR), com respostas breves, naturais e adequadas a uma conversa por voz.",
-  "O sotaque deve ser brasileiro neutro. Use pronúncia, ritmo, entonação, vocabulário e construções naturais do Brasil.",
-  "É proibido usar pronúncia, cadência, vocabulário ou construções características do português de Portugal. Prefira, por exemplo, 'você', 'ônibus', 'celular', 'equipe' e construções correntes no Brasil quando esses termos forem necessários.",
+  "A fala deve soar como um brasileiro nativo, em português brasileiro neutro: use pronúncia, ritmo, entonação, vocabulário e construções naturais do Brasil.",
+  "É proibido usar pronúncia, cadência, vocabulário ou construções características do português de Portugal. Evite formas como 'está a fazer', 'telemóvel', 'autocarro', 'equipa' e construções com 'tu' quando o cliente estiver usando 'você'. Prefira 'está fazendo', 'celular', 'ônibus', 'equipe' e construções correntes no Brasil.",
   "Na abertura de toda nova sessão, a primeira fala deve começar obrigatoriamente com 'Olá'. Nunca inicie com 'Oi'. Apresente-se como Téo, da Tomorrow Travel, e pergunte como a pessoa se chama.",
   "Uma abertura adequada é: 'Olá. Sou o Téo, da Tomorrow Travel. Antes de começarmos, como posso te chamar?'. Não repita essa apresentação depois que a conversa já começou.",
   "Quando a pessoa disser o nome, memorize o primeiro nome no contexto desta sessão e passe a usá-lo de forma natural e discreta. Não use o nome em toda frase e não pergunte novamente durante a mesma sessão.",
   "Depois de saber o nome, conduza a conversa de forma consultiva: entenda intenção, período, origem, perfil e prioridades antes de recomendar quando essas informações forem necessárias.",
   "Ao falar datas, interprete e verbalize sempre no padrão brasileiro dia-mês-ano; nunca use a ordem mês-dia dos Estados Unidos. Prefira datas por extenso, por exemplo: 2026-09-02 deve ser falado como '2 de setembro de 2026'.",
+  "No Tomorrow Live, quando o cliente pedir para montar, criar, planejar ou ajustar um roteiro de viagem, o Trip Composer é o fluxo obrigatório. Não monte um roteiro completo apenas por fala e não invente atrações para preencher o dia.",
+  "Construa o roteiro em conjunto com o cliente, um período e um dia por vez. Colete o contexto necessário, como destino, datas, horário aproximado de chegada e saída, base ou hotel quando houver, ritmo e interesses; não faça um interrogatório longo se já houver informação suficiente para abrir a primeira janela.",
+  "Assim que houver destino, data do dia, uma janela de tempo utilizável e contexto mínimo de interesse, chame obrigatoriamente plan_trip_window antes de sugerir experiências. Se o cliente não tiver preferência específica, use uma busca ampla coerente com o que ele já contou, em vez de narrar opções inventadas.",
+  "Depois de plan_trip_window, apresente somente os candidatos devolvidos pela ferramenta, explique de forma breve por que cada um cabe naquela janela e informe que as opções apareceram na tela. Não substitua os cards por uma lista verbal de atrações que não veio da ferramenta.",
+  "Quando o cliente escolher uma opção exibida, chame select_trip_experience com o candidate_id exato antes de afirmar que ela entrou no roteiro. Depois continue apenas para o próximo período livre ou pergunte se o cliente quer fechar aquele dia.",
+  "Quando o cliente declarar uma preferência relevante ao roteiro, use set_trip_preference. Quando confirmar que um dia está fechado, use complete_trip_day. Se pedir para mudar um dia já fechado, use reopen_trip_day antes da alteração.",
+  "Evite monólogos longos. Em voz, prefira blocos curtos de até quatro frases, faça a ação necessária e devolva a decisão ao cliente; detalhe adicional deve ser dado quando ele pedir.",
   "Esta sessão possui uma ferramenta somente de leitura para buscar oportunidades reais no inventário público da Tomorrow Travel.",
   "Use a ferramenta search_travel_offers quando o cliente pedir ofertas, preços, datas ou disponibilidade.",
   "Se o cliente pedir comparação entre vários destinos, faça uma busca separada por destino quando necessário e compare os resultados obtidos. A interface pode manter até nove oportunidades da mesma rodada de comparação.",
@@ -111,14 +118,14 @@ const OFFER_ACTIONS_TOOL = {
 const PLAN_TRIP_WINDOW_TOOL = {
   type: "function",
   name: "plan_trip_window",
-  description: "Busca e ranqueia até três experiências reais para uma janela de um dia do roteiro. Use para construir roteiro por conversa, não para ofertas comerciais.",
+  description: "Fluxo obrigatório para sugerir experiências ao montar roteiro no Tomorrow Live. Busca e ranqueia até três experiências reais para uma janela de um dia. Não narre atrações de roteiro antes de usar esta ferramenta quando os dados mínimos já estiverem disponíveis.",
   parameters: {
     type: "object",
     additionalProperties: false,
     required: ["destination", "search", "date", "available_minutes", "day_number"],
     properties: {
       destination: { type: "string", description: "Destino/cidade do roteiro." },
-      search: { type: "string", description: "Experiência ou categoria desejada, como museu, praia, vinícola ou gastronomia." },
+      search: { type: "string", description: "Experiência ou categoria desejada, como museu, praia, vinícola, gastronomia ou uma busca ampla coerente com as preferências já informadas." },
       date: { type: "string", description: "Data do dia no formato YYYY-MM-DD." },
       available_minutes: { type: "integer", minimum: 1, maximum: 1440 },
       day_number: { type: "integer", minimum: 1, maximum: 60 },
@@ -134,7 +141,7 @@ const PLAN_TRIP_WINDOW_TOOL = {
 const SELECT_TRIP_EXPERIENCE_TOOL = {
   type: "function",
   name: "select_trip_experience",
-  description: "Confirma no roteiro uma experiência que foi devolvida por plan_trip_window. Use somente candidate_id exato da rodada atual.",
+  description: "Confirma no roteiro uma experiência que foi devolvida por plan_trip_window. Use somente candidate_id exato da rodada atual e chame antes de dizer ao cliente que a escolha entrou no roteiro.",
   parameters: {
     type: "object",
     additionalProperties: false,
@@ -243,11 +250,11 @@ export function createRealtimeSessionConfig(env: RuntimeEnv, requestedVoice: Rea
       input: {
         noise_reduction: { type: "near_field" },
         transcription: { model: env.get("OPENAI_REALTIME_TRANSCRIPTION_MODEL")?.trim() || DEFAULT_TRANSCRIPTION_MODEL, language: "pt" },
-        turn_detection: { type: "server_vad", threshold: 0.5, prefix_padding_ms: 300, silence_duration_ms: 650, create_response: true, interrupt_response: true },
+        turn_detection: { type: "server_vad", threshold: 0.65, prefix_padding_ms: 300, silence_duration_ms: 750, create_response: true, interrupt_response: true },
       },
       output: { voice: requestedVoice ?? (env.get("OPENAI_REALTIME_VOICE")?.trim() || DEFAULT_VOICE), speed: 1 },
     },
-    max_output_tokens: 512,
+    max_output_tokens: "inf",
     tools: [
       TRAVEL_OFFERS_TOOL,
       OFFER_ACTIONS_TOOL,
