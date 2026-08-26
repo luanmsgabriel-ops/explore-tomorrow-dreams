@@ -59,13 +59,30 @@ export default defineConfig(({ mode }) => ({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
-        navigateFallback: "/index.html",
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         // Keep the install/update payload focused on the app shell. Large editorial
         // images are cached on first use instead of blocking Service Worker install.
         globPatterns: ["**/*.{js,css,html,ico,svg}"],
-        navigateFallbackDenylist: [/^\/rest\//, /supabase/],
         runtimeCaching: [
+          {
+            // Prefer the deployed app for every same-origin navigation. Cached pages
+            // are used only if the network is unavailable, preventing old app shells
+            // from turning newly published React routes into client-side 404s.
+            urlPattern: ({ request, url }) =>
+              request.mode === "navigate" && url.origin === self.location.origin,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "tomorrow-navigation-v2",
+              networkTimeoutSeconds: 5,
+              expiration: {
+                maxEntries: 30,
+                maxAgeSeconds: 60 * 60 * 24,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
           {
             urlPattern: /\.supabase\.co/,
             handler: "NetworkOnly",
