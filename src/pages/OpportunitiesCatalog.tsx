@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Heart, Radar, Scale, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { Heart, ListPlus, Radar, Scale, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -17,6 +17,7 @@ import {
   type CatalogFilterValues,
   type OpportunityCardBadge,
 } from "@/components/opportunities";
+import { OpportunitySelectionShareDialog } from "@/components/opportunities/OpportunitySelectionShareDialog";
 import { useOpportunityFavorites } from "@/hooks/useOpportunityFavorites";
 import {
   addComparisonId,
@@ -24,6 +25,12 @@ import {
   readStoredComparisonIds,
   writeStoredComparisonIds,
 } from "@/lib/opportunityComparison";
+import {
+  addSelectionId,
+  MAX_OPPORTUNITY_SELECTION,
+  readStoredSelectionIds,
+  writeStoredSelectionIds,
+} from "@/lib/opportunitySelection";
 import {
   TRAVEL_OFFERS_NOTICE,
   fetchTravelCatalogFacets,
@@ -119,6 +126,8 @@ export default function OpportunitiesCatalog() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [comparisonIds, setComparisonIds] = useState<string[]>(() => readStoredComparisonIds());
+  const [selectionIds, setSelectionIds] = useState<string[]>(() => readStoredSelectionIds());
+  const [selectionOpen, setSelectionOpen] = useState(false);
   const resultsRef = useRef<HTMLElement>(null);
   const { favoriteCount, isFavorite, toggleFavorite } = useOpportunityFavorites();
 
@@ -274,6 +283,20 @@ export default function OpportunitiesCatalog() {
     updateComparison(addComparisonId(comparisonIds, id));
   };
 
+  const updateSelection = (nextIds: string[]) => {
+    const persisted = writeStoredSelectionIds(nextIds);
+    setSelectionIds(persisted);
+    if (!persisted.length) setSelectionOpen(false);
+  };
+
+  const toggleSelection = (id: string) => {
+    if (selectionIds.includes(id)) {
+      updateSelection(selectionIds.filter((item) => item !== id));
+      return;
+    }
+    updateSelection(addSelectionId(selectionIds, id));
+  };
+
   const total = catalogQuery.data?.total ?? 0;
   const activeFilterCount = countActiveFilters(appliedFilters);
   const packagesActive = appliedFilters.offerType === "pacote" && !appliedFilters.subtype;
@@ -286,6 +309,7 @@ export default function OpportunitiesCatalog() {
         activeHref="/oportunidades/catalogo"
         navItems={[
           { label: "Catálogo", href: "/oportunidades/catalogo" },
+          { label: "Live", href: "/oportunidades/live" },
           { label: "Comparar", href: "/oportunidades/comparar" },
         ]}
         ctaHref="/teo"
@@ -313,53 +337,18 @@ export default function OpportunitiesCatalog() {
                 <span>{catalogQuery.data ? `${numberFormatter.format(total)} resultados compatíveis` : "Inventário consultado em tempo real"}</span>
                 <span aria-hidden="true">·</span>
                 <span>{favoriteCount === 1 ? "1 favorito local" : `${favoriteCount} favoritos locais`}</span>
+                {selectionIds.length ? <><span aria-hidden="true">·</span><button type="button" className="font-semibold text-tomorrow-gold-soft underline underline-offset-2" onClick={() => setSelectionOpen(true)}>Minha seleção · {selectionIds.length}</button></> : null}
               </div>
             </div>
 
             <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:overflow-visible sm:px-0" aria-label="Atalhos de oportunidades">
               <div className="flex min-w-max gap-1.5 sm:min-w-0 sm:flex-wrap">
-                <button
-                  type="button"
-                  className={`opportunity-focus rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                    packagesActive
-                      ? "border-tomorrow-gold/70 bg-tomorrow-gold/12 text-tomorrow-gold-soft"
-                      : "border-tomorrow-line bg-tomorrow-surface/60 text-tomorrow-text hover:border-tomorrow-teal/60"
-                  }`}
-                  aria-pressed={packagesActive}
-                  onClick={showPackages}
-                >
-                  Pacotes
-                </button>
+                <button type="button" className={`opportunity-focus rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${packagesActive ? "border-tomorrow-gold/70 bg-tomorrow-gold/12 text-tomorrow-gold-soft" : "border-tomorrow-line bg-tomorrow-surface/60 text-tomorrow-text hover:border-tomorrow-teal/60"}`} aria-pressed={packagesActive} onClick={showPackages}>Pacotes</button>
                 {editorialSections.map((section) => {
                   const active = appliedFilters.subtype === section.subtype;
-                  return (
-                    <button
-                      key={section.subtype}
-                      type="button"
-                      className={`opportunity-focus rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                        active
-                          ? "border-tomorrow-gold/70 bg-tomorrow-gold/12 text-tomorrow-gold-soft"
-                          : "border-tomorrow-line bg-tomorrow-surface/60 text-tomorrow-text hover:border-tomorrow-teal/60"
-                      }`}
-                      aria-pressed={active}
-                      onClick={() => applyEditorialSection(section.subtype, section.offerType)}
-                    >
-                      {section.label}
-                    </button>
-                  );
+                  return <button key={section.subtype} type="button" className={`opportunity-focus rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${active ? "border-tomorrow-gold/70 bg-tomorrow-gold/12 text-tomorrow-gold-soft" : "border-tomorrow-line bg-tomorrow-surface/60 text-tomorrow-text hover:border-tomorrow-teal/60"}`} aria-pressed={active} onClick={() => applyEditorialSection(section.subtype, section.offerType)}>{section.label}</button>;
                 })}
-                <button
-                  type="button"
-                  className={`opportunity-focus rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                    allActive
-                      ? "border-tomorrow-gold/70 bg-tomorrow-gold/12 text-tomorrow-gold-soft"
-                      : "border-tomorrow-line bg-tomorrow-surface/60 text-tomorrow-text hover:border-tomorrow-teal/60"
-                  }`}
-                  aria-pressed={allActive}
-                  onClick={showAll}
-                >
-                  Todos
-                </button>
+                <button type="button" className={`opportunity-focus rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${allActive ? "border-tomorrow-gold/70 bg-tomorrow-gold/12 text-tomorrow-gold-soft" : "border-tomorrow-line bg-tomorrow-surface/60 text-tomorrow-text hover:border-tomorrow-teal/60"}`} aria-pressed={allActive} onClick={showAll}>Todos</button>
               </div>
             </div>
           </div>
@@ -367,90 +356,34 @@ export default function OpportunitiesCatalog() {
 
         <div className="mx-auto grid w-full max-w-[90rem] gap-5 px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <button
-              type="button"
-              className="opportunity-focus inline-flex min-h-10 items-center gap-2 rounded-full border border-tomorrow-line bg-tomorrow-surface/70 px-4 py-2 text-sm font-semibold text-tomorrow-text transition-colors hover:border-tomorrow-gold/60"
-              onClick={() => setFiltersOpen(true)}
-              aria-haspopup="dialog"
-            >
-              <SlidersHorizontal className="size-4 text-tomorrow-teal-soft" aria-hidden="true" />
-              Filtrar e ordenar
-              {activeFilterCount > 0 ? (
-                <span className="rounded-full bg-tomorrow-gold/15 px-2 py-0.5 text-xs font-bold text-tomorrow-gold-soft">
-                  {activeFilterCount}
-                </span>
-              ) : null}
+            <button type="button" className="opportunity-focus inline-flex min-h-10 items-center gap-2 rounded-full border border-tomorrow-line bg-tomorrow-surface/70 px-4 py-2 text-sm font-semibold text-tomorrow-text transition-colors hover:border-tomorrow-gold/60" onClick={() => setFiltersOpen(true)} aria-haspopup="dialog">
+              <SlidersHorizontal className="size-4 text-tomorrow-teal-soft" aria-hidden="true" />Filtrar e ordenar
+              {activeFilterCount > 0 ? <span className="rounded-full bg-tomorrow-gold/15 px-2 py-0.5 text-xs font-bold text-tomorrow-gold-soft">{activeFilterCount}</span> : null}
             </button>
-            {packagesActive && appliedFilters.sort === "price_asc" ? (
-              <span className="text-xs font-medium text-tomorrow-muted">Pacotes do menor preço para o maior</span>
-            ) : null}
+            {packagesActive && appliedFilters.sort === "price_asc" ? <span className="text-xs font-medium text-tomorrow-muted">Pacotes do menor preço para o maior</span> : null}
           </div>
 
           {filtersOpen ? (
-            <div
-              className="fixed inset-0 z-50 flex items-end bg-black/75 sm:items-center sm:p-4"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="catalog-filter-dialog-title"
-            >
+            <div className="fixed inset-0 z-50 flex items-end bg-black/75 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="catalog-filter-dialog-title">
               <div className="max-h-[92vh] w-full overflow-y-auto rounded-t-tomorrow-lg border border-tomorrow-line bg-tomorrow-background p-3 shadow-2xl sm:mx-auto sm:max-w-5xl sm:rounded-tomorrow-lg sm:p-4">
                 <div className="mb-3 flex items-center justify-between gap-4 px-1">
-                  <div>
-                    <p id="catalog-filter-dialog-title" className="font-editorial text-2xl text-tomorrow-text">Filtrar oportunidades</p>
-                    <p className="mt-1 text-xs text-tomorrow-muted">Os filtros exibem somente combinações válidas do inventário atual.</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="opportunity-focus grid size-10 shrink-0 place-items-center rounded-full border border-tomorrow-line text-tomorrow-text"
-                    aria-label="Fechar filtros"
-                    onClick={() => setFiltersOpen(false)}
-                  >
-                    <X className="size-5" aria-hidden="true" />
-                  </button>
+                  <div><p id="catalog-filter-dialog-title" className="font-editorial text-2xl text-tomorrow-text">Filtrar oportunidades</p><p className="mt-1 text-xs text-tomorrow-muted">Os filtros exibem somente combinações válidas do inventário atual.</p></div>
+                  <button type="button" className="opportunity-focus grid size-10 shrink-0 place-items-center rounded-full border border-tomorrow-line text-tomorrow-text" aria-label="Fechar filtros" onClick={() => setFiltersOpen(false)}><X className="size-5" aria-hidden="true" /></button>
                 </div>
-                <OpportunityFilters
-                  values={draftFilters}
-                  facets={contextualFacets}
-                  errors={filterErrors}
-                  disabled={catalogQuery.isFetching && !catalogQuery.data}
-                  onChange={handleDraftFiltersChange}
-                  onApply={applyFilters}
-                  onClear={clearFilters}
-                />
+                <OpportunityFilters values={draftFilters} facets={contextualFacets} errors={filterErrors} disabled={catalogQuery.isFetching && !catalogQuery.data} onChange={handleDraftFiltersChange} onApply={applyFilters} onClear={clearFilters} />
               </div>
             </div>
           ) : null}
 
           <section ref={resultsRef} className="scroll-mt-28" aria-labelledby="catalog-results-title">
             <div className="mb-5 flex flex-col gap-2 border-b border-tomorrow-line pb-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-tomorrow-teal-soft">
-                  <Sparkles className="size-4" aria-hidden="true" />
-                  Inventário válido
-                </p>
-                <h2 id="catalog-results-title" className="mt-1 font-editorial text-3xl text-tomorrow-text sm:text-4xl">
-                  {catalogQuery.data ? `${numberFormatter.format(total)} oportunidades` : "Oportunidades"}
-                </h2>
-              </div>
-              {catalogQuery.isFetching && catalogQuery.data ? (
-                <p className="text-sm text-tomorrow-muted" role="status">Atualizando resultados…</p>
-              ) : null}
+              <div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-tomorrow-teal-soft"><Sparkles className="size-4" aria-hidden="true" />Inventário válido</p><h2 id="catalog-results-title" className="mt-1 font-editorial text-3xl text-tomorrow-text sm:text-4xl">{catalogQuery.data ? `${numberFormatter.format(total)} oportunidades` : "Oportunidades"}</h2></div>
+              {catalogQuery.isFetching && catalogQuery.data ? <p className="text-sm text-tomorrow-muted" role="status">Atualizando resultados…</p> : null}
             </div>
 
             {catalogQuery.isPending ? <OpportunityState state="loading" /> : null}
-
-            {catalogQuery.isError ? (
-              <OpportunityState
-                state="error"
-                description={catalogQuery.error instanceof Error ? catalogQuery.error.message : undefined}
-                actionLabel="Tentar novamente"
-                onAction={() => catalogQuery.refetch()}
-              />
-            ) : null}
-
-            {catalogQuery.data && catalogQuery.data.items.length === 0 ? (
-              <OpportunityState state="empty" actionLabel="Limpar filtros" onAction={clearFilters} />
-            ) : null}
+            {catalogQuery.isError ? <OpportunityState state="error" description={catalogQuery.error instanceof Error ? catalogQuery.error.message : undefined} actionLabel="Tentar novamente" onAction={() => catalogQuery.refetch()} /> : null}
+            {catalogQuery.data && catalogQuery.data.items.length === 0 ? <OpportunityState state="empty" actionLabel="Limpar filtros" onAction={clearFilters} /> : null}
 
             {catalogQuery.data && catalogQuery.data.items.length > 0 ? (
               <>
@@ -459,6 +392,8 @@ export default function OpportunitiesCatalog() {
                     const favorite = isFavorite(item.id);
                     const selectedForComparison = comparisonIds.includes(item.id);
                     const comparisonLimitReached = comparisonIds.length >= 3 && !selectedForComparison;
+                    const selectedForSelection = selectionIds.includes(item.id);
+                    const selectionLimitReached = selectionIds.length >= MAX_OPPORTUNITY_SELECTION && !selectedForSelection;
                     return (
                       <div key={item.id} className="relative grid h-full grid-rows-[1fr_auto] gap-3">
                         <OpportunityCard
@@ -484,63 +419,54 @@ export default function OpportunitiesCatalog() {
                           actionLabel="Ver detalhes"
                           className="h-full"
                         />
-                        <button
-                          type="button"
-                          className="opportunity-focus absolute right-4 top-4 z-10 grid size-10 place-items-center rounded-full border border-tomorrow-line bg-tomorrow-background/90 text-tomorrow-gold-soft shadow-lg backdrop-blur transition-colors hover:border-tomorrow-gold"
-                          aria-label={favorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
-                          aria-pressed={favorite}
-                          onClick={() => toggleFavorite(item.id)}
-                        >
+                        <button type="button" className="opportunity-focus absolute right-4 top-4 z-10 grid size-10 place-items-center rounded-full border border-tomorrow-line bg-tomorrow-background/90 text-tomorrow-gold-soft shadow-lg backdrop-blur transition-colors hover:border-tomorrow-gold" aria-label={favorite ? "Remover dos favoritos" : "Adicionar aos favoritos"} aria-pressed={favorite} onClick={() => toggleFavorite(item.id)}>
                           <Heart className="size-5" fill={favorite ? "currentColor" : "none"} aria-hidden="true" />
                         </button>
-                        <OpportunityButton
-                          variant={selectedForComparison ? "teal" : "ghost"}
-                          fullWidth
-                          disabled={comparisonLimitReached}
-                          aria-pressed={selectedForComparison}
-                          onClick={() => toggleComparison(item.id)}
-                        >
-                          {selectedForComparison ? <X aria-hidden="true" /> : <Scale aria-hidden="true" />}
-                          {selectedForComparison ? "Remover da comparação" : comparisonLimitReached ? "Limite de 3 opções" : "Adicionar à comparação"}
-                        </OpportunityButton>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <OpportunityButton variant={selectedForComparison ? "teal" : "ghost"} fullWidth disabled={comparisonLimitReached} aria-pressed={selectedForComparison} onClick={() => toggleComparison(item.id)}>
+                            {selectedForComparison ? <X aria-hidden="true" /> : <Scale aria-hidden="true" />}
+                            {selectedForComparison ? "Remover da comparação" : comparisonLimitReached ? "Limite de 3 opções" : "Comparar"}
+                          </OpportunityButton>
+                          <OpportunityButton variant={selectedForSelection ? "gold" : "outline"} fullWidth disabled={selectionLimitReached} aria-pressed={selectedForSelection} onClick={() => toggleSelection(item.id)}>
+                            {selectedForSelection ? <X aria-hidden="true" /> : <ListPlus aria-hidden="true" />}
+                            {selectedForSelection ? "Remover da seleção" : selectionLimitReached ? "Seleção completa" : "Adicionar à seleção"}
+                          </OpportunityButton>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
-                {comparisonIds.length ? (
-                  <aside className="opportunity-surface sticky bottom-4 z-20 mt-6 flex flex-col gap-4 rounded-tomorrow-lg border border-tomorrow-gold/45 bg-tomorrow-background/95 p-4 shadow-tomorrow-gold backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between" aria-live="polite">
-                    <div>
-                      <p className="font-semibold text-tomorrow-text">{comparisonIds.length} {comparisonIds.length === 1 ? "oportunidade selecionada" : "oportunidades selecionadas"}</p>
-                      <p className="mt-1 text-xs text-tomorrow-muted">Escolha até três opções para comparar dados reais lado a lado.</p>
-                    </div>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <OpportunityButton variant="ghost" onClick={() => updateComparison([])}>Limpar</OpportunityButton>
-                      <OpportunityButton asChild>
-                        <a href={comparisonHref(comparisonIds)}><Scale aria-hidden="true" />Comparar agora</a>
-                      </OpportunityButton>
-                    </div>
-                  </aside>
+
+                {(selectionIds.length || comparisonIds.length) ? (
+                  <div className="sticky bottom-4 z-20 mt-6 grid gap-3" aria-live="polite">
+                    {selectionIds.length ? (
+                      <aside className="opportunity-surface flex flex-col gap-4 rounded-tomorrow-lg border border-tomorrow-teal/45 bg-tomorrow-background/95 p-4 shadow-tomorrow-teal backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+                        <div><p className="font-semibold text-tomorrow-text">Minha seleção · {selectionIds.length} {selectionIds.length === 1 ? "oportunidade" : "oportunidades"}</p><p className="mt-1 text-xs text-tomorrow-muted">Monte uma seleção e gere um link para compartilhar com qualquer pessoa.</p></div>
+                        <div className="flex flex-col gap-2 sm:flex-row"><OpportunityButton variant="ghost" onClick={() => updateSelection([])}>Limpar</OpportunityButton><OpportunityButton variant="teal" onClick={() => setSelectionOpen(true)}><ListPlus aria-hidden="true" />Ver e compartilhar</OpportunityButton></div>
+                      </aside>
+                    ) : null}
+                    {comparisonIds.length ? (
+                      <aside className="opportunity-surface flex flex-col gap-4 rounded-tomorrow-lg border border-tomorrow-gold/45 bg-tomorrow-background/95 p-4 shadow-tomorrow-gold backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+                        <div><p className="font-semibold text-tomorrow-text">{comparisonIds.length} {comparisonIds.length === 1 ? "oportunidade selecionada" : "oportunidades selecionadas"}</p><p className="mt-1 text-xs text-tomorrow-muted">Escolha até três opções para comparar dados reais lado a lado.</p></div>
+                        <div className="flex flex-col gap-2 sm:flex-row"><OpportunityButton variant="ghost" onClick={() => updateComparison([])}>Limpar</OpportunityButton><OpportunityButton asChild><a href={comparisonHref(comparisonIds)}><Scale aria-hidden="true" />Comparar agora</a></OpportunityButton></div>
+                      </aside>
+                    ) : null}
+                  </div>
                 ) : null}
-                <div className="mt-10">
-                  <OpportunityPagination
-                    page={catalogQuery.data.page}
-                    totalPages={catalogQuery.data.total_pages}
-                    disabled={catalogQuery.isFetching}
-                    onPageChange={changePage}
-                  />
-                </div>
+
+                <div className="mt-10"><OpportunityPagination page={catalogQuery.data.page} totalPages={catalogQuery.data.total_pages} disabled={catalogQuery.isFetching} onPageChange={changePage} /></div>
               </>
             ) : null}
           </section>
 
           <aside className="opportunity-surface flex flex-col gap-4 rounded-tomorrow-lg border border-tomorrow-gold/30 bg-tomorrow-gold/5 p-5 text-sm text-tomorrow-muted sm:flex-row sm:items-center sm:justify-between">
             <p className="max-w-3xl leading-relaxed">{notice}</p>
-            <OpportunityButton asChild variant="outline" className="shrink-0">
-              <a href="/teo">Planejar com o Téo</a>
-            </OpportunityButton>
+            <OpportunityButton asChild variant="outline" className="shrink-0"><a href="/oportunidades/live">Planejar com o Téo Live</a></OpportunityButton>
           </aside>
         </div>
       </main>
+
+      <OpportunitySelectionShareDialog open={selectionOpen} offerIds={selectionIds} onClose={() => setSelectionOpen(false)} onClear={() => updateSelection([])} />
     </div>
   );
 }
