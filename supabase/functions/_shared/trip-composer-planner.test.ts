@@ -30,10 +30,10 @@ Deno.test("planner prefers matching category and short route", () => {
   });
 
   assertEquals(ranked[0].candidate.id, "a");
-  assert(ranked[0].planner !== undefined || ranked[0].score > ranked[1].score);
+  assert(ranked[0].score > ranked[1].score);
 });
 
-Deno.test("planner penalizes rain-sensitive outdoor-style candidate through sensitivity", () => {
+Deno.test("planner penalizes rain-sensitive candidate", () => {
   const ranked = rankCandidates([
     { id: "a", name: "Outdoor", latitude: 0, longitude: 0, duration_minutes: 60, rain_sensitivity: 100 },
     { id: "b", name: "Indoor", latitude: 0, longitude: 0, duration_minutes: 60, rain_sensitivity: 0 },
