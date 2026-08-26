@@ -24,6 +24,8 @@ import {
   travelHandoffContextFromCatalogParams,
   type TravelHandoffContext,
 } from "@/lib/offerHandoff";
+import { isTripComposerTool } from "@/lib/tripComposerRealtime";
+import { useTripComposerRuntime } from "@/hooks/useTripComposerRuntime";
 
 type RealtimeResources = {
   abortController: AbortController;
@@ -117,6 +119,7 @@ export function useRealtimeVoice() {
   const [offerHandoff, setOfferHandoff] = useState<OfferHandoffSelection | null>(null);
   const [toolError, setToolError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const composer = useTripComposerRuntime();
   const resourcesRef = useRef<RealtimeResources | null>(null);
   const mountedRef = useRef(true);
   const userSpeakingRef = useRef(false);
@@ -254,23 +257,12 @@ export function useRealtimeVoice() {
         offersRef.current = mergedOffers;
         setOffers(mergedOffers);
         if (mergedOffers.length > 0) updateStatus("offers");
-        output = {
-          ok: true,
-          total: result.total,
-          items: result.items,
-          notice: result.notice,
-        };
-      } else {
+        output = { ok: true, total: result.total, items: result.items, notice: result.notice };
+      } else if (call.name === "present_offer_actions") {
         const request = offerHandoffFromRealtimeTool(call);
         const offer = offersRef.current.find((item) => item.id === request.offerId);
-        if (!offer) {
-          throw new Error("A oportunidade escolhida não pertence aos resultados atuais. Peça ao cliente para escolher uma das opções exibidas.");
-        }
-        setOfferHandoff({
-          offer,
-          requestedChannel: request.requestedChannel,
-          searchContext: offerContextsRef.current.get(offer.id) ?? null,
-        });
+        if (!offer) throw new Error("A oportunidade escolhida não pertence aos resultados atuais. Peça ao cliente para escolher uma das opções exibidas.");
+        setOfferHandoff({ offer, requestedChannel: request.requestedChannel, searchContext: offerContextsRef.current.get(offer.id) ?? null });
         updateStatus("offers");
         output = {
           ok: true,
@@ -279,26 +271,24 @@ export function useRealtimeVoice() {
           requested_channel: request.requestedChannel,
           instruction: "As ações verificadas foram apresentadas na interface. Oriente o cliente a tocar na opção desejada.",
         };
+      } else if (isTripComposerTool(call)) {
+        output = await composer.executeTool(call);
+        if (resourcesRef.current !== resources || !mountedRef.current) return;
+      } else {
+        throw new Error("Ferramenta não permitida.");
       }
     } catch (toolFailure) {
       if (resourcesRef.current !== resources || !mountedRef.current) return;
-      const message = toolFailure instanceof Error
-        ? toolFailure.message
-        : "Não foi possível consultar as oportunidades agora.";
+      const message = toolFailure instanceof Error ? toolFailure.message : "Não foi possível executar a ação agora.";
       setToolError(message);
-      output = {
-        ok: false,
-        error: call.name === "search_travel_offers"
-          ? "Não foi possível consultar as oportunidades reais agora. Informe isso ao cliente sem sugerir dados alternativos."
-          : "Não foi possível preparar a ação para essa oferta. Peça ao cliente para escolher uma das oportunidades exibidas, sem inventar alternativas.",
-      };
+      output = { ok: false, error: "Não foi possível executar essa ação com dados reais agora. Informe isso ao cliente sem inventar alternativas." };
     }
 
     if (resourcesRef.current !== resources || resources.dataChannel.readyState !== "open") return;
     for (const continuationEvent of realtimeToolContinuationEvents(call.callId, output)) {
       resources.dataChannel.send(JSON.stringify(continuationEvent));
     }
-  }, [updateStatus]);
+  }, [composer.executeTool, updateStatus]);
 
   const handleEvent = useCallback((event: RealtimeServerEvent) => {
     if (functionCallFromRealtimeEvent(event)) void handleFunctionCall(event);
@@ -381,9 +371,7 @@ export function useRealtimeVoice() {
       const abortController = new AbortController();
       pendingAbortControllerRef.current = abortController;
       const [localStream, secret] = await Promise.all([
-        navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        }),
+        navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }),
         fetchRealtimeClientSecret(abortController.signal),
       ]);
       if (attempt !== startAttemptRef.current || !mountedRef.current) {
@@ -433,13 +421,9 @@ export function useRealtimeVoice() {
         const event = parseRealtimeEvent(message.data);
         if (event) handleEvent(event);
       };
-      dataChannel.onerror = () => {
-        failConversation("A conexão de eventos da voz foi interrompida.");
-      };
+      dataChannel.onerror = () => failConversation("A conexão de eventos da voz foi interrompida.");
       dataChannel.onclose = () => {
-        if (resourcesRef.current === resources) {
-          failConversation("A sessão de voz foi encerrada inesperadamente.");
-        }
+        if (resourcesRef.current === resources) failConversation("A sessão de voz foi encerrada inesperadamente.");
       };
 
       peer.ontrack = (event) => {
@@ -465,19 +449,14 @@ export function useRealtimeVoice() {
         void resources.audioElement.play().catch(() => undefined);
       };
       peer.onconnectionstatechange = () => {
-        if (peer.connectionState === "failed") {
-          failConversation("A conexão de voz foi encerrada inesperadamente.");
-        }
+        if (peer.connectionState === "failed") failConversation("A conexão de voz foi encerrada inesperadamente.");
       };
 
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
       const sdpResponse = await fetch(REALTIME_CALLS_URL, {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${secret}`,
-          "Content-Type": "application/sdp",
-        },
+        headers: { "Authorization": `Bearer ${secret}`, "Content-Type": "application/sdp" },
         body: offer.sdp,
         signal: abortController.signal,
       });
@@ -496,9 +475,7 @@ export function useRealtimeVoice() {
           const inputLevel = mutedRef.current ? 0 : analyserAudioLevel(resources.inputAnalyser, inputSamples);
           let outputLevel = 0;
           if (resources.outputAnalyser) {
-            if (!outputSamples || outputSamples.length !== resources.outputAnalyser.fftSize) {
-              outputSamples = new Uint8Array(new ArrayBuffer(resources.outputAnalyser.fftSize));
-            }
+            if (!outputSamples || outputSamples.length !== resources.outputAnalyser.fftSize) outputSamples = new Uint8Array(new ArrayBuffer(resources.outputAnalyser.fftSize));
             outputLevel = analyserAudioLevel(resources.outputAnalyser, outputSamples);
           }
 
@@ -506,21 +483,14 @@ export function useRealtimeVoice() {
             outputActiveRef.current = true;
             lastOutputActivityAtRef.current = timestamp;
             updateStatus("speaking");
-          } else if (
-            !userSpeakingRef.current &&
-            outputActiveRef.current &&
-            outputCompleteRef.current &&
-            timestamp - lastOutputActivityAtRef.current >= OUTPUT_SILENCE_HOLD_MS
-          ) {
+          } else if (!userSpeakingRef.current && outputActiveRef.current && outputCompleteRef.current && timestamp - lastOutputActivityAtRef.current >= OUTPUT_SILENCE_HOLD_MS) {
             outputActiveRef.current = false;
             updateStatus("idle");
           }
 
           const level = !userSpeakingRef.current && outputActiveRef.current ? outputLevel : inputLevel;
           const shouldPublish = timestamp - lastPublishedAt >= AUDIO_PUBLISH_INTERVAL_MS &&
-            (lastPublishedAt === 0 ||
-              Math.abs(level - lastPublishedLevel) >= AUDIO_PUBLISH_MIN_DELTA ||
-              (level === 0 && lastPublishedLevel !== 0));
+            (lastPublishedAt === 0 || Math.abs(level - lastPublishedLevel) >= AUDIO_PUBLISH_MIN_DELTA || (level === 0 && lastPublishedLevel !== 0));
           if (mountedRef.current && shouldPublish) {
             lastPublishedAt = timestamp;
             lastPublishedLevel = level;
@@ -549,9 +519,7 @@ export function useRealtimeVoice() {
     const resources = resourcesRef.current;
     if (!resources) return;
     const next = !muted;
-    resources.localStream.getAudioTracks().forEach((track) => {
-      track.enabled = !next;
-    });
+    resources.localStream.getAudioTracks().forEach((track) => { track.enabled = !next; });
     mutedRef.current = next;
     setMuted(next);
     if (next) setAudioLevel(0);
@@ -574,6 +542,17 @@ export function useRealtimeVoice() {
     offerHandoff,
     toolError,
     error,
+    tripComposer: {
+      active: composer.active,
+      activeDay: composer.activeDay,
+      days: composer.days,
+      candidates: composer.candidates,
+      selectedCandidateId: composer.selectedCandidateId,
+      focusedCandidateId: composer.focusedCandidateId,
+      setActiveDay: composer.setActiveDay,
+      setFocusedCandidate: composer.setFocusedCandidate,
+      selectCandidate: composer.selectCandidate,
+    },
     startConversation,
     endConversation,
     toggleMute,
