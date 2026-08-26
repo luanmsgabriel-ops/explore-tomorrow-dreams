@@ -13,8 +13,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
+      - name: Install without changing lockfile
+        run: npm install --no-package-lock --no-audit --no-fund
       - name: Focused tests
         run: npx vitest run src/lib/tripComposerRealtime.test.ts src/components/opportunities/live/TripComposerPanel.test.tsx src/pages/opportunitiesLive.test.tsx
       - name: TypeScript
