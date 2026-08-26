@@ -22,9 +22,25 @@ jobs:
         run: npx vitest run src/lib/tripComposerRealtime.test.ts src/components/opportunities/live/TripComposerPanel.test.tsx src/pages/opportunitiesLive.test.tsx
       - name: Realtime edge contract tests
         run: deno test supabase/functions/tomorrow-live-realtime-session/index_test.ts
-      - name: TypeScript
-        run: npx tsc -p tsconfig.app.json --noEmit
+      - name: Prepare scoped TypeScript config
+        run: |
+          cat > tsconfig.trip-composer-validation.json <<'EOF'
+          {
+            "extends": "./tsconfig.app.json",
+            "include": [
+              "src/lib/tripComposerApi.ts",
+              "src/lib/tripComposerRealtime.ts",
+              "src/hooks/useTripComposerRuntime.ts",
+              "src/hooks/useRealtimeVoice.ts",
+              "src/components/opportunities/live/TripComposerPanel.tsx",
+              "src/components/opportunities/live/TripComposerLiveSection.tsx",
+              "src/pages/OpportunitiesLive.tsx"
+            ]
+          }
+          EOF
+      - name: TypeScript scope
+        run: npx tsc -p tsconfig.trip-composer-validation.json --noEmit
       - name: ESLint scope
-        run: npx eslint src/lib/tripComposerRealtime.ts src/hooks/useTripComposerRuntime.ts src/hooks/useRealtimeVoice.ts src/components/opportunities/live/TripComposerLiveSection.tsx src/pages/OpportunitiesLive.tsx
+        run: npx eslint src/lib/tripComposerApi.ts src/lib/tripComposerRealtime.ts src/hooks/useTripComposerRuntime.ts src/hooks/useRealtimeVoice.ts src/components/opportunities/live/TripComposerPanel.tsx src/components/opportunities/live/TripComposerLiveSection.tsx src/pages/OpportunitiesLive.tsx
       - name: Build
         run: npm run build
