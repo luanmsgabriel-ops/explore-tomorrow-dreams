@@ -108,6 +108,7 @@ export function OpportunityFilters({
 
       <OpportunityField
         label="Buscar por nome ou palavra-chave"
+        aria-label="Buscar"
         value={values.search}
         onChange={setText("search")}
         placeholder="Ex.: resort, neve, Beto Carrero"
