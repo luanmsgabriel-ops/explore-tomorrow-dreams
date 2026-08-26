@@ -31,6 +31,7 @@ const OpportunitiesCalendar = lazy(() => import("./pages/OpportunitiesCalendar")
 const OpportunitiesLive = lazy(() => import("./pages/OpportunitiesLive"));
 const OpportunityDetail = lazy(() => import("./pages/OpportunityDetail"));
 const OpportunityCompare = lazy(() => import("./pages/OpportunityCompare"));
+const OpportunitySelection = lazy(() => import("./pages/OpportunitySelection"));
 const TravelAdvisorChat = lazy(() =>
   import("./components/TravelAdvisorChat").then((module) => ({ default: module.TravelAdvisorChat })),
 );
@@ -102,6 +103,7 @@ const App = () => (
           <Route path="/oportunidades/calendario" element={<PageSuspense label="calendário" opportunities><OpportunitiesCalendar /></PageSuspense>} />
           <Route path="/oportunidades/oferta/:id" element={<PageSuspense label="oportunidade" opportunities><OpportunityDetail /></PageSuspense>} />
           <Route path="/oportunidades/comparar" element={<PageSuspense label="comparação" opportunities><OpportunityCompare /></PageSuspense>} />
+          <Route path="/oportunidades/selecao/:token" element={<PageSuspense label="seleção de oportunidades" opportunities><OpportunitySelection /></PageSuspense>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <AnalyticsProvider />

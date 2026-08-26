@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Heart, Radar, Scale, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { Heart, ListPlus, Radar, Scale, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -17,6 +17,7 @@ import {
   type CatalogFilterValues,
   type OpportunityCardBadge,
 } from "@/components/opportunities";
+import { OpportunitySelectionShareDialog } from "@/components/opportunities/OpportunitySelectionShareDialog";
 import { useOpportunityFavorites } from "@/hooks/useOpportunityFavorites";
 import {
   addComparisonId,
@@ -24,6 +25,12 @@ import {
   readStoredComparisonIds,
   writeStoredComparisonIds,
 } from "@/lib/opportunityComparison";
+import {
+  addSelectionId,
+  MAX_OPPORTUNITY_SELECTION,
+  readStoredSelectionIds,
+  writeStoredSelectionIds,
+} from "@/lib/opportunitySelection";
 import {
   TRAVEL_OFFERS_NOTICE,
   fetchTravelCatalogFacets,
@@ -119,6 +126,8 @@ export default function OpportunitiesCatalog() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [comparisonIds, setComparisonIds] = useState<string[]>(() => readStoredComparisonIds());
+  const [selectionIds, setSelectionIds] = useState<string[]>(() => readStoredSelectionIds());
+  const [selectionOpen, setSelectionOpen] = useState(false);
   const resultsRef = useRef<HTMLElement>(null);
   const { favoriteCount, isFavorite, toggleFavorite } = useOpportunityFavorites();
 
@@ -187,9 +196,11 @@ export default function OpportunitiesCatalog() {
     if (!facetsQuery.data) return undefined;
     return {
       ...facetsQuery.data,
-      origins: originFacetsQuery.data?.origins ?? [],
-      destinations: draftFilters.origin ? destinationFacetsQuery.data?.destinations ?? [] : [],
-      categories: categoryFacetsQuery.data?.categories ?? [],
+      origins: originFacetsQuery.data?.origins ?? facetsQuery.data.origins,
+      destinations: draftFilters.origin
+        ? destinationFacetsQuery.data?.destinations ?? facetsQuery.data.destinations
+        : [],
+      categories: categoryFacetsQuery.data?.categories ?? facetsQuery.data.categories,
       date_range: categoryFacetsQuery.data?.date_range ?? facetsQuery.data.date_range,
       price_ranges: categoryFacetsQuery.data?.price_ranges ?? facetsQuery.data.price_ranges,
     };
@@ -274,6 +285,20 @@ export default function OpportunitiesCatalog() {
     updateComparison(addComparisonId(comparisonIds, id));
   };
 
+  const updateSelection = (nextIds: string[]) => {
+    const persisted = writeStoredSelectionIds(nextIds);
+    setSelectionIds(persisted);
+    if (!persisted.length) setSelectionOpen(false);
+  };
+
+  const toggleSelection = (id: string) => {
+    if (selectionIds.includes(id)) {
+      updateSelection(selectionIds.filter((item) => item !== id));
+      return;
+    }
+    updateSelection(addSelectionId(selectionIds, id));
+  };
+
   const total = catalogQuery.data?.total ?? 0;
   const activeFilterCount = countActiveFilters(appliedFilters);
   const packagesActive = appliedFilters.offerType === "pacote" && !appliedFilters.subtype;
@@ -313,6 +338,14 @@ export default function OpportunitiesCatalog() {
                 <span>{catalogQuery.data ? `${numberFormatter.format(total)} resultados compatíveis` : "Inventário consultado em tempo real"}</span>
                 <span aria-hidden="true">·</span>
                 <span>{favoriteCount === 1 ? "1 favorito local" : `${favoriteCount} favoritos locais`}</span>
+                {selectionIds.length ? (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <button type="button" className="font-semibold text-tomorrow-gold-soft underline underline-offset-2" onClick={() => setSelectionOpen(true)}>
+                      Minha seleção · {selectionIds.length}
+                    </button>
+                  </>
+                ) : null}
               </div>
             </div>
 
@@ -459,6 +492,8 @@ export default function OpportunitiesCatalog() {
                     const favorite = isFavorite(item.id);
                     const selectedForComparison = comparisonIds.includes(item.id);
                     const comparisonLimitReached = comparisonIds.length >= 3 && !selectedForComparison;
+                    const selectedForSelection = selectionIds.includes(item.id);
+                    const selectionLimitReached = selectionIds.length >= MAX_OPPORTUNITY_SELECTION && !selectedForSelection;
                     return (
                       <div key={item.id} className="relative grid h-full grid-rows-[1fr_auto] gap-3">
                         <OpportunityCard
@@ -493,34 +528,64 @@ export default function OpportunitiesCatalog() {
                         >
                           <Heart className="size-5" fill={favorite ? "currentColor" : "none"} aria-hidden="true" />
                         </button>
-                        <OpportunityButton
-                          variant={selectedForComparison ? "teal" : "ghost"}
-                          fullWidth
-                          disabled={comparisonLimitReached}
-                          aria-pressed={selectedForComparison}
-                          onClick={() => toggleComparison(item.id)}
-                        >
-                          {selectedForComparison ? <X aria-hidden="true" /> : <Scale aria-hidden="true" />}
-                          {selectedForComparison ? "Remover da comparação" : comparisonLimitReached ? "Limite de 3 opções" : "Adicionar à comparação"}
-                        </OpportunityButton>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <OpportunityButton
+                            variant={selectedForComparison ? "teal" : "ghost"}
+                            fullWidth
+                            disabled={comparisonLimitReached}
+                            aria-pressed={selectedForComparison}
+                            onClick={() => toggleComparison(item.id)}
+                          >
+                            {selectedForComparison ? <X aria-hidden="true" /> : <Scale aria-hidden="true" />}
+                            {selectedForComparison ? "Remover da comparação" : comparisonLimitReached ? "Limite de 3 opções" : "Adicionar à comparação"}
+                          </OpportunityButton>
+                          <OpportunityButton
+                            variant={selectedForSelection ? "gold" : "outline"}
+                            fullWidth
+                            disabled={selectionLimitReached}
+                            aria-pressed={selectedForSelection}
+                            onClick={() => toggleSelection(item.id)}
+                          >
+                            {selectedForSelection ? <X aria-hidden="true" /> : <ListPlus aria-hidden="true" />}
+                            {selectedForSelection ? "Remover da seleção" : selectionLimitReached ? "Seleção completa" : "Adicionar à seleção"}
+                          </OpportunityButton>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
-                {comparisonIds.length ? (
-                  <aside className="opportunity-surface sticky bottom-4 z-20 mt-6 flex flex-col gap-4 rounded-tomorrow-lg border border-tomorrow-gold/45 bg-tomorrow-background/95 p-4 shadow-tomorrow-gold backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between" aria-live="polite">
-                    <div>
-                      <p className="font-semibold text-tomorrow-text">{comparisonIds.length} {comparisonIds.length === 1 ? "oportunidade selecionada" : "oportunidades selecionadas"}</p>
-                      <p className="mt-1 text-xs text-tomorrow-muted">Escolha até três opções para comparar dados reais lado a lado.</p>
-                    </div>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <OpportunityButton variant="ghost" onClick={() => updateComparison([])}>Limpar</OpportunityButton>
-                      <OpportunityButton asChild>
-                        <a href={comparisonHref(comparisonIds)}><Scale aria-hidden="true" />Comparar agora</a>
-                      </OpportunityButton>
-                    </div>
-                  </aside>
+
+                {(selectionIds.length || comparisonIds.length) ? (
+                  <div className="sticky bottom-4 z-20 mt-6 grid gap-3" aria-live="polite">
+                    {selectionIds.length ? (
+                      <aside className="opportunity-surface flex flex-col gap-4 rounded-tomorrow-lg border border-tomorrow-teal/45 bg-tomorrow-background/95 p-4 shadow-tomorrow-teal backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="font-semibold text-tomorrow-text">Minha seleção · {selectionIds.length} {selectionIds.length === 1 ? "oportunidade" : "oportunidades"}</p>
+                          <p className="mt-1 text-xs text-tomorrow-muted">Monte uma seleção e gere um link para compartilhar com qualquer pessoa.</p>
+                        </div>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <OpportunityButton variant="ghost" onClick={() => updateSelection([])}>Limpar</OpportunityButton>
+                          <OpportunityButton variant="teal" onClick={() => setSelectionOpen(true)}><ListPlus aria-hidden="true" />Ver e compartilhar</OpportunityButton>
+                        </div>
+                      </aside>
+                    ) : null}
+                    {comparisonIds.length ? (
+                      <aside className="opportunity-surface flex flex-col gap-4 rounded-tomorrow-lg border border-tomorrow-gold/45 bg-tomorrow-background/95 p-4 shadow-tomorrow-gold backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="font-semibold text-tomorrow-text">{comparisonIds.length} {comparisonIds.length === 1 ? "oportunidade selecionada" : "oportunidades selecionadas"}</p>
+                          <p className="mt-1 text-xs text-tomorrow-muted">Escolha até três opções para comparar dados reais lado a lado.</p>
+                        </div>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <OpportunityButton variant="ghost" onClick={() => updateComparison([])}>Limpar</OpportunityButton>
+                          <OpportunityButton asChild>
+                            <a href={comparisonHref(comparisonIds)}><Scale aria-hidden="true" />Comparar agora</a>
+                          </OpportunityButton>
+                        </div>
+                      </aside>
+                    ) : null}
+                  </div>
                 ) : null}
+
                 <div className="mt-10">
                   <OpportunityPagination
                     page={catalogQuery.data.page}
@@ -541,6 +606,13 @@ export default function OpportunitiesCatalog() {
           </aside>
         </div>
       </main>
+
+      <OpportunitySelectionShareDialog
+        open={selectionOpen}
+        offerIds={selectionIds}
+        onClose={() => setSelectionOpen(false)}
+        onClear={() => updateSelection([])}
+      />
     </div>
   );
 }
