@@ -1611,6 +1611,39 @@ export type Database = {
         }
         Relationships: []
       }
+      travel_offer_selections: {
+        Row: {
+          created_at: string
+          description: string | null
+          expires_at: string
+          id: string
+          is_active: boolean
+          offer_ids: string[]
+          public_token: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          offer_ids: string[]
+          public_token: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          offer_ids?: string[]
+          public_token?: string
+          title?: string
+        }
+        Relationships: []
+      }
       travel_offers: {
         Row: {
           active: boolean | null
