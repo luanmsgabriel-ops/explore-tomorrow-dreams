@@ -28,11 +28,17 @@ Deno.test("cria configuração GA sem expor a chave principal", () => {
   assertEquals(instructions.includes("present_offer_actions"), true);
   assertEquals(instructions.includes("até nove oportunidades"), true);
   const tools = config.session.tools as Array<Record<string, unknown>>;
-  assertEquals(tools.length, 2);
-  assertEquals(tools[0].name, "search_travel_offers");
-  assertEquals(tools[0].type, "function");
-  assertEquals(tools[1].name, "present_offer_actions");
-  assertEquals(tools[1].type, "function");
+  assertEquals(tools.length, 7);
+  assertEquals(tools.map((tool) => tool.name), [
+    "search_travel_offers",
+    "present_offer_actions",
+    "plan_trip_window",
+    "select_trip_experience",
+    "set_trip_preference",
+    "complete_trip_day",
+    "reopen_trip_day",
+  ]);
+  assertEquals(tools.every((tool) => tool.type === "function"), true);
   assertEquals(config.session.tool_choice, "auto");
   assertEquals(JSON.stringify(config).includes("server-key"), false);
 });

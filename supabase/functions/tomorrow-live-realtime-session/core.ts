@@ -77,37 +77,13 @@ const TRAVEL_OFFERS_TOOL = {
     type: "object",
     additionalProperties: false,
     properties: {
-      search: {
-        type: "string",
-        description: "Termo geral citado pelo cliente, como destino, cidade, evento ou estilo de viagem.",
-      },
-      origin: {
-        type: "string",
-        description: "Cidade de origem informada pelo cliente.",
-      },
-      destination: {
-        type: "string",
-        description: "Cidade ou destino informado pelo cliente.",
-      },
-      start_date: {
-        type: "string",
-        description: "Data inicial de saída no formato YYYY-MM-DD.",
-      },
-      end_date: {
-        type: "string",
-        description: "Data final de saída no formato YYYY-MM-DD.",
-      },
-      passengers: {
-        type: "integer",
-        minimum: 1,
-        maximum: 20,
-        description: "Quantidade total de passageiros informada pelo cliente.",
-      },
-      offer_type: {
-        type: "string",
-        enum: ["bloqueio_aereo", "pacote"],
-        description: "Tipo de oportunidade quando o cliente distinguir aéreo de pacote.",
-      },
+      search: { type: "string", description: "Termo geral citado pelo cliente, como destino, cidade, evento ou estilo de viagem." },
+      origin: { type: "string", description: "Cidade de origem informada pelo cliente." },
+      destination: { type: "string", description: "Cidade ou destino informado pelo cliente." },
+      start_date: { type: "string", description: "Data inicial de saída no formato YYYY-MM-DD." },
+      end_date: { type: "string", description: "Data final de saída no formato YYYY-MM-DD." },
+      passengers: { type: "integer", minimum: 1, maximum: 20, description: "Quantidade total de passageiros informada pelo cliente." },
+      offer_type: { type: "string", enum: ["bloqueio_aereo", "pacote"], description: "Tipo de oportunidade quando o cliente distinguir aéreo de pacote." },
     },
   },
 } as const;
@@ -126,30 +102,86 @@ const OFFER_ACTIONS_TOOL = {
     additionalProperties: false,
     required: ["offer_id", "requested_channel"],
     properties: {
-      offer_id: {
-        type: "string",
-        description: "Identificador UUID exato da oportunidade retornada por search_travel_offers.",
-      },
-      requested_channel: {
-        type: "string",
-        enum: ["details", "whatsapp", "options"],
-        description: "Canal pedido pelo cliente; use options quando ele pedir mais informações sem escolher um canal.",
-      },
+      offer_id: { type: "string", description: "Identificador UUID exato da oportunidade retornada por search_travel_offers." },
+      requested_channel: { type: "string", enum: ["details", "whatsapp", "options"], description: "Canal pedido pelo cliente; use options quando ele pedir mais informações sem escolher um canal." },
     },
   },
 } as const;
 
-const isRecord = (value: unknown): value is JsonRecord =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+const PLAN_TRIP_WINDOW_TOOL = {
+  type: "function",
+  name: "plan_trip_window",
+  description: "Busca e ranqueia até três experiências reais para uma janela de um dia do roteiro. Use para construir roteiro por conversa, não para ofertas comerciais.",
+  parameters: {
+    type: "object",
+    additionalProperties: false,
+    required: ["destination", "search", "date", "available_minutes", "day_number"],
+    properties: {
+      destination: { type: "string", description: "Destino/cidade do roteiro." },
+      search: { type: "string", description: "Experiência ou categoria desejada, como museu, praia, vinícola ou gastronomia." },
+      date: { type: "string", description: "Data do dia no formato YYYY-MM-DD." },
+      available_minutes: { type: "integer", minimum: 1, maximum: 1440 },
+      day_number: { type: "integer", minimum: 1, maximum: 60 },
+      total_days: { type: "integer", minimum: 1, maximum: 60 },
+      start_date: { type: "string", description: "Data inicial da viagem no formato YYYY-MM-DD." },
+      end_date: { type: "string", description: "Data final da viagem no formato YYYY-MM-DD." },
+      preferences: { type: "array", items: { type: "string" }, maxItems: 12 },
+      rejected_categories: { type: "array", items: { type: "string" }, maxItems: 12 },
+    },
+  },
+} as const;
 
-const isRealtimeVoice = (value: unknown): value is RealtimeVoice =>
-  typeof value === "string" && (REALTIME_VOICES as readonly string[]).includes(value);
+const SELECT_TRIP_EXPERIENCE_TOOL = {
+  type: "function",
+  name: "select_trip_experience",
+  description: "Confirma no roteiro uma experiência que foi devolvida por plan_trip_window. Use somente candidate_id exato da rodada atual.",
+  parameters: {
+    type: "object",
+    additionalProperties: false,
+    required: ["candidate_id", "day_number"],
+    properties: {
+      candidate_id: { type: "string" },
+      day_number: { type: "integer", minimum: 1, maximum: 60 },
+      starts_at: { type: "string" },
+      ends_at: { type: "string" },
+    },
+  },
+} as const;
+
+const SET_TRIP_PREFERENCE_TOOL = {
+  type: "function",
+  name: "set_trip_preference",
+  description: "Registra uma preferência explícita do cliente para o roteiro em construção.",
+  parameters: {
+    type: "object",
+    additionalProperties: false,
+    required: ["key", "value"],
+    properties: {
+      key: { type: "string" },
+      value: { anyOf: [{ type: "string" }, { type: "number" }, { type: "boolean" }, { type: "array", items: { type: "string" } }] },
+    },
+  },
+} as const;
+
+const COMPLETE_TRIP_DAY_TOOL = {
+  type: "function",
+  name: "complete_trip_day",
+  description: "Marca um dia do roteiro como concluído quando o cliente confirmar que aquele dia está fechado.",
+  parameters: { type: "object", additionalProperties: false, required: ["day_number"], properties: { day_number: { type: "integer", minimum: 1, maximum: 60 } } },
+} as const;
+
+const REOPEN_TRIP_DAY_TOOL = {
+  type: "function",
+  name: "reopen_trip_day",
+  description: "Reabre um dia já fechado quando o cliente pedir alteração.",
+  parameters: { type: "object", additionalProperties: false, required: ["day_number"], properties: { day_number: { type: "integer", minimum: 1, maximum: 60 } } },
+} as const;
+
+const isRecord = (value: unknown): value is JsonRecord => typeof value === "object" && value !== null && !Array.isArray(value);
+const isRealtimeVoice = (value: unknown): value is RealtimeVoice => typeof value === "string" && (REALTIME_VOICES as readonly string[]).includes(value);
 
 const allowedOrigins = (env: RuntimeEnv) => {
-  const configured = env.get("TOMORROW_LIVE_ALLOWED_ORIGINS")
-    ?.split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean) ?? [];
+  const configured = env.get("TOMORROW_LIVE_ALLOWED_ORIGINS")?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? [];
   return new Set([...defaultOrigins, ...configured]);
 };
 
@@ -164,17 +196,16 @@ const corsHeaders = (origin: string | null, env: RuntimeEnv) => {
   return headers;
 };
 
-const jsonResponse = (body: unknown, status: number, origin: string | null, env: RuntimeEnv) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store, private",
-      "X-Content-Type-Options": "nosniff",
-      "Referrer-Policy": "no-referrer",
-      ...corsHeaders(origin, env),
-    },
-  });
+const jsonResponse = (body: unknown, status: number, origin: string | null, env: RuntimeEnv) => new Response(JSON.stringify(body), {
+  status,
+  headers: {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store, private",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    ...corsHeaders(origin, env),
+  },
+});
 
 const readBody = async (request: Request): Promise<RealtimeVoice | null> => {
   const contentType = request.headers.get("content-type")?.toLowerCase() ?? "";
@@ -195,10 +226,7 @@ const sha256 = async (value: string) => {
 };
 
 const safetyIdentifier = async (request: Request, env: RuntimeEnv) => {
-  const ip = request.headers.get("cf-connecting-ip") ??
-    request.headers.get("x-real-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "anonymous";
+  const ip = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-real-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous";
   const userAgent = request.headers.get("user-agent") ?? "unknown";
   const salt = env.get("REALTIME_SAFETY_SALT") ?? env.get("SUPABASE_URL") ?? "tomorrow-live";
   return sha256(`${salt}|${ip}|${userAgent}`);
@@ -214,46 +242,32 @@ export function createRealtimeSessionConfig(env: RuntimeEnv, requestedVoice: Rea
     audio: {
       input: {
         noise_reduction: { type: "near_field" },
-        transcription: {
-          model: env.get("OPENAI_REALTIME_TRANSCRIPTION_MODEL")?.trim() || DEFAULT_TRANSCRIPTION_MODEL,
-          language: "pt",
-        },
-        turn_detection: {
-          type: "server_vad",
-          threshold: 0.5,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 650,
-          create_response: true,
-          interrupt_response: true,
-        },
+        transcription: { model: env.get("OPENAI_REALTIME_TRANSCRIPTION_MODEL")?.trim() || DEFAULT_TRANSCRIPTION_MODEL, language: "pt" },
+        turn_detection: { type: "server_vad", threshold: 0.5, prefix_padding_ms: 300, silence_duration_ms: 650, create_response: true, interrupt_response: true },
       },
-      output: {
-        voice: requestedVoice ?? (env.get("OPENAI_REALTIME_VOICE")?.trim() || DEFAULT_VOICE),
-        speed: 1,
-      },
+      output: { voice: requestedVoice ?? (env.get("OPENAI_REALTIME_VOICE")?.trim() || DEFAULT_VOICE), speed: 1 },
     },
     max_output_tokens: 512,
-    tools: [TRAVEL_OFFERS_TOOL, OFFER_ACTIONS_TOOL],
+    tools: [
+      TRAVEL_OFFERS_TOOL,
+      OFFER_ACTIONS_TOOL,
+      PLAN_TRIP_WINDOW_TOOL,
+      SELECT_TRIP_EXPERIENCE_TOOL,
+      SET_TRIP_PREFERENCE_TOOL,
+      COMPLETE_TRIP_DAY_TOOL,
+      REOPEN_TRIP_DAY_TOOL,
+    ],
     tool_choice: "auto",
     parallel_tool_calls: false,
   };
-
   if (promptId) session.prompt = { id: promptId };
-
-  return {
-    expires_after: { anchor: "created_at", seconds: 60 },
-    session,
-  };
+  return { expires_after: { anchor: "created_at", seconds: 60 }, session };
 }
 
 export function createRealtimeSessionHandler({ env, fetchFn = fetch, now = Date.now }: RealtimeSessionDependencies) {
   const rateBuckets = new Map<string, { start: number; count: number }>();
-
   const checkRateLimit = (request: Request) => {
-    const ip = request.headers.get("cf-connecting-ip") ??
-      request.headers.get("x-real-ip") ??
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-      "unknown";
+    const ip = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-real-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
     const currentTime = now();
     const current = rateBuckets.get(ip);
     if (!current || currentTime - current.start >= RATE_WINDOW_MS) {
@@ -267,16 +281,9 @@ export function createRealtimeSessionHandler({ env, fetchFn = fetch, now = Date.
   return async (request: Request): Promise<Response> => {
     const requestId = crypto.randomUUID();
     const origin = request.headers.get("origin");
-
-    if (origin && !allowedOrigins(env).has(origin)) {
-      return jsonResponse({ error: { code: "origin_not_allowed", message: "Origem não permitida." }, request_id: requestId }, 403, null, env);
-    }
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: corsHeaders(origin, env) });
-    }
-    if (request.method !== "POST") {
-      return jsonResponse({ error: { code: "method_not_allowed", message: "Método não permitido." }, request_id: requestId }, 405, origin, env);
-    }
+    if (origin && !allowedOrigins(env).has(origin)) return jsonResponse({ error: { code: "origin_not_allowed", message: "Origem não permitida." }, request_id: requestId }, 403, null, env);
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin, env) });
+    if (request.method !== "POST") return jsonResponse({ error: { code: "method_not_allowed", message: "Método não permitido." }, request_id: requestId }, 405, origin, env);
 
     let requestedVoice: RealtimeVoice | null = null;
     try {
@@ -285,44 +292,24 @@ export function createRealtimeSessionHandler({ env, fetchFn = fetch, now = Date.
     } catch (error) {
       const code = error instanceof Error ? error.message : "invalid_request";
       const status = code === "request_too_large" ? 413 : code === "rate_limited" ? 429 : 400;
-      const message = code === "rate_limited"
-        ? "Muitas tentativas. Aguarde um instante antes de iniciar outra conversa."
-        : code === "invalid_voice"
-          ? "A voz selecionada não é permitida."
-          : "Solicitação inválida.";
+      const message = code === "rate_limited" ? "Muitas tentativas. Aguarde um instante antes de iniciar outra conversa." : code === "invalid_voice" ? "A voz selecionada não é permitida." : "Solicitação inválida.";
       return jsonResponse({ error: { code, message }, request_id: requestId }, status, origin, env);
     }
 
     const apiKey = env.get("OPENAI_API_KEY");
-    if (!apiKey) {
-      return jsonResponse({ error: { code: "realtime_unavailable", message: "A voz em tempo real ainda não está configurada." }, request_id: requestId }, 503, origin, env);
-    }
+    if (!apiKey) return jsonResponse({ error: { code: "realtime_unavailable", message: "A voz em tempo real ainda não está configurada." }, request_id: requestId }, 503, origin, env);
 
     try {
       const openAiResponse = await fetchFn("https://api.openai.com/v1/realtime/client_secrets", {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "OpenAI-Safety-Identifier": await safetyIdentifier(request, env),
-        },
+        headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json", "OpenAI-Safety-Identifier": await safetyIdentifier(request, env) },
         body: JSON.stringify(createRealtimeSessionConfig(env, requestedVoice)),
       });
-
-      if (!openAiResponse.ok) {
-        return jsonResponse({ error: { code: "realtime_upstream_error", message: "Não foi possível abrir a conversa por voz agora." }, request_id: requestId }, 502, origin, env);
-      }
-
+      if (!openAiResponse.ok) return jsonResponse({ error: { code: "realtime_upstream_error", message: "Não foi possível abrir a conversa por voz agora." }, request_id: requestId }, 502, origin, env);
       const payload = await openAiResponse.json();
       const value = isRecord(payload) && typeof payload.value === "string" ? payload.value : null;
-      if (!value || !value.startsWith("ek_")) {
-        return jsonResponse({ error: { code: "invalid_upstream_response", message: "A sessão de voz retornou uma resposta inválida." }, request_id: requestId }, 502, origin, env);
-      }
-
-      return jsonResponse({
-        value,
-        expires_at: typeof payload.expires_at === "number" ? payload.expires_at : null,
-      }, 200, origin, env);
+      if (!value || !value.startsWith("ek_")) return jsonResponse({ error: { code: "invalid_upstream_response", message: "A sessão de voz retornou uma resposta inválida." }, request_id: requestId }, 502, origin, env);
+      return jsonResponse({ value, expires_at: typeof payload.expires_at === "number" ? payload.expires_at : null }, 200, origin, env);
     } catch {
       return jsonResponse({ error: { code: "realtime_connection_error", message: "Não foi possível conectar à voz em tempo real." }, request_id: requestId }, 502, origin, env);
     }

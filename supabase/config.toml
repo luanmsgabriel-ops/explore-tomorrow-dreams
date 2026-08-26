@@ -68,3 +68,9 @@ verify_jwt = false
 
 [functions.trip-composer-weather]
 verify_jwt = false
+
+[functions.trip-composer-session]
+verify_jwt = false
+
+[functions.trip-composer-window]
+verify_jwt = false
