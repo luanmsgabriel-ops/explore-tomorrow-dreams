@@ -13,10 +13,20 @@ Deno.test("cria configuração GA sem expor a chave principal", () => {
   const config = createRealtimeSessionConfig(env);
   assertEquals(config.session.type, "realtime");
   assertEquals(config.session.model, "gpt-realtime-2.1");
-  assertEquals((config.session.audio as Record<string, unknown>).output, { voice: "cedar", speed: 1 });
+  assertEquals((config.session.audio as Record<string, unknown>).output, { voice: "marin", speed: 1 });
+  const audioInput = (config.session.audio as Record<string, unknown>).input as Record<string, unknown>;
+  assertEquals(audioInput.turn_detection, {
+    type: "server_vad",
+    threshold: 0.65,
+    prefix_padding_ms: 300,
+    silence_duration_ms: 750,
+    create_response: true,
+    interrupt_response: true,
+  });
+  assertEquals(config.session.max_output_tokens, "inf");
   const instructions = String(config.session.instructions);
   assertEquals(instructions.includes("português brasileiro (pt-BR)"), true);
-  assertEquals(instructions.includes("sotaque deve ser brasileiro neutro"), true);
+  assertEquals(instructions.includes("brasileiro nativo"), true);
   assertEquals(instructions.includes("português de Portugal"), true);
   assertEquals(instructions.includes("primeira fala deve começar obrigatoriamente com 'Olá'"), true);
   assertEquals(instructions.includes("Nunca inicie com 'Oi'"), true);
@@ -25,6 +35,9 @@ Deno.test("cria configuração GA sem expor a chave principal", () => {
   assertEquals(instructions.includes("sofisticado mas caloroso"), true);
   assertEquals(instructions.includes("padrão brasileiro dia-mês-ano"), true);
   assertEquals(instructions.includes("2 de setembro de 2026"), true);
+  assertEquals(instructions.includes("Trip Composer é o fluxo obrigatório"), true);
+  assertEquals(instructions.includes("chame obrigatoriamente plan_trip_window"), true);
+  assertEquals(instructions.includes("select_trip_experience"), true);
   assertEquals(instructions.includes("present_offer_actions"), true);
   assertEquals(instructions.includes("até nove oportunidades"), true);
   const tools = config.session.tools as Array<Record<string, unknown>>;
@@ -53,15 +66,16 @@ Deno.test("mantém os guardrails locais mesmo com prompt versionado configurado"
   assertEquals(config.session.prompt, { id: "pmpt_teo_live" });
   const instructions = String(config.session.instructions);
   assertEquals(instructions.includes("Olá"), true);
-  assertEquals(instructions.includes("sotaque deve ser brasileiro neutro"), true);
+  assertEquals(instructions.includes("brasileiro nativo"), true);
   assertEquals(instructions.includes("português de Portugal"), true);
+  assertEquals(instructions.includes("Trip Composer é o fluxo obrigatório"), true);
 });
 
 Deno.test("aceita somente vozes temporárias conhecidas", () => {
   assertEquals(REALTIME_VOICES.includes("marin"), true);
   assertEquals(REALTIME_VOICES.includes("cedar"), true);
-  const config = createRealtimeSessionConfig(env, "marin");
-  assertEquals((config.session.audio as Record<string, unknown>).output, { voice: "marin", speed: 1 });
+  const config = createRealtimeSessionConfig(env, "cedar");
+  assertEquals((config.session.audio as Record<string, unknown>).output, { voice: "cedar", speed: 1 });
 });
 
 Deno.test("rejeita origem não autorizada", async () => {
@@ -103,7 +117,7 @@ Deno.test("retorna somente client secret efêmero e expiração", async () => {
   const response = await handler(new Request("https://edge.test", {
     method: "POST",
     headers: { "content-type": "application/json", origin, "x-forwarded-for": "203.0.113.8" },
-    body: JSON.stringify({ voice: "marin" }),
+    body: JSON.stringify({ voice: "cedar" }),
   }));
   const body = await response.json();
 
@@ -113,7 +127,8 @@ Deno.test("retorna somente client secret efêmero e expiração", async () => {
   assertMatch(safetyIdentifier, /^[a-f0-9]{64}$/);
   const parsedUpstream = JSON.parse(upstreamBody) as Record<string, unknown>;
   const session = parsedUpstream.session as Record<string, unknown>;
-  assertEquals((session.audio as Record<string, unknown>).output, { voice: "marin", speed: 1 });
+  assertEquals((session.audio as Record<string, unknown>).output, { voice: "cedar", speed: 1 });
+  assertEquals(session.max_output_tokens, "inf");
 });
 
 Deno.test("trata ausência de chave sem chamar a OpenAI", async () => {
