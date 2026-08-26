@@ -26,6 +26,7 @@ import {
   type TomorrowLiveState,
 } from "@/components/opportunities/live/LiveParticleGlobe";
 import { LiveOfferOverlay } from "@/components/opportunities/live/LiveOfferOverlay";
+import { TripComposerLiveSection } from "@/components/opportunities/live/TripComposerLiveSection";
 import { useRealtimeVoice } from "@/hooks/useRealtimeVoice";
 import {
   buildOfferDetailPath,
@@ -41,47 +42,17 @@ const navItems = [
 const LIVE_TITLE = "A conversa continua enquanto a rota ganha forma.";
 
 const stateCopy: Record<TomorrowLiveState, { eyebrow: string; body: string }> = {
-  idle: {
-    eyebrow: "Téo pronto",
-    body: "Converse com o Téo e descubra oportunidades que combinam com você.",
-  },
-  listening: {
-    eyebrow: "Estou ouvindo",
-    body: "Conte o que você procura e deixe a conversa seguir de forma natural.",
-  },
-  thinking: {
-    eyebrow: "Buscando possibilidades",
-    body: "O Téo organiza suas preferências e procura as melhores opções disponíveis.",
-  },
-  speaking: {
-    eyebrow: "Téo falando",
-    body: "Ouça as opções e interrompa quando quiser para ajustar sua busca.",
-  },
-  offers: {
-    eyebrow: "Opções encontradas",
-    body: "Compare as oportunidades na tela e peça ao Téo para abrir a que mais gostar.",
-  },
+  idle: { eyebrow: "Téo pronto", body: "Converse com o Téo e descubra oportunidades que combinam com você." },
+  listening: { eyebrow: "Estou ouvindo", body: "Conte o que você procura e deixe a conversa seguir de forma natural." },
+  thinking: { eyebrow: "Buscando possibilidades", body: "O Téo organiza suas preferências e procura as melhores opções disponíveis." },
+  speaking: { eyebrow: "Téo falando", body: "Ouça as opções e interrompa quando quiser para ajustar sua busca." },
+  offers: { eyebrow: "Opções encontradas", body: "Compare as oportunidades na tela e peça ao Téo para abrir a que mais gostar." },
 };
 
 const contextCards = [
-  {
-    title: "Calendário inteligente",
-    description: "Encontre datas e valores para planejar a melhor saída.",
-    href: "/oportunidades/calendario",
-    icon: CalendarDays,
-  },
-  {
-    title: "Catálogo de oportunidades",
-    description: "Explore pacotes e bloqueios disponíveis para sua próxima viagem.",
-    href: "/oportunidades/catalogo",
-    icon: Search,
-  },
-  {
-    title: "Comparar escolhas",
-    description: "Veja suas opções lado a lado antes de decidir.",
-    href: "/oportunidades/comparar",
-    icon: Scale,
-  },
+  { title: "Calendário inteligente", description: "Encontre datas e valores para planejar a melhor saída.", href: "/oportunidades/calendario", icon: CalendarDays },
+  { title: "Catálogo de oportunidades", description: "Explore pacotes e bloqueios disponíveis para sua próxima viagem.", href: "/oportunidades/catalogo", icon: Search },
+  { title: "Comparar escolhas", description: "Veja suas opções lado a lado antes de decidir.", href: "/oportunidades/comparar", icon: Scale },
 ];
 
 function useAdaptiveMotion() {
@@ -91,17 +62,14 @@ function useAdaptiveMotion() {
   useEffect(() => {
     const hardwareConcurrency = typeof navigator !== "undefined" ? navigator.hardwareConcurrency || 8 : 8;
     setLowPerformance(hardwareConcurrency <= 4 || window.innerWidth < 390);
-
     if (typeof window.matchMedia !== "function") return undefined;
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => setReducedMotion(query.matches);
     update();
-
     if (typeof query.addEventListener === "function") {
       query.addEventListener("change", update);
       return () => query.removeEventListener("change", update);
     }
-
     query.addListener?.(update);
     return () => query.removeListener?.(update);
   }, []);
@@ -121,6 +89,7 @@ export default function OpportunitiesLive() {
     transcript,
     offers,
     offerHandoff,
+    tripComposer,
     toolError,
     error,
     startConversation,
@@ -156,12 +125,7 @@ export default function OpportunitiesLive() {
       data-reduced-motion={reducedMotion ? "true" : "false"}
       data-low-performance={lowPerformance ? "true" : "false"}
     >
-      <OpportunityHeader
-        activeHref="/oportunidades/live"
-        navItems={navItems}
-        ctaHref="/teo"
-        ctaLabel="Continuar por texto"
-      />
+      <OpportunityHeader activeHref="/oportunidades/live" navItems={navItems} ctaHref="/teo" ctaLabel="Continuar por texto" />
 
       <main>
         <section className="relative isolate min-h-[calc(100svh-4.5rem)] overflow-hidden border-b border-tomorrow-line">
@@ -171,17 +135,10 @@ export default function OpportunitiesLive() {
           <div className="mx-auto grid w-full max-w-[90rem] gap-7 px-4 py-6 sm:px-6 sm:py-9 lg:grid-cols-[minmax(0,1.08fr)_minmax(22rem,0.92fr)] lg:items-center lg:gap-10 lg:px-8 lg:py-10">
             <div className="min-w-0">
               <div className="max-w-3xl">
-                <OpportunityBadge variant="neutral">
-                  <Sparkles className="size-3.5" aria-hidden="true" />
-                  Tomorrow Live
-                </OpportunityBadge>
+                <OpportunityBadge variant="neutral"><Sparkles className="size-3.5" aria-hidden="true" />Tomorrow Live</OpportunityBadge>
                 <p className="mt-5 min-h-4 text-xs font-bold uppercase tracking-[0.22em] text-tomorrow-teal-soft transition-opacity duration-300">{copy.eyebrow}</p>
-                <h1 className="mt-3 max-w-3xl font-editorial text-5xl leading-[0.9] text-tomorrow-text sm:text-6xl lg:text-7xl">
-                  {LIVE_TITLE}
-                </h1>
-                <p className="mt-5 min-h-[2.8rem] max-w-2xl text-sm leading-relaxed text-tomorrow-muted transition-opacity duration-300 sm:text-base">
-                  {copy.body}
-                </p>
+                <h1 className="mt-3 max-w-3xl font-editorial text-5xl leading-[0.9] text-tomorrow-text sm:text-6xl lg:text-7xl">{LIVE_TITLE}</h1>
+                <p className="mt-5 min-h-[2.8rem] max-w-2xl text-sm leading-relaxed text-tomorrow-muted transition-opacity duration-300 sm:text-base">{copy.body}</p>
               </div>
 
               <div className="relative mt-3">
@@ -193,19 +150,12 @@ export default function OpportunitiesLive() {
                   microphoneState={globeMicrophoneState}
                   onMicrophoneClick={connected ? toggleMute : startConversation}
                 />
-                <LiveOfferOverlay
-                  offers={offers}
-                  handoff={offerHandoff}
-                  detailPath={handoffDetailPath}
-                  whatsappUrl={handoffWhatsAppUrl}
-                />
+                <LiveOfferOverlay offers={offers} handoff={offerHandoff} detailPath={handoffDetailPath} whatsappUrl={handoffWhatsAppUrl} />
                 <div className="pointer-events-none absolute left-[4%] top-[57%] hidden items-center gap-2 rounded-full border border-tomorrow-teal/30 bg-tomorrow-background/72 px-3 py-1.5 text-[0.67rem] font-semibold text-tomorrow-teal-soft backdrop-blur sm:flex" aria-hidden="true">
-                  <span className="size-1.5 rounded-full bg-tomorrow-teal-soft shadow-tomorrow-teal" />
-                  Origem
+                  <span className="size-1.5 rounded-full bg-tomorrow-teal-soft shadow-tomorrow-teal" />Origem
                 </div>
                 <div className="pointer-events-none absolute right-[2%] top-[38%] hidden items-center gap-2 rounded-full border border-tomorrow-gold/30 bg-tomorrow-background/72 px-3 py-1.5 text-[0.67rem] font-semibold text-tomorrow-gold-soft backdrop-blur sm:flex" aria-hidden="true">
-                  <span className="size-1.5 rounded-full bg-tomorrow-gold-soft shadow-tomorrow-gold" />
-                  Destino
+                  <span className="size-1.5 rounded-full bg-tomorrow-gold-soft shadow-tomorrow-gold" />Destino
                 </div>
               </div>
             </div>
@@ -213,10 +163,7 @@ export default function OpportunitiesLive() {
             <aside className="min-w-0 rounded-tomorrow-lg border border-tomorrow-line bg-tomorrow-surface/72 p-4 shadow-tomorrow-surface backdrop-blur-xl sm:p-5" aria-label="Conversa com o Téo">
               <div className="flex flex-wrap items-start justify-between gap-3 border-b border-tomorrow-line pb-4">
                 <div>
-                  <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-tomorrow-teal-soft">
-                    <Route className="size-4" aria-hidden="true" />
-                    Fale com o Téo
-                  </p>
+                  <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-tomorrow-teal-soft"><Route className="size-4" aria-hidden="true" />Fale com o Téo</p>
                   <h2 className="mt-2 font-editorial text-3xl text-tomorrow-text">Sua viagem, em conversa.</h2>
                 </div>
                 {connected ? <OpportunityBadge variant="success">Conectado</OpportunityBadge> : null}
@@ -224,35 +171,19 @@ export default function OpportunitiesLive() {
 
               <section className="mt-4 rounded-tomorrow border border-tomorrow-line bg-tomorrow-background/55 p-4" aria-labelledby="live-transcript-title">
                 <div className="flex items-center justify-between gap-3">
-                  <p id="live-transcript-title" className="text-xs font-bold uppercase tracking-[0.14em] text-tomorrow-muted">
-                    Conversa
-                  </p>
+                  <p id="live-transcript-title" className="text-xs font-bold uppercase tracking-[0.14em] text-tomorrow-muted">Conversa</p>
                   <MessageSquareText className="size-5 text-tomorrow-gold-soft" aria-hidden="true" />
                 </div>
-
                 {transcript.length > 0 ? (
                   <div className="mt-4 grid max-h-64 gap-3 overflow-y-auto pr-1">
                     {transcript.map((entry, index) => (
-                      <div
-                        key={`${entry.role}-${index}-${entry.final ? "final" : "partial"}`}
-                        className={`rounded-xl border p-3 ${
-                          entry.role === "assistant"
-                            ? "border-tomorrow-teal/25 bg-tomorrow-teal/8"
-                            : "border-tomorrow-gold/22 bg-tomorrow-gold/7"
-                        }`}
-                      >
-                        <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-tomorrow-muted">
-                          {entry.role === "assistant" ? "Téo" : "Você"}
-                        </p>
+                      <div key={`${entry.role}-${index}-${entry.final ? "final" : "partial"}`} className={`rounded-xl border p-3 ${entry.role === "assistant" ? "border-tomorrow-teal/25 bg-tomorrow-teal/8" : "border-tomorrow-gold/22 bg-tomorrow-gold/7"}`}>
+                        <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-tomorrow-muted">{entry.role === "assistant" ? "Téo" : "Você"}</p>
                         <p className="mt-1.5 text-sm leading-relaxed text-tomorrow-text">{entry.text}</p>
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <p className="mt-3 text-sm leading-relaxed text-tomorrow-muted">
-                    Inicie a conversa e fale naturalmente com o Téo.
-                  </p>
-                )}
+                ) : <p className="mt-3 text-sm leading-relaxed text-tomorrow-muted">Inicie a conversa e fale naturalmente com o Téo.</p>}
               </section>
 
               <section className="mt-4" aria-labelledby="live-text-mode-title">
@@ -263,122 +194,52 @@ export default function OpportunitiesLive() {
                   </div>
                   <Headphones className="size-5 shrink-0 text-tomorrow-teal-soft" aria-hidden="true" />
                 </div>
-                <OpportunityButton asChild variant="outline" fullWidth className="mt-3">
-                  <a href="/teo"><MessageSquareText aria-hidden="true" />Continuar por texto</a>
-                </OpportunityButton>
+                <OpportunityButton asChild variant="outline" fullWidth className="mt-3"><a href="/teo"><MessageSquareText aria-hidden="true" />Continuar por texto</a></OpportunityButton>
               </section>
 
               <section className="mt-4 grid grid-cols-4 gap-2" aria-label="Controles da conversa">
-                <button
-                  type="button"
-                  disabled={!connected}
-                  aria-label={muted ? "Reativar microfone" : "Pausar microfone"}
-                  aria-pressed={muted}
-                  onClick={toggleMute}
-                  className="opportunity-focus grid min-h-14 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/50 text-tomorrow-text transition-colors hover:border-tomorrow-teal/50 disabled:cursor-not-allowed disabled:opacity-45"
-                >
+                <button type="button" disabled={!connected} aria-label={muted ? "Reativar microfone" : "Pausar microfone"} aria-pressed={muted} onClick={toggleMute} className="opportunity-focus grid min-h-14 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/50 text-tomorrow-text transition-colors hover:border-tomorrow-teal/50 disabled:cursor-not-allowed disabled:opacity-45">
                   {muted ? <MicOff className="size-5" aria-hidden="true" /> : <Mic className="size-5" aria-hidden="true" />}
                 </button>
-                <button
-                  type="button"
-                  disabled={!connected}
-                  aria-label={speakerEnabled ? "Silenciar áudio do Téo" : "Reativar áudio do Téo"}
-                  aria-pressed={!speakerEnabled}
-                  onClick={toggleSpeaker}
-                  className="opportunity-focus grid min-h-14 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/50 text-tomorrow-text transition-colors hover:border-tomorrow-teal/50 disabled:cursor-not-allowed disabled:opacity-45"
-                >
+                <button type="button" disabled={!connected} aria-label={speakerEnabled ? "Silenciar áudio do Téo" : "Reativar áudio do Téo"} aria-pressed={!speakerEnabled} onClick={toggleSpeaker} className="opportunity-focus grid min-h-14 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/50 text-tomorrow-text transition-colors hover:border-tomorrow-teal/50 disabled:cursor-not-allowed disabled:opacity-45">
                   {speakerEnabled ? <Volume2 className="size-5" aria-hidden="true" /> : <VolumeX className="size-5" aria-hidden="true" />}
                 </button>
-                <button
-                  type="button"
-                  disabled={!voiceSessionActive}
-                  aria-label="Encerrar conversa por voz"
-                  onClick={endConversation}
-                  className="opportunity-focus grid min-h-14 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/50 text-tomorrow-text transition-colors hover:border-tomorrow-gold/50 disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  <Power className="size-5" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Ver informações de privacidade"
-                  aria-expanded={privacyOpen}
-                  onClick={() => setPrivacyOpen((current) => !current)}
-                  className="opportunity-focus grid min-h-14 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/50 text-tomorrow-text transition-colors hover:border-tomorrow-gold/50"
-                >
-                  <ShieldCheck className="size-5" aria-hidden="true" />
-                </button>
+                <button type="button" disabled={!voiceSessionActive} aria-label="Encerrar conversa por voz" onClick={endConversation} className="opportunity-focus grid min-h-14 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/50 text-tomorrow-text transition-colors hover:border-tomorrow-gold/50 disabled:cursor-not-allowed disabled:opacity-45"><Power className="size-5" aria-hidden="true" /></button>
+                <button type="button" aria-label="Ver informações de privacidade" aria-expanded={privacyOpen} onClick={() => setPrivacyOpen((current) => !current)} className="opportunity-focus grid min-h-14 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/50 text-tomorrow-text transition-colors hover:border-tomorrow-gold/50"><ShieldCheck className="size-5" aria-hidden="true" /></button>
               </section>
 
-              <OpportunityButton
-                variant={voiceSessionActive ? "outline" : "gold"}
-                fullWidth
-                className="mt-3"
-                disabled={voiceStatus === "connecting"}
-                onClick={voiceSessionActive ? endConversation : startConversation}
-              >
-                {voiceStatus === "connecting" ? (
-                  <><LoaderCircle className="animate-spin" aria-hidden="true" />Conectando...</>
-                ) : voiceSessionActive ? (
-                  <><Power aria-hidden="true" />Encerrar conversa</>
-                ) : (
-                  <><Mic aria-hidden="true" />Iniciar conversa por voz</>
-                )}
+              <OpportunityButton variant={voiceSessionActive ? "outline" : "gold"} fullWidth className="mt-3" disabled={voiceStatus === "connecting"} onClick={voiceSessionActive ? endConversation : startConversation}>
+                {voiceStatus === "connecting" ? <><LoaderCircle className="animate-spin" aria-hidden="true" />Conectando...</> : voiceSessionActive ? <><Power aria-hidden="true" />Encerrar conversa</> : <><Mic aria-hidden="true" />Iniciar conversa por voz</>}
               </OpportunityButton>
 
-              {error ? (
-                <div className="mt-3 rounded-xl border border-tomorrow-danger/35 bg-tomorrow-danger/8 p-3 text-xs leading-relaxed text-tomorrow-text" role="alert">
-                  {error} <a href="/teo" className="font-semibold text-tomorrow-teal-soft underline underline-offset-2">Continuar por texto</a>
-                </div>
-              ) : null}
-
-              {toolError ? (
-                <div className="mt-3 rounded-xl border border-tomorrow-gold/35 bg-tomorrow-gold/8 p-3 text-xs leading-relaxed text-tomorrow-text" role="alert">
-                  {toolError}
-                </div>
-              ) : null}
-
-              {privacyOpen ? (
-                <div className="mt-3 rounded-xl border border-tomorrow-teal/25 bg-tomorrow-teal/7 p-3 text-xs leading-relaxed text-tomorrow-muted" role="status">
-                  Sua conversa é privada. O microfone só é usado enquanto você estiver falando com o Téo.
-                </div>
-              ) : null}
+              {error ? <div className="mt-3 rounded-xl border border-tomorrow-danger/35 bg-tomorrow-danger/8 p-3 text-xs leading-relaxed text-tomorrow-text" role="alert">{error} <a href="/teo" className="font-semibold text-tomorrow-teal-soft underline underline-offset-2">Continuar por texto</a></div> : null}
+              {toolError ? <div className="mt-3 rounded-xl border border-tomorrow-gold/35 bg-tomorrow-gold/8 p-3 text-xs leading-relaxed text-tomorrow-text" role="alert">{toolError}</div> : null}
+              {privacyOpen ? <div className="mt-3 rounded-xl border border-tomorrow-teal/25 bg-tomorrow-teal/7 p-3 text-xs leading-relaxed text-tomorrow-muted" role="status">Sua conversa é privada. O microfone só é usado enquanto você estiver falando com o Téo.</div> : null}
             </aside>
           </div>
         </section>
+
+        <TripComposerLiveSection runtime={tripComposer} reducedMotion={reducedMotion} />
 
         <section className="mx-auto grid w-full max-w-[90rem] gap-5 px-4 py-8 sm:px-6 lg:px-8" aria-labelledby="live-context-title">
           <div className="max-w-3xl">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-tomorrow-gold-soft">Continue explorando</p>
             <h2 id="live-context-title" className="mt-2 font-editorial text-4xl leading-none text-tomorrow-text sm:text-5xl">Sua próxima viagem está mais perto.</h2>
-            <p className="mt-3 text-sm leading-relaxed text-tomorrow-muted sm:text-base">
-              Explore datas, compare oportunidades ou abra o catálogo completo.
-            </p>
+            <p className="mt-3 text-sm leading-relaxed text-tomorrow-muted sm:text-base">Explore datas, compare oportunidades ou abra o catálogo completo.</p>
           </div>
-
           <div className="grid gap-4 md:grid-cols-3">
             {contextCards.map((card) => {
               const Icon = card.icon;
               return (
-                <a
-                  key={card.href}
-                  href={card.href}
-                  className="opportunity-focus group rounded-tomorrow-lg border border-tomorrow-line bg-tomorrow-surface/60 p-5 transition-[transform,border-color,background-color] duration-200 motion-safe:hover:-translate-y-1 hover:border-tomorrow-gold/45 hover:bg-tomorrow-surface"
-                >
-                  <span className="grid size-10 place-items-center rounded-xl border border-tomorrow-teal/25 bg-tomorrow-teal/8 text-tomorrow-teal-soft">
-                    <Icon className="size-5" aria-hidden="true" />
-                  </span>
+                <a key={card.href} href={card.href} className="opportunity-focus group rounded-tomorrow-lg border border-tomorrow-line bg-tomorrow-surface/60 p-5 transition-[transform,border-color,background-color] duration-200 motion-safe:hover:-translate-y-1 hover:border-tomorrow-gold/45 hover:bg-tomorrow-surface">
+                  <span className="grid size-10 place-items-center rounded-xl border border-tomorrow-teal/25 bg-tomorrow-teal/8 text-tomorrow-teal-soft"><Icon className="size-5" aria-hidden="true" /></span>
                   <h3 className="mt-4 font-editorial text-2xl text-tomorrow-text">{card.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-tomorrow-muted">{card.description}</p>
                 </a>
               );
             })}
           </div>
-
-          <div className="flex justify-end">
-            <OpportunityButton asChild variant="ghost">
-              <a href="/oportunidades/catalogo"><Search aria-hidden="true" />Explorar oportunidades</a>
-            </OpportunityButton>
-          </div>
+          <div className="flex justify-end"><OpportunityButton asChild variant="ghost"><a href="/oportunidades/catalogo"><Search aria-hidden="true" />Explorar oportunidades</a></OpportunityButton></div>
         </section>
       </main>
     </div>
