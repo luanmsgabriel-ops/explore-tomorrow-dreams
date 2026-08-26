@@ -165,11 +165,23 @@ export function recommendationsToExperiences(recommendations: TripComposerRecomm
 }
 
 export function snapshotToDays(snapshot: TripComposerSnapshot): TripComposerDay[] {
+  const dayNumberById = new Map<string, number>();
+  snapshot.days.forEach((raw) => {
+    const day = record(raw);
+    if (typeof day.id === "string" && typeof day.day_number === "number") {
+      dayNumberById.set(day.id, day.day_number);
+    }
+  });
+
   const itemsByDay = new Map<number, Array<Record<string, unknown>>>();
   snapshot.items.forEach((raw) => {
     const item = record(raw);
-    const dayNumber = typeof item.day_number === "number" ? item.day_number : null;
-    if (!dayNumber) return;
+    const dayNumber = typeof item.day_number === "number"
+      ? item.day_number
+      : typeof item.trip_day_id === "string"
+        ? dayNumberById.get(item.trip_day_id) ?? null
+        : null;
+    if (!dayNumber || item.status === "REMOVED") return;
     const list = itemsByDay.get(dayNumber) ?? [];
     list.push(item);
     itemsByDay.set(dayNumber, list);
@@ -179,17 +191,17 @@ export function snapshotToDays(snapshot: TripComposerSnapshot): TripComposerDay[
     const day = record(raw);
     const dayNumber = typeof day.day_number === "number" ? day.day_number : null;
     if (!dayNumber) return [];
-    const status = day.status === "planned" || day.status === "completed" ? "planned" : "planning";
+    const normalizedStatus = typeof day.status === "string" ? day.status.toUpperCase() : "OPEN";
     return [{
       dayNumber,
-      dateLabel: typeof day.date === "string" ? day.date : null,
-      status,
+      dateLabel: typeof day.trip_date === "string" ? day.trip_date : null,
+      status: normalizedStatus === "PLANNED" || normalizedStatus === "COMPLETED" ? "planned" as const : "planning" as const,
       items: (itemsByDay.get(dayNumber) ?? []).map((item, index) => ({
         id: typeof item.id === "string" ? item.id : `${dayNumber}-${index}`,
         startsAt: typeof item.starts_at === "string" ? item.starts_at : null,
         endsAt: typeof item.ends_at === "string" ? item.ends_at : null,
         title: typeof item.title === "string" ? item.title : "Experiência selecionada",
-        subtitle: typeof item.subtitle === "string" ? item.subtitle : null,
+        subtitle: typeof item.description === "string" ? item.description : null,
         kind: "experience" as const,
       })),
     }];
