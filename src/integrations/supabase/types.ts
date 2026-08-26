@@ -1320,6 +1320,68 @@ export type Database = {
         }
         Relationships: []
       }
+      travel_experiences: {
+        Row: {
+          category: string
+          commercializable: boolean
+          created_at: string
+          editorial_tags: string[]
+          family_fit: number | null
+          id: string
+          indoor_outdoor: string | null
+          intensity: number | null
+          is_active: boolean
+          place_id: string | null
+          rain_sensitivity: number | null
+          summary: string | null
+          title: string
+          typical_duration_minutes: number | null
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          commercializable?: boolean
+          created_at?: string
+          editorial_tags?: string[]
+          family_fit?: number | null
+          id?: string
+          indoor_outdoor?: string | null
+          intensity?: number | null
+          is_active?: boolean
+          place_id?: string | null
+          rain_sensitivity?: number | null
+          summary?: string | null
+          title: string
+          typical_duration_minutes?: number | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          commercializable?: boolean
+          created_at?: string
+          editorial_tags?: string[]
+          family_fit?: number | null
+          id?: string
+          indoor_outdoor?: string | null
+          intensity?: number | null
+          is_active?: boolean
+          place_id?: string | null
+          rain_sensitivity?: number | null
+          summary?: string | null
+          title?: string
+          typical_duration_minutes?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "travel_experiences_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "travel_places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       travel_group_members: {
         Row: {
           group_id: string
@@ -1737,6 +1799,60 @@ export type Database = {
           source_type?: string | null
           source_url?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      travel_places: {
+        Row: {
+          canonical_name: string
+          created_at: string
+          destination_name: string | null
+          editorial_tags: string[]
+          google_place_id: string | null
+          id: string
+          indoor_outdoor: string | null
+          is_active: boolean
+          latitude: number | null
+          longitude: number | null
+          primary_category: string | null
+          rain_sensitivity: number | null
+          reviewed_at: string | null
+          typical_duration_minutes: number | null
+          updated_at: string
+        }
+        Insert: {
+          canonical_name: string
+          created_at?: string
+          destination_name?: string | null
+          editorial_tags?: string[]
+          google_place_id?: string | null
+          id?: string
+          indoor_outdoor?: string | null
+          is_active?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          primary_category?: string | null
+          rain_sensitivity?: number | null
+          reviewed_at?: string | null
+          typical_duration_minutes?: number | null
+          updated_at?: string
+        }
+        Update: {
+          canonical_name?: string
+          created_at?: string
+          destination_name?: string | null
+          editorial_tags?: string[]
+          google_place_id?: string | null
+          id?: string
+          indoor_outdoor?: string | null
+          is_active?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          primary_category?: string | null
+          rain_sensitivity?: number | null
+          reviewed_at?: string | null
+          typical_duration_minutes?: number | null
+          updated_at?: string
         }
         Relationships: []
       }
