@@ -24,13 +24,63 @@ export type WindowBody = {
   origin_lng?: number;
 };
 
+const PROVIDER_TYPES = new Set([
+  "travel_agency",
+  "tourist_information_center",
+  "car_rental",
+  "taxi_service",
+  "transportation_service",
+]);
+
 export const normalizeTypes = (types: unknown) => Array.isArray(types)
-  ? types.filter((value): value is string => typeof value === "string").slice(0, 12)
+  ? types.filter((value): value is string => typeof value === "string").slice(0, 16)
   : [];
 
 export const deriveCategories = (types: string[]) => types.map(type => type.toLowerCase().replace(/_/g, " "));
-export const isOutdoor = (types: string[]) => types.some(type => ["park", "tourist_attraction", "beach", "hiking_area", "national_park"].includes(type));
+export const isOutdoor = (types: string[]) => types.some(type => ["park", "tourist_attraction", "beach", "hiking_area", "national_park", "ski_resort"].includes(type));
 export const finiteNumber = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : null;
+
+export function isExperiencePlace(place: WindowPlace) {
+  const types = normalizeTypes(place.types);
+  return !types.some(type => PROVIDER_TYPES.has(type));
+}
+
+export function buildDiscoveryQueries(search: string, destination: string, preferences: unknown[] = []) {
+  const context = [search, ...preferences.filter((value): value is string => typeof value === "string")]
+    .join(" ")
+    .toLowerCase();
+  const queries = [`${search} atrações e experiências em ${destination}`];
+
+  if (/aventur|adventure|trilha|trek|rafting|montanha|mountain|esqui|ski|canyon|natureza/.test(context)) {
+    queries.push(
+      `trilhas parques naturais montanhas aventura em ${destination}`,
+      `rafting esportes de aventura natureza em ${destination}`,
+    );
+  } else if (/gastronom|comida|restaurante|culin/.test(context)) {
+    queries.push(`experiências gastronômicas e restaurantes locais em ${destination}`);
+  } else if (/museu|hist[oó]ria|cultur|arte/.test(context)) {
+    queries.push(`museus atrações culturais e históricas em ${destination}`);
+  } else {
+    queries.push(`${search} pontos turísticos em ${destination}`);
+  }
+
+  return [...new Set(queries.map(query => query.trim()).filter(Boolean))].slice(0, 3);
+}
+
+export function mergeExperiencePlaces(groups: WindowPlace[][], max = 16) {
+  const seen = new Set<string>();
+  const result: WindowPlace[] = [];
+  for (const group of groups) {
+    for (const place of group) {
+      const id = String(place.place_id || "").trim();
+      if (!id || seen.has(id) || !isExperiencePlace(place)) continue;
+      seen.add(id);
+      result.push(place);
+      if (result.length >= max) return result;
+    }
+  }
+  return result;
+}
 
 export function buildCandidates(places: WindowPlace[], body: WindowBody) {
   const visualCandidates: any[] = [];
@@ -42,7 +92,8 @@ export function buildCandidates(places: WindowPlace[], body: WindowBody) {
     const name = String(place.name || "Experiência");
     const latitude = Number(place.location?.latitude);
     const longitude = Number(place.location?.longitude);
-    const durationMinutes = Number(body.duration_overrides?.[String(place.place_id)]) || Number(body.default_duration_minutes) || 120;
+    const explicitDuration = Number(body.duration_overrides?.[String(place.place_id)]) || Number(body.default_duration_minutes) || null;
+    const plannerDuration = explicitDuration ?? 120;
 
     visualCandidates.push({
       id,
@@ -50,7 +101,7 @@ export function buildCandidates(places: WindowPlace[], body: WindowBody) {
       categories,
       latitude,
       longitude,
-      duration_minutes: durationMinutes,
+      duration_minutes: explicitDuration,
       source_reference: place.place_id || null,
       factual_snapshot: {
         address: place.address || null,
@@ -72,7 +123,7 @@ export function buildCandidates(places: WindowPlace[], body: WindowBody) {
       longitude,
       category: categories[0] || null,
       tags: categories,
-      duration_minutes: durationMinutes,
+      duration_minutes: plannerDuration,
       rating: finiteNumber(place.rating),
       user_rating_count: finiteNumber(place.user_rating_count),
       rain_sensitivity: outdoor ? 90 : 20,
