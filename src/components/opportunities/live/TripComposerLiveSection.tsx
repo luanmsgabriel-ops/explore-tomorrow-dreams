@@ -17,11 +17,11 @@ export function TripComposerLiveSection({ runtime, reducedMotion }: { runtime: T
 
   return (
     <section
-      className="fixed inset-x-0 bottom-3 z-[70] px-3 sm:bottom-5 sm:px-5"
+      className="pointer-events-none fixed inset-0 z-[80] flex items-center justify-center px-3 pt-20 sm:px-5 sm:pt-24"
       aria-label="Roteiro ao vivo"
       data-testid="trip-composer-live-overlay"
     >
-      <div className="mx-auto max-h-[78svh] w-full max-w-[90rem] overflow-y-auto rounded-[1.9rem] shadow-[0_28px_90px_rgba(0,0,0,0.62)] [scrollbar-width:thin]">
+      <div className="pointer-events-auto max-h-[76svh] w-full max-w-[78rem] overflow-y-auto rounded-[1.9rem] shadow-[0_34px_110px_rgba(0,0,0,0.72)] [scrollbar-width:thin]">
         <TripComposerPanel
           days={runtime.days}
           activeDay={runtime.activeDay}
