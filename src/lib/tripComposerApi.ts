@@ -13,13 +13,17 @@ export type TripComposerRecommendation = {
   id: string;
   score: number;
   reasons?: string[];
+  warnings?: string[];
+  estimated_activity_minutes?: number | null;
+  estimated_travel_minutes?: number | null;
+  estimated_distance_meters?: number | null;
   candidate?: {
     id: string;
     title: string;
     categories: string[];
     latitude: number;
     longitude: number;
-    duration_minutes: number;
+    duration_minutes: number | null;
     source_reference?: string | null;
     factual_snapshot?: Record<string, unknown> | null;
     media?: Array<Record<string, unknown>>;

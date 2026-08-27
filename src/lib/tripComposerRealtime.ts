@@ -152,8 +152,8 @@ export function recommendationsToExperiences(recommendations: TripComposerRecomm
       title: candidate.title,
       summary: typeof snapshot.summary === "string" ? snapshot.summary : recommendation.reasons?.join(" • ") ?? null,
       durationMinutes: candidate.duration_minutes ?? null,
-      travelMinutes: typeof snapshot.travel_minutes === "number" ? snapshot.travel_minutes : null,
-      distanceMeters: typeof snapshot.distance_meters === "number" ? snapshot.distance_meters : null,
+      travelMinutes: typeof recommendation.estimated_travel_minutes === "number" ? recommendation.estimated_travel_minutes : null,
+      distanceMeters: typeof recommendation.estimated_distance_meters === "number" ? recommendation.estimated_distance_meters : null,
       category: candidate.categories?.[0] ?? null,
       photos: media.flatMap((entry) => {
         const item = record(entry);
