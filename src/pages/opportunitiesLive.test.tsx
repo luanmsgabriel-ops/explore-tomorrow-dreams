@@ -48,6 +48,15 @@ describe("Tomorrow Live — Etapa 7: fundação de voz", () => {
     expect(getUserMedia).not.toHaveBeenCalled();
   });
 
+  it("mantém o planeta como palco principal sem painel permanente de transcrição", () => {
+    render(<OpportunitiesLive />);
+
+    expect(screen.queryByRole("complementary", { name: "Conversa com o Téo" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Sua viagem, em conversa.")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Conversar por texto" })).toHaveAttribute("href", "/teo");
+    expect(screen.getByLabelText("Globo visual do Tomorrow Live — Aguardando")).toBeInTheDocument();
+  });
+
   it("solicita microfone somente após o clique e trata permissão negada", async () => {
     getUserMedia.mockRejectedValueOnce(new DOMException("denied", "NotAllowedError"));
     render(<OpportunitiesLive />);
