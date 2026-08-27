@@ -1,4 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import {
+  buildCandidates,
+  buildPlannerRequest,
+  finiteNumber,
+  normalizePlannerRecommendations,
+} from "../_shared/trip-composer-window.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -24,15 +30,12 @@ async function invoke(name: string, body: unknown) {
     body: JSON.stringify(body),
   });
   const payload = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(`${name}:${response.status}`);
+  if (!response.ok) {
+    const code = payload?.error ? `:${String(payload.error)}` : "";
+    throw new Error(`${name}:${response.status}${code}`);
+  }
   return payload;
 }
-
-const normalizeTypes = (types: unknown) => Array.isArray(types)
-  ? types.filter((value): value is string => typeof value === "string").slice(0, 12)
-  : [];
-
-const deriveCategories = (types: string[]) => types.map(type => type.toLowerCase().replace(/_/g, " "));
 
 serve(async req => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
@@ -44,7 +47,6 @@ serve(async req => {
     const destination = String(body.destination || "").trim();
     const search = String(body.search || "").trim();
     const date = String(body.date || "").trim();
-    const availableMinutes = Math.min(Math.max(Number(body.available_minutes) || 180, 30), 720);
     if (!destination || !search || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return json({ error: "destination_search_date_required" }, 400);
     }
@@ -52,81 +54,49 @@ serve(async req => {
     const discovery = await invoke("trip-composer-discovery", {
       action: "search",
       query: `${search} em ${destination}`,
-      language_code: "pt-BR",
-      region_code: body.region_code || "BR",
       max_results: 8,
-      location_bias: body.location_bias || undefined,
+      latitude: finiteNumber(body.location_bias?.latitude ?? body.origin_lat) ?? undefined,
+      longitude: finiteNumber(body.location_bias?.longitude ?? body.origin_lng) ?? undefined,
+      radius_meters: finiteNumber(body.location_bias?.radius_meters) ?? undefined,
     });
 
     const places = Array.isArray(discovery?.places) ? discovery.places : [];
-    if (!places.length) return json({ ok: true, mode: "no_candidates", recommendations: [], weather: null });
+    if (!places.length) {
+      return json({ ok: true, mode: "no_candidates", recommendations: [], weather: null, source_count: 0, route_context_applied: false });
+    }
 
     const weatherLat = Number(body.weather_lat ?? body.origin_lat ?? places[0]?.location?.latitude);
     const weatherLng = Number(body.weather_lng ?? body.origin_lng ?? places[0]?.location?.longitude);
     let weather = null;
     if (Number.isFinite(weatherLat) && Number.isFinite(weatherLng)) {
-      weather = await invoke("trip-composer-weather", { latitude: weatherLat, longitude: weatherLng, date }).catch(() => null);
+      weather = await invoke("trip-composer-weather", {
+        latitude: weatherLat,
+        longitude: weatherLng,
+        target_date: date,
+      }).catch(() => null);
     }
 
-    const weatherSignal = weather?.mode === "forecast" ? weather?.planning_signal || null : null;
-    const candidates = places.map((place: any, index: number) => {
-      const types = normalizeTypes(place.types);
-      return {
-        id: String(place.place_id || `candidate-${index}`),
-        title: String(place.name || "Experiência"),
-        categories: deriveCategories(types),
-        latitude: Number(place.location?.latitude),
-        longitude: Number(place.location?.longitude),
-        duration_minutes: Number(body.duration_overrides?.[place.place_id]) || Number(body.default_duration_minutes) || 120,
-        opening_status: place.business_status || null,
-        rating: Number.isFinite(Number(place.rating)) ? Number(place.rating) : null,
-        price_level: place.price_level || null,
-        outdoor_sensitivity: types.some(type => ["park", "tourist_attraction", "beach", "hiking_area", "national_park"].includes(type)) ? "high" : "low",
-        source: "GOOGLE_PLACE",
-        source_reference: place.place_id,
-        factual_snapshot: {
-          formatted_address: place.formatted_address || null,
-          types,
-          rating: place.rating ?? null,
-          user_rating_count: place.user_rating_count ?? null,
-        },
-        media: Array.isArray(place.photos) ? place.photos.slice(0, 6) : [],
-      };
-    }).filter((candidate: any) => Number.isFinite(candidate.latitude) && Number.isFinite(candidate.longitude));
+    const { plannerCandidates, visualCandidates } = buildCandidates(places, body);
+    if (!plannerCandidates.length) {
+      return json({ ok: true, mode: "no_candidates", recommendations: [], weather, source_count: 0, route_context_applied: false });
+    }
 
-    const planner = await invoke("trip-composer-planner", {
-      available_minutes: availableMinutes,
-      origin: Number.isFinite(Number(body.origin_lat)) && Number.isFinite(Number(body.origin_lng))
-        ? { latitude: Number(body.origin_lat), longitude: Number(body.origin_lng) }
-        : null,
-      candidates,
-      preferences: Array.isArray(body.preferences) ? body.preferences : [],
-      rejected_categories: Array.isArray(body.rejected_categories) ? body.rejected_categories : [],
-      passenger_context: body.passenger_context || {},
-      weather: weatherSignal ? {
-        precipitation_probability: weatherSignal.precipitation_probability ?? weather?.forecast?.precipitation_probability ?? null,
-        temperature_c: weather?.forecast?.temperature_c ?? null,
-        signal: weatherSignal.signal || null,
-      } : null,
-      max_results: 3,
-    });
-
-    const recommendations = Array.isArray(planner?.recommendations) ? planner.recommendations : [];
-    const enriched = recommendations.map((recommendation: any) => {
-      const candidate = candidates.find((item: any) => item.id === recommendation.id);
-      return { ...recommendation, candidate: candidate || null };
-    });
+    const planner = await invoke("trip-composer-planner", buildPlannerRequest(body, plannerCandidates, weather));
+    const recommendations = normalizePlannerRecommendations(planner, visualCandidates);
 
     return json({
       ok: true,
       mode: weather?.mode === "forecast" ? "forecast" : "seasonal_or_unknown",
       weather,
-      recommendations: enriched,
-      source_count: candidates.length,
+      recommendations,
+      source_count: plannerCandidates.length,
       route_context_applied: Boolean(planner?.route_context_applied),
     });
   } catch (error) {
-    console.error("[TRIP_COMPOSER_WINDOW_ERROR]", error instanceof Error ? error.message : error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[TRIP_COMPOSER_WINDOW_ERROR]", message);
+    if (message.startsWith("trip-composer-discovery:")) return json({ error: "discovery_unavailable" }, 502);
+    if (message.startsWith("trip-composer-planner:")) return json({ error: "planner_unavailable" }, 502);
     return json({ error: "internal_error" }, 500);
   }
 });
