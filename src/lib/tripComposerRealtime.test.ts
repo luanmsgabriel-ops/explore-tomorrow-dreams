@@ -31,24 +31,29 @@ describe("tripComposerRealtime", () => {
     }
   });
 
-  it("maps factual recommendations into visual cards without inventing media", () => {
+  it("maps factual recommendations into visual cards with resolved media and route metadata", () => {
     const cards = recommendationsToExperiences([{
       id: "rec-1",
-      score: 0.91,
+      score: 91,
       reasons: ["Boa aderência"],
+      estimated_travel_minutes: 18,
+      estimated_distance_meters: 13127,
       candidate: {
         id: "place-1",
         title: "Museu real",
         categories: ["cultura"],
         latitude: -23,
         longitude: -46,
-        duration_minutes: 90,
+        duration_minutes: null,
         factual_snapshot: { summary: "Descrição factual" },
         media: [{ url: "https://example.com/photo.jpg", attribution: "Fonte" }],
       },
     }]);
     expect(cards).toHaveLength(1);
     expect(cards[0].photos).toEqual([{ url: "https://example.com/photo.jpg", attribution: "Fonte" }]);
+    expect(cards[0].travelMinutes).toBe(18);
+    expect(cards[0].distanceMeters).toBe(13127);
+    expect(cards[0].durationMinutes).toBeNull();
   });
 
   it("maps persisted multi-day snapshot into timeline", () => {
