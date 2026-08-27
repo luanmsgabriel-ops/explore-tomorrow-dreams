@@ -1,8 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import {
   buildCandidates,
+  buildDiscoveryQueries,
   buildPlannerRequest,
   finiteNumber,
+  mergeExperiencePlaces,
   normalizePlannerRecommendations,
 } from "../_shared/trip-composer-window.ts";
 
@@ -37,6 +39,40 @@ async function invoke(name: string, body: unknown) {
   return payload;
 }
 
+function photoAttribution(media: any) {
+  const authors = Array.isArray(media?.author_attributions) ? media.author_attributions : [];
+  const names = authors
+    .map((author: any) => typeof author?.displayName === "string" ? author.displayName : typeof author?.display_name === "string" ? author.display_name : null)
+    .filter(Boolean);
+  return names.length ? names.join(", ") : null;
+}
+
+async function resolveRecommendationMedia(recommendations: any[]) {
+  return Promise.all(recommendations.map(async recommendation => {
+    const candidate = recommendation?.candidate;
+    if (!candidate || !Array.isArray(candidate.media)) return recommendation;
+    const resolved = await Promise.all(candidate.media.slice(0, 6).map(async (media: any) => {
+      if (!media?.name) return null;
+      try {
+        const photo = await invoke("trip-composer-discovery", {
+          action: "photo",
+          photo_name: media.name,
+          max_width_px: 1200,
+        });
+        return typeof photo?.photo_uri === "string" && photo.photo_uri
+          ? { ...media, url: photo.photo_uri, attribution: photoAttribution(media) }
+          : null;
+      } catch {
+        return null;
+      }
+    }));
+    return {
+      ...recommendation,
+      candidate: { ...candidate, media: resolved.filter(Boolean) },
+    };
+  }));
+}
+
 serve(async req => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
@@ -51,16 +87,20 @@ serve(async req => {
       return json({ error: "destination_search_date_required" }, 400);
     }
 
-    const discovery = await invoke("trip-composer-discovery", {
+    const discoveryQueries = buildDiscoveryQueries(search, destination, Array.isArray(body.preferences) ? body.preferences : []);
+    const discoveryResults = await Promise.all(discoveryQueries.map(query => invoke("trip-composer-discovery", {
       action: "search",
-      query: `${search} em ${destination}`,
-      max_results: 8,
+      query,
+      max_results: 10,
       latitude: finiteNumber(body.location_bias?.latitude ?? body.origin_lat) ?? undefined,
       longitude: finiteNumber(body.location_bias?.longitude ?? body.origin_lng) ?? undefined,
       radius_meters: finiteNumber(body.location_bias?.radius_meters) ?? undefined,
-    });
+    }).catch(() => ({ places: [] }))));
 
-    const places = Array.isArray(discovery?.places) ? discovery.places : [];
+    const places = mergeExperiencePlaces(
+      discoveryResults.map(result => Array.isArray(result?.places) ? result.places : []),
+      16,
+    );
     if (!places.length) {
       return json({ ok: true, mode: "no_candidates", recommendations: [], weather: null, source_count: 0, route_context_applied: false });
     }
@@ -82,7 +122,7 @@ serve(async req => {
     }
 
     const planner = await invoke("trip-composer-planner", buildPlannerRequest(body, plannerCandidates, weather));
-    const recommendations = normalizePlannerRecommendations(planner, visualCandidates);
+    const recommendations = await resolveRecommendationMedia(normalizePlannerRecommendations(planner, visualCandidates));
 
     return json({
       ok: true,
