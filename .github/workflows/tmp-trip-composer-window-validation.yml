@@ -1,0 +1,35 @@
+name: Temporary Trip Composer Window Validation
+
+on:
+  push:
+    branches:
+      - fix/trip-composer-window-contract
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Deno check window edge function
+        run: deno check supabase/functions/trip-composer-window/index.ts
+
+      - name: Deno focused tests
+        run: |
+          deno test supabase/functions/_shared/trip-composer-window.test.ts
+          deno test supabase/functions/_shared/trip-composer-planner.test.ts
+          deno test supabase/functions/_shared/trip-composer-weather.test.ts
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install without rewriting lockfile
+        run: npm install --no-package-lock
+
+      - name: Build
+        run: npm run build
