@@ -24,6 +24,14 @@ export type WindowBody = {
   origin_lng?: number;
 };
 
+export type ExperienceIntent = {
+  adventure: boolean;
+  beach: boolean;
+  drink: boolean;
+  gastronomy: boolean;
+  culture: boolean;
+};
+
 const PROVIDER_TYPES = new Set([
   "travel_agency",
   "tourist_information_center",
@@ -31,6 +39,14 @@ const PROVIDER_TYPES = new Set([
   "taxi_service",
   "transportation_service",
 ]);
+const BEACH_EXCLUDED_TYPES = new Set([
+  "shopping_mall",
+  "store",
+  "department_store",
+  "clothing_store",
+  "supermarket",
+]);
+const BEACHFRONT_VENUE_TYPES = new Set(["bar", "restaurant", "cafe", "coffee_shop", "food"]);
 
 export const normalizeTypes = (types: unknown) => Array.isArray(types)
   ? types.filter((value): value is string => typeof value === "string").slice(0, 16)
@@ -40,44 +56,110 @@ export const deriveCategories = (types: string[]) => types.map(type => type.toLo
 export const isOutdoor = (types: string[]) => types.some(type => ["park", "tourist_attraction", "beach", "hiking_area", "national_park", "ski_resort"].includes(type));
 export const finiteNumber = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : null;
 
+export function detectExperienceIntent(search: string, preferences: unknown[] = []): ExperienceIntent {
+  const context = [search, ...preferences.filter((value): value is string => typeof value === "string")]
+    .join(" ")
+    .toLowerCase();
+  return {
+    adventure: /aventur|adventure|trilha|trek|rafting|montanha|mountain|esqui|ski|canyon|natureza/.test(context),
+    beach: /praia|beach|orla|mar\b|beira[- ]?mar|litoral/.test(context),
+    drink: /beber|bebida|drink|drinque|bar\b|cerveja|caipirinha|coquetel|cocktail/.test(context),
+    gastronomy: /gastronom|comida|restaurante|culin|almoç|jantar/.test(context),
+    culture: /museu|hist[oó]ria|cultur|arte/.test(context),
+  };
+}
+
 export function isExperiencePlace(place: WindowPlace) {
   const types = normalizeTypes(place.types);
   return !types.some(type => PROVIDER_TYPES.has(type));
 }
 
-export function buildDiscoveryQueries(search: string, destination: string, preferences: unknown[] = []) {
-  const context = [search, ...preferences.filter((value): value is string => typeof value === "string")]
-    .join(" ")
-    .toLowerCase();
-  const queries = [`${search} atrações e experiências em ${destination}`];
+function hasAnyType(place: WindowPlace, set: Set<string>) {
+  return normalizeTypes(place.types).some(type => set.has(type));
+}
 
-  if (/aventur|adventure|trilha|trek|rafting|montanha|mountain|esqui|ski|canyon|natureza/.test(context)) {
+export function isBeachAnchor(place: WindowPlace) {
+  const types = normalizeTypes(place.types);
+  if (types.includes("beach")) return true;
+  if (types.some(type => BEACH_EXCLUDED_TYPES.has(type)) || types.some(type => BEACHFRONT_VENUE_TYPES.has(type))) return false;
+  const name = String(place.name || "").toLowerCase();
+  return /\bpraia\b|\bbeach\b/.test(name) && types.some(type => ["tourist_attraction", "point_of_interest", "natural_feature", "establishment"].includes(type));
+}
+
+function radians(value: number) {
+  return value * Math.PI / 180;
+}
+
+export function distanceMetersBetween(a: WindowPlace, b: WindowPlace) {
+  const lat1 = finiteNumber(a.location?.latitude);
+  const lon1 = finiteNumber(a.location?.longitude);
+  const lat2 = finiteNumber(b.location?.latitude);
+  const lon2 = finiteNumber(b.location?.longitude);
+  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return Number.POSITIVE_INFINITY;
+  const earth = 6_371_000;
+  const dLat = radians(lat2 - lat1);
+  const dLon = radians(lon2 - lon1);
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(radians(lat1)) * Math.cos(radians(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * earth * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
+
+export function buildDiscoveryQueries(search: string, destination: string, preferences: unknown[] = []) {
+  const intent = detectExperienceIntent(search, preferences);
+  if (intent.beach) {
+    const queries = [
+      `praias em ${destination}`,
+      intent.drink
+        ? `bares restaurantes quiosques à beira-mar em ${destination}`
+        : `praias e orla em ${destination}`,
+      intent.drink
+        ? `beach bars restaurantes na praia em ${destination}`
+        : `${search} pontos turísticos em ${destination}`,
+    ];
+    return [...new Set(queries.map(query => query.trim()).filter(Boolean))].slice(0, 3);
+  }
+
+  const queries = [`${search} atrações e experiências em ${destination}`];
+  if (intent.adventure) {
     queries.push(
       `trilhas parques naturais montanhas aventura em ${destination}`,
       `rafting esportes de aventura natureza em ${destination}`,
     );
-  } else if (/gastronom|comida|restaurante|culin/.test(context)) {
+  } else if (intent.gastronomy) {
     queries.push(`experiências gastronômicas e restaurantes locais em ${destination}`);
-  } else if (/museu|hist[oó]ria|cultur|arte/.test(context)) {
+  } else if (intent.culture) {
     queries.push(`museus atrações culturais e históricas em ${destination}`);
   } else {
     queries.push(`${search} pontos turísticos em ${destination}`);
   }
-
   return [...new Set(queries.map(query => query.trim()).filter(Boolean))].slice(0, 3);
 }
 
-export function mergeExperiencePlaces(groups: WindowPlace[][], max = 16) {
+export function mergeExperiencePlaces(groups: WindowPlace[][], max = 16, intent: ExperienceIntent = {
+  adventure: false,
+  beach: false,
+  drink: false,
+  gastronomy: false,
+  culture: false,
+}) {
+  const flattened = groups.flat().filter(isExperiencePlace);
+  const beachAnchors = intent.beach ? flattened.filter(isBeachAnchor) : [];
   const seen = new Set<string>();
   const result: WindowPlace[] = [];
-  for (const group of groups) {
-    for (const place of group) {
-      const id = String(place.place_id || "").trim();
-      if (!id || seen.has(id) || !isExperiencePlace(place)) continue;
-      seen.add(id);
-      result.push(place);
-      if (result.length >= max) return result;
-    }
+
+  const accept = (place: WindowPlace) => {
+    if (!intent.beach) return true;
+    if (hasAnyType(place, BEACH_EXCLUDED_TYPES)) return false;
+    if (isBeachAnchor(place)) return true;
+    if (!intent.drink || !hasAnyType(place, BEACHFRONT_VENUE_TYPES) || !beachAnchors.length) return false;
+    return beachAnchors.some(anchor => distanceMetersBetween(anchor, place) <= 1_500);
+  };
+
+  for (const place of flattened) {
+    const id = String(place.place_id || "").trim();
+    if (!id || seen.has(id) || !accept(place)) continue;
+    seen.add(id);
+    result.push(place);
+    if (result.length >= max) return result;
   }
   return result;
 }

@@ -3,6 +3,7 @@ import {
   buildCandidates,
   buildDiscoveryQueries,
   buildPlannerRequest,
+  detectExperienceIntent,
   finiteNumber,
   mergeExperiencePlaces,
   normalizePlannerRecommendations,
@@ -87,7 +88,9 @@ serve(async req => {
       return json({ error: "destination_search_date_required" }, 400);
     }
 
-    const discoveryQueries = buildDiscoveryQueries(search, destination, Array.isArray(body.preferences) ? body.preferences : []);
+    const preferences = Array.isArray(body.preferences) ? body.preferences : [];
+    const intent = detectExperienceIntent(search, preferences);
+    const discoveryQueries = buildDiscoveryQueries(search, destination, preferences);
     const discoveryResults = await Promise.all(discoveryQueries.map(query => invoke("trip-composer-discovery", {
       action: "search",
       query,
@@ -100,6 +103,7 @@ serve(async req => {
     const places = mergeExperiencePlaces(
       discoveryResults.map(result => Array.isArray(result?.places) ? result.places : []),
       16,
+      intent,
     );
     if (!places.length) {
       return json({ ok: true, mode: "no_candidates", recommendations: [], weather: null, source_count: 0, route_context_applied: false });
