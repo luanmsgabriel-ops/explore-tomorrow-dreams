@@ -40,7 +40,7 @@ const stateStyle: Record<TomorrowLiveState, StateStyle> = {
     label: "Aguardando",
     cyan: "#68e8e0",
     gold: "#ddb85c",
-    glow: "rgba(72,214,207,0.22)",
+    glow: "rgba(213,175,72,0.24)",
     rotation: 0.00058,
     pulse: 0.004,
     baseline: 0.14,
@@ -49,7 +49,7 @@ const stateStyle: Record<TomorrowLiveState, StateStyle> = {
     label: "Ouvindo...",
     cyan: "#7df7ef",
     gold: "#e6c778",
-    glow: "rgba(84,239,230,0.38)",
+    glow: "rgba(230,199,120,0.34)",
     rotation: 0.00125,
     pulse: 0.011,
     baseline: 0.7,
@@ -58,7 +58,7 @@ const stateStyle: Record<TomorrowLiveState, StateStyle> = {
     label: "Pensando...",
     cyan: "#72e8e2",
     gold: "#efd384",
-    glow: "rgba(72,208,204,0.24)",
+    glow: "rgba(225,193,103,0.28)",
     rotation: 0.00078,
     pulse: 0.006,
     baseline: 0.32,
@@ -67,7 +67,7 @@ const stateStyle: Record<TomorrowLiveState, StateStyle> = {
     label: "Falando...",
     cyan: "#7cf2eb",
     gold: "#e7c66d",
-    glow: "rgba(79,225,216,0.42)",
+    glow: "rgba(231,198,109,0.4)",
     rotation: 0.00142,
     pulse: 0.013,
     baseline: 0.86,
@@ -76,7 +76,7 @@ const stateStyle: Record<TomorrowLiveState, StateStyle> = {
     label: "Ofertas",
     cyan: "#73e9e2",
     gold: "#efd283",
-    glow: "rgba(222,188,98,0.25)",
+    glow: "rgba(239,210,131,0.34)",
     rotation: 0.00072,
     pulse: 0.006,
     baseline: 0.45,
@@ -131,7 +131,7 @@ function buildSurfacePoints(count: number, cyan: string, gold: string): GlobePoi
     return {
       lat,
       lng,
-      color: index % 13 === 0 || index % 19 === 0 ? gold : cyan,
+      color: index % 4 === 0 || index % 7 === 0 ? gold : cyan,
       radius: index % 7 === 0 ? 0.2 : 0.12,
       altitude: index % 9 === 0 ? 0.009 : 0.005,
     };
@@ -179,15 +179,15 @@ function StaticGlobeFallback({ state }: { state: TomorrowLiveState }) {
         style={{ background: `radial-gradient(circle, ${style.glow}, transparent 68%)` }}
       />
       <div
-        className="relative size-[86%] overflow-hidden rounded-full border border-cyan-200/70 shadow-[0_0_58px_rgba(89,234,226,0.3),inset_-35px_-25px_70px_rgba(0,0,0,0.82)]"
+        className="relative size-[86%] overflow-hidden rounded-full border border-tomorrow-gold/65 shadow-[0_0_58px_rgba(221,184,92,0.28),inset_-35px_-25px_70px_rgba(0,0,0,0.82)]"
         style={{
           backgroundImage: `linear-gradient(rgba(2,27,31,.28),rgba(2,27,31,.34)),url(${EARTH_TEXTURE})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
       >
-        <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_30%_24%,rgba(103,246,237,0.14),transparent_28%),radial-gradient(circle_at_50%_50%,transparent_54%,rgba(2,10,12,0.62)_100%)]" />
-        <div className="absolute inset-[5%] rounded-full opacity-45 [background-image:radial-gradient(circle,rgba(111,247,239,0.7)_0_1px,transparent_1.2px)] [background-size:8px_8px] [mask-image:radial-gradient(circle,black_0_72%,transparent_90%)]" />
+        <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_30%_24%,rgba(231,198,109,0.16),transparent_28%),radial-gradient(circle_at_50%_50%,transparent_54%,rgba(2,10,12,0.62)_100%)]" />
+        <div className="absolute inset-[5%] rounded-full opacity-55 [background-image:radial-gradient(circle,rgba(231,198,109,0.82)_0_1px,transparent_1.2px)] [background-size:8px_8px] [mask-image:radial-gradient(circle,black_0_72%,transparent_90%)]" />
       </div>
     </div>
   );
@@ -254,7 +254,7 @@ function LiveParticleGlobeComponent({
         renderer.setPixelRatio(Math.min(lowPerformance ? 1.2 : 1.8, window.devicePixelRatio || 1));
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 0.94;
+        renderer.toneMappingExposure = 0.96;
         renderer.domElement.className = "absolute inset-0 size-full";
         renderer.domElement.setAttribute("aria-hidden", "true");
         host.replaceChildren(renderer.domElement);
@@ -299,17 +299,17 @@ function LiveParticleGlobeComponent({
         const globeMaterial = Globe.globeMaterial() as import("three").MeshPhongMaterial;
         globeMaterial.color = new THREE.Color("#07535a");
         globeMaterial.emissive = new THREE.Color("#063940");
-        globeMaterial.emissiveIntensity = 0.58;
-        globeMaterial.shininess = 11;
-        globeMaterial.specular = new THREE.Color("#2a9a9d");
+        globeMaterial.emissiveIntensity = 0.56;
+        globeMaterial.shininess = 12;
+        globeMaterial.specular = new THREE.Color("#b9923e");
 
-        scene.add(new THREE.AmbientLight(0x6bb9b6, 0.52));
+        scene.add(new THREE.AmbientLight(0x79c8c2, 0.46));
 
-        const cyanRim = new THREE.DirectionalLight(0x7efff6, 0.94);
+        const cyanRim = new THREE.DirectionalLight(0x7efff6, 0.78);
         cyanRim.position.set(-230, 160, 15);
         scene.add(cyanRim);
 
-        const goldRim = new THREE.DirectionalLight(0xd8b85b, stateRef.current === "offers" ? 0.52 : 0.24);
+        const goldRim = new THREE.DirectionalLight(0xe2bd61, stateRef.current === "offers" ? 0.72 : 0.48);
         goldRim.position.set(180, -90, -45);
         scene.add(goldRim);
 
@@ -333,7 +333,7 @@ function LiveParticleGlobeComponent({
               .polygonAltitude(0.006)
               .polygonCapColor(() => "rgba(0,0,0,0)")
               .polygonSideColor(() => "rgba(0,0,0,0)")
-              .polygonStrokeColor(() => "rgba(121,255,246,0.84)")
+              .polygonStrokeColor(() => "rgba(239,210,131,0.92)")
               .polygonsTransitionDuration(0)
               .hexPolygonsData(features)
               .hexPolygonResolution(lowPerformance ? 1 : 2)
@@ -341,7 +341,7 @@ function LiveParticleGlobeComponent({
               .hexPolygonUseDots(true)
               .hexPolygonDotResolution(lowPerformance ? 4 : 6)
               .hexPolygonAltitude(0.009)
-              .hexPolygonColor(() => GLOBE_CYAN)
+              .hexPolygonColor(() => GLOBE_GOLD)
               .hexPolygonsTransitionDuration(0);
           })
           .catch(() => undefined);
@@ -398,7 +398,7 @@ function LiveParticleGlobeComponent({
           smoothedPulse += (currentStyle.pulse - smoothedPulse) * motionBlend;
           const targetPulseSpeed = currentState === "speaking" ? 3.8 : currentState === "listening" ? 3 : currentState === "thinking" ? 1.3 : 1.65;
           smoothedPulseSpeed += (targetPulseSpeed - smoothedPulseSpeed) * motionBlend;
-          const targetGoldIntensity = currentState === "offers" ? 0.52 : currentState === "speaking" ? 0.34 : 0.24;
+          const targetGoldIntensity = currentState === "offers" ? 0.72 : currentState === "speaking" ? 0.62 : currentState === "listening" ? 0.56 : 0.48;
           goldRim.intensity += (targetGoldIntensity - goldRim.intensity) * lightBlend;
 
           if (appliedState !== currentState) {
@@ -448,7 +448,7 @@ function LiveParticleGlobeComponent({
 
   return (
     <figure
-      className={cn("relative mx-auto w-full max-w-[66rem] overflow-visible", className)}
+      className={cn("relative mx-auto w-full max-w-[74rem] overflow-visible", className)}
       aria-label={`Globo visual do Tomorrow Live — ${style.label.replace("...", "")}`}
       data-live-state={state}
       data-renderer={rendererState}
@@ -456,20 +456,20 @@ function LiveParticleGlobeComponent({
       data-audio-level={visualLevel.toFixed(2)}
       data-visual-engine="webgl-fresnel-dotted-land"
     >
-      <div className="relative min-h-[25rem] sm:min-h-[33rem] lg:min-h-[38rem]">
+      <div className="relative min-h-[25rem] sm:min-h-[34rem] lg:min-h-[40rem]">
         <LiveWaveBackdrop
           state={state}
           audioLevel={audioLevel}
           reducedMotion={reducedMotion}
           lowPerformance={lowPerformance}
-          className="pointer-events-none absolute -inset-x-[31%] top-[19%] bottom-[28%] z-0 opacity-100 [mask-image:linear-gradient(to_right,transparent,black_6%,black_94%,transparent)]"
+          className="pointer-events-none absolute -inset-x-[34%] top-[18%] bottom-[27%] z-0 opacity-100 [mask-image:linear-gradient(to_right,transparent,black_5%,black_95%,transparent)]"
         />
 
         <div
-          className="pointer-events-none absolute inset-x-[19%] top-[9%] bottom-[19%] z-[1] rounded-full blur-[82px] transition-opacity duration-700 ease-out"
+          className="pointer-events-none absolute inset-x-[17%] top-[7%] bottom-[18%] z-[1] rounded-full blur-[88px] transition-opacity duration-700 ease-out"
           style={{
-            background: `radial-gradient(circle, ${style.glow} 0%, rgba(3,18,22,0.06) 48%, rgba(3,18,22,0) 72%)`,
-            opacity: 0.5 + visualLevel * 0.28,
+            background: `radial-gradient(circle, ${style.glow} 0%, rgba(3,18,22,0.07) 48%, rgba(3,18,22,0) 72%)`,
+            opacity: 0.56 + visualLevel * 0.28,
           }}
           aria-hidden="true"
         />
@@ -487,19 +487,19 @@ function LiveParticleGlobeComponent({
         ) : null}
 
         {rendererState === "loading" ? (
-          <div className="pointer-events-none absolute inset-x-[31%] top-[26%] bottom-[38%] z-[2] rounded-full border border-tomorrow-teal/15 bg-tomorrow-teal/5 blur-2xl" aria-hidden="true" />
+          <div className="pointer-events-none absolute inset-x-[31%] top-[26%] bottom-[38%] z-[2] rounded-full border border-tomorrow-gold/18 bg-tomorrow-gold/5 blur-2xl" aria-hidden="true" />
         ) : null}
 
         <div className="pointer-events-none absolute inset-x-[12%] bottom-[11%] z-[12] h-24 sm:inset-x-[17%]" aria-hidden="true">
-          <div className="absolute inset-x-[2%] bottom-2 h-11 rounded-[50%] border border-tomorrow-teal/20 shadow-[0_0_28px_rgba(76,225,216,0.14)]" />
-          <div className="absolute inset-x-[10%] bottom-4 h-9 rounded-[50%] border border-tomorrow-teal/38 bg-tomorrow-teal/5 shadow-[0_0_32px_rgba(76,225,216,0.2)]" />
-          <div className="absolute inset-x-[21%] bottom-7 h-6 rounded-[50%] border border-tomorrow-gold/32 bg-transparent shadow-[0_0_18px_rgba(212,175,55,0.14)]" />
-          <div className="absolute inset-x-[31%] bottom-9 h-4 rounded-[50%] border border-tomorrow-teal/35" />
-          <div className="absolute left-1/2 bottom-1 h-16 w-px -translate-x-1/2 bg-gradient-to-t from-tomorrow-teal/48 to-transparent" />
+          <div className="absolute inset-x-[2%] bottom-2 h-11 rounded-[50%] border border-tomorrow-gold/24 shadow-[0_0_28px_rgba(212,175,55,0.16)]" />
+          <div className="absolute inset-x-[10%] bottom-4 h-9 rounded-[50%] border border-tomorrow-teal/32 bg-tomorrow-teal/5 shadow-[0_0_32px_rgba(76,225,216,0.17)]" />
+          <div className="absolute inset-x-[21%] bottom-7 h-6 rounded-[50%] border border-tomorrow-gold/48 bg-transparent shadow-[0_0_22px_rgba(212,175,55,0.22)]" />
+          <div className="absolute inset-x-[31%] bottom-9 h-4 rounded-[50%] border border-tomorrow-gold/34" />
+          <div className="absolute left-1/2 bottom-1 h-16 w-px -translate-x-1/2 bg-gradient-to-t from-tomorrow-gold/52 via-tomorrow-teal/35 to-transparent" />
         </div>
 
         <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col items-center">
-          <p className="pointer-events-none text-xs font-bold uppercase tracking-[0.32em] text-tomorrow-teal-soft drop-shadow-[0_0_8px_rgba(104,232,224,0.5)] sm:text-sm" aria-hidden="true">
+          <p className="pointer-events-none text-xs font-bold uppercase tracking-[0.32em] text-tomorrow-gold-soft drop-shadow-[0_0_8px_rgba(221,184,92,0.48)] sm:text-sm" aria-hidden="true">
             {style.label}
           </p>
           <div className="mt-2 flex h-14 items-center justify-center gap-[3px] sm:h-16 sm:gap-1">
@@ -509,6 +509,7 @@ function LiveParticleGlobeComponent({
                   key={`left-${index}-${height}`}
                   className={cn(
                     "block w-[2px] rounded-full bg-tomorrow-teal-soft/85 shadow-[0_0_7px_rgba(104,232,224,0.45)] transition-[height,opacity] duration-500 ease-out sm:w-[3px]",
+                    index % 4 === 1 && "bg-tomorrow-gold-soft/90 shadow-[0_0_8px_rgba(221,184,92,0.5)]",
                     activeWaveform && !reducedMotion && "animate-pulse",
                   )}
                   style={{
@@ -528,10 +529,10 @@ function LiveParticleGlobeComponent({
               disabled={!onMicrophoneClick || microphoneState === "connecting"}
               onClick={onMicrophoneClick}
               className={cn(
-                "opportunity-focus mx-2 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-tomorrow-teal/55 bg-[#062d32]/90 text-tomorrow-teal-soft shadow-[0_0_20px_rgba(83,238,229,0.28),inset_0_0_16px_rgba(83,238,229,0.08)] transition-[transform,border-color,box-shadow,opacity] duration-300 ease-out active:scale-95 disabled:cursor-wait disabled:opacity-70 sm:mx-3 sm:size-14 motion-safe:hover:scale-105 motion-safe:hover:border-tomorrow-teal-soft/90",
-                activeWaveform && "border-tomorrow-teal-soft/85 shadow-[0_0_34px_rgba(83,238,229,0.48),inset_0_0_20px_rgba(83,238,229,0.12)]",
+                "opportunity-focus mx-2 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-tomorrow-gold/55 bg-[#062d32]/90 text-tomorrow-gold-soft shadow-[0_0_22px_rgba(221,184,92,0.24),inset_0_0_16px_rgba(83,238,229,0.08)] transition-[transform,border-color,box-shadow,opacity] duration-300 ease-out active:scale-95 disabled:cursor-wait disabled:opacity-70 sm:mx-3 sm:size-14 motion-safe:hover:scale-105 motion-safe:hover:border-tomorrow-gold-soft/90",
+                activeWaveform && "border-tomorrow-teal-soft/80 text-tomorrow-teal-soft shadow-[0_0_34px_rgba(83,238,229,0.38),0_0_20px_rgba(221,184,92,0.2),inset_0_0_20px_rgba(83,238,229,0.12)]",
                 activeWaveform && !reducedMotion && "animate-pulse",
-                microphoneState === "muted" && "border-tomorrow-gold/65 text-tomorrow-gold-soft shadow-[0_0_24px_rgba(212,175,55,0.28)]",
+                microphoneState === "muted" && "border-tomorrow-gold/70 text-tomorrow-gold-soft shadow-[0_0_26px_rgba(212,175,55,0.32)]",
               )}
             >
               {microphoneState === "connecting" ? (
@@ -549,8 +550,8 @@ function LiveParticleGlobeComponent({
                   key={`right-${index}-${height}`}
                   className={cn(
                     "block w-[2px] rounded-full bg-tomorrow-teal-soft/85 shadow-[0_0_7px_rgba(104,232,224,0.45)] transition-[height,opacity] duration-500 ease-out sm:w-[3px]",
+                    index % 4 === 2 && "bg-tomorrow-gold-soft/90 shadow-[0_0_8px_rgba(221,184,92,0.5)]",
                     activeWaveform && !reducedMotion && "animate-pulse",
-                    state === "offers" && index % 6 === 0 && "bg-tomorrow-gold-soft/85 shadow-[0_0_7px_rgba(221,184,92,0.38)]",
                   )}
                   style={{
                     height: `${waveformHeight(height, index + waveformLeft.length, visualLevel)}px`,
