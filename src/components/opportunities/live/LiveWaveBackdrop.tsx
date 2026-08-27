@@ -110,12 +110,10 @@ export function LiveWaveBackdrop({
           (1 - depth * 0.18);
         const frequency = 0.0108 + (index % 4) * 0.00155;
         const phase = time * preset.speed * (0.9 + index * 0.032) * (index % 2 === 0 ? 1 : -1);
-        const permanentlyGold = index === 2 || index === lineCount - 3;
-        const goldLine = permanentlyGold && (state === "offers" || index % 2 === 0);
+        const goldLine = index % 3 === 1 || index === lineCount - 2;
         const color = goldLine ? "235,201,112" : "96,243,234";
         const alpha = Math.max(0.13, preset.opacity * (1 - depth * 0.32));
 
-        // Far glow pass gives the wave field depth without turning it into a flat neon stripe.
         context.beginPath();
         for (let x = -32; x <= width + 32; x += step) {
           const y = waveY(x, centerY, amplitude, frequency, phase, index, depth);
@@ -128,7 +126,6 @@ export function LiveWaveBackdrop({
         context.shadowBlur = lowPerformance ? 4 : 13 + level * 12;
         context.stroke();
 
-        // Main crisp line.
         context.beginPath();
         for (let x = -32; x <= width + 32; x += step) {
           const y = waveY(x, centerY, amplitude, frequency, phase, index, depth);
@@ -145,7 +142,6 @@ export function LiveWaveBackdrop({
         context.stroke();
         context.setLineDash([]);
 
-        // Travelling nodes create the same flowing data-stream feeling as the reference.
         const nodeCount = lowPerformance ? 1 : layer === 0 ? 3 : 2;
         for (let node = 0; node < nodeCount; node += 1) {
           const travel = reducedMotion
@@ -154,16 +150,16 @@ export function LiveWaveBackdrop({
           const nodeX =
             ((index * 137 + node * 251 + travel) % (width + 140) + (width + 140)) % (width + 140) - 70;
           const nodeY = waveY(nodeX, centerY, amplitude, frequency, phase, index, depth);
-          const goldNode = goldLine || (index * 3 + node * 5) % 13 === 0;
+          const goldNode = goldLine || (index + node) % 5 === 0;
           const nodeRadius = goldNode ? 2.15 + level * 0.55 : 1.2 + level * 0.72;
 
           context.beginPath();
           context.arc(nodeX, nodeY, nodeRadius, 0, Math.PI * 2);
           context.fillStyle = goldNode
-            ? `rgba(239,205,119,${0.56 + level * 0.42})`
+            ? `rgba(239,205,119,${0.58 + level * 0.4})`
             : `rgba(112,247,238,${0.36 + level * 0.58})`;
-          context.shadowColor = goldNode ? "rgba(239,205,119,0.92)" : "rgba(112,247,238,0.78)";
-          context.shadowBlur = lowPerformance ? 2 : goldNode ? 9 + level * 7 : 6 + level * 6;
+          context.shadowColor = goldNode ? "rgba(239,205,119,0.94)" : "rgba(112,247,238,0.78)";
+          context.shadowBlur = lowPerformance ? 2 : goldNode ? 10 + level * 8 : 6 + level * 6;
           context.fill();
         }
       }
@@ -171,19 +167,18 @@ export function LiveWaveBackdrop({
       context.shadowBlur = 0;
       context.globalCompositeOperation = "source-over";
 
-      // Ambient particles behind the globe. Gold is always present, not only in the Offers state.
       const ambientCount = lowPerformance ? 14 : 30;
       for (let index = 0; index < ambientCount; index += 1) {
         const travel = reducedMotion ? 0 : time * (index % 2 === 0 ? 7 : -5);
         const x = ((index * 173 + travel) % (width + 100) + (width + 100)) % (width + 100) - 50;
         const y = height * (0.12 + ((index * 47) % 76) / 100);
-        const goldParticle = index % 8 === 0 || index % 13 === 0;
+        const goldParticle = index % 4 === 0 || index % 7 === 0;
         const radius = goldParticle ? 1.25 + (index % 3) * 0.24 : 0.65 + (index % 3) * 0.3;
 
         context.beginPath();
         context.arc(x, y, radius, 0, Math.PI * 2);
         context.fillStyle = goldParticle
-          ? `rgba(232,196,99,${0.42 + level * 0.26})`
+          ? `rgba(232,196,99,${0.46 + level * 0.28})`
           : `rgba(67,214,208,${0.22 + level * 0.24})`;
         context.fill();
       }
