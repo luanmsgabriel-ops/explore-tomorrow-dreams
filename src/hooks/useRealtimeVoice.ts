@@ -4,11 +4,12 @@ import {
   analyserAudioLevel,
   applyTranscriptChange,
   catalogParamsFromRealtimeTool,
-  fetchRealtimeClientSecret,
   functionCallFromRealtimeEvent,
+  getSelectedRealtimeVoice,
   microphoneErrorMessage,
   offerHandoffFromRealtimeTool,
   parseRealtimeEvent,
+  RealtimeVoiceError,
   realtimeToolContinuationEvents,
   transcriptChangeFromEvent,
   type RealtimeServerEvent,
@@ -42,7 +43,8 @@ type RealtimeResources = {
   animationFrame: number;
 };
 
-const REALTIME_CALLS_URL = "https://api.openai.com/v1/realtime/calls";
+const REALTIME_CALL_EDGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tomorrow-live-realtime-call`;
+const REALTIME_CALL_EDGE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const AUDIO_PUBLISH_INTERVAL_MS = 80;
 const AUDIO_PUBLISH_MIN_DELTA = 0.025;
 const OUTPUT_ACTIVITY_THRESHOLD = 0.012;
@@ -71,6 +73,18 @@ function mergeOfferBatch(current: TravelOfferCatalogItem[], incoming: TravelOffe
   const merged = new Map<string, TravelOfferCatalogItem>();
   [...current, ...incoming].forEach((item) => merged.set(item.id, item));
   return Array.from(merged.values()).slice(0, MAX_LIVE_COMPARISON_OFFERS);
+}
+
+async function realtimeCallError(response: Response) {
+  try {
+    const body = await response.json() as { error?: { code?: string; message?: string } };
+    return new RealtimeVoiceError(
+      body.error?.message ?? "Não foi possível abrir a conversa por voz agora.",
+      body.error?.code ?? "webrtc_negotiation_failed",
+    );
+  } catch {
+    return new RealtimeVoiceError("Não foi possível abrir a conversa por voz agora.", "webrtc_negotiation_failed");
+  }
 }
 
 function releaseResources(resources: RealtimeResources | null) {
@@ -370,16 +384,12 @@ export function useRealtimeVoice() {
     try {
       const abortController = new AbortController();
       pendingAbortControllerRef.current = abortController;
-      const [localStream, secret] = await Promise.all([
-        navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }),
-        fetchRealtimeClientSecret(abortController.signal),
-      ]);
+      const localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       if (attempt !== startAttemptRef.current || !mountedRef.current) {
         abortController.abort();
         localStream.getTracks().forEach((track) => track.stop());
         return;
       }
-      pendingAbortControllerRef.current = null;
       const audioContext = createAudioContext();
       await audioContext.resume();
       const inputAnalyser = audioContext.createAnalyser();
@@ -454,14 +464,23 @@ export function useRealtimeVoice() {
 
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
-      const sdpResponse = await fetch(REALTIME_CALLS_URL, {
+      const sdpResponse = await fetch(REALTIME_CALL_EDGE_URL, {
         method: "POST",
-        headers: { "Authorization": `Bearer ${secret}`, "Content-Type": "application/sdp" },
+        headers: {
+          "apikey": REALTIME_CALL_EDGE_KEY,
+          "Content-Type": "application/sdp",
+          "x-tomorrow-voice": getSelectedRealtimeVoice(),
+        },
         body: offer.sdp,
         signal: abortController.signal,
       });
-      if (!sdpResponse.ok) throw new Error("SDP negotiation failed");
-      await peer.setRemoteDescription({ type: "answer", sdp: await sdpResponse.text() });
+      if (!sdpResponse.ok) throw await realtimeCallError(sdpResponse);
+      const answerSdp = await sdpResponse.text();
+      if (!answerSdp.startsWith("v=0")) {
+        throw new RealtimeVoiceError("A conexão de voz retornou uma resposta inválida.", "invalid_sdp_answer");
+      }
+      await peer.setRemoteDescription({ type: "answer", sdp: answerSdp });
+      pendingAbortControllerRef.current = null;
 
       const inputSamples = new Uint8Array(new ArrayBuffer(inputAnalyser.fftSize));
       let outputSamples: Uint8Array<ArrayBuffer> | null = null;
