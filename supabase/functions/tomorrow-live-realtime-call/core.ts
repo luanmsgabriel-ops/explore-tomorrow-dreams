@@ -27,7 +27,7 @@ const allowedOrigins = (env: RuntimeEnv) => {
 
 const corsHeaders = (origin: string | null, env: RuntimeEnv) => {
   const headers: Record<string, string> = {
-    "Access-Control-Allow-Headers": "content-type, x-tomorrow-voice",
+    "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info, x-tomorrow-voice",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
