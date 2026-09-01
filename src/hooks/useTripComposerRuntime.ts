@@ -6,6 +6,7 @@ import {
   loadTripComposerSession,
   mutateTripComposerSession,
   planTripComposerWindow,
+  tripComposerExcludedIds,
   type TripComposerRecommendation,
   type TripComposerSnapshot,
 } from "@/lib/tripComposerApi";
@@ -42,6 +43,7 @@ function asSnapshot(value: unknown): TripComposerSnapshot {
 export function useTripComposerRuntime() {
   const [state, setState] = useState(initialState);
   const recommendationsRef = useRef(new Map<string, TripComposerRecommendation>());
+  const shownCandidateIdsRef = useRef(new Set<string>());
 
   const applySnapshot = useCallback((snapshot: TripComposerSnapshot, activeDay?: number) => {
     const days = snapshotToDays(snapshot);
@@ -91,7 +93,7 @@ export function useTripComposerRuntime() {
         external_place_id: candidate.id,
         latitude: candidate.latitude,
         longitude: candidate.longitude,
-        source_kind: "GOOGLE_PLACE",
+        source_kind: candidate.source_kind || "GOOGLE_PLACE",
         source_reference: candidate.source_reference ?? null,
         factual_snapshot: candidate.factual_snapshot ?? null,
         planning_metadata: { score: recommendation?.score ?? null },
@@ -107,7 +109,8 @@ export function useTripComposerRuntime() {
     const parsed = parseTripComposerTool(call);
 
     if (parsed.name === "plan_trip_window") {
-      await ensureSession(parsed.request);
+      const snapshot = await ensureSession(parsed.request);
+      const excludedIds = tripComposerExcludedIds(snapshot, shownCandidateIdsRef.current);
       const result = await planTripComposerWindow({
         destination: parsed.request.destination,
         search: parsed.request.search,
@@ -115,9 +118,17 @@ export function useTripComposerRuntime() {
         available_minutes: parsed.request.available_minutes,
         preferences: parsed.request.preferences,
         rejected_categories: parsed.request.rejected_categories,
+        excluded_ids: excludedIds,
       });
       recommendationsRef.current.clear();
-      result.recommendations.forEach((recommendation) => recommendationsRef.current.set(recommendation.candidate?.id ?? recommendation.id, recommendation));
+      result.recommendations.forEach((recommendation) => {
+        const id = recommendation.candidate?.id ?? recommendation.id;
+        recommendationsRef.current.set(id, recommendation);
+        if (id) shownCandidateIdsRef.current.add(id);
+      });
+      if (shownCandidateIdsRef.current.size > 120) {
+        shownCandidateIdsRef.current = new Set([...shownCandidateIdsRef.current].slice(-120));
+      }
       const candidates = recommendationsToExperiences(result.recommendations);
       setState((current) => ({
         ...current,
@@ -170,6 +181,7 @@ export function useTripComposerRuntime() {
 
   const reset = useCallback(() => {
     recommendationsRef.current.clear();
+    shownCandidateIdsRef.current.clear();
     setState(initialState);
   }, []);
 
