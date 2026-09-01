@@ -20,10 +20,12 @@ export type TripComposerRecommendation = {
   candidate?: {
     id: string;
     title: string;
+    summary?: string | null;
     categories: string[];
     latitude: number;
     longitude: number;
     duration_minutes: number | null;
+    source_kind?: string | null;
     source_reference?: string | null;
     factual_snapshot?: Record<string, unknown> | null;
     media?: Array<Record<string, unknown>>;
@@ -39,6 +41,19 @@ const invoke = async <T>(name: string, body: Record<string, unknown>): Promise<T
 
 export const getTripComposerAccessToken = () => sessionStorage.getItem(ACCESS_TOKEN_KEY);
 export const clearTripComposerAccessToken = () => sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+
+export function tripComposerExcludedIds(snapshot: TripComposerSnapshot | null, previouslyShown: Iterable<string> = []) {
+  const ids = new Set<string>();
+  for (const item of snapshot?.items ?? []) {
+    if (String(item.status || "").toUpperCase() === "REMOVED") continue;
+    const id = typeof item.external_place_id === "string" ? item.external_place_id.trim() : "";
+    if (id) ids.add(id);
+  }
+  for (const id of previouslyShown) {
+    if (typeof id === "string" && id.trim()) ids.add(id.trim());
+  }
+  return [...ids].slice(0, 120);
+}
 
 export async function createTripComposerSession(input: {
   destination_name?: string;
@@ -79,6 +94,7 @@ export async function planTripComposerWindow(input: {
   weather_lng?: number;
   preferences?: string[];
   rejected_categories?: string[];
+  excluded_ids?: string[];
   passenger_context?: Record<string, unknown>;
   default_duration_minutes?: number;
 }) {
@@ -88,6 +104,7 @@ export async function planTripComposerWindow(input: {
     weather: Record<string, unknown> | null;
     recommendations: TripComposerRecommendation[];
     source_count?: number;
+    sources?: { viator?: number; places?: number };
     route_context_applied?: boolean;
   }>("trip-composer-window", input);
 }
