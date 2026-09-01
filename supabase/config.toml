@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.trip-composer-window]
 verify_jwt = false
+
+[functions.trip-composer-viator]
+verify_jwt = false
