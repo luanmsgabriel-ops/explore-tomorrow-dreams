@@ -115,6 +115,7 @@ export default function OpportunitiesLive() {
   const handoffWhatsAppUrl = offerHandoff
     ? buildOfferWhatsAppUrl(offerHandoff.offer, { context: offerHandoff.searchContext })
     : null;
+  const globeMicrophoneAction = !connected ? startConversation : muted ? toggleMute : undefined;
 
   return (
     <div
@@ -125,26 +126,27 @@ export default function OpportunitiesLive() {
       <OpportunityHeader activeHref="/oportunidades/live" navItems={navItems} ctaHref="/teo" ctaLabel="Continuar por texto" />
 
       <main>
-        <section className="relative isolate min-h-[calc(100svh-4.5rem)] overflow-hidden border-b border-tomorrow-line">
+        <section className="relative isolate min-h-[calc(100svh-4.5rem)] overflow-hidden border-b border-tomorrow-line lg:h-[calc(100dvh-4.5rem)] lg:min-h-0">
           <div className="pointer-events-none absolute inset-0 -z-20 bg-[radial-gradient(circle_at_50%_40%,rgba(50,159,158,0.13),transparent_34%),radial-gradient(circle_at_50%_22%,rgba(213,175,72,0.11),transparent_30%),linear-gradient(180deg,#041315_0%,#061b1e_46%,#041012_100%)]" aria-hidden="true" />
           <div className="pointer-events-none absolute inset-0 -z-10 opacity-55 [background-image:linear-gradient(rgba(122,221,214,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(213,175,72,0.028)_1px,transparent_1px)] [background-size:42px_42px] [mask-image:linear-gradient(to_bottom,black,transparent_82%)]" aria-hidden="true" />
 
-          <div className="mx-auto w-full max-w-[96rem] px-4 py-6 sm:px-6 sm:py-9 lg:px-8 lg:py-10">
-            <div className="mx-auto max-w-6xl text-center">
+          <div className="mx-auto w-full max-w-[96rem] px-4 py-4 sm:px-6 sm:py-6 lg:flex lg:h-full lg:flex-col lg:px-8 lg:py-3">
+            <div className="mx-auto max-w-6xl shrink-0 text-center">
               <OpportunityBadge variant="neutral"><Sparkles className="size-3.5" aria-hidden="true" />Tomorrow Live</OpportunityBadge>
-              <p className="mt-5 min-h-4 text-xs font-bold uppercase tracking-[0.22em] text-tomorrow-teal-soft transition-opacity duration-300">{copy.eyebrow}</p>
-              <h1 className="mx-auto mt-3 max-w-6xl font-editorial text-5xl leading-[0.92] text-tomorrow-text sm:text-6xl lg:text-[5.25rem]">{LIVE_TITLE}</h1>
-              <p className="mx-auto mt-5 min-h-[2.8rem] max-w-3xl text-sm leading-relaxed text-tomorrow-muted transition-opacity duration-300 sm:text-base">{copy.body}</p>
+              <p className="mt-3 min-h-4 text-xs font-bold uppercase tracking-[0.22em] text-tomorrow-teal-soft transition-opacity duration-300 lg:mt-2">{copy.eyebrow}</p>
+              <h1 className="mx-auto mt-2 max-w-6xl font-editorial text-4xl leading-[0.92] text-tomorrow-text sm:text-5xl lg:text-[clamp(2.75rem,5.8vh,4.35rem)]">{LIVE_TITLE}</h1>
+              <p className="mx-auto mt-3 max-w-3xl text-sm leading-relaxed text-tomorrow-muted transition-opacity duration-300 sm:text-base lg:mt-2 lg:text-sm">{copy.body}</p>
             </div>
 
-            <div className="relative mx-auto mt-1 max-w-[78rem]">
+            <div className="relative mx-auto mt-0 w-full max-w-[72rem] lg:min-h-0 lg:flex-1">
               <LiveParticleGlobe
                 state={displayedState}
                 audioLevel={voiceSessionActive ? audioLevel : undefined}
                 reducedMotion={reducedMotion}
                 lowPerformance={lowPerformance}
                 microphoneState={globeMicrophoneState}
-                onMicrophoneClick={connected ? toggleMute : startConversation}
+                onMicrophoneClick={globeMicrophoneAction}
+                className="max-w-[68rem] [&>div]:min-h-[22rem] sm:[&>div]:min-h-[28rem] lg:[&>div]:!min-h-[clamp(20rem,42vh,29rem)]"
               />
               <LiveOfferOverlay offers={offers} handoff={offerHandoff} detailPath={handoffDetailPath} whatsappUrl={handoffWhatsAppUrl} />
               <div className="pointer-events-none absolute left-[5%] top-[57%] hidden items-center gap-2 rounded-full border border-tomorrow-teal/30 bg-tomorrow-background/72 px-3 py-1.5 text-[0.67rem] font-semibold text-tomorrow-teal-soft backdrop-blur sm:flex" aria-hidden="true">
@@ -155,21 +157,21 @@ export default function OpportunitiesLive() {
               </div>
             </div>
 
-            <div className="mx-auto mt-3 flex max-w-3xl flex-col items-center gap-3">
+            <div className="mx-auto mt-1 flex w-full max-w-3xl shrink-0 flex-col items-center gap-2 pb-2">
               <section className="grid grid-cols-4 gap-2" aria-label="Controles da conversa">
-                <button type="button" disabled={!connected} aria-label={muted ? "Reativar microfone" : "Pausar microfone"} aria-pressed={muted} onClick={toggleMute} className="opportunity-focus grid size-12 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/60 text-tomorrow-text backdrop-blur transition-colors hover:border-tomorrow-teal/50 disabled:cursor-not-allowed disabled:opacity-45 sm:size-14">
-                  {muted ? <MicOff className="size-5" aria-hidden="true" /> : <Mic className="size-5" aria-hidden="true" />}
+                <button type="button" disabled={!connected} aria-label={muted ? "Reativar microfone" : "Pausar microfone"} aria-pressed={muted} onClick={toggleMute} className="opportunity-focus grid size-10 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/60 text-tomorrow-text backdrop-blur transition-colors hover:border-tomorrow-teal/50 disabled:cursor-not-allowed disabled:opacity-45 sm:size-11 lg:size-10">
+                  {muted ? <MicOff className="size-4.5" aria-hidden="true" /> : <Mic className="size-4.5" aria-hidden="true" />}
                 </button>
-                <button type="button" disabled={!connected} aria-label={speakerEnabled ? "Silenciar áudio do Téo" : "Reativar áudio do Téo"} aria-pressed={!speakerEnabled} onClick={toggleSpeaker} className="opportunity-focus grid size-12 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/60 text-tomorrow-text backdrop-blur transition-colors hover:border-tomorrow-teal/50 disabled:cursor-not-allowed disabled:opacity-45 sm:size-14">
-                  {speakerEnabled ? <Volume2 className="size-5" aria-hidden="true" /> : <VolumeX className="size-5" aria-hidden="true" />}
+                <button type="button" disabled={!connected} aria-label={speakerEnabled ? "Silenciar áudio do Téo" : "Reativar áudio do Téo"} aria-pressed={!speakerEnabled} onClick={toggleSpeaker} className="opportunity-focus grid size-10 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/60 text-tomorrow-text backdrop-blur transition-colors hover:border-tomorrow-teal/50 disabled:cursor-not-allowed disabled:opacity-45 sm:size-11 lg:size-10">
+                  {speakerEnabled ? <Volume2 className="size-4.5" aria-hidden="true" /> : <VolumeX className="size-4.5" aria-hidden="true" />}
                 </button>
-                <button type="button" disabled={!voiceSessionActive} aria-label="Encerrar conversa por voz" onClick={endConversation} className="opportunity-focus grid size-12 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/60 text-tomorrow-text backdrop-blur transition-colors hover:border-tomorrow-gold/50 disabled:cursor-not-allowed disabled:opacity-45 sm:size-14"><Power className="size-5" aria-hidden="true" /></button>
-                <button type="button" aria-label="Ver informações de privacidade" aria-expanded={privacyOpen} onClick={() => setPrivacyOpen((current) => !current)} className="opportunity-focus grid size-12 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/60 text-tomorrow-text backdrop-blur transition-colors hover:border-tomorrow-gold/50 sm:size-14"><ShieldCheck className="size-5" aria-hidden="true" /></button>
+                <button type="button" disabled={!voiceSessionActive} aria-label="Encerrar conversa por voz" onClick={endConversation} className="opportunity-focus grid size-10 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/60 text-tomorrow-text backdrop-blur transition-colors hover:border-tomorrow-gold/50 disabled:cursor-not-allowed disabled:opacity-45 sm:size-11 lg:size-10"><Power className="size-4.5" aria-hidden="true" /></button>
+                <button type="button" aria-label="Ver informações de privacidade" aria-expanded={privacyOpen} onClick={() => setPrivacyOpen((current) => !current)} className="opportunity-focus grid size-10 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/60 text-tomorrow-text backdrop-blur transition-colors hover:border-tomorrow-gold/50 sm:size-11 lg:size-10"><ShieldCheck className="size-4.5" aria-hidden="true" /></button>
               </section>
 
               <div className="flex w-full max-w-xl flex-col gap-2 sm:flex-row">
-                <OpportunityButton variant={voiceSessionActive ? "outline" : "gold"} fullWidth disabled={voiceStatus === "connecting"} onClick={voiceSessionActive ? endConversation : startConversation}>
-                  {voiceStatus === "connecting" ? <><LoaderCircle className="animate-spin" aria-hidden="true" />Conectando...</> : voiceSessionActive ? <><Power aria-hidden="true" />Encerrar conversa</> : <><Mic aria-hidden="true" />Iniciar conversa por voz</>}
+                <OpportunityButton variant={voiceSessionActive ? "outline" : "gold"} fullWidth disabled={voiceSessionActive} onClick={startConversation}>
+                  {voiceStatus === "connecting" ? <><LoaderCircle className="animate-spin" aria-hidden="true" />Conectando...</> : connected ? <><Mic aria-hidden="true" />Conversa por voz ativa</> : <><Mic aria-hidden="true" />Iniciar conversa por voz</>}
                 </OpportunityButton>
                 <OpportunityButton asChild variant="outline" fullWidth><a href="/teo"><MessageSquareText aria-hidden="true" />Conversar por texto</a></OpportunityButton>
               </div>
