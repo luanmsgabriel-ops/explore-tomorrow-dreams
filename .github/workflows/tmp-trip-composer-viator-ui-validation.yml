@@ -1,0 +1,30 @@
+name: Temporary Trip Composer Viator UI Validation
+
+on:
+  push:
+    branches:
+      - fix/trip-composer-viator-ui-stability
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Deno check window function
+        run: deno check supabase/functions/trip-composer-window/index.ts
+      - name: Deno focused tests
+        run: deno test supabase/functions/_shared/trip-composer-window.test.ts supabase/functions/_shared/trip-composer-viator.test.ts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install without rewriting lockfile
+        run: npm install --no-package-lock
+      - name: Frontend focused tests
+        run: npx vitest run src/lib/tripComposerApi.test.ts src/lib/tripComposerRealtime.test.ts
+      - name: ESLint changed frontend scope
+        run: npx eslint src/components/opportunities/live/TripComposerPanel.tsx src/components/opportunities/live/TripComposerLiveSection.tsx
+      - name: Build
+        run: npm run build
