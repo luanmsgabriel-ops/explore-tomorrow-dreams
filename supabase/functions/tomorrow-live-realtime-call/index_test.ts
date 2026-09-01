@@ -15,7 +15,7 @@ Deno.test("negocia SDP pela interface unificada sem expor a chave", async () => 
   let authorization = "";
   let safetyIdentifier = "";
   let receivedSdp = "";
-  let receivedSession: Record<string, unknown> | null = null;
+  let receivedSession: unknown = null;
 
   const handler = createRealtimeCallHandler({
     env,
@@ -42,6 +42,7 @@ Deno.test("negocia SDP pela interface unificada sem expor a chave", async () => 
     body: sdpOffer,
   }));
 
+  const session = receivedSession as Record<string, unknown>;
   assertEquals(response.status, 200);
   assertEquals(response.headers.get("content-type"), "application/sdp");
   assertEquals(response.headers.get("access-control-allow-origin"), origin);
@@ -49,11 +50,11 @@ Deno.test("negocia SDP pela interface unificada sem expor a chave", async () => 
   assertEquals(authorization, "Bearer server-key");
   assertMatch(safetyIdentifier, /^[a-f0-9]{64}$/);
   assertEquals(receivedSdp, sdpOffer);
-  assertEquals(receivedSession?.type, "realtime");
-  assertEquals(receivedSession?.model, "gpt-realtime-2.1");
-  const audio = receivedSession?.audio as Record<string, unknown>;
+  assertEquals(session.type, "realtime");
+  assertEquals(session.model, "gpt-realtime-2.1");
+  const audio = session.audio as Record<string, unknown>;
   assertEquals(audio.output, { voice: "marin", speed: 1 });
-  assertEquals(JSON.stringify(receivedSession).includes("server-key"), false);
+  assertEquals(JSON.stringify(session).includes("server-key"), false);
 });
 
 Deno.test("rejeita origem não autorizada", async () => {
