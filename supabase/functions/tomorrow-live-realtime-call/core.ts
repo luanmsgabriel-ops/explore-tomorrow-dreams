@@ -1,4 +1,4 @@
-import { createRealtimeSessionConfig, REALTIME_VOICES, type RealtimeVoice } from "../tomorrow-live-realtime-session/core.ts";
+import { createRealtimeSessionConfig, REALTIME_VOICES, type RealtimeVoice } from "../_shared/realtimeSession.ts";
 
 type RuntimeEnv = {
   get(name: string): string | undefined;
