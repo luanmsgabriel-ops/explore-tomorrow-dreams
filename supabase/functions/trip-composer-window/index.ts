@@ -75,10 +75,11 @@ serve(async req => {
     const preferences = Array.isArray(body.preferences) ? body.preferences : [];
     const intent = detectExperienceIntent(search, preferences);
     const excludedIds = excludedIdSet(body.excluded_ids);
+    const preferViator = shouldPreferViator(search, preferences);
 
     let viatorPlaces: any[] = [];
     let viatorSourceCount = 0;
-    if (shouldPreferViator(search, preferences)) {
+    if (preferViator) {
       const viator = await invoke("trip-composer-viator", {
         destination,
         search,
@@ -104,8 +105,13 @@ serve(async req => {
     const placesGroups = discoveryResults.map(result => Array.isArray(result?.places) ? result.places : []);
     const placeSourceCount = placesGroups.flat().length;
 
-    const places = mergeExperiencePlaces([viatorPlaces, ...placesGroups], 20, intent, excludedIds);
-    if (!places.length) return json({ ok: true, mode: "no_candidates", recommendations: [], weather: null, source_count: 0, sources: { viator: viatorSourceCount, places: placeSourceCount }, route_context_applied: false });
+    const viatorPrimary = preferViator && viatorPlaces.length >= 3;
+    const candidateGroups = viatorPrimary ? [viatorPlaces] : preferViator ? [viatorPlaces, ...placesGroups] : placesGroups;
+    const sourceMode = viatorPrimary ? "viator_primary" : preferViator && viatorPlaces.length ? "mixed_fallback" : "places_fallback";
+    const places = mergeExperiencePlaces(candidateGroups, 20, intent, excludedIds);
+    if (!places.length) {
+      return json({ ok: true, mode: "no_candidates", recommendations: [], weather: null, source_count: 0, sources: { viator: viatorSourceCount, places: placeSourceCount, mode: sourceMode }, route_context_applied: false });
+    }
 
     const weatherLat = Number(body.weather_lat ?? body.origin_lat ?? places[0]?.location?.latitude);
     const weatherLng = Number(body.weather_lng ?? body.origin_lng ?? places[0]?.location?.longitude);
@@ -115,7 +121,9 @@ serve(async req => {
     }
 
     const { plannerCandidates, visualCandidates } = buildCandidates(places, body);
-    if (!plannerCandidates.length) return json({ ok: true, mode: "no_candidates", recommendations: [], weather, source_count: 0, sources: { viator: viatorSourceCount, places: placeSourceCount }, route_context_applied: false });
+    if (!plannerCandidates.length) {
+      return json({ ok: true, mode: "no_candidates", recommendations: [], weather, source_count: 0, sources: { viator: viatorSourceCount, places: placeSourceCount, mode: sourceMode }, route_context_applied: false });
+    }
 
     const planner = await invoke("trip-composer-planner", buildPlannerRequest(body, plannerCandidates, weather));
     const recommendations = await resolveRecommendationMedia(normalizePlannerRecommendations(planner, visualCandidates));
@@ -125,7 +133,7 @@ serve(async req => {
       weather,
       recommendations,
       source_count: plannerCandidates.length,
-      sources: { viator: viatorSourceCount, places: placeSourceCount },
+      sources: { viator: viatorSourceCount, places: placeSourceCount, mode: sourceMode },
       route_context_applied: Boolean(planner?.route_context_applied),
     });
   } catch (error) {
