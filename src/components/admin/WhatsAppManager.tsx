@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -83,6 +83,10 @@ const dedupeMessages = (messages: WhatsAppMessage[]) => {
     result.push(message);
     return result;
   }, []);
+};
+
+const getLastMessage = (messages: WhatsAppMessage[]) => {
+  return messages.length > 0 ? messages[messages.length - 1] : undefined;
 };
 
 const formatConversationTime = (dateStr: string) => {
@@ -214,7 +218,8 @@ export const WhatsAppManager = () => {
     return conversations.filter(conversation => {
       const name = conversation.client_name?.toLowerCase() || '';
       const phone = conversation.phone_number.toLowerCase();
-      const lastMessage = conversation.messages_history.at(-1)?.content?.toLowerCase() || '';
+      const recentMessage = getLastMessage(conversation.messages_history);
+      const lastMessage = recentMessage?.content?.toLowerCase() || '';
       return name.includes(query) || phone.includes(query) || lastMessage.includes(query);
     });
   }, [conversations, searchTerm]);
@@ -316,7 +321,7 @@ export const WhatsAppManager = () => {
     }
   };
 
-  const handleComposerKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       void sendManualMessage();
@@ -378,7 +383,8 @@ export const WhatsAppManager = () => {
               </div>
             ) : (
               visibleConversations.map(conversation => {
-                const lastMessage = dedupeMessages(conversation.messages_history).at(-1);
+                const conversationMessages = dedupeMessages(conversation.messages_history);
+                const lastMessage = getLastMessage(conversationMessages);
                 const isSelected = selectedConversation?.id === conversation.id;
 
                 return (
