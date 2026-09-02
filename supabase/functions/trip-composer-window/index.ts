@@ -22,16 +22,22 @@ function isExplicitTourRequest(search: string, preferences: unknown[]) {
   return /\b(passeio|passeios|tour|tours|experiencia|experiencias|atividade|atividades|excursao|excursoes)\b/.test(context);
 }
 
+function photoAttribution(media: any) {
+  const authors = Array.isArray(media?.author_attributions) ? media.author_attributions : [];
+  const names = authors.map((author: any) => typeof author?.displayName === "string" ? author.displayName : typeof author?.display_name === "string" ? author.display_name : null).filter(Boolean);
+  return names.length ? names.join(", ") : null;
+}
+
 async function resolveRecommendationMedia(recommendations: any[]) {
   return Promise.all(recommendations.map(async recommendation => {
     const candidate = recommendation?.candidate;
     if (!candidate || !Array.isArray(candidate.media)) return recommendation;
     const resolved = await Promise.all(candidate.media.slice(0, 6).map(async (media: any) => {
-      if (typeof media?.url === "string" && media.url) return { ...media, attribution: null };
+      if (typeof media?.url === "string" && media.url) return media;
       if (!media?.name) return null;
       try {
         const photo = await invoke("trip-composer-discovery", { action: "photo", photo_name: media.name, max_width_px: 1200 });
-        return typeof photo?.photo_uri === "string" && photo.photo_uri ? { ...media, url: photo.photo_uri, attribution: null } : null;
+        return typeof photo?.photo_uri === "string" && photo.photo_uri ? { ...media, url: photo.photo_uri, attribution: photoAttribution(media) } : null;
       } catch { return null; }
     }));
     return { ...recommendation, candidate: { ...candidate, media: resolved.filter(Boolean) } };
