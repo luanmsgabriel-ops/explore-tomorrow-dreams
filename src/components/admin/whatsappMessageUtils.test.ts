@@ -11,7 +11,7 @@ describe('whatsappMessageUtils', () => {
   it('remove duplicatas consecutivas com mesmo papel e conteúdo em até 15 segundos', () => {
     const messages = [
       message('assistant', 'Olá, Luan', '2026-09-02T15:00:00.000Z'),
-      message('assistant', 'Olá, Luan', '2026-09-02T15:00:08.000Z'),
+      message('assistant', 'Olá, Luan', '2026-09-02T15:00:15.000Z'),
     ];
 
     expect(dedupeMessages(messages)).toEqual([messages[0]]);
