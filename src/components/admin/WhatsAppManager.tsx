@@ -5,10 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { dedupeMessages, getLastMessage, type WhatsAppMessage } from './whatsappMessageUtils';
 import {
   ArrowLeft,
   Bot,
-  CheckCheck,
   Loader2,
   MessageCircle,
   Phone,
@@ -18,12 +18,6 @@ import {
   Trash2,
   UserCheck,
 } from 'lucide-react';
-
-interface WhatsAppMessage {
-  role: string;
-  content: string;
-  timestamp: string;
-}
 
 interface WhatsAppConversation {
   id: string;
@@ -56,38 +50,6 @@ const normalizeConversation = (conversation: Record<string, unknown>): WhatsAppC
   collected_data: ((conversation.collected_data as Record<string, unknown> | null) || {}),
   messages_history: ((conversation.messages_history as WhatsAppMessage[] | null) || []),
 });
-
-const getMessageTimestamp = (message: WhatsAppMessage) => {
-  const value = new Date(message.timestamp || 0).getTime();
-  return Number.isNaN(value) ? 0 : value;
-};
-
-const dedupeMessages = (messages: WhatsAppMessage[]) => {
-  return messages.reduce<WhatsAppMessage[]>((result, message) => {
-    const previous = result[result.length - 1];
-
-    if (!previous) {
-      result.push(message);
-      return result;
-    }
-
-    const samePayload = previous.role === message.role && previous.content === message.content;
-    const timeDistance = Math.abs(getMessageTimestamp(message) - getMessageTimestamp(previous));
-
-    // Duplicatas históricas do painel foram gravadas duas vezes em poucos segundos.
-    // Mantemos mensagens repetidas legítimas quando não são consecutivas ou estão mais distantes.
-    if (samePayload && timeDistance <= 15_000) {
-      return result;
-    }
-
-    result.push(message);
-    return result;
-  }, []);
-};
-
-const getLastMessage = (messages: WhatsAppMessage[]) => {
-  return messages.length > 0 ? messages[messages.length - 1] : undefined;
-};
 
 const formatConversationTime = (dateStr: string) => {
   const date = new Date(dateStr);
@@ -509,10 +471,6 @@ export const WhatsAppManager = () => {
                   ) : (
                     selectedMessages.map((message, index) => {
                       const isUser = message.role === 'user';
-                      const isAssistant = !isUser;
-                      const wasRead = isAssistant && selectedMessages
-                        .slice(index + 1)
-                        .some(item => item.role === 'user');
 
                       return (
                         <div key={`${message.timestamp}-${message.role}-${index}`} className={`flex ${isUser ? 'justify-start' : 'justify-end'}`}>
@@ -524,11 +482,8 @@ export const WhatsAppManager = () => {
                             }`}
                           >
                             <p className="whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
-                            <div className="mt-1 flex items-center justify-end gap-1 pl-4">
+                            <div className="mt-1 flex items-center justify-end pl-4">
                               <span className="text-[10px] opacity-60">{formatMessageTime(message.timestamp)}</span>
-                              {isAssistant && (
-                                <CheckCheck className={`h-3.5 w-3.5 ${wasRead ? 'text-sky-500' : 'opacity-45'}`} />
-                              )}
                             </div>
                           </div>
                         </div>
