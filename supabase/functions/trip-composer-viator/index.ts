@@ -9,7 +9,7 @@ import {
 
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const VIATOR_API_KEY = Deno.env.get("VIATOR_API_KEY") || "";
-const VIATOR_API_BASE_URL = (Deno.env.get("VIATOR_API_BASE_URL") || "https://api.sandbox.viator.com/partner").replace(/\/$/, "");
+const VIATOR_API_BASE_URL = (Deno.env.get("VIATOR_API_BASE_URL") || "https://api.viator.com/partner").replace(/\/$/, "");
 const GOOGLE_MAPS_API_KEY = Deno.env.get("GOOGLE_MAPS_API_KEY") || "";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -94,7 +94,7 @@ async function searchProducts(input: {
       body: JSON.stringify({
         searchTerm: term,
         productFiltering: filtering,
-        productSorting: { sort: "TRAVELER_RATING", order: "DESCENDING" },
+        productSorting: { sort: "REVIEW_AVG_RATING", order: "DESCENDING" },
         searchTypes: [{ searchType: "PRODUCTS", pagination: { start: 1, count: 12 } }],
         currency: "BRL",
       }),
@@ -185,7 +185,7 @@ serve(async req => {
     if (!destination || !search) return json({ error: "destination_search_required" }, 400);
 
     const resolved = await resolveDestination(destination);
-    if (!resolved?.id) return json({ ok: true, places: [], source_count: 0, destination: null });
+    if (!resolved?.id) return json({ ok: true, places: [], source_count: 0, normalized_count: 0, destination: null, environment: VIATOR_API_BASE_URL.includes("sandbox") ? "sandbox" : "production" });
 
     const summaries = (await searchProducts({
       destinationId: String(resolved.id),
@@ -206,6 +206,7 @@ serve(async req => {
       ok: true,
       places,
       source_count: summaries.length,
+      normalized_count: places.length,
       destination: { id: String(resolved.id), name: resolved.name || destination },
       environment: VIATOR_API_BASE_URL.includes("sandbox") ? "sandbox" : "production",
     });
