@@ -4,7 +4,7 @@ on:
   push:
     branches: ['build/orion-auto-v0-5']
     paths:
-      - '.orion-v05/**'
+      - '.orion-v05hex/**'
       - '.github/workflows/orion-v05-build.yml'
   workflow_dispatch:
 
@@ -29,7 +29,10 @@ jobs:
 
       - name: Apply ORION v0.5 Android Auto + phone capabilities patch
         run: |
-          cat .orion-v05/patch00 .orion-v05/patch01 .orion-v05/patch02 | base64 -d | gzip -dc > /tmp/orion-v05.patch
+          cat .orion-v05hex/part00 .orion-v05hex/part01 .orion-v05hex/block02 .orion-v05hex/block03 .orion-v05hex/block04 .orion-v05hex/block05 .orion-v05hex/block06 | xxd -r -p > /tmp/orion-v05.patch.gz
+          echo '15e0a6fbfd609391bfa08ba29a8bbe2bd141905b7d5ac25aa66adf4eea981e19  /tmp/orion-v05.patch.gz' | sha256sum -c -
+          gzip -dc /tmp/orion-v05.patch.gz > /tmp/orion-v05.patch
+          echo 'e4e12e7bec897a8b06393ad37a43ea7e63aa6f1a21c730da9946184088beefaf  /tmp/orion-v05.patch' | sha256sum -c -
           cd /tmp/orion-v05
           patch -p1 < /tmp/orion-v05.patch
           grep -q 'versionCode 5' orion-android/app/build.gradle
