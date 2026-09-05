@@ -50,15 +50,24 @@ jobs:
           patch -p4 < /tmp/orion-v06.patch
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('orion-android/app/src/main/AndroidManifest.xml')
-          s = p.read_text()
+
+          manifest = Path('orion-android/app/src/main/AndroidManifest.xml')
+          s = manifest.read_text()
           action = '                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />'
           if action not in s:
               needle = '                <action android:name="android.media.browse.MediaBrowserService" />'
               if needle not in s:
                   raise SystemExit('MediaBrowserService intent action not found')
               s = s.replace(needle, needle + '\n' + action)
-              p.write_text(s)
+              manifest.write_text(s)
+
+          session = Path('orion-android/app/src/main/java/com/orion/auto/OrionVoiceInteractionSession.java')
+          s = session.read_text()
+          if 'import android.os.Build;' not in s:
+              s = s.replace('import android.os.Bundle;', 'import android.os.Build;\nimport android.os.Bundle;')
+          if 'if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)' not in s:
+              s = s.replace('        setUiEnabled(false);', '        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {\n            setUiEnabled(false);\n        }')
+          session.write_text(s)
           PY
           grep -q 'versionCode 6' orion-android/app/build.gradle
           grep -q "versionName '0.6.0'" orion-android/app/build.gradle
@@ -66,6 +75,7 @@ jobs:
           grep -q 'android.intent.action.VOICE_COMMAND' orion-android/app/src/main/AndroidManifest.xml
           grep -q 'android.media.action.MEDIA_PLAY_FROM_SEARCH' orion-android/app/src/main/AndroidManifest.xml
           grep -q 'RoleManager.ROLE_ASSISTANT' orion-android/app/src/main/java/com/orion/auto/MainActivity.java
+          grep -q 'Build.VERSION.SDK_INT >= Build.VERSION_CODES.O' orion-android/app/src/main/java/com/orion/auto/OrionVoiceInteractionSession.java
           test -f orion-android/app/src/main/java/com/orion/auto/OrionVoiceInteractionService.java
           test -f orion-android/app/src/main/java/com/orion/auto/OrionVoiceInteractionSessionService.java
           test -f orion-android/app/src/main/java/com/orion/auto/OrionVoiceInteractionSession.java
