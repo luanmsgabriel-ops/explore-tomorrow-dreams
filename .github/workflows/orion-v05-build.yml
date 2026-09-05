@@ -35,10 +35,23 @@ jobs:
           echo 'e4e12e7bec897a8b06393ad37a43ea7e63aa6f1a21c730da9946184088beefaf  /tmp/orion-v05.patch' | sha256sum -c -
           cd /tmp/orion-v05
           patch -p1 < /tmp/orion-v05.patch
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('orion-android/app/src/main/AndroidManifest.xml')
+          s = p.read_text()
+          action = '                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />'
+          if action not in s:
+              needle = '                <action android:name="android.media.browse.MediaBrowserService" />'
+              if needle not in s:
+                  raise SystemExit('MediaBrowserService intent action not found')
+              s = s.replace(needle, needle + '\n' + action)
+              p.write_text(s)
+          PY
           grep -q 'versionCode 5' orion-android/app/build.gradle
           grep -q "versionName '0.5.0'" orion-android/app/build.gradle
           grep -q 'com.google.android.gms.car.application' orion-android/app/src/main/AndroidManifest.xml
           grep -q 'android.media.browse.MediaBrowserService' orion-android/app/src/main/AndroidManifest.xml
+          grep -q 'android.media.action.MEDIA_PLAY_FROM_SEARCH' orion-android/app/src/main/AndroidManifest.xml
           grep -q 'android.permission.CAMERA' orion-android/app/src/main/AndroidManifest.xml
           grep -q 'ACCESS_FINE_LOCATION' orion-android/app/src/main/AndroidManifest.xml
           grep -q 'OrionNotificationListener' orion-android/app/src/main/AndroidManifest.xml
