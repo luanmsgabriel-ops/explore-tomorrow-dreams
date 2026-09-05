@@ -47,7 +47,7 @@ jobs:
           gzip -dc /tmp/orion-v06.patch.gz > /tmp/orion-v06.patch
           echo 'd5686149cf0f86c550f345ccd61f1ef3f191576496b87e4e5cce28f680a1073f  /tmp/orion-v06.patch' | sha256sum -c -
           cd /tmp/orion-v06
-          patch -p1 < /tmp/orion-v06.patch
+          patch -p3 < /tmp/orion-v06.patch
           grep -q 'versionCode 6' orion-android/app/build.gradle
           grep -q "versionName '0.6.0'" orion-android/app/build.gradle
           grep -q 'android.service.voice.VoiceInteractionService' orion-android/app/src/main/AndroidManifest.xml
