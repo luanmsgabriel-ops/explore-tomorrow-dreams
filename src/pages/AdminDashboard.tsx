@@ -20,6 +20,7 @@ import { ConciergeManager } from '@/components/admin/ConciergeManager';
 import { ScheduledMessagesManager } from '@/components/admin/ScheduledMessagesManager';
 import { OfferSyncManager } from '@/components/admin/OfferSyncManager';
 import { QuotesFilter, QuotesFilterValues } from '@/components/admin/QuotesFilter';
+import { getQuoteDisplayEmail, getQuoteDisplayName } from '@/components/admin/quoteDisplayUtils';
 import { Volume2, Navigation, RefreshCw } from 'lucide-react';
 import { Edit } from 'lucide-react';
 import { 
@@ -59,7 +60,7 @@ type TabType = 'overview' | 'analytics' | 'sales' | 'quotes' | 'itineraries' | '
 
 interface QuoteRequest {
   id: string;
-  email: string;
+  email: string | null;
   whatsapp: string;
   destination_name: string | null;
   destination_id: string | null;
@@ -1008,7 +1009,7 @@ const AdminDashboard = () => {
                                       <Mail className={`w-5 h-5 ${needsAlert ? 'text-destructive' : 'text-primary'}`} />
                                     </div>
                                     <div>
-                                      <p className="font-medium text-foreground hover:text-primary transition-colors">{quote.client_name || quote.email.split('@')[0]}</p>
+                                      <p className="font-medium text-foreground hover:text-primary transition-colors">{getQuoteDisplayName(quote)}</p>
                                       <p className="text-sm text-muted-foreground">{quote.destination_name || 'Destino não especificado'}</p>
                                     </div>
                                   </div>
@@ -1245,28 +1246,17 @@ const AdminDashboard = () => {
                                   return channels[channel || 'website'] || channel || 'Site';
                                 };
 
-                                // Extract display name from email if client_name is not available
-                                const getDisplayName = () => {
-                                  if (quote.client_name) return quote.client_name;
-                                  // For auto-generated emails like manual-xxx@manual.local, show just the phone
-                                  if (quote.email.includes('@manual.local')) {
-                                    return quote.whatsapp || 'Cliente';
-                                  }
-                                  // For real emails, show the part before @
-                                  return quote.email.split('@')[0];
-                                };
-
                                 return (
                                   <tr key={quote.id} className={`hover:bg-secondary/30 ${isFollowUpDue ? 'bg-accent/5' : ''}`}>
                                     <td className="px-4 py-4">
                                       <div>
                                         <p className="font-medium text-foreground">
-                                          {getDisplayName()}
+                                          {getQuoteDisplayName(quote)}
                                           {quote.is_manual && (
                                             <span className="ml-2 px-1.5 py-0.5 text-xs rounded bg-blue-500/20 text-blue-400">Manual</span>
                                           )}
                                         </p>
-                                        <p className="text-sm text-muted-foreground">{quote.email !== quote.email.split('@')[0] + '@manual.local' ? quote.email : ''}</p>
+                                        <p className="text-sm text-muted-foreground">{getQuoteDisplayEmail(quote.email)}</p>
                                         <p className="text-sm text-muted-foreground">{quote.whatsapp}</p>
                                       </div>
                                     </td>
@@ -1771,9 +1761,7 @@ const AdminDashboard = () => {
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">E-mail</p>
                   <p className="text-foreground font-medium">
-                    {selectedQuote.is_manual && selectedQuote.email.includes('@manual.local') 
-                      ? '-' 
-                      : selectedQuote.email}
+                    {getQuoteDisplayEmail(selectedQuote.email) || '-'}
                   </p>
                 </div>
                 <div>
@@ -1941,13 +1929,15 @@ const AdminDashboard = () => {
             </div>
 
             <div className="flex gap-3 mt-6">
-              <a 
-                href={`mailto:${selectedQuote.email}`}
-                className="btn-outline flex items-center gap-2"
-              >
-                <Mail className="w-4 h-4" />
-                E-mail
-              </a>
+              {getQuoteDisplayEmail(selectedQuote.email) && (
+                <a
+                  href={`mailto:${getQuoteDisplayEmail(selectedQuote.email)}`}
+                  className="btn-outline flex items-center gap-2"
+                >
+                  <Mail className="w-4 h-4" />
+                  E-mail
+                </a>
+              )}
               <a 
                 href={`https://wa.me/${selectedQuote.whatsapp.replace(/\D/g, '')}`}
                 target="_blank"
