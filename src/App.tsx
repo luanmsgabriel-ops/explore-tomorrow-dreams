@@ -10,6 +10,7 @@ import { InstallPrompt } from "./components/InstallPrompt";
 import { AnalyticsProvider } from "./components/AnalyticsProvider";
 import { useLenis } from "./hooks/useLenis";
 import { preloadTomorrowLiveGlobeRuntime } from "./components/opportunities/live/globeRuntime";
+import { AdminDashboardErrorBoundary } from "./components/admin/AdminDashboardErrorBoundary";
 
 const Explorar = lazy(() => import("./pages/Explorar"));
 const Nacional = lazy(() => import("./pages/Nacional"));
@@ -90,7 +91,7 @@ const App = () => (
           <Route path="/ofertas" element={<PageSuspense label="ofertas"><Ofertas /></PageSuspense>} />
           <Route path="/teo" element={<PageSuspense label="Téo"><Teo /></PageSuspense>} />
           <Route path="/admin" element={<PageSuspense label="administração"><Admin /></PageSuspense>} />
-          <Route path="/admin/dashboard" element={<PageSuspense label="painel administrativo"><AdminDashboard /></PageSuspense>} />
+          <Route path="/admin/dashboard" element={<AdminDashboardErrorBoundary><PageSuspense label="painel administrativo"><AdminDashboard /></PageSuspense></AdminDashboardErrorBoundary>} />
           <Route path="/cliente" element={<PageSuspense label="acesso do cliente"><ClientLogin /></PageSuspense>} />
           <Route path="/minha-area" element={<PageSuspense label="área do cliente"><ClientDashboard /></PageSuspense>} />
           <Route path="/avaliacao/:id" element={<PageSuspense label="avaliação"><Avaliacao /></PageSuspense>} />
