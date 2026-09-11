@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.trip-composer-viator]
 verify_jwt = false
+
+[functions.my-tomorrow-matching]
+verify_jwt = false
