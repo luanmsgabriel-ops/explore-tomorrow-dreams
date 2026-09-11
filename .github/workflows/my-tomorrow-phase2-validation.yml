@@ -1,0 +1,37 @@
+name: My Tomorrow Phase 2 Validation
+
+on:
+  pull_request:
+    paths:
+      - 'src/pages/MyTomorrow*.tsx'
+      - 'src/lib/myTomorrowTrips.ts'
+      - 'src/App.tsx'
+      - 'supabase/functions/my-tomorrow-trips/**'
+      - 'supabase/migrations/*my_tomorrow_trip_lifecycle.sql'
+      - '.github/workflows/my-tomorrow-phase2-validation.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: Scoped ESLint
+        run: npx eslint src/pages/MyTomorrowDashboard.tsx src/pages/MyTomorrowTrips.tsx src/lib/myTomorrowTrips.ts src/App.tsx
+      - name: Production build
+        run: npm run build
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Deno check
+        run: deno check supabase/functions/my-tomorrow-trips/index.ts
+      - name: Diff whitespace check
+        run: git diff --check origin/${{ github.base_ref }}...HEAD
