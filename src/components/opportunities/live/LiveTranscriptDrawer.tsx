@@ -21,7 +21,7 @@ export function LiveTranscriptDrawer({ entries, connected, className }: LiveTran
   const [open, setOpen] = useState(false);
   const logRef = useRef<HTMLDivElement | null>(null);
   const messages = useMemo(() => visibleEntries(entries), [entries]);
-  const latest = messages.at(-1) ?? null;
+  const latest = messages.length ? messages[messages.length - 1] : null;
 
   useEffect(() => {
     if (!open || !logRef.current) return;
