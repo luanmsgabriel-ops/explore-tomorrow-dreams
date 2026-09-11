@@ -219,7 +219,11 @@ export default function OpportunitiesLive() {
       composer_active: tripComposer.active,
     });
   };
-  const globeMicrophoneAction = !connected ? handleStartConversation : handleToggleMute;
+  const globeMicrophoneAction = connected
+    ? handleToggleMute
+    : online
+      ? handleStartConversation
+      : undefined;
 
   return (
     <div
@@ -287,7 +291,7 @@ export default function OpportunitiesLive() {
               {connected ? <OpportunityBadge variant="success">Conectado</OpportunityBadge> : null}
               {error ? <div className="w-full max-w-xl rounded-xl border border-tomorrow-danger/35 bg-tomorrow-danger/8 p-3 text-center text-xs leading-relaxed text-tomorrow-text" role="alert">{error} <a href="/teo" onClick={handleTextHandoff} className="font-semibold text-tomorrow-teal-soft underline underline-offset-2">Continuar por texto</a></div> : null}
               {toolError ? <div className="w-full max-w-xl rounded-xl border border-tomorrow-gold/35 bg-tomorrow-gold/8 p-3 text-center text-xs leading-relaxed text-tomorrow-text" role="alert">{toolError}</div> : null}
-              {privacyOpen ? <div className="w-full max-w-xl rounded-xl border border-tomorrow-teal/25 bg-tomorrow-teal/7 p-3 text-center text-xs leading-relaxed text-tomorrow-muted" role="status">O microfone só é usado enquanto você estiver falando com o Téo. A interface não salva áudio nem transcrição no armazenamento local. Evite compartilhar senhas, documentos ou dados bancários durante a conversa.</div> : null}
+              {privacyOpen ? <div className="w-full max-w-xl rounded-xl border border-tomorrow-teal/25 bg-tomorrow-teal/7 p-3 text-center text-xs leading-relaxed text-tomorrow-muted" role="status">O microfone é acessado apenas durante a sessão de voz ativa e pode ser pausado a qualquer momento. A interface não salva áudio nem transcrição no armazenamento local. Evite compartilhar senhas, documentos ou dados bancários durante a conversa.</div> : null}
             </div>
 
             <LiveSessionCockpit
