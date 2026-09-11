@@ -21,23 +21,28 @@ export const Footer = () => {
             </p>
           </div>
 
-          {/* Quick Links */}
+          {/* Radar Tomorrow */}
           <div>
-            <h4 className="font-serif text-lg font-semibold text-gold-light mb-4">Destinos</h4>
+            <h4 className="font-serif text-lg font-semibold text-gold-light mb-4">Oportunidades</h4>
             <ul className="space-y-3">
               <li>
-                <Link to="/explorar" className="text-muted-foreground hover:text-gold-light transition-colors text-sm">
-                  Explorar
+                <Link to="/oportunidades/catalogo" className="text-muted-foreground hover:text-gold-light transition-colors text-sm">
+                  Catálogo
                 </Link>
               </li>
               <li>
-                <Link to="/nacional" className="text-muted-foreground hover:text-gold-light transition-colors text-sm">
-                  Nacional
+                <Link to="/oportunidades/calendario" className="text-muted-foreground hover:text-gold-light transition-colors text-sm">
+                  Calendário inteligente
                 </Link>
               </li>
               <li>
-                <Link to="/internacional" className="text-muted-foreground hover:text-gold-light transition-colors text-sm">
-                  Internacional
+                <Link to="/oportunidades/comparar" className="text-muted-foreground hover:text-gold-light transition-colors text-sm">
+                  Comparar
+                </Link>
+              </li>
+              <li>
+                <Link to="/oportunidades/live" className="text-muted-foreground hover:text-gold-light transition-colors text-sm">
+                  Tomorrow Live
                 </Link>
               </li>
             </ul>
@@ -47,10 +52,10 @@ export const Footer = () => {
           <div>
             <h4 className="font-serif text-lg font-semibold text-gold-light mb-4">Serviços</h4>
             <ul className="space-y-3">
-              <li><span className="text-muted-foreground text-sm">Roteiros com IA</span></li>
-              <li><span className="text-muted-foreground text-sm">Cotação de Pacotes</span></li>
-              <li><span className="text-muted-foreground text-sm">Chat de Atendimento</span></li>
-              <li><span className="text-muted-foreground text-sm">Tecnologia com IA</span></li>
+              <li><Link to="/teo" className="text-muted-foreground hover:text-gold-light transition-colors text-sm">Planejar com o Téo</Link></li>
+              <li><Link to="/nacional" className="text-muted-foreground hover:text-gold-light transition-colors text-sm">Destinos nacionais</Link></li>
+              <li><Link to="/internacional" className="text-muted-foreground hover:text-gold-light transition-colors text-sm">Destinos internacionais</Link></li>
+              <li><Link to="/cliente" className="text-muted-foreground hover:text-gold-light transition-colors text-sm">Área do Cliente</Link></li>
             </ul>
           </div>
 

@@ -1,0 +1,156 @@
+import { useQuery } from '@tanstack/react-query';
+import { ArrowRight, Radar } from 'lucide-react';
+import { Link } from 'react-router-dom';
+
+import {
+  OpportunityBadge,
+  OpportunityButton,
+  OpportunityCard,
+  OpportunityState,
+  type OpportunityCardBadge,
+} from '@/components/opportunities';
+import {
+  TRAVEL_OFFERS_NOTICE,
+  fetchTravelOfferCatalog,
+  type TravelOfferCatalogItem,
+} from '@/lib/travelOffersPublic';
+
+const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+function formatDate(value: string | null) {
+  if (!value) return null;
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ? null : dateFormatter.format(date);
+}
+
+function badgesFor(item: TravelOfferCatalogItem): OpportunityCardBadge[] {
+  const badges: OpportunityCardBadge[] = [];
+  if (item.featured) badges.push({ label: 'Destaque', variant: 'success' });
+  if (item.campaign_label) badges.push({ label: item.campaign_label, variant: 'neutral' });
+  if (item.offer_subtype === 'evento') badges.push({ label: 'Evento', variant: 'event' });
+  if (item.offer_subtype === 'grupo_guiado') badges.push({ label: 'Grupo guiado', variant: 'guided' });
+  if (item.available_seats !== null && item.available_seats <= 5) {
+    badges.push({
+      label: item.available_seats === 1 ? 'Última vaga' : 'Últimas vagas',
+      variant: 'seats',
+    });
+  }
+  return badges;
+}
+
+export function HomeOpportunityShowcase() {
+  const offersQuery = useQuery({
+    queryKey: ['travel-offers-public', 'home-showcase'],
+    queryFn: ({ signal }) => fetchTravelOfferCatalog({
+      offer_type: 'pacote',
+      sort: 'editorial',
+      page: 1,
+      per_page: 6,
+    }, signal),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+
+  const offers = offersQuery.data?.items ?? [];
+
+  return (
+    <section
+      id="oportunidades-em-destaque"
+      className="opportunities-theme relative overflow-hidden border-y border-tomorrow-line py-16 sm:py-20 lg:py-24"
+      aria-labelledby="home-opportunities-title"
+    >
+      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+        <div className="absolute left-[4%] top-10 size-64 rounded-full bg-tomorrow-teal/10 blur-3xl" />
+        <div className="absolute right-[7%] top-24 size-72 rounded-full bg-tomorrow-gold/10 blur-3xl" />
+      </div>
+
+      <div className="relative mx-auto w-full max-w-[90rem] px-4 sm:px-6 lg:px-8">
+        <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <OpportunityBadge variant="neutral">
+              <Radar aria-hidden="true" />
+              Radar Tomorrow
+            </OpportunityBadge>
+            <h2 id="home-opportunities-title" className="mt-5 font-editorial text-4xl leading-[0.96] text-tomorrow-text sm:text-6xl lg:text-7xl">
+              Oportunidades que existem agora.
+            </h2>
+            <p className="mt-5 max-w-2xl text-sm leading-relaxed text-tomorrow-muted sm:text-lg">
+              Pacotes reais do inventário Tomorrow Travel, apresentados com origem, período e preço por pessoa quando informados pela fonte.
+            </p>
+          </div>
+
+          <OpportunityButton asChild variant="outline" size="lg" className="w-full shrink-0 sm:w-auto">
+            <Link to="/oportunidades/catalogo">
+              Explorar todas
+              <ArrowRight aria-hidden="true" />
+            </Link>
+          </OpportunityButton>
+        </div>
+
+        {offersQuery.isPending ? <OpportunityState state="loading" /> : null}
+
+        {offersQuery.isError ? (
+          <OpportunityState
+            state="error"
+            title="Não foi possível atualizar a vitrine"
+            description="O catálogo completo continua disponível para uma nova consulta."
+            actionLabel="Tentar novamente"
+            onAction={() => offersQuery.refetch()}
+          />
+        ) : null}
+
+        {offersQuery.data && offers.length === 0 ? (
+          <OpportunityState
+            state="empty"
+            title="Nenhum pacote disponível nesta vitrine"
+            description="Consulte o catálogo para verificar outros tipos de oportunidade."
+            actionLabel="Abrir catálogo"
+            actionHref="/oportunidades/catalogo"
+          />
+        ) : null}
+
+        {offers.length > 0 ? (
+          <div className="grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {offers.map((item) => (
+              <OpportunityCard
+                key={item.id}
+                id={item.id}
+                kind={item.kind === 'air_block' ? 'air_block' : 'package'}
+                title={item.name || item.category}
+                origin={item.origin}
+                originIata={item.origin_iata}
+                destination={item.destination || item.destination_iata || 'Destino não informado'}
+                destinationIata={item.destination_iata}
+                departureLabel={formatDate(item.departure_date)}
+                returnLabel={formatDate(item.return_date)}
+                nights={item.nights}
+                pricePerPerson={item.price_per_person}
+                taxPerPerson={item.tax_per_person}
+                currency={item.currency}
+                availableSeats={item.available_seats}
+                airfareIncluded={item.airfare_included}
+                imageUrl={item.image_url}
+                imageAlt={item.destination ? `Vista de ${item.destination}` : 'Imagem pública da oportunidade'}
+                badges={badgesFor(item)}
+                actionHref={`/oportunidades/oferta/${encodeURIComponent(item.id)}`}
+                actionLabel="Ver detalhes"
+                className="h-full"
+              />
+            ))}
+          </div>
+        ) : null}
+
+        <div className="mt-8 border-t border-tomorrow-line pt-6 text-sm text-tomorrow-muted">
+          <p className="max-w-3xl leading-relaxed">
+            {offersQuery.data?.notice || TRAVEL_OFFERS_NOTICE}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
