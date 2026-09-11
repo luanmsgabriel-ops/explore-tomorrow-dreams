@@ -266,7 +266,10 @@ async function invokeTravelOffers<T>(
   const { data, error } = await supabase.functions.invoke<T>("travel-offers-public", {
     body: { action, params },
     signal,
-    timeout: 15_000,
+    // A cold start can exceed 15 seconds when the public inventory is large.
+    // Keep the request alive long enough to return real data instead of showing
+    // a false storefront error on the first mobile visit.
+    timeout: 30_000,
   });
 
   if (error) throw await publicError(error);

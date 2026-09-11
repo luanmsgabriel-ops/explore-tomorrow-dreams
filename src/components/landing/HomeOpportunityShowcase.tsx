@@ -53,7 +53,8 @@ export function HomeOpportunityShowcase() {
       per_page: 6,
     }, signal),
     staleTime: 5 * 60_000,
-    retry: false,
+    retry: 1,
+    retryDelay: 1_000,
   });
 
   const offers = offersQuery.data?.items ?? [];

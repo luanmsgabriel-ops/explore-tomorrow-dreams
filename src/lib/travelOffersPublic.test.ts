@@ -27,7 +27,7 @@ describe("cliente público de ofertas", () => {
     expect(invoke).toHaveBeenCalledWith("travel-offers-public", {
       body: { action: "facets", params: {} },
       signal: controller.signal,
-      timeout: 15_000,
+      timeout: 30_000,
     });
   });
 
@@ -53,7 +53,7 @@ describe("cliente público de ofertas", () => {
         params: { origin: "São Paulo", offer_type: "pacote" },
       },
       signal: undefined,
-      timeout: 15_000,
+      timeout: 30_000,
     });
   });
 
@@ -81,7 +81,7 @@ describe("cliente público de ofertas", () => {
         params: { offer_type: "pacote", subtype: "grupo_guiado", origin: "São Paulo" },
       },
       signal: undefined,
-      timeout: 15_000,
+      timeout: 30_000,
     });
   });
 
@@ -126,7 +126,7 @@ describe("cliente público de ofertas", () => {
         },
       },
       signal: undefined,
-      timeout: 15_000,
+      timeout: 30_000,
     });
   });
 
@@ -150,7 +150,7 @@ describe("cliente público de ofertas", () => {
     expect(invoke).toHaveBeenCalledWith("travel-offers-public", {
       body: { action: "detail", params: { id } },
       signal: undefined,
-      timeout: 15_000,
+      timeout: 30_000,
     });
 
     invoke.mockClear();
