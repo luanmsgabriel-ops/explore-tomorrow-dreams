@@ -3,6 +3,8 @@ declare const Deno: { env: { get(name: string): string | undefined }; serve(hand
 import { MATCH_ALGORITHM_VERSION, evaluateRadarMatch, sanitizeOfferSnapshot, type Affinity, type PublicOfferForMatching, type RadarForMatching } from "./matcher.ts";
 
 const ALLOWED_ORIGINS = new Set(["https://tomorrowtravelbr.com.br", "https://www.tomorrowtravelbr.com.br", "https://explore-tomorrow-dreams.lovable.app", "http://localhost:5173"]);
+const AIRPORT_IATA_BY_CITY: Record<string, string> = { recife: "REC", "porto alegre": "POA" };
+const normalizeLookup = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const cors = (origin: string | null) => ({
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -30,7 +32,15 @@ function publicParams(radar: RadarForMatching, page: number, discovery: boolean)
   const flex = Math.max(0, radar.flexibility_days || 0);
   const params: Record<string, unknown> = { sort: "price_asc", page, per_page: 50 };
   if (radar.origin) params.origin = radar.origin;
-  if (!discovery && radar.destination) params.destination = radar.destination;
+  if (!discovery && radar.destination) {
+    if (radar.offer_type === "bloqueio_aereo") {
+      const iata = AIRPORT_IATA_BY_CITY[normalizeLookup(radar.destination)];
+      if (iata) params.destination_iata = iata;
+      else params.destination = radar.destination;
+    } else {
+      params.destination = radar.destination;
+    }
+  }
   if (radar.offer_type) params.offer_type = radar.offer_type;
   if (radar.offer_subtype) params.subtype = radar.offer_subtype;
   if (radar.start_date) params.start_date = shift(radar.start_date, -flex);
