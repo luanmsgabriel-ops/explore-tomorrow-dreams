@@ -132,6 +132,43 @@ describe("Realtime Voice contract", () => {
     });
   });
 
+  it("remove termos redundantes quando o tipo já identifica bloqueio ou pacote", () => {
+    expect(catalogParamsFromRealtimeTool({
+      callId: "air-1",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({ search: "Bloqueios aéreos", offer_type: "bloqueio_aereo" }),
+    })).toEqual({
+      offer_type: "bloqueio_aereo",
+      sort: "date_asc",
+      page: 1,
+      per_page: 3,
+    });
+
+    expect(catalogParamsFromRealtimeTool({
+      callId: "package-1",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({ search: "pacotes", offer_type: "pacote", destination: "Recife" }),
+    })).toEqual({
+      destination: "Recife",
+      offer_type: "pacote",
+      sort: "date_asc",
+      page: 1,
+      per_page: 3,
+    });
+
+    expect(catalogParamsFromRealtimeTool({
+      callId: "air-destination",
+      name: "search_travel_offers",
+      arguments: JSON.stringify({ search: "Maceió", offer_type: "bloqueio_aereo" }),
+    })).toEqual({
+      search: "Maceió",
+      offer_type: "bloqueio_aereo",
+      sort: "date_asc",
+      page: 1,
+      per_page: 3,
+    });
+  });
+
   it("rejeita ferramenta, filtros e datas fora do contrato público", () => {
     expect(() => catalogParamsFromRealtimeTool({ callId: "1", name: "internal_search", arguments: "{}" })).toThrow("Ferramenta não permitida");
     expect(() => catalogParamsFromRealtimeTool({
