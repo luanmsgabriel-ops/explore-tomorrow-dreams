@@ -64,7 +64,7 @@ export function OpportunityHero() {
         >
           <Link
             to="/oportunidades/catalogo"
-            className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl border border-gold-light/70 bg-[var(--gradient-gold)] px-6 text-sm font-bold text-accent-foreground shadow-[var(--shadow-glow-gold)] transition-transform hover:scale-[1.02] sm:w-auto sm:min-w-64 sm:text-base"
+            className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl border border-gold-light/80 bg-gradient-to-r from-gold-light via-gold to-gold-dark px-6 text-sm font-bold text-ocean-deep shadow-[var(--shadow-glow-gold)] transition-transform hover:scale-[1.02] hover:brightness-105 sm:w-auto sm:min-w-64 sm:text-base"
           >
             <Radar className="size-5" aria-hidden="true" />
             Ver oportunidades

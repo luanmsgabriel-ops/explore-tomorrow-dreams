@@ -19,7 +19,8 @@ export function HomeInventoryPulse() {
     staleTime: 5 * 60_000,
     refetchInterval: 5 * 60_000,
     refetchOnWindowFocus: true,
-    retry: false,
+    retry: 1,
+    retryDelay: 1_000,
   });
 
   const packageCount = facetCount(facetsQuery.data?.offer_types, 'pacote');

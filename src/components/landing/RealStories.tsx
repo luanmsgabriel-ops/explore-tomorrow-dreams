@@ -41,11 +41,12 @@ export const RealStories = () => {
             <EditorialHeading
               eyebrow="Relatos de Confiança"
               size="lg"
+              className="[&_h2]:text-ocean-deep [&>span]:text-ocean-deep/70 [&>span>span]:bg-ocean-deep/40"
             >
               Histórias reais dos <br />
               <span className="font-editorial-italic gradient-text-teal italic">nossos viajantes</span>
             </EditorialHeading>
-            <p className="mt-6 text-white/50 font-editorial text-lg max-w-xl leading-relaxed">
+            <p className="mt-6 max-w-xl font-editorial text-lg leading-relaxed text-ocean-deep/80">
               Cada viagem começa com um planejamento. Mas é durante a experiência que a confiança é construída.
             </p>
           </motion.div>
