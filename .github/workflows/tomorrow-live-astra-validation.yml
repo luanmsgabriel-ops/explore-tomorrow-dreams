@@ -26,13 +26,43 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run Tomorrow Live tests
-        run: >-
-          bun run test --
-          src/lib/liveRoute.test.ts
-          src/lib/liveSessionModel.test.ts
-          src/lib/realtimeVoice.test.ts
-          src/components/opportunities/live/LiveTranscriptDrawer.test.tsx
-          src/pages/opportunitiesLive.test.tsx
+        id: tests
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          bun run test -- \
+            src/lib/liveRoute.test.ts \
+            src/lib/liveSessionModel.test.ts \
+            src/lib/realtimeVoice.test.ts \
+            src/components/opportunities/live/LiveTranscriptDrawer.test.tsx \
+            src/pages/opportunitiesLive.test.tsx 2>&1 | tee tomorrow-live-tests.log
 
       - name: Build production bundle
-        run: bun run build
+        id: build
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          bun run build 2>&1 | tee tomorrow-live-build.log
+
+      - name: Upload validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tomorrow-live-astra-logs
+          path: |
+            tomorrow-live-tests.log
+            tomorrow-live-build.log
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Enforce gate
+        if: always()
+        shell: bash
+        run: |
+          if [[ "${{ steps.tests.outcome }}" != "success" || "${{ steps.build.outcome }}" != "success" ]]; then
+            echo "Tomorrow Live ASTRA gate failed."
+            exit 1
+          fi
