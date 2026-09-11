@@ -68,7 +68,11 @@ export function useTomorrowLiveTelemetry(input: TomorrowLiveTelemetryInput) {
   }, [input.online]);
 
   useEffect(() => {
-    if (!offerSignature || offerSignature === previousOfferSignature.current) return;
+    if (!offerSignature) {
+      previousOfferSignature.current = "";
+      return;
+    }
+    if (offerSignature === previousOfferSignature.current) return;
     previousOfferSignature.current = offerSignature;
     emit("offers_rendered", {
       count: input.offerIds.length,
@@ -78,7 +82,11 @@ export function useTomorrowLiveTelemetry(input: TomorrowLiveTelemetryInput) {
   }, [input.offerIds.length, input.routeCount, normalizedOfferTypes, offerSignature]);
 
   useEffect(() => {
-    if (!input.handoffChannel || input.handoffChannel === previousHandoffChannel.current) return;
+    if (!input.handoffChannel) {
+      previousHandoffChannel.current = null;
+      return;
+    }
+    if (input.handoffChannel === previousHandoffChannel.current) return;
     previousHandoffChannel.current = input.handoffChannel;
     emit("handoff_ready", { channel: input.handoffChannel });
   }, [input.handoffChannel]);
