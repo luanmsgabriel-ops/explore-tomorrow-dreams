@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { AnalyticsProvider } from "./components/AnalyticsProvider";
+import { SaveCatalogRadarButton } from "./components/opportunities/SaveCatalogRadarButton";
 import { useLenis } from "./hooks/useLenis";
 import { preloadTomorrowLiveGlobeRuntime } from "./components/opportunities/live/globeRuntime";
 import { AdminDashboardErrorBoundary } from "./components/admin/AdminDashboardErrorBoundary";
@@ -33,6 +34,8 @@ const MyTomorrowTrips = lazyWithRetry(() => import("./pages/MyTomorrowTrips"));
 const MyTomorrowTripDetail = lazyWithRetry(() => import("./pages/MyTomorrowTripDetail"));
 const MyTomorrowProfile = lazyWithRetry(() => import("./pages/MyTomorrowProfile"));
 const MyTomorrowPreferences = lazyWithRetry(() => import("./pages/MyTomorrowPreferences"));
+const MyTomorrowRadars = lazyWithRetry(() => import("./pages/MyTomorrowRadars"));
+const MyTomorrowRadarDetail = lazyWithRetry(() => import("./pages/MyTomorrowRadarDetail"));
 const Install = lazyWithRetry(() => import("./pages/Install"));
 const Avaliacao = lazyWithRetry(() => import("./pages/Avaliacao"));
 const Blog = lazyWithRetry(() => import("./pages/Blog"));
@@ -102,6 +105,8 @@ const App = () => (
           <Route path="/minha-area/viagens/:tripId" element={<ClientProtected label="viagem"><MyTomorrowTripDetail /></ClientProtected>} />
           <Route path="/minha-area/perfil" element={<ClientProtected label="Travel Profile"><MyTomorrowProfile /></ClientProtected>} />
           <Route path="/minha-area/preferencias" element={<ClientProtected label="preferências de viagem"><MyTomorrowPreferences /></ClientProtected>} />
+          <Route path="/minha-area/radares" element={<ClientProtected label="meus radares"><MyTomorrowRadars /></ClientProtected>} />
+          <Route path="/minha-area/radares/:radarId" element={<ClientProtected label="radar"><MyTomorrowRadarDetail /></ClientProtected>} />
           <Route path="/minha-area/operacional" element={<ClientProtected label="detalhes operacionais"><ClientDashboard /></ClientProtected>} />
           <Route path="/avaliacao/:id" element={<PageSuspense label="avaliação"><Avaliacao /></PageSuspense>} />
           <Route path="/install" element={<PageSuspense label="instalação"><Install /></PageSuspense>} />
@@ -116,6 +121,7 @@ const App = () => (
           <Route path="/oportunidades/selecao/:token" element={<PageSuspense label="seleção de oportunidades" opportunities><OpportunitySelection /></PageSuspense>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <SaveCatalogRadarButton />
         <AnalyticsProvider />
         <InstallPrompt />
         <FloatingButtons />
