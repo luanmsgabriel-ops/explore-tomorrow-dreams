@@ -3,7 +3,7 @@
 Data: 2026-09-11
 Branch: `feat/my-tomorrow-phase-6a-inapp-alerts`
 Base: `6c17dd1371390369887506e291d1d09c27ed04f8`
-Estado: implementação de código concluída; migrations do lote ainda não aplicadas.
+Estado: IMPLEMENTADA E TESTADA EM CI; migrations do lote ainda não aplicadas.
 
 ## Regra do lote de migrations
 
@@ -15,13 +15,14 @@ Lote atual:
 2. `20260911202000_my_tomorrow_radar_matches.sql` — Fase 5;
 3. `20260911213000_my_tomorrow_radar_alerts.sql` — Fase 6A.
 
-Nenhuma das três deve ser aplicada antes do gate conjunto.
+Nenhuma das três foi aplicada durante o desenvolvimento da Fase 6A.
 
 ## Escopo implementado
 
 - tabela `travel_radar_alerts` com RLS por usuário;
 - alertas `new_match` e `offer_changed`;
-- deduplicação por `dedupe_key` derivada de Radar, oferta, versão do algoritmo e hash do snapshot público;
+- deduplicação por `dedupe_key` derivada de Radar, oferta, versão do algoritmo e hash do snapshot público relevante;
+- `updated_at` isolado do fingerprint para não gerar falso alerta por regravação sem mudança material;
 - leitura/não leitura;
 - inbox em `/minha-area/notificacoes`;
 - deep-link para oferta pública e Radar;
@@ -38,6 +39,18 @@ Nenhuma das três deve ser aplicada antes do gate conjunto.
 - escrita de alertas não é liberada diretamente ao usuário autenticado;
 - admin mantém acesso previsto por policy;
 - sem e-mail, WhatsApp, Téo ou cron nesta fase.
+
+## Validação
+
+Run final: `34645350969` — PASS integral.
+
+- testes focados Vitest: PASS;
+- TypeScript: PASS;
+- ESLint do escopo: PASS;
+- build: PASS;
+- testes de regressão do matcher: PASS;
+- `deno check`: PASS;
+- `git diff --check`: PASS.
 
 ## Fora do escopo
 
