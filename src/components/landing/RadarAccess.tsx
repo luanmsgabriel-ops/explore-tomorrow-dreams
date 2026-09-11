@@ -35,7 +35,7 @@ const accessOptions = [
 
 export function RadarAccess() {
   return (
-    <section className="relative overflow-hidden py-20 sm:py-24" aria-label="Formas de encontrar oportunidades">
+    <section className="relative overflow-hidden py-16 sm:py-20" aria-label="Formas de encontrar oportunidades">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,hsl(var(--teal)/0.08),transparent_45%)]" aria-hidden="true" />
       <div className="container relative mx-auto px-4 lg:px-8">
         <EditorialHeading eyebrow="Escolha seu caminho" align="center" size="lg">
@@ -45,7 +45,7 @@ export function RadarAccess() {
           Explore por conta própria, compare datas ou converse com o Téo. Todos os caminhos levam ao mesmo inventário da Tomorrow Travel.
         </p>
 
-        <div className="mt-10 grid gap-5 lg:grid-cols-3">
+        <div className="mt-8 grid gap-4 lg:grid-cols-3 lg:gap-5">
           {accessOptions.map((option) => {
             const Icon = option.icon;
             const teal = option.accent === 'teal';
@@ -53,18 +53,18 @@ export function RadarAccess() {
               <Link
                 key={option.href}
                 to={option.href}
-                className="group relative grid min-h-[22rem] grid-rows-[auto_1fr_auto] overflow-hidden rounded-[2rem] border border-gold/20 bg-ocean-mid/55 p-7 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-gold/50 hover:shadow-[0_24px_80px_hsl(190_80%_2%/0.48)] sm:p-8"
+                className="group relative grid grid-rows-[auto_1fr_auto] overflow-hidden rounded-[1.5rem] border border-gold/20 bg-ocean-mid/55 p-6 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-gold/50 hover:shadow-[0_24px_80px_hsl(190_80%_2%/0.48)] sm:p-7 lg:min-h-[20rem] lg:rounded-[2rem] lg:p-8"
               >
                 <div className={`absolute -right-16 -top-16 size-48 rounded-full blur-3xl ${teal ? 'bg-teal/15' : 'bg-gold/15'}`} aria-hidden="true" />
                 <div className="relative">
                   <span className={`grid size-14 place-items-center rounded-2xl border ${teal ? 'border-teal/35 bg-teal/10 text-teal-light' : 'border-gold/35 bg-gold/10 text-gold-light'}`}>
                     <Icon className="size-6" aria-hidden="true" />
                   </span>
-                  <p className="mt-6 text-[0.6875rem] font-bold uppercase tracking-[0.22em] text-gold-light/75">{option.eyebrow}</p>
-                  <h3 className="mt-3 font-editorial text-4xl leading-none text-foreground">{option.title}</h3>
-                  <p className="mt-5 text-sm leading-relaxed text-muted-foreground">{option.description}</p>
+                  <p className="mt-5 text-[0.6875rem] font-bold uppercase tracking-[0.22em] text-gold-light/75">{option.eyebrow}</p>
+                  <h3 className="mt-2 font-editorial text-3xl leading-none text-foreground sm:text-4xl">{option.title}</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:mt-5">{option.description}</p>
                 </div>
-                <span className="relative mt-8 inline-flex items-center gap-2 font-semibold text-gold-light">
+                <span className="relative mt-5 inline-flex items-center gap-2 font-semibold text-gold-light sm:mt-8">
                   {option.action}
                   <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
                 </span>

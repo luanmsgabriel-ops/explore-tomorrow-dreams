@@ -7,7 +7,6 @@ import { FloatingTeoButton } from '@/components/landing/FloatingTeoButton';
 import { LandingFAQ } from '@/components/landing/LandingFAQ';
 import { TrustBar } from '@/components/landing/TrustBar';
 import { RealStories } from '@/components/landing/RealStories';
-import { GoogleReviews } from '@/components/landing/GoogleReviews';
 import { HomeOpportunityShowcase } from '@/components/landing/HomeOpportunityShowcase';
 import { RadarAccess } from '@/components/landing/RadarAccess';
 
@@ -23,7 +22,6 @@ const Index = () => {
         <RadarAccess />
         <HowItWorksTimeline />
         <RealStories />
-        <GoogleReviews />
         <LandingFAQ />
         <ClosingCTA />
       </main>

@@ -13,6 +13,18 @@ export const InstallPrompt = () => {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
+    window.dispatchEvent(new CustomEvent('tomorrow:install-prompt-visibility', {
+      detail: { visible: showBanner },
+    }));
+
+    return () => {
+      window.dispatchEvent(new CustomEvent('tomorrow:install-prompt-visibility', {
+        detail: { visible: false },
+      }));
+    };
+  }, [showBanner]);
+
+  useEffect(() => {
     // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       return;

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 
 export const FloatingTeoButton = () => {
   const [visible, setVisible] = useState(false);
+  const [installPromptVisible, setInstallPromptVisible] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setVisible(window.scrollY > 600);
@@ -12,12 +13,22 @@ export const FloatingTeoButton = () => {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  useEffect(() => {
+    const handleInstallPromptVisibility = (event: Event) => {
+      const customEvent = event as CustomEvent<{ visible?: boolean }>;
+      setInstallPromptVisible(Boolean(customEvent.detail?.visible));
+    };
+
+    window.addEventListener('tomorrow:install-prompt-visibility', handleInstallPromptVisibility);
+    return () => window.removeEventListener('tomorrow:install-prompt-visibility', handleInstallPromptVisibility);
+  }, []);
+
   return (
     <Link
       to="/teo"
       aria-label="Conversar com o Téo"
       className={`fixed bottom-5 right-5 z-40 transition-all duration-500 ${
-        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6 pointer-events-none'
+        visible && !installPromptVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6 pointer-events-none'
       }`}
     >
       <div className="relative">

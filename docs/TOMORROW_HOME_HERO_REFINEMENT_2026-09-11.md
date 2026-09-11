@@ -12,10 +12,22 @@ Data: 2026-09-11
 
 - remover o personagem Téo e o balão do Hero, sem alterar o Téo ou seus fluxos;
 - reduzir a altura e reorganizar a hierarquia do Hero no mobile;
-- substituir o JPEG com fundo preto pelo PNG transparente já existente;
+- substituir o JPEG com fundo preto por um lockup horizontal transparente próprio para o cabeçalho;
 - concentrar os CTAs em catálogo e calendário;
 - exibir quantidades reais de pacotes e bloqueios aéreos vindas de `travel-offers-public`;
 - atualizar os indicadores automaticamente a cada cinco minutos e ao retornar à página.
+- substituir os três vídeos anteriores por um único vídeo de radar, com arquivos otimizados e enquadramentos próprios para desktop e mobile;
+- remover áudio, blur e reprodução acelerada do fundo do Hero;
+- compactar os acessos no mobile e reposicionar a narrativa de funcionamento, FAQ e CTA final em torno das oportunidades;
+- consolidar a prova social, removendo a segunda seção consecutiva de avaliações;
+- impedir a sobreposição do convite de instalação com o botão flutuante do Téo.
+
+## Assets do novo Hero
+
+- vídeo desktop: `726 KB`, `1280 × 720 px`, H.264, sem áudio;
+- vídeo mobile: `493 KB`, `540 × 960 px`, H.264, sem áudio;
+- posters responsivos: menos de `60 KB` cada;
+- logo horizontal: PNG RGBA com transparência real.
 
 ## Segurança
 
@@ -28,7 +40,7 @@ Data: 2026-09-11
 ## Estados
 
 - IMPLEMENTADO: sim, na branch isolada;
-- TESTADO: sim no escopo;
+- TESTADO: sim no escopo, incluindo navegação, inventário, ESLint dos arquivos alterados e build;
 - MERGEADO: não;
 - SINCRONIZADO NO LOVABLE: não;
 - PUBLICADO: não;
@@ -40,8 +52,8 @@ Abrir PR e revisar o preview visual mobile/desktop antes de qualquer merge ou pu
 
 ## Validação executada
 
-- TypeScript global: aprovado;
-- ESLint dos sete arquivos TypeScript/TSX do escopo: aprovado;
-- testes focados: 3 arquivos e 5 testes aprovados;
+- ESLint dos arquivos TypeScript/TSX alterados: aprovado;
+- testes focados da Home: 2 arquivos e 3 testes aprovados;
 - build de produção: aprovado;
-- avisos globais preexistentes de CSS e tamanho de chunks permanecem fora do escopo.
+- a suíte global mantém falhas preexistentes e não relacionadas em `opportunityCompare.test.tsx`;
+- avisos globais preexistentes de CSS, lint e tamanho de chunks permanecem fora do escopo.
