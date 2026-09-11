@@ -9,14 +9,18 @@ vi.mock("@/hooks/useAnalytics", () => ({
   trackEventStandalone: mocks.trackEventStandalone,
 }));
 
-import { trackTomorrowLiveAction, useTomorrowLiveTelemetry } from "./useTomorrowLiveTelemetry";
+import {
+  trackTomorrowLiveAction,
+  useTomorrowLiveTelemetry,
+  type TomorrowLiveTelemetryInput,
+} from "./useTomorrowLiveTelemetry";
 
-const initial = {
-  voiceStatus: "idle" as const,
+const initial: TomorrowLiveTelemetryInput = {
+  voiceStatus: "idle",
   connected: false,
   online: true,
-  offerIds: [] as string[],
-  offerTypes: [] as string[],
+  offerIds: [],
+  offerTypes: [],
   routeCount: 0,
   handoffChannel: null,
   composerActive: false,
@@ -33,18 +37,18 @@ describe("Tomorrow Live telemetry", () => {
   });
 
   it("mede transições e resultados somente com metadados operacionais", () => {
-    const { rerender } = renderHook((props) => useTomorrowLiveTelemetry(props), {
+    const { rerender } = renderHook((props: TomorrowLiveTelemetryInput) => useTomorrowLiveTelemetry(props), {
       initialProps: initial,
     });
 
     rerender({
       ...initial,
-      voiceStatus: "offers" as const,
+      voiceStatus: "offers",
       connected: true,
       offerIds: ["offer-2", "offer-1"],
       offerTypes: ["pacote", "pacote"],
       routeCount: 1,
-      handoffChannel: "details" as const,
+      handoffChannel: "details",
       composerActive: true,
     });
 
@@ -70,21 +74,21 @@ describe("Tomorrow Live telemetry", () => {
   });
 
   it("registra novamente ofertas e handoff quando uma nova busca repete o mesmo resultado", () => {
-    const { rerender } = renderHook((props) => useTomorrowLiveTelemetry(props), {
+    const { rerender } = renderHook((props: TomorrowLiveTelemetryInput) => useTomorrowLiveTelemetry(props), {
       initialProps: initial,
     });
-    const result = {
+    const result: TomorrowLiveTelemetryInput = {
       ...initial,
-      voiceStatus: "offers" as const,
+      voiceStatus: "offers",
       connected: true,
       offerIds: ["offer-1"],
       offerTypes: ["bloqueio_aereo"],
       routeCount: 1,
-      handoffChannel: "details" as const,
+      handoffChannel: "details",
     };
 
     rerender(result);
-    rerender({ ...initial, voiceStatus: "listening" as const, connected: true });
+    rerender({ ...initial, voiceStatus: "listening", connected: true });
     rerender(result);
 
     expect(mocks.trackEventStandalone.mock.calls.filter(([event]) => event === "tomorrow_live_offers_rendered")).toHaveLength(2);
