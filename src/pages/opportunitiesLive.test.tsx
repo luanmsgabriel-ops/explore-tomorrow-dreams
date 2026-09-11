@@ -1,17 +1,26 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const telemetryMocks = vi.hoisted(() => ({
+  trackTomorrowLiveAction: vi.fn(),
+  useTomorrowLiveTelemetry: vi.fn(),
+}));
+
+vi.mock("@/hooks/useTomorrowLiveTelemetry", () => telemetryMocks);
+
 import OpportunitiesLive from "./OpportunitiesLive";
 
 const originalMatchMedia = window.matchMedia;
 const originalMediaDevices = navigator.mediaDevices;
 const originalPeerConnection = window.RTCPeerConnection;
 
-describe("Tomorrow Live — Etapa 7: fundação de voz", () => {
+describe("Tomorrow Live — evolução ASTRA", () => {
   const getUserMedia = vi.fn();
 
   beforeEach(() => {
     getUserMedia.mockReset();
+    telemetryMocks.trackTomorrowLiveAction.mockClear();
+    telemetryMocks.useTomorrowLiveTelemetry.mockClear();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
     Object.defineProperty(navigator, "mediaDevices", {
       configurable: true,
@@ -20,6 +29,10 @@ describe("Tomorrow Live — Etapa 7: fundação de voz", () => {
     Object.defineProperty(window, "RTCPeerConnection", {
       configurable: true,
       value: vi.fn(),
+    });
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      value: true,
     });
   });
 
@@ -46,23 +59,30 @@ describe("Tomorrow Live — Etapa 7: fundação de voz", () => {
     expect(screen.getByRole("button", { name: "Iniciar conversa por voz" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Pausar microfone" })).toBeDisabled();
     expect(getUserMedia).not.toHaveBeenCalled();
+    expect(telemetryMocks.useTomorrowLiveTelemetry).toHaveBeenCalledWith(expect.objectContaining({
+      voiceStatus: "idle",
+      offerIds: [],
+      routeCount: 0,
+    }));
   });
 
-  it("mantém o planeta como palco principal sem painel permanente de transcrição", () => {
+  it("mantém o planeta como palco principal e oferece legenda sob demanda", () => {
     render(<OpportunitiesLive />);
 
     expect(screen.queryByRole("complementary", { name: "Conversa com o Téo" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Sua viagem, em conversa.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("log")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Legendas da conversa/ })).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByRole("link", { name: "Conversar por texto" })).toHaveAttribute("href", "/teo");
     expect(screen.getByLabelText("Globo visual do Tomorrow Live — Aguardando")).toBeInTheDocument();
   });
 
-  it("solicita microfone somente após o clique e trata permissão negada", async () => {
+  it("solicita microfone somente após o clique, mede a ação e trata permissão negada", async () => {
     getUserMedia.mockRejectedValueOnce(new DOMException("denied", "NotAllowedError"));
     render(<OpportunitiesLive />);
 
     fireEvent.click(screen.getByRole("button", { name: "Iniciar conversa por voz" }));
 
+    expect(telemetryMocks.trackTomorrowLiveAction).toHaveBeenCalledWith("voice_start_requested", { online: true });
     expect(getUserMedia).toHaveBeenCalledTimes(1);
     expect(await screen.findByRole("alert")).toHaveTextContent("Permissão do microfone negada");
     expect(screen.getAllByRole("link", { name: "Continuar por texto" }).every((link) => link.getAttribute("href") === "/teo")).toBe(true);
@@ -78,10 +98,12 @@ describe("Tomorrow Live — Etapa 7: fundação de voz", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Permissão do microfone negada");
   });
 
-  it("permite visualizar o estado inicial sem iniciar voz ou alterar dados", () => {
-    render(<OpportunitiesLive />);
+  it("expõe uma jornada canônica sem iniciar voz ou alterar dados", () => {
+    const { container } = render(<OpportunitiesLive />);
 
-    expect(screen.getByLabelText("Globo visual do Tomorrow Live — Aguardando")).toHaveAttribute("data-live-state", "idle");
+    expect(container.firstElementChild).toHaveAttribute("data-journey-stage", "ready");
+    expect(screen.getByText("Pronto para começar")).toBeInTheDocument();
+    expect(screen.getByLabelText("Globo visual do Tomorrow Live — Aguardando")).toHaveAttribute("data-route-count", "0");
     expect(screen.getByText("Converse com o Téo e descubra oportunidades que combinam com você.")).toBeInTheDocument();
     expect(getUserMedia).not.toHaveBeenCalled();
   });
@@ -95,16 +117,18 @@ describe("Tomorrow Live — Etapa 7: fundação de voz", () => {
     expect(screen.getAllByRole("link", { name: "Live" }).length).toBeGreaterThan(0);
   });
 
-  it("explica privacidade e não mascara a ausência da voz em tempo real", () => {
+  it("explica uso local com precisão sem prometer privacidade absoluta", () => {
     render(<OpportunitiesLive />);
 
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Ver informações de privacidade" }));
 
+    expect(telemetryMocks.trackTomorrowLiveAction).toHaveBeenCalledWith("privacy_opened");
     expect(screen.getByRole("status")).toHaveTextContent(
-      "O microfone só é usado enquanto você estiver falando com o Téo.",
+      "O microfone é acessado apenas durante a sessão de voz ativa e pode ser pausado a qualquer momento.",
     );
-    expect(screen.getByText(/Sua conversa é privada/)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("não salva áudio nem transcrição no armazenamento local");
+    expect(screen.queryByText("Sua conversa é privada.")).not.toBeInTheDocument();
     expect(getUserMedia).not.toHaveBeenCalled();
   });
 
@@ -128,6 +152,19 @@ describe("Tomorrow Live — Etapa 7: fundação de voz", () => {
     await waitFor(() => {
       expect(container.firstElementChild).toHaveAttribute("data-reduced-motion", "true");
     });
+    expect(getUserMedia).not.toHaveBeenCalled();
+  });
+
+  it("bloqueia uma nova sessão de voz quando o dispositivo está offline", () => {
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      value: false,
+    });
+    const { container } = render(<OpportunitiesLive />);
+
+    expect(container.firstElementChild).toHaveAttribute("data-journey-stage", "offline");
+    expect(screen.getByRole("button", { name: "Sem conexão" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Iniciar conversa por voz pelo microfone do planeta" })).toBeDisabled();
     expect(getUserMedia).not.toHaveBeenCalled();
   });
 });
