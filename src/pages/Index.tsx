@@ -1,6 +1,6 @@
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { TeoHeroConversation } from '@/components/landing/TeoHeroConversation';
+import { OpportunityHero } from '@/components/landing/OpportunityHero';
 import { HowItWorksTimeline } from '@/components/landing/HowItWorksTimeline';
 import { ClosingCTA } from '@/components/landing/ClosingCTA';
 import { FloatingTeoButton } from '@/components/landing/FloatingTeoButton';
@@ -17,7 +17,7 @@ const Index = () => {
       <Header />
 
       <main>
-        <TeoHeroConversation />
+        <OpportunityHero />
         <TrustBar />
         <HomeOpportunityShowcase />
         <RadarAccess />

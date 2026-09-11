@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CalendarDays, Menu, MessageCircle, Radar, User, X } from 'lucide-react';
-import logo from '@/assets/logo.jpeg';
+
+const logo = '/images/tomorrow-travel-logo.png';
 
 const navItems = [
   { label: 'Início', path: '/' },
@@ -40,8 +41,10 @@ export const Header = () => {
         <div className="container mx-auto px-4 lg:px-8">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-3">
-              <Link to="/" className="group">
-                <img src={logo} alt="Tomorrow Travel" className="h-12 w-12 rounded-lg object-cover transition-transform duration-300 group-hover:scale-110 ring-2 ring-gold/30" />
+              <Link to="/" className="group flex items-center" aria-label="Tomorrow Travel — início">
+                <span className="relative block h-12 w-16 overflow-hidden" aria-hidden="true">
+                  <img src={logo} alt="" className="absolute left-0 top-0 w-16 max-w-none transition-transform duration-300 group-hover:scale-105" />
+                </span>
               </Link>
               <Link to="/" className="hidden sm:flex items-center">
                 <span className="text-gold-embossed font-serif text-xl font-bold tracking-wide">TOMORROW</span>
@@ -78,8 +81,10 @@ export const Header = () => {
         <div className="lg:hidden fixed inset-0 z-[60] bg-background animate-fade-in">
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between p-4 border-b border-gold/20">
-              <Link to="/" className="flex items-center gap-3" onClick={() => setIsMobileMenuOpen(false)}>
-                <img src={logo} alt="Tomorrow Travel" className="h-12 w-12 rounded-lg object-cover ring-2 ring-gold/30" />
+              <Link to="/" className="flex items-center gap-3" aria-label="Tomorrow Travel — início" onClick={() => setIsMobileMenuOpen(false)}>
+                <span className="relative block h-12 w-16 overflow-hidden" aria-hidden="true">
+                  <img src={logo} alt="" className="absolute left-0 top-0 w-16 max-w-none" />
+                </span>
               </Link>
               <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-gold-light" aria-label="Fechar menu">
                 <X className="w-6 h-6" />

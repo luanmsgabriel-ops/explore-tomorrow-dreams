@@ -1,6 +1,7 @@
 import { Instagram, Facebook, Mail, Phone, MapPin, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import logo from '@/assets/logo.jpeg';
+
+const logo = '/images/tomorrow-travel-logo.png';
 
 export const Footer = () => {
   return (
@@ -9,8 +10,10 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
           {/* Brand */}
           <div className="lg:col-span-1">
-            <Link to="/" className="flex items-center gap-3 mb-4">
-              <img src={logo} alt="Tomorrow Travel" className="h-12 w-12 rounded-lg object-cover ring-2 ring-gold/30" />
+            <Link to="/" className="flex items-center gap-3 mb-4" aria-label="Tomorrow Travel — início">
+              <span className="relative block h-12 w-16 overflow-hidden" aria-hidden="true">
+                <img src={logo} alt="" className="absolute left-0 top-0 w-16 max-w-none" />
+              </span>
               <div>
                 <span className="text-gold-embossed font-serif text-lg font-bold block">TOMORROW</span>
                 <span className="gradient-text-teal font-serif text-lg font-bold block -mt-1">TRAVEL</span>
