@@ -2026,6 +2026,120 @@ export type Database = {
         }
         Relationships: []
       }
+      traveler_affinities: {
+        Row: {
+          affinity_score: number
+          evidence_count: number
+          like_count: number
+          neutral_count: number
+          not_for_me_count: number
+          preference_key: string
+          recalculated_at: string
+          user_id: string
+          want_count: number
+        }
+        Insert: {
+          affinity_score: number
+          evidence_count: number
+          like_count?: number
+          neutral_count?: number
+          not_for_me_count?: number
+          preference_key: string
+          recalculated_at?: string
+          user_id: string
+          want_count?: number
+        }
+        Update: {
+          affinity_score?: number
+          evidence_count?: number
+          like_count?: number
+          neutral_count?: number
+          not_for_me_count?: number
+          preference_key?: string
+          recalculated_at?: string
+          user_id?: string
+          want_count?: number
+        }
+        Relationships: []
+      }
+      traveler_preference_events: {
+        Row: {
+          created_at: string
+          evidence: Json | null
+          id: string
+          preference_key: string
+          response: string
+          revoked_at: string | null
+          source: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          evidence?: Json | null
+          id?: string
+          preference_key: string
+          response: string
+          revoked_at?: string | null
+          source?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          evidence?: Json | null
+          id?: string
+          preference_key?: string
+          response?: string
+          revoked_at?: string | null
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      traveler_profile_settings: {
+        Row: {
+          budget_currency: string
+          budget_max: number | null
+          budget_min: number | null
+          created_at: string
+          direct_flight_preference: string
+          home_origin_iata: string | null
+          home_origin_name: string | null
+          lodging_preferences: string[]
+          onboarding_completed_at: string | null
+          typical_party: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          budget_currency?: string
+          budget_max?: number | null
+          budget_min?: number | null
+          created_at?: string
+          direct_flight_preference?: string
+          home_origin_iata?: string | null
+          home_origin_name?: string | null
+          lodging_preferences?: string[]
+          onboarding_completed_at?: string | null
+          typical_party?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          budget_currency?: string
+          budget_max?: number | null
+          budget_min?: number | null
+          created_at?: string
+          direct_flight_preference?: string
+          home_origin_iata?: string | null
+          home_origin_name?: string | null
+          lodging_preferences?: string[]
+          onboarding_completed_at?: string | null
+          typical_party?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       traveler_profiles: {
         Row: {
           commercial_contact_consent_at: string | null
@@ -2405,6 +2519,10 @@ export type Database = {
           base_lat: number | null
           base_lng: number | null
           base_name: string | null
+          budget_currency: string
+          budget_max: number | null
+          budget_min: number | null
+          claimed_access_token_hash: string | null
           created_at: string
           current_day: number | null
           current_slot: Json | null
@@ -2417,6 +2535,11 @@ export type Database = {
           experience_budget: Json | null
           id: string
           last_activity_at: string
+          lifecycle_stage: string
+          linked_client_trip_id: string | null
+          origin_iata: string | null
+          origin_name: string | null
+          owner_user_id: string | null
           pace: string | null
           passenger_composition: Json
           share_enabled_at: string | null
@@ -2433,6 +2556,10 @@ export type Database = {
           base_lat?: number | null
           base_lng?: number | null
           base_name?: string | null
+          budget_currency?: string
+          budget_max?: number | null
+          budget_min?: number | null
+          claimed_access_token_hash?: string | null
           created_at?: string
           current_day?: number | null
           current_slot?: Json | null
@@ -2445,6 +2572,11 @@ export type Database = {
           experience_budget?: Json | null
           id?: string
           last_activity_at?: string
+          lifecycle_stage?: string
+          linked_client_trip_id?: string | null
+          origin_iata?: string | null
+          origin_name?: string | null
+          owner_user_id?: string | null
           pace?: string | null
           passenger_composition?: Json
           share_enabled_at?: string | null
@@ -2461,6 +2593,10 @@ export type Database = {
           base_lat?: number | null
           base_lng?: number | null
           base_name?: string | null
+          budget_currency?: string
+          budget_max?: number | null
+          budget_min?: number | null
+          claimed_access_token_hash?: string | null
           created_at?: string
           current_day?: number | null
           current_slot?: Json | null
@@ -2473,6 +2609,11 @@ export type Database = {
           experience_budget?: Json | null
           id?: string
           last_activity_at?: string
+          lifecycle_stage?: string
+          linked_client_trip_id?: string | null
+          origin_iata?: string | null
+          origin_name?: string | null
+          owner_user_id?: string | null
           pace?: string | null
           passenger_composition?: Json
           share_enabled_at?: string | null
@@ -2483,6 +2624,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "trip_sessions_linked_client_trip_id_fkey"
+            columns: ["linked_client_trip_id"]
+            isOneToOne: false
+            referencedRelation: "client_trips"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "trip_sessions_traveler_profile_id_fkey"
             columns: ["traveler_profile_id"]
@@ -2713,6 +2861,13 @@ export type Database = {
         }
         Returns: Json
       }
+      claim_trip_session: {
+        Args: { p_access_token_hash: string }
+        Returns: {
+          claim_status: string
+          session_id: string
+        }[]
+      }
       cleanup_old_usage_tracking: { Args: never; Returns: undefined }
       get_ai_usage_stats: {
         Args: {
@@ -2749,6 +2904,17 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      rebuild_my_traveler_affinities: { Args: never; Returns: number }
+      record_my_travel_preference: {
+        Args: {
+          p_evidence?: Json
+          p_preference_key: string
+          p_response: string
+          p_source?: string
+        }
+        Returns: number
+      }
+      reset_my_travel_preferences: { Args: never; Returns: number }
       search_travel_offers: {
         Args: {
           p_dest_term: string
