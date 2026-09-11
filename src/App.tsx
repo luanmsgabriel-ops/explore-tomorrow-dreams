@@ -36,6 +36,7 @@ const MyTomorrowProfile = lazyWithRetry(() => import("./pages/MyTomorrowProfile"
 const MyTomorrowPreferences = lazyWithRetry(() => import("./pages/MyTomorrowPreferences"));
 const MyTomorrowRadars = lazyWithRetry(() => import("./pages/MyTomorrowRadars"));
 const MyTomorrowRadarDetail = lazyWithRetry(() => import("./pages/MyTomorrowRadarDetail"));
+const MyTomorrowNotifications = lazyWithRetry(() => import("./pages/MyTomorrowNotifications"));
 const Install = lazyWithRetry(() => import("./pages/Install"));
 const Avaliacao = lazyWithRetry(() => import("./pages/Avaliacao"));
 const Blog = lazyWithRetry(() => import("./pages/Blog"));
@@ -107,6 +108,7 @@ const App = () => (
           <Route path="/minha-area/preferencias" element={<ClientProtected label="preferências de viagem"><MyTomorrowPreferences /></ClientProtected>} />
           <Route path="/minha-area/radares" element={<ClientProtected label="meus radares"><MyTomorrowRadars /></ClientProtected>} />
           <Route path="/minha-area/radares/:radarId" element={<ClientProtected label="radar"><MyTomorrowRadarDetail /></ClientProtected>} />
+          <Route path="/minha-area/notificacoes" element={<ClientProtected label="alertas"><MyTomorrowNotifications /></ClientProtected>} />
           <Route path="/minha-area/operacional" element={<ClientProtected label="detalhes operacionais"><ClientDashboard /></ClientProtected>} />
           <Route path="/avaliacao/:id" element={<PageSuspense label="avaliação"><Avaliacao /></PageSuspense>} />
           <Route path="/install" element={<PageSuspense label="instalação"><Install /></PageSuspense>} />
