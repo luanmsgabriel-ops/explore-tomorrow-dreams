@@ -35,6 +35,7 @@ jobs:
             src/lib/liveRoute.test.ts \
             src/lib/liveSessionModel.test.ts \
             src/lib/realtimeVoice.test.ts \
+            src/hooks/useTomorrowLiveTelemetry.test.tsx \
             src/components/opportunities/live/LiveRouteGlobe.test.tsx \
             src/components/opportunities/live/LiveTranscriptDrawer.test.tsx \
             src/components/opportunities/live/TripComposerLiveSection.test.tsx \
