@@ -9,7 +9,7 @@ CREATE INDEX IF NOT EXISTS idx_trip_sessions_owner_activity
   ON public.trip_sessions (owner_user_id, last_activity_at DESC)
   WHERE owner_user_id IS NOT NULL;
 
-CREATE INDEX IF NOT EXISTS idx_trip_sessions_claimed_access_token_hash
+CREATE UNIQUE INDEX IF NOT EXISTS idx_trip_sessions_claimed_access_token_hash
   ON public.trip_sessions (claimed_access_token_hash)
   WHERE claimed_access_token_hash IS NOT NULL;
 
@@ -255,7 +255,7 @@ BEGIN
   SELECT * INTO v_session
   FROM public.trip_sessions
   WHERE access_token_hash = p_access_token_hash
-     OR (claimed_access_token_hash = p_access_token_hash AND owner_user_id = v_user_id)
+     OR claimed_access_token_hash = p_access_token_hash
   FOR UPDATE;
 
   IF NOT FOUND THEN
