@@ -38,6 +38,40 @@ export const DEFAULT_CATALOG_FILTERS: CatalogFilterValues = {
   sort: "date_asc",
 };
 
+export const RADAR_CATALOG_DRAFT_KEY = "tomorrow-radar-catalog-draft-v1";
+
+export function readCatalogRadarDraft(): CatalogFilterValues | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(RADAR_CATALOG_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<CatalogFilterValues>;
+    return { ...DEFAULT_CATALOG_FILTERS, ...parsed };
+  } catch {
+    return null;
+  }
+}
+
+function persistCatalogRadarDraft(values: CatalogFilterValues) {
+  if (typeof window === "undefined") return;
+  const safe: CatalogFilterValues = {
+    search: values.search,
+    origin: values.origin,
+    destination: values.destination,
+    offerType: values.offerType,
+    subtype: values.subtype,
+    category: values.category,
+    startDate: values.startDate,
+    endDate: values.endDate,
+    passengers: values.passengers,
+    minPrice: values.minPrice,
+    maxPrice: values.maxPrice,
+    onlyWithSeats: values.onlyWithSeats,
+    sort: values.sort,
+  };
+  window.sessionStorage.setItem(RADAR_CATALOG_DRAFT_KEY, JSON.stringify(safe));
+}
+
 export type CatalogFilterErrors = Partial<Record<keyof CatalogFilterValues, string>>;
 
 function numericValue(value: string) {
@@ -86,6 +120,7 @@ export function catalogParamsFromFilters(
   page: number,
   perPage = 18,
 ): CatalogParams {
+  persistCatalogRadarDraft(values);
   const params: CatalogParams = { sort: values.sort, page, per_page: perPage };
   const assignText = (key: keyof CatalogParams, value: string) => {
     const normalized = value.trim();
