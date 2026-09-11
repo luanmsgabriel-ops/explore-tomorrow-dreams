@@ -84,9 +84,19 @@ jobs:
             src/lib/realtimeVoice.test.ts \
             src/hooks/useTomorrowLiveTelemetry.test.tsx \
             src/components/opportunities/live/LiveRouteGlobe.test.tsx \
+            src/components/opportunities/live/LiveSessionCockpit.test.tsx \
             src/components/opportunities/live/LiveTranscriptDrawer.test.tsx \
             src/components/opportunities/live/TripComposerLiveSection.test.tsx \
             src/pages/opportunitiesLive.test.tsx 2>&1 | tee tomorrow-live-tests.log
+
+      - name: Type-check application
+        id: typecheck
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          bunx tsc -b --pretty false 2>&1 | tee tomorrow-live-typecheck.log
 
       - name: Build production bundle
         id: build
@@ -104,6 +114,7 @@ jobs:
           name: tomorrow-live-astra-logs
           path: |
             tomorrow-live-tests.log
+            tomorrow-live-typecheck.log
             tomorrow-live-build.log
           if-no-files-found: error
           retention-days: 7
@@ -112,7 +123,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          if [[ "${{ steps.tests.outcome }}" != "success" || "${{ steps.build.outcome }}" != "success" ]]; then
+          if [[ "${{ steps.tests.outcome }}" != "success" || "${{ steps.typecheck.outcome }}" != "success" || "${{ steps.build.outcome }}" != "success" ]]; then
             echo "Tomorrow Live ASTRA gate failed."
             exit 1
           fi
