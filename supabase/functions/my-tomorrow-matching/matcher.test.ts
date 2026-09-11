@@ -75,3 +75,22 @@ Deno.test("paused radar never matches and snapshot stays public-minimal", () => 
   assertEquals("raw_data" in snapshot, false);
   assertEquals("source_url" in snapshot, false);
 });
+
+Deno.test("air-block destination follows the same public canonicalization", () => {
+  const airRadar = { ...radar, offer_type: "bloqueio_aereo" as const, offer_subtype: "bloqueio" as const, min_nights: null, max_nights: null };
+  const rawAirOffer: PublicOfferForMatching = {
+    ...baseOffer,
+    id: "10000000-0000-4000-8000-000000000003",
+    offer_type: "bloqueio_aereo",
+    offer_subtype: "bloqueio",
+    name: null,
+    category: "Bloqueio aéreo",
+    destination: "Porto de Galinhas",
+    destination_iata: "REC",
+    airfare_included: true,
+  };
+  const result = evaluateRadarMatch(airRadar, rawAirOffer);
+  assert(result);
+  assertEquals(result.matchClass, "exact");
+  assertEquals((sanitizeOfferSnapshot(rawAirOffer) as Record<string, unknown>).destination, "Recife");
+});
