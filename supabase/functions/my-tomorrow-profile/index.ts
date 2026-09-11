@@ -112,34 +112,19 @@ serve(async (req) => {
       if (!allowedPreferenceKeys.has(preferenceKey) || !allowedResponses.has(response)) {
         return json({ ok: false, error: "invalid_preference_answer" }, 400);
       }
-      const { error: revokeError } = await client.from("traveler_preference_events")
-        .update({ revoked_at: new Date().toISOString() })
-        .eq("user_id", user.id)
-        .eq("preference_key", preferenceKey)
-        .is("revoked_at", null);
-      if (revokeError) throw revokeError;
-
-      const { error: insertError } = await client.from("traveler_preference_events").insert({
-        user_id: user.id,
-        preference_key: preferenceKey,
-        response,
-        source: "onboarding",
-        evidence: { ui: "my_tomorrow_preferences_v1" },
+      const { error } = await client.rpc("record_my_travel_preference", {
+        p_preference_key: preferenceKey,
+        p_response: response,
+        p_source: "onboarding",
+        p_evidence: { ui: "my_tomorrow_preferences_v1" },
       });
-      if (insertError) throw insertError;
-      const { error: rebuildError } = await client.rpc("rebuild_my_traveler_affinities");
-      if (rebuildError) throw rebuildError;
+      if (error) throw error;
       return json({ ok: true });
     }
 
     if (action === "reset_preferences") {
-      const { error: revokeError } = await client.from("traveler_preference_events")
-        .update({ revoked_at: new Date().toISOString() })
-        .eq("user_id", user.id)
-        .is("revoked_at", null);
-      if (revokeError) throw revokeError;
-      const { error: rebuildError } = await client.rpc("rebuild_my_traveler_affinities");
-      if (rebuildError) throw rebuildError;
+      const { error } = await client.rpc("reset_my_travel_preferences");
+      if (error) throw error;
       return json({ ok: true });
     }
 
