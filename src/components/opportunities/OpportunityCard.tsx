@@ -35,6 +35,8 @@ export interface OpportunityCardProps {
   airfareIncluded?: boolean | null;
   imageUrl?: string | null;
   imageAlt?: string;
+  imageEager?: boolean;
+  imagePreloadMargin?: string;
   badges?: OpportunityCardBadge[];
   actionHref: string;
   actionLabel?: string;
@@ -64,6 +66,8 @@ export function OpportunityCard({
   airfareIncluded,
   imageUrl,
   imageAlt,
+  imageEager = false,
+  imagePreloadMargin,
   badges = [],
   actionHref,
   actionLabel = "Ver oportunidade",
@@ -98,6 +102,8 @@ export function OpportunityCard({
             width={720}
             height={405}
             sizes="(min-width: 1280px) 30vw, (min-width: 640px) 48vw, 100vw"
+            eager={imageEager}
+            preloadMargin={imagePreloadMargin}
             className="size-full object-cover transition-[transform,opacity] duration-500 motion-safe:group-hover:scale-[1.035]"
           />
         ) : (
