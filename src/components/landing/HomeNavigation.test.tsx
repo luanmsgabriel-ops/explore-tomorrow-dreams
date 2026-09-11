@@ -17,6 +17,7 @@ describe('navegação pública para o Radar Tomorrow', () => {
     expect(screen.getAllByRole('link', { name: 'Oportunidades' })[0]).toHaveAttribute('href', '/oportunidades/catalogo');
     expect(screen.getAllByRole('link', { name: 'Calendário' })[0]).toHaveAttribute('href', '/oportunidades/calendario');
     expect(screen.queryByRole('link', { name: 'Ofertas' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Tomorrow Travel — início' })[0].querySelector('img')).toHaveAttribute('src', '/images/tomorrow-travel-logo-horizontal.png');
   });
 
   it('oferece catálogo, calendário, Live e comparação na nova Home', () => {

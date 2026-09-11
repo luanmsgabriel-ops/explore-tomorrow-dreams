@@ -55,11 +55,11 @@ Transformar a Home institucional extensa em uma entrada comercial para o Radar T
 
 - IMPLEMENTADO: sim, no branch isolado;
 - TESTADO: sim no escopo; suíte global com bloqueios preexistentes documentados;
-- MERGEADO: não;
-- SINCRONIZADO NO LOVABLE: não;
+- MERGEADO: sim, PR `#100`, squash `8bd1a7a91d4511e9cef5a9ffeec1862eef4db741`;
+- SINCRONIZADO NO LOVABLE: sim, mesmo SHA e estado `ready`;
 - PUBLICADO: não;
 - VALIDADO EM PRODUÇÃO: não.
 
 ## Próxima ação exata
 
-Abrir o PR e validar o preview desktop/mobile antes de qualquer merge ou publicação.
+Refinar o Hero mobile conforme revisão visual do usuário, em nova branch isolada, sem publicação automática.

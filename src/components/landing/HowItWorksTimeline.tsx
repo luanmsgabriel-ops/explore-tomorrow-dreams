@@ -1,4 +1,5 @@
-import { MessageCircle, FileText, Plane, ReceiptText } from 'lucide-react';
+import { ArrowRight, Headphones, Radar, Scale, UserCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { EditorialHeading } from './EditorialHeading';
 import { fadeUp, staggerContainer, lineDrawX, popIn } from '@/lib/animations';
@@ -6,37 +7,37 @@ import { fadeUp, staggerContainer, lineDrawX, popIn } from '@/lib/animations';
 const STEPS = [
   {
     n: '01',
-    icon: MessageCircle,
-    title: 'Conversa',
-    desc: 'Você fala com o Téo como falaria com um amigo. Sem formulário, sem fricção.',
-    time: '~2 min',
+    icon: Radar,
+    title: 'Explore',
+    desc: 'Acesse pacotes e bloqueios disponíveis no inventário atualizado da Tomorrow Travel.',
+    time: 'em tempo real',
   },
   {
     n: '02',
-    icon: FileText,
-    title: 'Roteiro',
-    desc: 'O Téo monta o roteiro ideal baseado no seu perfil e desejos.',
-    time: '~10 seg',
+    icon: Scale,
+    title: 'Compare',
+    desc: 'Filtre por origem, destino e período e selecione as oportunidades que fazem sentido para você.',
+    time: 'no seu ritmo',
   },
   {
     n: '03',
-    icon: ReceiptText,
-    title: 'Cotação',
-    desc: 'Um consultor humano revisa o roteiro e envia a cotação final.',
-    time: '~24h',
+    icon: UserCheck,
+    title: 'Confirme',
+    desc: 'Nosso time valida preço, disponibilidade e todos os detalhes antes da reserva.',
+    time: 'com atendimento humano',
   },
   {
     n: '04',
-    icon: Plane,
-    title: 'Concierge',
-    desc: 'Suporte total durante a viagem. Concierge 24/7 no WhatsApp.',
-    time: 'sempre',
+    icon: Headphones,
+    title: 'Viaje assistido',
+    desc: 'A Tomorrow acompanha você antes, durante e depois da viagem pelos canais de atendimento.',
+    time: 'do início ao retorno',
   },
 ];
 
 export const HowItWorksTimeline = () => {
   return (
-    <section className="relative py-20 md:py-28 border-t border-gold/10 overflow-hidden">
+    <section className="relative py-16 md:py-24 border-t border-gold/10 overflow-hidden">
       <div className="container mx-auto px-4 lg:px-8">
         <motion.div
           initial="hidden"
@@ -49,9 +50,9 @@ export const HowItWorksTimeline = () => {
               eyebrow="Como funciona"
               size="md"
               align="center"
-              className="mb-20 mx-auto max-w-2xl"
+              className="mb-14 mx-auto max-w-2xl md:mb-20"
             >
-              Do chat ao embarque.
+              Do radar à sua viagem.
               <br />
               <span className="font-editorial-italic gradient-text-teal">Simples assim.</span>
             </EditorialHeading>
@@ -123,13 +124,14 @@ export const HowItWorksTimeline = () => {
             variants={fadeUp}
             className="mt-16 flex justify-center"
           >
-            <a
-              href="/teo"
+            <Link
+              to="/oportunidades/catalogo"
               className="btn-gold flex items-center gap-3 px-8 py-4 group"
             >
-              <MessageCircle className="w-5 h-5" />
-              <span className="font-semibold">Começar agora com o Téo</span>
-            </a>
+              <Radar className="w-5 h-5" />
+              <span className="font-semibold">Explorar oportunidades</span>
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+            </Link>
           </motion.div>
         </motion.div>
       </div>

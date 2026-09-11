@@ -10,10 +10,10 @@
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
 | Última atualização | 11/09/2026 |
-| Estado geral | Radar Tomorrow, catálogo, calendário, comparação, seleção e Tomorrow Live já existem na `main`; repaginação da Home para liberar acesso público às oportunidades iniciada em branch isolada |
-| Etapa atual | Integração da Home com oportunidades reais — implementação e validação pré-merge |
-| Último HEAD funcional verificado | `3bd02231293daa42c13a7bbc64886c1934e13422` |
-| Próxima ação exata | Validar a branch `feat/home-opportunities-integration`, abrir PR e revisar o preview; não publicar automaticamente |
+| Estado geral | Integração da Home com oportunidades reais mergeada e sincronizada no Lovable; refinamento do Hero mobile iniciado após revisão visual do usuário |
+| Etapa atual | Remoção do personagem do Hero, correção do logo e indicadores reais do inventário |
+| Último HEAD funcional verificado | `8bd1a7a91d4511e9cef5a9ffeec1862eef4db741` |
+| Próxima ação exata | Validar a branch `fix/home-live-inventory-hero`, abrir PR e revisar o preview; não publicar automaticamente |
 
 ## 2. Protocolo obrigatório de continuidade
 

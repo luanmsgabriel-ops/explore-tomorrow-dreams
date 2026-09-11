@@ -1,13 +1,12 @@
 import { Link } from 'react-router-dom';
-import { MessageCircle, ArrowRight, Sparkles, ShieldCheck, Heart, Star } from 'lucide-react';
+import { MessageCircle, ArrowRight, Radar, ShieldCheck, Heart, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { TeoMascot } from '@/components/TeoMascot';
-import { fadeUp, staggerContainer, scaleUp } from '@/lib/animations';
+import { fadeUp, staggerContainer } from '@/lib/animations';
 import swissVillage from '@/assets/hero-swiss-village.jpg';
 
 export const ClosingCTA = () => {
   return (
-    <section className="relative py-32 md:py-48 overflow-hidden bg-black isolate">
+    <section className="relative py-24 md:py-36 overflow-hidden bg-black isolate">
       {/* Swiss Village Background Image */}
       <img
         src={swissVillage}
@@ -37,39 +36,38 @@ export const ClosingCTA = () => {
         >
 
           <motion.div variants={fadeUp}>
-            <h2 className="font-editorial text-5xl md:text-8xl lg:text-9xl text-white leading-[0.9] mb-8 text-center [text-shadow:_0_4px_24px_rgba(0,0,0,0.6)]">
-              <span className="block drop-shadow-lg">Sua história</span>
-              <span className="block font-editorial-italic gradient-text-teal italic pr-[0.15em] drop-shadow-lg">começa aqui.</span>
+            <h2 className="font-editorial text-5xl md:text-7xl lg:text-8xl text-white leading-[0.9] mb-8 text-center [text-shadow:_0_4px_24px_rgba(0,0,0,0.6)]">
+              <span className="block drop-shadow-lg">Seu próximo amanhã</span>
+              <span className="block font-editorial-italic gradient-text-teal italic pr-[0.15em] drop-shadow-lg">está no radar.</span>
             </h2>
 
           </motion.div>
 
           <motion.p variants={fadeUp} className="text-lg md:text-2xl text-white/60 max-w-2xl mx-auto mb-14 leading-relaxed font-light">
-            O Téo está online agora, esperando para transformar seus desejos em um roteiro inesquecível. Sem formulários, apenas uma conversa inspiradora.
+            Explore as oportunidades disponíveis agora e conte com nosso time para confirmar cada detalhe antes da reserva.
           </motion.p>
 
           <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
             <Link
-              to="/teo"
+              to="/oportunidades/catalogo"
               className="btn-gold flex items-center justify-center gap-4 text-xl px-12 py-6 group relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-white/10 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-              <MessageCircle className="w-6 h-6" />
-              <span className="relative z-10 font-bold">Conversar com o Téo</span>
+              <Radar className="w-6 h-6" />
+              <span className="relative z-10 font-bold">Ver oportunidades</span>
               <ArrowRight className="w-5 h-5 relative z-10 transition-transform group-hover:translate-x-2" />
             </Link>
             
-            <a
-              href="https://wa.me/5515991833448"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              to="/teo"
               className="group flex items-center gap-3 text-white/50 hover:text-white transition-colors py-4 px-6"
             >
-              <span className="text-lg font-medium">Falar via WhatsApp</span>
+              <MessageCircle className="size-5 text-gold-light/70" />
+              <span className="text-lg font-medium">Planejar com o Téo</span>
               <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center group-hover:border-white/40 transition-all">
                 <ArrowRight className="w-4 h-4" />
               </div>
-            </a>
+            </Link>
           </motion.div>
 
           {/* Emotional Close & Trust */}
@@ -78,16 +76,16 @@ export const ClosingCTA = () => {
             className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-16 border-t border-white/5"
           >
             <div className="flex flex-col items-center gap-3">
-              <Sparkles className="w-6 h-6 text-gold/60" />
-              <p className="text-[10px] uppercase tracking-[0.3em] text-white font-bold drop-shadow-md">IA de Próxima Geração</p>
+              <Radar className="w-6 h-6 text-gold/60" />
+              <p className="text-[10px] uppercase tracking-[0.3em] text-white font-bold drop-shadow-md">Inventário atualizado</p>
             </div>
             <div className="flex flex-col items-center gap-3">
               <Heart className="w-6 h-6 text-gold/60" />
-              <p className="text-[10px] uppercase tracking-[0.3em] text-white font-bold drop-shadow-md">Consultoria com Alma</p>
+              <p className="text-[10px] uppercase tracking-[0.3em] text-white font-bold drop-shadow-md">Curadoria humana</p>
             </div>
             <div className="flex flex-col items-center gap-3">
               <ShieldCheck className="w-6 h-6 text-gold/60" />
-              <p className="text-[10px] uppercase tracking-[0.3em] text-white font-bold drop-shadow-md">Segurança Tomorrow</p>
+              <p className="text-[10px] uppercase tracking-[0.3em] text-white font-bold drop-shadow-md">Confirmação antes da reserva</p>
             </div>
           </motion.div>
 

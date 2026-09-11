@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CalendarDays, Menu, MessageCircle, Radar, User, X } from 'lucide-react';
-import logo from '@/assets/logo.jpeg';
+
+const logo = '/images/tomorrow-travel-logo-horizontal.png';
 
 const navItems = [
   { label: 'Início', path: '/' },
@@ -39,13 +40,15 @@ export const Header = () => {
       >
         <div className="container mx-auto px-4 lg:px-8">
           <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-3">
-              <Link to="/" className="group">
-                <img src={logo} alt="Tomorrow Travel" className="h-12 w-12 rounded-lg object-cover transition-transform duration-300 group-hover:scale-110 ring-2 ring-gold/30" />
-              </Link>
-              <Link to="/" className="hidden sm:flex items-center">
-                <span className="text-gold-embossed font-serif text-xl font-bold tracking-wide">TOMORROW</span>
-                <span className="gradient-text-teal font-serif text-xl font-bold tracking-wide ml-2">TRAVEL</span>
+            <div className="flex items-center">
+              <Link to="/" className="group flex items-center" aria-label="Tomorrow Travel — início">
+                <img
+                  src={logo}
+                  alt="Tomorrow Travel"
+                  width="2172"
+                  height="724"
+                  className="h-10 w-auto max-w-[12rem] object-contain transition-transform duration-300 group-hover:scale-[1.02] sm:h-11 sm:max-w-[13rem]"
+                />
               </Link>
             </div>
 
@@ -78,8 +81,8 @@ export const Header = () => {
         <div className="lg:hidden fixed inset-0 z-[60] bg-background animate-fade-in">
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between p-4 border-b border-gold/20">
-              <Link to="/" className="flex items-center gap-3" onClick={() => setIsMobileMenuOpen(false)}>
-                <img src={logo} alt="Tomorrow Travel" className="h-12 w-12 rounded-lg object-cover ring-2 ring-gold/30" />
+              <Link to="/" className="flex items-center gap-3" aria-label="Tomorrow Travel — início" onClick={() => setIsMobileMenuOpen(false)}>
+                <img src={logo} alt="Tomorrow Travel" width="2172" height="724" className="h-11 w-auto max-w-[13rem] object-contain" />
               </Link>
               <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-gold-light" aria-label="Fechar menu">
                 <X className="w-6 h-6" />

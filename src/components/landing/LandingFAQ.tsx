@@ -1,25 +1,26 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Minus, HelpCircle } from 'lucide-react';
+import { ArrowRight, Plus, Minus, HelpCircle, Radar } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { EditorialHeading } from './EditorialHeading';
 import { fadeUp, staggerContainer } from '@/lib/animations';
 
 const FAQS = [
   {
-    question: "O Téo é um robô ou uma pessoa?",
-    answer: "O Téo é uma Inteligência Artificial avançada desenvolvida pela Tomorrow. Ele entende seus desejos em segundos, mas cada roteiro é revisado por um consultor humano especialista antes de chegar a você."
+    question: "As oportunidades apresentadas são reais?",
+    answer: "Sim. A vitrine consulta o inventário público da Tomorrow Travel. Como o mercado de viagens muda rapidamente, preço e disponibilidade são confirmados pelo nosso time antes da reserva."
   },
   {
-    question: "Quanto custa o serviço do Téo?",
-    answer: "A consultoria inicial e o planejamento do roteiro com o Téo são 100% gratuitos. Você só paga pelas reservas da viagem (hotéis, passagens, experiências) através da nossa curadoria premium."
+    question: "O preço exibido já está garantido?",
+    answer: "O valor mostrado é o informado pela fonte da oportunidade. A confirmação final acontece no atendimento, considerando disponibilidade, quantidade de viajantes, taxas e condições aplicáveis."
   },
   {
-    question: "Posso confiar nas reservas feitas?",
-    answer: "Com certeza. Somos uma agência de luxo com rede global de parceiros certificados (LATAM, Emirates, Marriott, etc). Oferecemos suporte 24/7 e seguro viagem incluso em todos os pacotes."
+    question: "Como faço para reservar uma oportunidade?",
+    answer: "Abra os detalhes da oferta e solicite atendimento. A equipe valida os dados, apresenta as condições finais e orienta os próximos passos da reserva."
   },
   {
-    question: "E se eu precisar de suporte durante a viagem?",
-    answer: "Você terá acesso direto ao nosso Concierge 24/7 via WhatsApp. Qualquer imprevisto com voos, reservas ou necessidade de recomendações locais será resolvido imediatamente por nossa equipe humana."
+    question: "Qual caminho devo usar para pesquisar?",
+    answer: "Use o catálogo para explorar todas as opções, o calendário para começar pelas datas ou o Tomorrow Live para pesquisar em uma experiência guiada. Todos consultam o mesmo inventário."
   }
 ];
 
@@ -27,7 +28,7 @@ export const LandingFAQ = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section className="py-24 md:py-40 bg-teal-900 relative">
+    <section className="py-20 md:py-28 bg-teal-900 relative">
       <div className="container mx-auto px-4 lg:px-8">
         <motion.div
           initial="hidden"
@@ -42,15 +43,15 @@ export const LandingFAQ = () => {
               <span className="font-editorial-italic gradient-text-teal italic">saber</span>.
             </EditorialHeading>
             <p className="text-lg text-white/50 leading-relaxed mb-10">
-              Transparência é um dos nossos pilares. Se não encontrar sua resposta aqui, o Téo pode te explicar melhor no chat.
+              Entenda como o inventário é consultado e como acontece a confirmação antes da reserva.
             </p>
             <div className="flex items-center gap-4 p-6 rounded-2xl bg-white/5 border border-white/10">
               <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center">
                 <HelpCircle className="w-6 h-6 text-gold" />
               </div>
               <div>
-                <p className="text-white font-bold">Ainda com dúvida?</p>
-                <p className="text-sm text-white/40">O Téo responde em segundos.</p>
+                <p className="text-white font-bold">Atendimento humano</p>
+                <p className="text-sm text-white/40">Confirmação antes da reserva.</p>
               </div>
             </div>
           </motion.div>
@@ -91,13 +92,14 @@ export const LandingFAQ = () => {
             variants={fadeUp}
             className="lg:col-span-12 flex justify-center mt-12"
           >
-            <a
-              href="/teo"
+            <Link
+              to="/oportunidades/catalogo"
               className="btn-gold flex items-center gap-3 px-10 py-5 group"
             >
-              <HelpCircle className="w-6 h-6" />
-              <span className="font-bold">Ainda tenho dúvidas, Téo</span>
-            </a>
+              <Radar className="w-6 h-6" />
+              <span className="font-bold">Ver oportunidades</span>
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+            </Link>
           </motion.div>
         </motion.div>
       </div>
