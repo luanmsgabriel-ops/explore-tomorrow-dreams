@@ -125,7 +125,7 @@ describe("Tomorrow Live — evolução ASTRA", () => {
 
     expect(telemetryMocks.trackTomorrowLiveAction).toHaveBeenCalledWith("privacy_opened");
     expect(screen.getByRole("status")).toHaveTextContent(
-      "O microfone só é usado enquanto você estiver falando com o Téo.",
+      "O microfone é acessado apenas durante a sessão de voz ativa e pode ser pausado a qualquer momento.",
     );
     expect(screen.getByRole("status")).toHaveTextContent("não salva áudio nem transcrição no armazenamento local");
     expect(screen.queryByText("Sua conversa é privada.")).not.toBeInTheDocument();
@@ -164,6 +164,7 @@ describe("Tomorrow Live — evolução ASTRA", () => {
 
     expect(container.firstElementChild).toHaveAttribute("data-journey-stage", "offline");
     expect(screen.getByRole("button", { name: "Sem conexão" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Iniciar conversa por voz pelo microfone do planeta" })).toBeDisabled();
     expect(getUserMedia).not.toHaveBeenCalled();
   });
 });
