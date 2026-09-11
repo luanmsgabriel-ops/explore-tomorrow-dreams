@@ -28,6 +28,9 @@ const ClientSignUp = lazyWithRetry(() => import("./pages/ClientSignUp"));
 const ClientForgotPassword = lazyWithRetry(() => import("./pages/ClientForgotPassword"));
 const ClientResetPassword = lazyWithRetry(() => import("./pages/ClientResetPassword"));
 const ClientDashboard = lazyWithRetry(() => import("./pages/ClientDashboard"));
+const MyTomorrowDashboard = lazyWithRetry(() => import("./pages/MyTomorrowDashboard"));
+const MyTomorrowTrips = lazyWithRetry(() => import("./pages/MyTomorrowTrips"));
+const MyTomorrowTripDetail = lazyWithRetry(() => import("./pages/MyTomorrowTripDetail"));
 const Install = lazyWithRetry(() => import("./pages/Install"));
 const Avaliacao = lazyWithRetry(() => import("./pages/Avaliacao"));
 const Blog = lazyWithRetry(() => import("./pages/Blog"));
@@ -56,6 +59,10 @@ const PageSuspense = ({ children, label, opportunities = false }: { children: Re
   <Suspense fallback={<div className={opportunities ? "min-h-screen bg-[#041012]" : "min-h-screen bg-background"} aria-label={`Carregando ${label}`} />}>
     {children}
   </Suspense>
+);
+
+const ClientProtected = ({ children, label }: { children: ReactNode; label: string }) => (
+  <ClientAuthGuard><PageSuspense label={label}>{children}</PageSuspense></ClientAuthGuard>
 );
 
 const FloatingButtons = () => {
@@ -88,7 +95,10 @@ const App = () => (
           <Route path="/cliente/criar-conta" element={<PageSuspense label="criação de conta"><ClientSignUp /></PageSuspense>} />
           <Route path="/cliente/esqueci-senha" element={<PageSuspense label="recuperação de senha"><ClientForgotPassword /></PageSuspense>} />
           <Route path="/cliente/redefinir-senha" element={<PageSuspense label="redefinição de senha"><ClientResetPassword /></PageSuspense>} />
-          <Route path="/minha-area" element={<ClientAuthGuard><PageSuspense label="área do cliente"><ClientDashboard /></PageSuspense></ClientAuthGuard>} />
+          <Route path="/minha-area" element={<ClientProtected label="My Tomorrow"><MyTomorrowDashboard /></ClientProtected>} />
+          <Route path="/minha-area/viagens" element={<ClientProtected label="minhas viagens"><MyTomorrowTrips /></ClientProtected>} />
+          <Route path="/minha-area/viagens/:tripId" element={<ClientProtected label="viagem"><MyTomorrowTripDetail /></ClientProtected>} />
+          <Route path="/minha-area/operacional" element={<ClientProtected label="detalhes operacionais"><ClientDashboard /></ClientProtected>} />
           <Route path="/avaliacao/:id" element={<PageSuspense label="avaliação"><Avaliacao /></PageSuspense>} />
           <Route path="/install" element={<PageSuspense label="instalação"><Install /></PageSuspense>} />
           <Route path="/blog" element={<PageSuspense label="blog"><Blog /></PageSuspense>} />
