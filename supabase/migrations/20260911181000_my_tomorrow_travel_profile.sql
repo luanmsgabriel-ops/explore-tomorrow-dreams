@@ -34,7 +34,10 @@ create table if not exists public.traveler_preference_events (
   evidence jsonb,
   revoked_at timestamptz,
   created_at timestamptz not null default now(),
-  constraint traveler_preference_events_key_check check (char_length(trim(preference_key)) between 1 and 80),
+  constraint traveler_preference_events_key_check check (preference_key in (
+    'praia','neve','parques','cidade','natureza','gastronomia','compras','aventura',
+    'resort','all_inclusive','cruzeiro','eventos','cultura','vida_noturna','familia','casal'
+  )),
   constraint traveler_preference_events_response_check check (response in ('want','like','neutral','not_for_me')),
   constraint traveler_preference_events_source_check check (source in ('onboarding','profile_edit','reset_replacement'))
 );
@@ -115,14 +118,6 @@ create policy "Users read own affinities"
   to authenticated
   using (user_id = auth.uid());
 
-drop policy if exists "Users manage own affinities" on public.traveler_affinities;
-create policy "Users manage own affinities"
-  on public.traveler_affinities
-  for all
-  to authenticated
-  using (user_id = auth.uid())
-  with check (user_id = auth.uid());
-
 drop policy if exists "Admins manage traveler affinities" on public.traveler_affinities;
 create policy "Admins manage traveler affinities"
   on public.traveler_affinities
@@ -131,11 +126,43 @@ create policy "Admins manage traveler affinities"
   using (public.is_admin())
   with check (public.is_admin());
 
+create or replace function public.guard_traveler_preference_event_update()
+returns trigger
+language plpgsql
+security invoker
+set search_path = pg_catalog, public
+as $$
+begin
+  if public.is_admin() then
+    return new;
+  end if;
+
+  if old.user_id is distinct from new.user_id
+    or old.preference_key is distinct from new.preference_key
+    or old.response is distinct from new.response
+    or old.source is distinct from new.source
+    or old.evidence is distinct from new.evidence
+    or old.created_at is distinct from new.created_at
+    or (old.revoked_at is not null and new.revoked_at is distinct from old.revoked_at)
+    or (old.revoked_at is null and new.revoked_at is null)
+  then
+    raise exception 'preference_event_immutable';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_guard_traveler_preference_event_update on public.traveler_preference_events;
+create trigger trg_guard_traveler_preference_event_update
+before update on public.traveler_preference_events
+for each row execute function public.guard_traveler_preference_event_update();
+
 create or replace function public.rebuild_my_traveler_affinities()
 returns integer
 language plpgsql
-security invoker
-set search_path = public
+security definer
+set search_path = pg_catalog, public
 as $$
 declare
   v_user_id uuid := auth.uid();
@@ -184,4 +211,5 @@ begin
 end;
 $$;
 
+revoke all on function public.rebuild_my_traveler_affinities() from public;
 grant execute on function public.rebuild_my_traveler_affinities() to authenticated;
