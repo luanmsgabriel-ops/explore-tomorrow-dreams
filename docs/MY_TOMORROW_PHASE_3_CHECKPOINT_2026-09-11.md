@@ -3,7 +3,8 @@
 Data: 2026-09-11
 Branch: `feat/my-tomorrow-phase-3-travel-profile`
 Base: `dff4decf33ffc43db2468bae18af149fe417f1bc`
-Estado: IMPLEMENTAÇÃO DE CÓDIGO CONCLUÍDA — gate de CI pendente neste checkpoint
+PR: #110
+Estado: IMPLEMENTADA E TESTADA EM CI — banco não aplicado
 
 ## Escopo
 
@@ -30,13 +31,20 @@ Cria:
 - `traveler_profile_settings` — dados estruturais explícitos de conta;
 - `traveler_preference_events` — log auditável de respostas;
 - `traveler_affinities` — agregação derivada e reconstruível;
-- RPC `rebuild_my_traveler_affinities()`.
+- RPC `rebuild_my_traveler_affinities()`;
+- RPC `record_my_travel_preference(...)`;
+- RPC `reset_my_travel_preferences()`.
 
-Regras:
+Regras finais:
 
 - ownership por `auth.uid()`;
 - RLS por usuário e admin;
+- cliente lê seu histórico e suas afinidades;
+- escrita de eventos não fica disponível diretamente ao cliente;
+- respostas e reset passam por RPCs transacionais;
 - eventos antigos são revogados, não apagados silenciosamente;
+- trigger impede mutação de conteúdo histórico fora da revogação permitida;
+- `traveler_affinities` é derivada e não possui policy de escrita para o cliente;
 - score deriva exclusivamente de respostas explícitas ativas;
 - score fica entre -1 e 1;
 - reset revoga sinais ativos e reconstrói a agregação vazia;
@@ -56,15 +64,15 @@ Nova Edge Function:
 
 `supabase/functions/my-tomorrow-profile/index.ts`
 
-Contrato:
+Contrato implementado:
 
 - JWT obrigatório;
 - usa cliente Supabase com token do usuário e RLS;
 - não usa Service Role;
 - `get` retorna perfil, afinidades e respostas ativas mais recentes;
 - `update_profile` faz upsert do perfil estrutural;
-- `answer` revoga a resposta ativa anterior da mesma categoria, persiste novo evento e recalcula afinidades;
-- `reset_preferences` revoga todos os sinais ativos e recalcula;
+- `answer` valida chave/resposta e chama RPC transacional de gravação + rebuild;
+- `reset_preferences` chama RPC transacional de revogação + rebuild;
 - valida IATA, orçamento e enums no backend.
 
 ## Frontend
@@ -106,6 +114,19 @@ A nova área é acessível diretamente pelo dashboard My Tomorrow.
 - `src/pages/MyTomorrowDashboard.tsx`;
 - `src/App.tsx`.
 
+## Validação
+
+Run final: `34626667665` — PASS integral.
+
+- testes focados: 1 arquivo / 4 testes PASS;
+- TypeScript: PASS;
+- ESLint do escopo: PASS;
+- build de produção: PASS;
+- `deno check` de `my-tomorrow-profile`: PASS;
+- `git diff --check`: PASS.
+
+Run anterior `34626455989` também passou, mas foi sucedido pelo endurecimento de integridade que moveu gravação/reset para RPCs transacionais. O run `34626667665` é o gate definitivo da Fase 3.
+
 ## Fora do escopo
 
 - popular `travel_places` / `travel_experiences` com conteúdo inventado;
@@ -118,21 +139,29 @@ A nova área é acessível diretamente pelo dashboard My Tomorrow.
 - execução de migrations;
 - deploy da Edge Function.
 
-## Gate da Fase 3
+## Próximo passo exato
 
-Antes do merge:
+O lote de três migrations está completo. Antes de iniciar a Fase 4, executar o gate integrado do lote:
 
-1. testes focados do contrato frontend → Edge Function;
-2. TypeScript;
-3. ESLint do escopo;
-4. build de produção;
-5. `deno check` da Edge Function;
-6. `git diff --check`;
-7. revisão final do diff;
-8. remover workflow temporário de validação.
+1. revisar os três SQLs em conjunto e a ordem 1 → 2 → 3;
+2. aplicar as três migrations na mesma janela controlada;
+3. publicar somente as Edge Functions necessárias às Fases 1–3;
+4. validar signup/recovery e role `user`;
+5. validar isolamento RLS com dois usuários;
+6. validar claim guest → owner e invalidação do token;
+7. validar criar/editar planning trip no My Tomorrow;
+8. validar Travel Profile, resposta, substituição e reset de preferência;
+9. confirmar que `client_trips` operacional permanece intacto;
+10. somente após esse gate decidir o início da Fase 4 — Radar CRUD.
 
-Após o merge, ainda NÃO marcar banco, deploy, sync ou produção como validados.
+## Estados
 
-## Próximo passo após fechar o código
-
-Como o lote de três migrations estará completo, o próximo gate será revisar as três migrations em conjunto e então aplicar 1 → 2 → 3 na mesma janela controlada, seguida por testes integrados de RLS, signup/recovery, claim, My Tomorrow, Travel Profile e isolamento entre usuários.
+- IMPLEMENTADO: SIM.
+- TESTADO em CI/estático: SIM.
+- TESTADO em banco/ambiente real: NÃO.
+- MERGEADO: pendente no momento deste checkpoint.
+- MIGRATIONS EXECUTADAS: NÃO.
+- EDGE FUNCTION DEPLOYADA: NÃO.
+- SINCRONIZADO NO LOVABLE: NÃO confirmado.
+- PUBLICADO: NÃO.
+- VALIDADO EM PRODUÇÃO: NÃO.
