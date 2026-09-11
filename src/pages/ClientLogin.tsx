@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Lock, Mail, Eye, EyeOff, Loader2, Briefcase } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,28 +13,24 @@ const ClientLogin = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Only redirect if user is already logged in AND has client role
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        // Check if user is admin or client
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', session.user.id)
-          .single();
+      if (!session) return;
 
-        if (roleData?.role === 'admin') {
-          // Se for admin, faz logout e mantém na página de login
-          await supabase.auth.signOut();
-          toast.info('Faça login com uma conta de cliente');
-        } else if (roleData?.role === 'user') {
-          // Apenas redireciona se for um cliente válido
-          navigate('/minha-area');
-        }
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (roleData?.role === 'admin') {
+        await supabase.auth.signOut();
+        toast.info('Faça login com uma conta de cliente');
+      } else if (roleData?.role === 'user') {
+        navigate('/minha-area', { replace: true });
       }
     };
-    checkSession();
+    void checkSession();
   }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,33 +38,32 @@ const ClientLogin = () => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
+      const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (error) throw error;
 
-      // Check user role
-      const { data: roleData } = await supabase
+      const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', data.user.id)
-        .single();
+        .maybeSingle();
 
-      // Se for admin, não permite login pela área do cliente
+      if (roleError) throw roleError;
       if (roleData?.role === 'admin') {
         await supabase.auth.signOut();
         toast.error('Acesso negado. Use a área de administração para fazer login.');
-        setIsLoading(false);
+        return;
+      }
+      if (roleData?.role !== 'user') {
+        await supabase.auth.signOut();
+        toast.error('Sua conta ainda não está habilitada para a área do cliente.');
         return;
       }
 
       toast.success('Login realizado com sucesso!');
-      navigate('/minha-area');
-    } catch (error: any) {
+      navigate('/minha-area', { replace: true });
+    } catch (error) {
       console.error('Auth error:', error);
-      toast.error(error.message || 'E-mail ou senha incorretos');
+      toast.error('E-mail ou senha incorretos');
     } finally {
       setIsLoading(false);
     }
@@ -77,90 +72,48 @@ const ClientLogin = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-
-      <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="min-h-screen flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mx-auto mb-6">
               <Briefcase className="w-8 h-8 text-primary-foreground" />
             </div>
-            <h1 className="font-serif text-3xl font-bold text-foreground mb-2">
-              Área do <span className="gradient-text-teal">Cliente</span>
-            </h1>
-            <p className="text-muted-foreground">
-              Acesse sua área exclusiva e acompanhe sua viagem
-            </p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Tomorrow ID</p>
+            <h1 className="font-serif text-3xl font-bold text-foreground mb-2">Sua área <span className="gradient-text-teal">Tomorrow</span></h1>
+            <p className="text-muted-foreground">Entre para acompanhar suas viagens e seu planejamento.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
-                E-mail
-              </label>
+              <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">E-mail</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seu@email.com"
-                  className="w-full pl-12 pr-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                  required
-                  disabled={isLoading}
-                />
+                <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" className="w-full pl-12 pr-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all" required disabled={isLoading} autoComplete="email" />
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
-                Senha
-              </label>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <label htmlFor="password" className="block text-sm font-medium text-foreground">Senha</label>
+                <Link to="/cliente/esqueci-senha" className="text-xs font-semibold text-primary hover:underline">Esqueci minha senha</Link>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full pl-12 pr-12 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                  required
-                  disabled={isLoading}
-                  minLength={6}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
+                <input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full pl-12 pr-12 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all" required disabled={isLoading} minLength={6} autoComplete="current-password" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}>
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
             </div>
 
-            <button 
-              type="submit" 
-              className="w-full btn-primary flex items-center justify-center gap-2"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Entrando...
-                </>
-              ) : (
-                'Entrar'
-              )}
+            <button type="submit" className="w-full btn-primary flex items-center justify-center gap-2" disabled={isLoading}>
+              {isLoading ? <><Loader2 className="w-5 h-5 animate-spin" />Entrando...</> : 'Entrar'}
             </button>
           </form>
 
-          <div className="mt-8 p-4 rounded-xl bg-secondary/50 border border-border">
-            <p className="text-center text-muted-foreground text-sm">
-              <strong className="text-foreground">Primeiro acesso?</strong>
-              <br />
-              Verifique seu e-mail para as credenciais enviadas pelo seu consultor de viagens.
-            </p>
+          <div className="mt-8 p-4 rounded-xl bg-secondary/50 border border-border text-center">
+            <p className="text-muted-foreground text-sm">Ainda não possui Tomorrow ID?</p>
+            <Link to="/cliente/criar-conta" className="mt-1 inline-block font-semibold text-primary hover:underline">Criar minha conta</Link>
           </div>
         </div>
       </div>
