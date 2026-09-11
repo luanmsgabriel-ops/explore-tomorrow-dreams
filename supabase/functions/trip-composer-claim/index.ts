@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { isValidAccessToken, sha256 } from "./claimUtils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,15 +12,6 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   status,
   headers: { ...corsHeaders, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
 });
-
-export async function sha256(value: string) {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-export function isValidAccessToken(value: unknown): value is string {
-  return typeof value === "string" && /^[0-9a-f]{64}$/i.test(value);
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
@@ -59,11 +51,7 @@ serve(async (req) => {
     const result = Array.isArray(data) ? data[0] : data;
     if (!result?.session_id) return json({ error: "claim_failed" }, 500);
 
-    return json({
-      ok: true,
-      session_id: result.session_id,
-      status: result.claim_status,
-    });
+    return json({ ok: true, session_id: result.session_id, status: result.claim_status });
   } catch (error) {
     console.error("[TRIP_COMPOSER_CLAIM_ERROR]", error instanceof Error ? error.message : "unknown_error");
     return json({ error: "claim_failed" }, 500);
