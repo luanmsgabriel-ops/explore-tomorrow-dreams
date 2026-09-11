@@ -1,6 +1,13 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const telemetryMocks = vi.hoisted(() => ({
+  trackTomorrowLiveAction: vi.fn(),
+  useTomorrowLiveTelemetry: vi.fn(),
+}));
+
+vi.mock("@/hooks/useTomorrowLiveTelemetry", () => telemetryMocks);
+
 import OpportunitiesLive from "./OpportunitiesLive";
 
 const originalMatchMedia = window.matchMedia;
@@ -12,6 +19,8 @@ describe("Tomorrow Live — evolução ASTRA", () => {
 
   beforeEach(() => {
     getUserMedia.mockReset();
+    telemetryMocks.trackTomorrowLiveAction.mockClear();
+    telemetryMocks.useTomorrowLiveTelemetry.mockClear();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
     Object.defineProperty(navigator, "mediaDevices", {
       configurable: true,
@@ -50,6 +59,11 @@ describe("Tomorrow Live — evolução ASTRA", () => {
     expect(screen.getByRole("button", { name: "Iniciar conversa por voz" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Pausar microfone" })).toBeDisabled();
     expect(getUserMedia).not.toHaveBeenCalled();
+    expect(telemetryMocks.useTomorrowLiveTelemetry).toHaveBeenCalledWith(expect.objectContaining({
+      voiceStatus: "idle",
+      offerIds: [],
+      routeCount: 0,
+    }));
   });
 
   it("mantém o planeta como palco principal e oferece legenda sob demanda", () => {
@@ -62,12 +76,13 @@ describe("Tomorrow Live — evolução ASTRA", () => {
     expect(screen.getByLabelText("Globo visual do Tomorrow Live — Aguardando")).toBeInTheDocument();
   });
 
-  it("solicita microfone somente após o clique e trata permissão negada", async () => {
+  it("solicita microfone somente após o clique, mede a ação e trata permissão negada", async () => {
     getUserMedia.mockRejectedValueOnce(new DOMException("denied", "NotAllowedError"));
     render(<OpportunitiesLive />);
 
     fireEvent.click(screen.getByRole("button", { name: "Iniciar conversa por voz" }));
 
+    expect(telemetryMocks.trackTomorrowLiveAction).toHaveBeenCalledWith("voice_start_requested", { online: true });
     expect(getUserMedia).toHaveBeenCalledTimes(1);
     expect(await screen.findByRole("alert")).toHaveTextContent("Permissão do microfone negada");
     expect(screen.getAllByRole("link", { name: "Continuar por texto" }).every((link) => link.getAttribute("href") === "/teo")).toBe(true);
@@ -108,6 +123,7 @@ describe("Tomorrow Live — evolução ASTRA", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Ver informações de privacidade" }));
 
+    expect(telemetryMocks.trackTomorrowLiveAction).toHaveBeenCalledWith("privacy_opened");
     expect(screen.getByRole("status")).toHaveTextContent(
       "O microfone só é usado enquanto você estiver falando com o Téo.",
     );
