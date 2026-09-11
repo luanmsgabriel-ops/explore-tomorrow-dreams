@@ -23,8 +23,6 @@ export const HeroCinematicBackground = () => {
         <source media="(max-width: 639px)" src="/videos/home-opportunity-radar-mobile.mp4" type="video/mp4" />
         <source src="/videos/home-opportunity-radar-desktop.mp4" type="video/mp4" />
       </video>
-
-      <div className="absolute inset-0 bg-black/10" />
     </div>
   );
 };
