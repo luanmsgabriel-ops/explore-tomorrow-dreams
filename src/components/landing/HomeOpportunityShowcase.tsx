@@ -117,7 +117,7 @@ export function HomeOpportunityShowcase() {
 
         {offers.length > 0 ? (
           <div className="grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {offers.map((item) => (
+            {offers.map((item, index) => (
               <OpportunityCard
                 key={item.id}
                 id={item.id}
@@ -137,6 +137,8 @@ export function HomeOpportunityShowcase() {
                 airfareIncluded={item.airfare_included}
                 imageUrl={item.image_url}
                 imageAlt={item.destination ? `Vista de ${item.destination}` : 'Imagem pública da oportunidade'}
+                imageEager={index < 3}
+                imagePreloadMargin="900px 0px"
                 badges={badgesFor(item)}
                 actionHref={`/oportunidades/oferta/${encodeURIComponent(item.id)}`}
                 actionLabel="Ver detalhes"

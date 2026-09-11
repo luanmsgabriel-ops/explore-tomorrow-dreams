@@ -4,12 +4,14 @@ interface DeferredOfferImageProps extends Omit<ImgHTMLAttributes<HTMLImageElemen
   src: string;
   fallbackSrc?: string;
   eager?: boolean;
+  preloadMargin?: string;
 }
 
 export function DeferredOfferImage({
   src,
   fallbackSrc,
   eager = false,
+  preloadMargin = "220px 0px",
   className,
   onLoad,
   onError,
@@ -41,12 +43,12 @@ export function DeferredOfferImage({
         setShouldLoad(true);
         observer.disconnect();
       },
-      { rootMargin: "220px 0px" },
+      { rootMargin: preloadMargin },
     );
 
     observer.observe(element);
     return () => observer.disconnect();
-  }, [eager, shouldLoad]);
+  }, [eager, preloadMargin, shouldLoad]);
 
   return (
     <img

@@ -49,7 +49,7 @@ describe('HomeOpportunityShowcase', () => {
         currency: 'BRL',
         available_seats: null,
         airfare_included: true,
-        image_url: null,
+        image_url: 'https://example.com/gramado.jpg',
         featured: true,
         editorial_order: 1,
         campaign_label: null,
@@ -71,6 +71,7 @@ describe('HomeOpportunityShowcase', () => {
     expect(screen.getByText('São Paulo (CGH) → Gramado (POA)')).toBeInTheDocument();
     expect(screen.getByText('R$ 1.510,00')).toBeInTheDocument();
     expect(screen.getByText('Disponibilidade sujeita à confirmação.')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Vista de Gramado' })).toHaveAttribute('loading', 'eager');
     expect(mockedFetchCatalog).toHaveBeenCalledWith({
       offer_type: 'pacote',
       sort: 'editorial',
