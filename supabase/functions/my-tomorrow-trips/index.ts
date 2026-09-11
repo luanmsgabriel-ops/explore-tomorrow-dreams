@@ -13,6 +13,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 });
 
 const allowedStages = new Set(["dreaming", "researching", "planning"]);
+const planningSelect = "id,destination_name,origin_name,origin_iata,start_date,end_date,lifecycle_stage,passenger_composition,budget_min,budget_max,budget_currency,linked_client_trip_id,updated_at";
 
 function normalizeBookedStage(status: string, startDate: string, endDate: string) {
   const normalized = String(status || "").toLowerCase();
@@ -60,24 +61,62 @@ function bookedTrip(row: Record<string, unknown>) {
   };
 }
 
-function cleanInput(value: unknown) {
-  const input = value && typeof value === "object" ? value as Record<string, unknown> : {};
+function asRecord(value: unknown) {
+  return value && typeof value === "object" ? value as Record<string, unknown> : {};
+}
+
+function normalizeText(value: unknown) {
+  return typeof value === "string" ? value.trim() || null : null;
+}
+
+function normalizeNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function cleanCreateInput(value: unknown) {
+  const input = asRecord(value);
   const stage = typeof input.stage === "string" && allowedStages.has(input.stage) ? input.stage : "planning";
-  const text = (key: string) => typeof input[key] === "string" ? String(input[key]).trim() || null : null;
-  const number = (key: string) => typeof input[key] === "number" && Number.isFinite(input[key]) ? input[key] : null;
-  const passengers = input.passengerComposition && typeof input.passengerComposition === "object" ? input.passengerComposition : {};
   return {
-    destination_name: text("destinationName"),
-    origin_name: text("originName"),
-    origin_iata: text("originIata")?.toUpperCase() ?? null,
-    start_date: text("startDate"),
-    end_date: text("endDate"),
+    destination_name: normalizeText(input.destinationName),
+    origin_name: normalizeText(input.originName),
+    origin_iata: normalizeText(input.originIata)?.toUpperCase() ?? null,
+    start_date: normalizeText(input.startDate),
+    end_date: normalizeText(input.endDate),
     lifecycle_stage: stage,
-    passenger_composition: passengers,
-    budget_min: number("budgetMin"),
-    budget_max: number("budgetMax"),
-    budget_currency: text("budgetCurrency")?.toUpperCase() ?? "BRL",
+    passenger_composition: input.passengerComposition && typeof input.passengerComposition === "object" ? input.passengerComposition : {},
+    budget_min: normalizeNumber(input.budgetMin),
+    budget_max: normalizeNumber(input.budgetMax),
+    budget_currency: normalizeText(input.budgetCurrency)?.toUpperCase() ?? "BRL",
   };
+}
+
+function cleanUpdateInput(value: unknown) {
+  const input = asRecord(value);
+  const patch: Record<string, unknown> = {};
+  if (Object.hasOwn(input, "destinationName")) patch.destination_name = normalizeText(input.destinationName);
+  if (Object.hasOwn(input, "originName")) patch.origin_name = normalizeText(input.originName);
+  if (Object.hasOwn(input, "originIata")) patch.origin_iata = normalizeText(input.originIata)?.toUpperCase() ?? null;
+  if (Object.hasOwn(input, "startDate")) patch.start_date = normalizeText(input.startDate);
+  if (Object.hasOwn(input, "endDate")) patch.end_date = normalizeText(input.endDate);
+  if (Object.hasOwn(input, "stage")) {
+    if (typeof input.stage !== "string" || !allowedStages.has(input.stage)) throw new Error("invalid_stage");
+    patch.lifecycle_stage = input.stage;
+  }
+  if (Object.hasOwn(input, "passengerComposition")) patch.passenger_composition = input.passengerComposition && typeof input.passengerComposition === "object" ? input.passengerComposition : {};
+  if (Object.hasOwn(input, "budgetMin")) patch.budget_min = normalizeNumber(input.budgetMin);
+  if (Object.hasOwn(input, "budgetMax")) patch.budget_max = normalizeNumber(input.budgetMax);
+  if (Object.hasOwn(input, "budgetCurrency")) patch.budget_currency = normalizeText(input.budgetCurrency)?.toUpperCase() ?? "BRL";
+  return patch;
+}
+
+function validateRanges(input: Record<string, unknown>) {
+  const startDate = typeof input.start_date === "string" ? input.start_date : null;
+  const endDate = typeof input.end_date === "string" ? input.end_date : null;
+  if (startDate && endDate && startDate > endDate) return "invalid_date_range";
+  const budgetMin = typeof input.budget_min === "number" ? input.budget_min : null;
+  const budgetMax = typeof input.budget_max === "number" ? input.budget_max : null;
+  if (budgetMin !== null && budgetMax !== null && budgetMin > budgetMax) return "invalid_budget_range";
+  return null;
 }
 
 serve(async (req) => {
@@ -105,40 +144,19 @@ serve(async (req) => {
 
     if (action === "list") {
       const [planningResult, bookedResult] = await Promise.all([
-        client
-          .from("trip_sessions")
-          .select("id,destination_name,origin_name,origin_iata,start_date,end_date,lifecycle_stage,passenger_composition,budget_min,budget_max,budget_currency,linked_client_trip_id,updated_at")
-          .eq("owner_user_id", user.id)
-          .order("updated_at", { ascending: false }),
-        client
-          .from("client_trips")
-          .select("id,destination_name,departure_date,return_date,trip_status,hotel_name,flight_number,updated_at")
-          .order("departure_date", { ascending: true }),
+        client.from("trip_sessions").select(planningSelect).eq("owner_user_id", user.id).order("updated_at", { ascending: false }),
+        client.from("client_trips").select("id,destination_name,departure_date,return_date,trip_status,hotel_name,flight_number,updated_at").order("departure_date", { ascending: true }),
       ]);
       if (planningResult.error) throw planningResult.error;
       if (bookedResult.error) throw bookedResult.error;
-      return json({
-        ok: true,
-        trips: [
-          ...(planningResult.data ?? []).map((row) => planningTrip(row)),
-          ...(bookedResult.data ?? []).map((row) => bookedTrip(row)),
-        ],
-      });
+      return json({ ok: true, trips: [...(planningResult.data ?? []).map((row) => planningTrip(row)), ...(bookedResult.data ?? []).map((row) => bookedTrip(row))] });
     }
 
     if (action === "create") {
-      const input = cleanInput(body?.input);
-      if (input.start_date && input.end_date && input.start_date > input.end_date) {
-        return json({ ok: false, error: "invalid_date_range" }, 400);
-      }
-      if (input.budget_min !== null && input.budget_max !== null && input.budget_min > input.budget_max) {
-        return json({ ok: false, error: "invalid_budget_range" }, 400);
-      }
-      const { data, error } = await client
-        .from("trip_sessions")
-        .insert({ ...input, owner_user_id: user.id, status: "PLANNING" })
-        .select("id,destination_name,origin_name,origin_iata,start_date,end_date,lifecycle_stage,passenger_composition,budget_min,budget_max,budget_currency,linked_client_trip_id,updated_at")
-        .single();
+      const input = cleanCreateInput(body?.input);
+      const rangeError = validateRanges(input);
+      if (rangeError) return json({ ok: false, error: rangeError }, 400);
+      const { data, error } = await client.from("trip_sessions").insert({ ...input, owner_user_id: user.id, status: "PLANNING" }).select(planningSelect).single();
       if (error) throw error;
       return json({ ok: true, trip: planningTrip(data) }, 201);
     }
@@ -146,19 +164,22 @@ serve(async (req) => {
     if (action === "update") {
       const tripId = typeof body?.tripId === "string" ? body.tripId : "";
       if (!tripId) return json({ ok: false, error: "trip_id_required" }, 400);
-      const input = cleanInput(body?.input);
-      if (input.start_date && input.end_date && input.start_date > input.end_date) {
-        return json({ ok: false, error: "invalid_date_range" }, 400);
-      }
-      if (input.budget_min !== null && input.budget_max !== null && input.budget_min > input.budget_max) {
-        return json({ ok: false, error: "invalid_budget_range" }, 400);
-      }
+      const patch = cleanUpdateInput(body?.input);
+      if (Object.keys(patch).length === 0) return json({ ok: false, error: "empty_update" }, 400);
+
+      const { data: current, error: currentError } = await client.from("trip_sessions").select("start_date,end_date,budget_min,budget_max").eq("id", tripId).eq("owner_user_id", user.id).maybeSingle();
+      if (currentError) throw currentError;
+      if (!current) return json({ ok: false, error: "trip_not_found" }, 404);
+      const mergedRange = { ...current, ...patch } as Record<string, unknown>;
+      const rangeError = validateRanges(mergedRange);
+      if (rangeError) return json({ ok: false, error: rangeError }, 400);
+
       const { data, error } = await client
         .from("trip_sessions")
-        .update({ ...input, updated_at: new Date().toISOString(), last_activity_at: new Date().toISOString() })
+        .update({ ...patch, updated_at: new Date().toISOString(), last_activity_at: new Date().toISOString() })
         .eq("id", tripId)
         .eq("owner_user_id", user.id)
-        .select("id,destination_name,origin_name,origin_iata,start_date,end_date,lifecycle_stage,passenger_composition,budget_min,budget_max,budget_currency,linked_client_trip_id,updated_at")
+        .select(planningSelect)
         .maybeSingle();
       if (error) throw error;
       if (!data) return json({ ok: false, error: "trip_not_found" }, 404);
@@ -167,7 +188,9 @@ serve(async (req) => {
 
     return json({ ok: false, error: "unsupported_action" }, 400);
   } catch (error) {
-    console.error("[MY_TOMORROW_TRIPS_ERROR]", error instanceof Error ? error.message : "unknown_error");
+    const message = error instanceof Error ? error.message : "unknown_error";
+    if (message === "invalid_stage") return json({ ok: false, error: message }, 400);
+    console.error("[MY_TOMORROW_TRIPS_ERROR]", message);
     return json({ ok: false, error: "my_tomorrow_trip_request_failed" }, 500);
   }
 });
