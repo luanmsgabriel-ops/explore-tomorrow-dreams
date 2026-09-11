@@ -15,6 +15,11 @@ const uuid = (value: unknown) => typeof value === "string" && /^[0-9a-f]{8}-[0-9
 const day = 86_400_000;
 const shift = (value: string | null, days: number) => value ? new Date(new Date(`${value}T00:00:00Z`).getTime() + days * day).toISOString().slice(0, 10) : null;
 const stableJson = (value: unknown) => JSON.stringify(value, Object.keys((value && typeof value === "object" ? value : {}) as Record<string, unknown>).sort());
+const comparableSnapshot = (value: unknown) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const { updated_at: _updatedAt, ...rest } = value as Record<string, unknown>;
+  return rest;
+};
 const sha256 = async (value: string) => {
   const data = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", data);
@@ -114,7 +119,7 @@ async function runMatching(token: string, radarId: string) {
     const prior = previous.get(offer.id) as Record<string, unknown> | undefined;
     const priorSnapshot = prior?.offer_snapshot ?? null;
     const isNew = !prior || Boolean(prior.expired_at);
-    const changed = Boolean(prior && !prior.expired_at && stableJson(priorSnapshot) !== stableJson(snapshot));
+    const changed = Boolean(prior && !prior.expired_at && stableJson(comparableSnapshot(priorSnapshot)) !== stableJson(comparableSnapshot(snapshot)));
 
     const row = {
       radar_id: r.id,
@@ -139,9 +144,9 @@ async function runMatching(token: string, radarId: string) {
 
     if (isNew || changed) {
       const alertType = isNew ? "new_match" : "offer_changed";
-      const snapshotHash = await sha256(stableJson(snapshot));
+      const snapshotHash = await sha256(stableJson(comparableSnapshot(snapshot)));
       const dedupeKey = `${r.id}:${alertType}:${offer.id}:${MATCH_ALGORITHM_VERSION}:${snapshotHash}`;
-      const { error: alertError } = await service.from("travel_radar_alerts").upsert({
+      const { data: alertRow, error: alertError } = await service.from("travel_radar_alerts").upsert({
         user_id: user.id,
         radar_id: r.id,
         match_id: matchRow.id,
@@ -153,9 +158,9 @@ async function runMatching(token: string, radarId: string) {
         offer_snapshot: snapshot,
         reason: { matched_factors: evaluated.matchedFactors, unmatched_factors: evaluated.unmatchedFactors },
         updated_at: now,
-      }, { onConflict: "user_id,dedupe_key", ignoreDuplicates: true });
+      }, { onConflict: "user_id,dedupe_key", ignoreDuplicates: true }).select("id").maybeSingle();
       if (alertError) throw alertError;
-      alertsCreated += 1;
+      if (alertRow?.id) alertsCreated += 1;
     }
   }
 
