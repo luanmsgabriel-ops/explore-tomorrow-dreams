@@ -3,14 +3,13 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
-import { lazy, Suspense, type ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Routes, Route, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { AnalyticsProvider } from "./components/AnalyticsProvider";
 import { useLenis } from "./hooks/useLenis";
-import { preloadTomorrowLiveGlobeRuntime } from "./components/opportunities/live/globeRuntime";
 import { AdminDashboardErrorBoundary } from "./components/admin/AdminDashboardErrorBoundary";
 
 const Explorar = lazyWithRetry(() => import("./pages/Explorar"));
@@ -37,11 +36,6 @@ const OpportunitySelection = lazyWithRetry(() => import("./pages/OpportunitySele
 const TravelAdvisorChat = lazyWithRetry(() =>
   import("./components/TravelAdvisorChat").then((module) => ({ default: module.TravelAdvisorChat })),
 );
-
-if (typeof window !== "undefined") {
-  window.localStorage.setItem("tomorrow-live-realtime-voice", "verse");
-  if (window.location.pathname === "/oportunidades/live") void preloadTomorrowLiveGlobeRuntime();
-}
 
 const queryClient = new QueryClient();
 
