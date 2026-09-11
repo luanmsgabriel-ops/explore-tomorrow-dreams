@@ -87,7 +87,7 @@ export function LiveSessionCockpit({
             </div>
             <div className="flex min-h-10 items-center gap-2 rounded-xl border border-tomorrow-line bg-white/[0.025] px-3 text-tomorrow-muted">
               <Clock3 className="size-4 shrink-0 text-tomorrow-gold-soft" aria-hidden="true" />
-              <span>{formattedUpdate ? `Inventário atualizado em ${formattedUpdate}` : "Atualização confirmada na próxima consulta."}</span>
+              <span>{formattedUpdate ? `Oferta mais recente atualizada em ${formattedUpdate}` : "Horário de atualização não informado."}</span>
             </div>
           </div>
         </div>
