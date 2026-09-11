@@ -1922,6 +1922,137 @@ export type Database = {
         }
         Relationships: []
       }
+      travel_radar_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          dedupe_key: string
+          id: string
+          match_class: string | null
+          match_id: string | null
+          offer_id: string
+          offer_snapshot: Json
+          radar_id: string
+          read_at: string | null
+          reason: Json
+          score: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          dedupe_key: string
+          id?: string
+          match_class?: string | null
+          match_id?: string | null
+          offer_id: string
+          offer_snapshot?: Json
+          radar_id: string
+          read_at?: string | null
+          reason?: Json
+          score?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          dedupe_key?: string
+          id?: string
+          match_class?: string | null
+          match_id?: string | null
+          offer_id?: string
+          offer_snapshot?: Json
+          radar_id?: string
+          read_at?: string | null
+          reason?: Json
+          score?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "travel_radar_alerts_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "travel_radar_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_radar_alerts_radar_id_fkey"
+            columns: ["radar_id"]
+            isOneToOne: false
+            referencedRelation: "travel_radars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      travel_radar_matches: {
+        Row: {
+          algorithm_version: string
+          created_at: string
+          expired_at: string | null
+          first_matched_at: string
+          id: string
+          last_matched_at: string
+          match_class: string
+          matched_factors: Json
+          offer_id: string
+          offer_snapshot: Json
+          offer_updated_at: string | null
+          radar_id: string
+          score: number
+          unmatched_factors: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          algorithm_version: string
+          created_at?: string
+          expired_at?: string | null
+          first_matched_at?: string
+          id?: string
+          last_matched_at?: string
+          match_class: string
+          matched_factors?: Json
+          offer_id: string
+          offer_snapshot: Json
+          offer_updated_at?: string | null
+          radar_id: string
+          score: number
+          unmatched_factors?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          algorithm_version?: string
+          created_at?: string
+          expired_at?: string | null
+          first_matched_at?: string
+          id?: string
+          last_matched_at?: string
+          match_class?: string
+          matched_factors?: Json
+          offer_id?: string
+          offer_snapshot?: Json
+          offer_updated_at?: string | null
+          radar_id?: string
+          score?: number
+          unmatched_factors?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "travel_radar_matches_radar_id_fkey"
+            columns: ["radar_id"]
+            isOneToOne: false
+            referencedRelation: "travel_radars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       travel_radars: {
         Row: {
           budget_currency: string
