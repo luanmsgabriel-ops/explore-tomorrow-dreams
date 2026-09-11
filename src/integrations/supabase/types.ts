@@ -1922,6 +1922,98 @@ export type Database = {
         }
         Relationships: []
       }
+      travel_radars: {
+        Row: {
+          budget_currency: string
+          budget_max: number | null
+          budget_min: number | null
+          category: string | null
+          created_at: string
+          deleted_at: string | null
+          destination: string | null
+          end_date: string | null
+          flexibility_days: number
+          id: string
+          last_checked_at: string | null
+          max_nights: number | null
+          min_nights: number | null
+          name: string
+          offer_subtype: string | null
+          offer_type: string | null
+          origin: string | null
+          passengers: number | null
+          source: string
+          source_filters: Json | null
+          start_date: string | null
+          status: string
+          trip_session_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          budget_currency?: string
+          budget_max?: number | null
+          budget_min?: number | null
+          category?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          destination?: string | null
+          end_date?: string | null
+          flexibility_days?: number
+          id?: string
+          last_checked_at?: string | null
+          max_nights?: number | null
+          min_nights?: number | null
+          name: string
+          offer_subtype?: string | null
+          offer_type?: string | null
+          origin?: string | null
+          passengers?: number | null
+          source?: string
+          source_filters?: Json | null
+          start_date?: string | null
+          status?: string
+          trip_session_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          budget_currency?: string
+          budget_max?: number | null
+          budget_min?: number | null
+          category?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          destination?: string | null
+          end_date?: string | null
+          flexibility_days?: number
+          id?: string
+          last_checked_at?: string | null
+          max_nights?: number | null
+          min_nights?: number | null
+          name?: string
+          offer_subtype?: string | null
+          offer_type?: string | null
+          origin?: string | null
+          passengers?: number | null
+          source?: string
+          source_filters?: Json | null
+          start_date?: string | null
+          status?: string
+          trip_session_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "travel_radars_trip_session_id_fkey"
+            columns: ["trip_session_id"]
+            isOneToOne: false
+            referencedRelation: "trip_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       travel_reviews: {
         Row: {
           allows_sharing: string | null
