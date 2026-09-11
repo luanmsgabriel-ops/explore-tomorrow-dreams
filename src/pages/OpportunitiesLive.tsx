@@ -28,6 +28,10 @@ import { LiveSessionCockpit } from "@/components/opportunities/live/LiveSessionC
 import { TripComposerLiveSection } from "@/components/opportunities/live/TripComposerLiveSection";
 import { useRealtimeVoice } from "@/hooks/useRealtimeVoice";
 import {
+  trackTomorrowLiveAction,
+  useTomorrowLiveTelemetry,
+} from "@/hooks/useTomorrowLiveTelemetry";
+import {
   buildOfferDetailPath,
   buildOfferWhatsAppUrl,
 } from "@/lib/offerHandoff";
@@ -157,7 +161,6 @@ export default function OpportunitiesLive() {
   const handoffWhatsAppUrl = offerHandoff
     ? buildOfferWhatsAppUrl(offerHandoff.offer, { context: offerHandoff.searchContext })
     : null;
-  const globeMicrophoneAction = !connected ? startConversation : toggleMute;
   const routes = useMemo(
     () => liveRoutesFromOffers(offers, offerHandoff?.offer.id),
     [offerHandoff?.offer.id, offers],
@@ -176,6 +179,47 @@ export default function OpportunitiesLive() {
     tripComposerActive: tripComposer.active,
     hasError: Boolean(error),
   });
+
+  useTomorrowLiveTelemetry({
+    voiceStatus,
+    connected,
+    online,
+    offerIds: offers.map((offer) => offer.id),
+    offerTypes: offers.map((offer) => offer.offer_type),
+    routeCount: routes.length,
+    handoffChannel: offerHandoff?.requestedChannel ?? null,
+    composerActive: tripComposer.active,
+  });
+
+  const handleStartConversation = () => {
+    trackTomorrowLiveAction("voice_start_requested", { online });
+    void startConversation();
+  };
+  const handleEndConversation = () => {
+    trackTomorrowLiveAction("voice_end_requested", { connected });
+    endConversation();
+  };
+  const handleToggleMute = () => {
+    trackTomorrowLiveAction("microphone_toggled", { muted: !muted });
+    toggleMute();
+  };
+  const handleToggleSpeaker = () => {
+    trackTomorrowLiveAction("speaker_toggled", { speaker_enabled: !speakerEnabled });
+    toggleSpeaker();
+  };
+  const handlePrivacyToggle = () => {
+    const nextOpen = !privacyOpen;
+    if (nextOpen) trackTomorrowLiveAction("privacy_opened");
+    setPrivacyOpen(nextOpen);
+  };
+  const handleTextHandoff = () => {
+    trackTomorrowLiveAction("text_handoff_clicked", {
+      connected,
+      offer_count: offers.length,
+      composer_active: tripComposer.active,
+    });
+  };
+  const globeMicrophoneAction = !connected ? handleStartConversation : handleToggleMute;
 
   return (
     <div
@@ -223,25 +267,25 @@ export default function OpportunitiesLive() {
 
             <div className="mx-auto mt-1 flex w-full max-w-3xl flex-col items-center gap-2 pb-2">
               <section className="grid grid-cols-4 gap-2" aria-label="Controles da conversa">
-                <button type="button" disabled={!connected} aria-label={muted ? "Reativar microfone" : "Pausar microfone"} aria-pressed={muted} onClick={toggleMute} className="opportunity-focus grid size-10 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/60 text-tomorrow-text backdrop-blur transition-colors hover:border-tomorrow-teal/50 disabled:cursor-not-allowed disabled:opacity-45 sm:size-11">
+                <button type="button" disabled={!connected} aria-label={muted ? "Reativar microfone" : "Pausar microfone"} aria-pressed={muted} onClick={handleToggleMute} className="opportunity-focus grid size-10 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/60 text-tomorrow-text backdrop-blur transition-colors hover:border-tomorrow-teal/50 disabled:cursor-not-allowed disabled:opacity-45 sm:size-11">
                   {muted ? <MicOff className="size-4.5" aria-hidden="true" /> : <Mic className="size-4.5" aria-hidden="true" />}
                 </button>
-                <button type="button" disabled={!connected} aria-label={speakerEnabled ? "Silenciar áudio do Téo" : "Reativar áudio do Téo"} aria-pressed={!speakerEnabled} onClick={toggleSpeaker} className="opportunity-focus grid size-10 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/60 text-tomorrow-text backdrop-blur transition-colors hover:border-tomorrow-teal/50 disabled:cursor-not-allowed disabled:opacity-45 sm:size-11">
+                <button type="button" disabled={!connected} aria-label={speakerEnabled ? "Silenciar áudio do Téo" : "Reativar áudio do Téo"} aria-pressed={!speakerEnabled} onClick={handleToggleSpeaker} className="opportunity-focus grid size-10 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/60 text-tomorrow-text backdrop-blur transition-colors hover:border-tomorrow-teal/50 disabled:cursor-not-allowed disabled:opacity-45 sm:size-11">
                   {speakerEnabled ? <Volume2 className="size-4.5" aria-hidden="true" /> : <VolumeX className="size-4.5" aria-hidden="true" />}
                 </button>
-                <button type="button" disabled={!voiceSessionActive} aria-label="Encerrar conversa por voz" onClick={endConversation} className="opportunity-focus grid size-10 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/60 text-tomorrow-text backdrop-blur transition-colors hover:border-tomorrow-gold/50 disabled:cursor-not-allowed disabled:opacity-45 sm:size-11"><Power className="size-4.5" aria-hidden="true" /></button>
-                <button type="button" aria-label="Ver informações de privacidade" aria-expanded={privacyOpen} onClick={() => setPrivacyOpen((current) => !current)} className="opportunity-focus grid size-10 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/60 text-tomorrow-text backdrop-blur transition-colors hover:border-tomorrow-gold/50 sm:size-11"><ShieldCheck className="size-4.5" aria-hidden="true" /></button>
+                <button type="button" disabled={!voiceSessionActive} aria-label="Encerrar conversa por voz" onClick={handleEndConversation} className="opportunity-focus grid size-10 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/60 text-tomorrow-text backdrop-blur transition-colors hover:border-tomorrow-gold/50 disabled:cursor-not-allowed disabled:opacity-45 sm:size-11"><Power className="size-4.5" aria-hidden="true" /></button>
+                <button type="button" aria-label="Ver informações de privacidade" aria-expanded={privacyOpen} onClick={handlePrivacyToggle} className="opportunity-focus grid size-10 place-items-center rounded-xl border border-tomorrow-line bg-tomorrow-background/60 text-tomorrow-text backdrop-blur transition-colors hover:border-tomorrow-gold/50 sm:size-11"><ShieldCheck className="size-4.5" aria-hidden="true" /></button>
               </section>
 
               <div className="flex w-full max-w-xl flex-col gap-2 sm:flex-row">
-                <OpportunityButton variant={voiceSessionActive ? "outline" : "gold"} fullWidth disabled={voiceSessionActive || !online} onClick={startConversation}>
+                <OpportunityButton variant={voiceSessionActive ? "outline" : "gold"} fullWidth disabled={voiceSessionActive || !online} onClick={handleStartConversation}>
                   {voiceStatus === "connecting" ? <><LoaderCircle className="animate-spin" aria-hidden="true" />Conectando...</> : connected ? <><Mic aria-hidden="true" />Conversa por voz ativa</> : <><Mic aria-hidden="true" />{online ? "Iniciar conversa por voz" : "Sem conexão"}</>}
                 </OpportunityButton>
-                <OpportunityButton asChild variant="outline" fullWidth><a href="/teo"><MessageSquareText aria-hidden="true" />Conversar por texto</a></OpportunityButton>
+                <OpportunityButton asChild variant="outline" fullWidth><a href="/teo" onClick={handleTextHandoff}><MessageSquareText aria-hidden="true" />Conversar por texto</a></OpportunityButton>
               </div>
 
               {connected ? <OpportunityBadge variant="success">Conectado</OpportunityBadge> : null}
-              {error ? <div className="w-full max-w-xl rounded-xl border border-tomorrow-danger/35 bg-tomorrow-danger/8 p-3 text-center text-xs leading-relaxed text-tomorrow-text" role="alert">{error} <a href="/teo" className="font-semibold text-tomorrow-teal-soft underline underline-offset-2">Continuar por texto</a></div> : null}
+              {error ? <div className="w-full max-w-xl rounded-xl border border-tomorrow-danger/35 bg-tomorrow-danger/8 p-3 text-center text-xs leading-relaxed text-tomorrow-text" role="alert">{error} <a href="/teo" onClick={handleTextHandoff} className="font-semibold text-tomorrow-teal-soft underline underline-offset-2">Continuar por texto</a></div> : null}
               {toolError ? <div className="w-full max-w-xl rounded-xl border border-tomorrow-gold/35 bg-tomorrow-gold/8 p-3 text-center text-xs leading-relaxed text-tomorrow-text" role="alert">{toolError}</div> : null}
               {privacyOpen ? <div className="w-full max-w-xl rounded-xl border border-tomorrow-teal/25 bg-tomorrow-teal/7 p-3 text-center text-xs leading-relaxed text-tomorrow-muted" role="status">O microfone só é usado enquanto você estiver falando com o Téo. A interface não salva áudio nem transcrição no armazenamento local. Evite compartilhar senhas, documentos ou dados bancários durante a conversa.</div> : null}
             </div>
