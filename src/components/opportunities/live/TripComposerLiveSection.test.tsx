@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { TripComposerLiveSection, type TripComposerLiveRuntime } from "./TripComposerLiveSection";
@@ -48,11 +48,11 @@ describe("TripComposerLiveSection", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Saber mais" }));
 
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Passeio histórico pelo Recife Antigo" })).toBeInTheDocument();
-    expect(screen.getByText("Experiência cultural compatível com a janela disponível.")).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Passeio histórico pelo Recife Antigo" })).toBeInTheDocument();
+    expect(within(dialog).getByText("Experiência cultural compatível com a janela disponível.")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Adicionar ao roteiro" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Adicionar ao roteiro" }));
 
     await waitFor(() => {
       expect(selectCandidate).toHaveBeenCalledWith("experience-1", 1);
