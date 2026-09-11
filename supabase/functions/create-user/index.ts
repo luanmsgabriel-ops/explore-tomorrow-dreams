@@ -5,40 +5,30 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+  status,
+  headers: { ...corsHeaders, "Content-Type": "application/json" },
+});
+
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Authorization header required" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    if (!authHeader) return json({ error: "Authorization header required" }, 401);
 
-    // Create client with user's token to verify they're admin
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
+      { global: { headers: { Authorization: authHeader } } },
     );
 
-    // Verify the user is authenticated
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Invalid token" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    if (userError || !user) return json({ error: "Invalid token" }, 401);
 
-    // Check if user has admin role using service role client
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
     const { data: roleData, error: roleError } = await supabaseAdmin
@@ -48,92 +38,64 @@ Deno.serve(async (req) => {
       .eq("role", "admin")
       .single();
 
-    if (roleError || !roleData) {
-      return new Response(
-        JSON.stringify({ error: "Only admins can create users" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    if (roleError || !roleData) return json({ error: "Only admins can create users" }, 403);
 
-    // Get request body
     const { email, password, full_name } = await req.json();
+    if (!email || !password) return json({ error: "Email and password are required" }, 400);
 
-    if (!email || !password) {
-      return new Response(
-        JSON.stringify({ error: "Email and password are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const normalizedEmail = String(email).trim().toLowerCase();
 
-    // Create new user with admin client
+    const reconcileAccount = async (userId: string) => {
+      const { error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .upsert({
+          user_id: userId,
+          email: normalizedEmail,
+          full_name: full_name || null,
+        }, { onConflict: "user_id" });
+      if (profileError) throw profileError;
+
+      const { error: roleUpsertError } = await supabaseAdmin
+        .from("user_roles")
+        .upsert({ user_id: userId, role: "user" }, { onConflict: "user_id,role" });
+      if (roleUpsertError) throw roleUpsertError;
+    };
+
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email,
+      email: normalizedEmail,
       password,
       email_confirm: true,
       user_metadata: { full_name },
     });
 
     if (createError) {
-      // If user already exists, try to find them
       if (createError.message.includes("already been registered")) {
         const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-        
-        if (listError) {
-          return new Response(
-            JSON.stringify({ error: "Failed to look up existing user" }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
+        if (listError) return json({ error: "Failed to look up existing user" }, 500);
 
-        const existingUser = existingUsers.users.find(u => u.email === email);
-        
+        const existingUser = existingUsers.users.find((candidate) => candidate.email?.toLowerCase() === normalizedEmail);
         if (existingUser) {
-          return new Response(
-            JSON.stringify({ 
-              success: true, 
-              message: "User already exists, linking to shared access",
-              user: { id: existingUser.id, email: existingUser.email },
-              existing: true
-            }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          await reconcileAccount(existingUser.id);
+          return json({
+            success: true,
+            message: "User already exists, account reconciled",
+            user: { id: existingUser.id, email: existingUser.email },
+            existing: true,
+          });
         }
       }
-
-      return new Response(
-        JSON.stringify({ error: createError.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return json({ error: createError.message }, 400);
     }
 
-    // Manually create profile since trigger may not work with admin.createUser
-    const { error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .insert({
-        user_id: newUser.user.id,
-        email: email,
-        full_name: full_name || null
-      });
+    await reconcileAccount(newUser.user.id);
 
-    if (profileError) {
-      console.error("Error creating profile:", profileError);
-      // Don't fail the request, the user was created successfully
-    }
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "User created successfully",
-        user: { id: newUser.user.id, email: newUser.user.email }
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-
+    return json({
+      success: true,
+      message: "User created successfully",
+      user: { id: newUser.user.id, email: newUser.user.email },
+    });
   } catch (error) {
-    console.error("Error creating user:", error);
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.error("Error creating user:", error instanceof Error ? error.message : error);
+    return json({ error: "Internal server error" }, 500);
   }
 });
