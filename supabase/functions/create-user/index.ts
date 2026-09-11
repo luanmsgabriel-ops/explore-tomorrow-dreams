@@ -55,10 +55,20 @@ Deno.serve(async (req) => {
         }, { onConflict: "user_id" });
       if (profileError) throw profileError;
 
-      const { error: roleUpsertError } = await supabaseAdmin
+      const { data: currentRole, error: currentRoleError } = await supabaseAdmin
         .from("user_roles")
-        .upsert({ user_id: userId, role: "user" }, { onConflict: "user_id,role" });
-      if (roleUpsertError) throw roleUpsertError;
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "user")
+        .maybeSingle();
+      if (currentRoleError) throw currentRoleError;
+
+      if (!currentRole) {
+        const { error: roleInsertError } = await supabaseAdmin
+          .from("user_roles")
+          .insert({ user_id: userId, role: "user" });
+        if (roleInsertError) throw roleInsertError;
+      }
     };
 
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
