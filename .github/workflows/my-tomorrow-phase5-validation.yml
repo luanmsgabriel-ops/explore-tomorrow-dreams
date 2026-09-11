@@ -1,0 +1,43 @@
+name: My Tomorrow Phase 5 Validation
+
+on:
+  pull_request:
+    paths:
+      - 'src/pages/MyTomorrowRadarDetail.tsx'
+      - 'src/lib/myTomorrowMatches.ts'
+      - 'src/lib/myTomorrowMatches.test.ts'
+      - 'supabase/functions/my-tomorrow-matching/**'
+      - 'supabase/migrations/*travel_radars_grants_reconciliation.sql'
+      - 'supabase/migrations/*my_tomorrow_radar_matches.sql'
+      - 'supabase/config.toml'
+      - '.github/workflows/my-tomorrow-phase5-validation.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Focused frontend tests
+        run: npx vitest run src/lib/myTomorrowMatches.test.ts
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: Scoped ESLint
+        run: npx eslint src/pages/MyTomorrowRadarDetail.tsx src/lib/myTomorrowMatches.ts src/lib/myTomorrowMatches.test.ts
+      - name: Production build
+        run: npm run build
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Matcher tests
+        run: deno test supabase/functions/my-tomorrow-matching/matcher.test.ts
+      - name: Deno check
+        run: deno check supabase/functions/my-tomorrow-matching/index.ts
+      - name: Diff whitespace check
+        run: git diff --check origin/${{ github.base_ref }}...HEAD
