@@ -9,8 +9,6 @@ export function OpportunityHero() {
   return (
     <section className="relative flex min-h-[680px] items-center overflow-hidden px-4 pb-12 pt-28 sm:min-h-[720px] sm:pb-16 sm:pt-32 lg:min-h-[760px]">
       <HeroCinematicBackground />
-      <div className="absolute inset-0 bg-gradient-to-b from-ocean-deep/20 via-ocean-deep/45 to-ocean-deep/90" aria-hidden="true" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_25%,transparent_0%,hsl(var(--ocean-deep)/0.38)_72%)]" aria-hidden="true" />
 
       <div className="container relative z-10 mx-auto flex flex-col items-center text-center">
         <motion.div
