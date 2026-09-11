@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { LiveTranscriptDrawer } from "./LiveTranscriptDrawer";
@@ -13,7 +13,7 @@ describe("LiveTranscriptDrawer", () => {
     const trigger = screen.getByRole("button", { name: /Legendas da conversa/ });
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByRole("log")).not.toBeInTheDocument();
-    expect(screen.getByText(/Téo: Vou buscar opções reais/)).toBeInTheDocument();
+    expect(within(trigger).getByText(/Téo: Vou buscar opções reais/)).toBeInTheDocument();
 
     fireEvent.click(trigger);
 
