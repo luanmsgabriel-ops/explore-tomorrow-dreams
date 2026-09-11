@@ -1,10 +1,57 @@
 name: Tomorrow Live ASTRA Validation
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "src/App.tsx"
+      - "src/pages/OpportunitiesLive.tsx"
+      - "src/pages/opportunitiesLive.test.tsx"
+      - "src/components/opportunities/live/**"
+      - "src/hooks/useRealtimeVoice.ts"
+      - "src/hooks/useTripComposerRuntime.ts"
+      - "src/hooks/useTomorrowLiveTelemetry.ts"
+      - "src/hooks/useTomorrowLiveTelemetry.test.tsx"
+      - "src/lib/liveRoute.ts"
+      - "src/lib/liveRoute.test.ts"
+      - "src/lib/liveSessionModel.ts"
+      - "src/lib/liveSessionModel.test.ts"
+      - "src/lib/realtimeVoice.ts"
+      - "src/lib/realtimeVoice.test.ts"
+      - "src/lib/tripComposerApi.ts"
+      - "src/lib/tripComposerRealtime.ts"
+      - "supabase/functions/tomorrow-live-*/**"
+      - "supabase/functions/_shared/realtimeSession.ts"
+      - ".github/workflows/tomorrow-live-astra-validation.yml"
   push:
     branches:
-      - feat/tomorrow-live-astra-evolution
+      - main
+    paths:
+      - "src/App.tsx"
+      - "src/pages/OpportunitiesLive.tsx"
+      - "src/pages/opportunitiesLive.test.tsx"
+      - "src/components/opportunities/live/**"
+      - "src/hooks/useRealtimeVoice.ts"
+      - "src/hooks/useTripComposerRuntime.ts"
+      - "src/hooks/useTomorrowLiveTelemetry.ts"
+      - "src/hooks/useTomorrowLiveTelemetry.test.tsx"
+      - "src/lib/liveRoute.ts"
+      - "src/lib/liveRoute.test.ts"
+      - "src/lib/liveSessionModel.ts"
+      - "src/lib/liveSessionModel.test.ts"
+      - "src/lib/realtimeVoice.ts"
+      - "src/lib/realtimeVoice.test.ts"
+      - "src/lib/tripComposerApi.ts"
+      - "src/lib/tripComposerRealtime.ts"
+      - "supabase/functions/tomorrow-live-*/**"
+      - "supabase/functions/_shared/realtimeSession.ts"
+      - ".github/workflows/tomorrow-live-astra-validation.yml"
   workflow_dispatch:
+
+concurrency:
+  group: tomorrow-live-astra-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
