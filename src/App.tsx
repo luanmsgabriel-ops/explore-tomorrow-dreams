@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { lazy, Suspense, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Routes, Route, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
@@ -12,28 +13,28 @@ import { useLenis } from "./hooks/useLenis";
 import { preloadTomorrowLiveGlobeRuntime } from "./components/opportunities/live/globeRuntime";
 import { AdminDashboardErrorBoundary } from "./components/admin/AdminDashboardErrorBoundary";
 
-const Explorar = lazy(() => import("./pages/Explorar"));
-const Nacional = lazy(() => import("./pages/Nacional"));
-const Internacional = lazy(() => import("./pages/Internacional"));
-const DestinationDetail = lazy(() => import("./pages/DestinationDetail"));
-const PromocaoDetail = lazy(() => import("./pages/PromocaoDetail"));
-const Ofertas = lazy(() => import("./pages/Ofertas"));
-const Teo = lazy(() => import("./pages/Teo"));
-const Admin = lazy(() => import("./pages/Admin"));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
-const ClientLogin = lazy(() => import("./pages/ClientLogin"));
-const ClientDashboard = lazy(() => import("./pages/ClientDashboard"));
-const Install = lazy(() => import("./pages/Install"));
-const Avaliacao = lazy(() => import("./pages/Avaliacao"));
-const Blog = lazy(() => import("./pages/Blog"));
-const Experiencia = lazy(() => import("./pages/Experiencia"));
-const OpportunitiesCatalog = lazy(() => import("./pages/OpportunitiesCatalog"));
-const OpportunitiesCalendar = lazy(() => import("./pages/OpportunitiesCalendar"));
-const OpportunitiesLive = lazy(() => import("./pages/OpportunitiesLive"));
-const OpportunityDetail = lazy(() => import("./pages/OpportunityDetail"));
-const OpportunityCompare = lazy(() => import("./pages/OpportunityCompare"));
-const OpportunitySelection = lazy(() => import("./pages/OpportunitySelection"));
-const TravelAdvisorChat = lazy(() =>
+const Explorar = lazyWithRetry(() => import("./pages/Explorar"));
+const Nacional = lazyWithRetry(() => import("./pages/Nacional"));
+const Internacional = lazyWithRetry(() => import("./pages/Internacional"));
+const DestinationDetail = lazyWithRetry(() => import("./pages/DestinationDetail"));
+const PromocaoDetail = lazyWithRetry(() => import("./pages/PromocaoDetail"));
+const Ofertas = lazyWithRetry(() => import("./pages/Ofertas"));
+const Teo = lazyWithRetry(() => import("./pages/Teo"));
+const Admin = lazyWithRetry(() => import("./pages/Admin"));
+const AdminDashboard = lazyWithRetry(() => import("./pages/AdminDashboard"));
+const ClientLogin = lazyWithRetry(() => import("./pages/ClientLogin"));
+const ClientDashboard = lazyWithRetry(() => import("./pages/ClientDashboard"));
+const Install = lazyWithRetry(() => import("./pages/Install"));
+const Avaliacao = lazyWithRetry(() => import("./pages/Avaliacao"));
+const Blog = lazyWithRetry(() => import("./pages/Blog"));
+const Experiencia = lazyWithRetry(() => import("./pages/Experiencia"));
+const OpportunitiesCatalog = lazyWithRetry(() => import("./pages/OpportunitiesCatalog"));
+const OpportunitiesCalendar = lazyWithRetry(() => import("./pages/OpportunitiesCalendar"));
+const OpportunitiesLive = lazyWithRetry(() => import("./pages/OpportunitiesLive"));
+const OpportunityDetail = lazyWithRetry(() => import("./pages/OpportunityDetail"));
+const OpportunityCompare = lazyWithRetry(() => import("./pages/OpportunityCompare"));
+const OpportunitySelection = lazyWithRetry(() => import("./pages/OpportunitySelection"));
+const TravelAdvisorChat = lazyWithRetry(() =>
   import("./components/TravelAdvisorChat").then((module) => ({ default: module.TravelAdvisorChat })),
 );
 
