@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { AnalyticsProvider } from "./components/AnalyticsProvider";
+import { SaveCatalogRadarButton } from "./components/opportunities/SaveCatalogRadarButton";
 import { useLenis } from "./hooks/useLenis";
 import { preloadTomorrowLiveGlobeRuntime } from "./components/opportunities/live/globeRuntime";
 import { AdminDashboardErrorBoundary } from "./components/admin/AdminDashboardErrorBoundary";
@@ -120,6 +121,7 @@ const App = () => (
           <Route path="/oportunidades/selecao/:token" element={<PageSuspense label="seleção de oportunidades" opportunities><OpportunitySelection /></PageSuspense>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <SaveCatalogRadarButton />
         <AnalyticsProvider />
         <InstallPrompt />
         <FloatingButtons />
