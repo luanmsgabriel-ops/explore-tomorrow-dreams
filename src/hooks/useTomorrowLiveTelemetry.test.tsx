@@ -69,6 +69,28 @@ describe("Tomorrow Live telemetry", () => {
     expect(payloads.join(" ")).not.toMatch(/transcript|mensagem|Quero viajar/i);
   });
 
+  it("registra novamente ofertas e handoff quando uma nova busca repete o mesmo resultado", () => {
+    const { rerender } = renderHook((props) => useTomorrowLiveTelemetry(props), {
+      initialProps: initial,
+    });
+    const result = {
+      ...initial,
+      voiceStatus: "offers" as const,
+      connected: true,
+      offerIds: ["offer-1"],
+      offerTypes: ["bloqueio_aereo"],
+      routeCount: 1,
+      handoffChannel: "details" as const,
+    };
+
+    rerender(result);
+    rerender({ ...initial, voiceStatus: "listening" as const, connected: true });
+    rerender(result);
+
+    expect(mocks.trackEventStandalone.mock.calls.filter(([event]) => event === "tomorrow_live_offers_rendered")).toHaveLength(2);
+    expect(mocks.trackEventStandalone.mock.calls.filter(([event]) => event === "tomorrow_live_handoff_ready")).toHaveLength(2);
+  });
+
   it("registra ações explícitas sem depender da transcrição", () => {
     trackTomorrowLiveAction("voice_start_requested", { online: true });
 
