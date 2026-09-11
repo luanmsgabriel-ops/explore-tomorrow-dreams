@@ -9,13 +9,15 @@
 | Projeto | Tomorrow Live / Radar Tomorrow |
 | Repositório | `luanmsgabriel-ops/explore-tomorrow-dreams` |
 | Branch principal | `main` |
-| Última atualização | 21/08/2026 |
-| Estado geral | Etapas 1 a 6 concluídas; voz, interrupção, inventário e controle móvel da Etapa 7 confirmados pelo usuário; handoff, contexto estruturado e apresentação flutuante das ofertas implementados, testados, mergeados e sincronizados |
-| Etapa atual | Etapa 8 — cards flutuantes e pop-up concluídos no código; validação manual no preview autenticado pendente |
-| Último HEAD funcional verificado | `32e00a7fd70d4aa4b9d9bae609361efa063a84b7` |
-| Próxima ação exata | No preview autenticado, buscar por voz e validar uma e três ofertas sobre o planeta, continuidade da fala, pop-up da escolhida, página pública e WhatsApp; não publicar automaticamente |
+| Última atualização | 11/09/2026 |
+| Estado geral | Radar Tomorrow, catálogo, calendário, comparação, seleção e Tomorrow Live já existem na `main`; repaginação da Home para liberar acesso público às oportunidades iniciada em branch isolada |
+| Etapa atual | Integração da Home com oportunidades reais — implementação e validação pré-merge |
+| Último HEAD funcional verificado | `3bd02231293daa42c13a7bbc64886c1934e13422` |
+| Próxima ação exata | Validar a branch `feat/home-opportunities-integration`, abrir PR e revisar o preview; não publicar automaticamente |
 
 ## 2. Protocolo obrigatório de continuidade
+
+> Nota de continuidade: os estados individuais das etapas abaixo registram o momento histórico em que cada seção foi escrita e estão parcialmente desatualizados. Para o estado atual, prevalecem a `main`, os checkpoints posteriores e o controle deste documento.
 
 Antes de iniciar qualquer trabalho:
 

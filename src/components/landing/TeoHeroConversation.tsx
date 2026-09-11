@@ -1,15 +1,15 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { MessageCircle, ArrowRight, Star, Building2, Headphones } from 'lucide-react';
+import { MessageCircle, ArrowRight, Star, Building2, Headphones, Radar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HeroCinematicBackground } from './HeroCinematicBackground';
 import teoCharacter from '@/assets/teo-character.png';
 
 const TEO_LINES = [
-  'Pra onde a gente vai dessa vez?',
-  'Conta pra mim: lua de mel, família ou aventura?',
-  'Tenho um roteiro de Maldivas que vai te derrubar 🌊',
-  'Em 2 minutos te mando a cotação completa.',
+  'Quer ver as oportunidades disponíveis agora?',
+  'Podemos pesquisar por origem, destino e período.',
+  'Eu te ajudo a comparar as opções encontradas.',
+  'Depois, nosso time humano confirma cada detalhe.',
 ];
 
 const proofItems = [
@@ -62,7 +62,7 @@ export const TeoHeroConversation = () => {
         >
           <span className="h-px w-6 bg-gold/60" />
           <span className="text-[10px] md:text-xs uppercase tracking-[0.4em] text-gold-light/90 font-medium">
-            Empresa registrada + IA de viagens + consultoria humana
+            Radar Tomorrow + curadoria humana
           </span>
           <span className="h-px w-6 bg-gold/60" />
         </motion.div>
@@ -75,9 +75,10 @@ export const TeoHeroConversation = () => {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="font-editorial text-5xl md:text-8xl lg:text-9xl leading-[0.9] text-white"
           >
-            <span className="block mb-2">Tomorrow Travel</span>
-            <span className="font-editorial-italic gradient-text-teal italic block mb-2">existe.</span>
-            <span className="block opacity-90 text-4xl md:text-7xl lg:text-8xl">E acompanha sua viagem.</span>
+            <span className="block mb-2">Oportunidades reais</span>
+            <span className="font-editorial-italic gradient-text-teal italic block">
+              para o seu próximo amanhã.
+            </span>
           </motion.h1>
         </div>
 
@@ -147,35 +148,36 @@ export const TeoHeroConversation = () => {
         >
 
           <div className="flex flex-wrap justify-center gap-3 mb-5">
-            <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-bold tracking-[0.2em] text-white uppercase">Viagens reais</span>
-            <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-bold tracking-[0.2em] text-white uppercase">Empresa brasileira</span>
+            <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-bold tracking-[0.2em] text-white uppercase">Pacotes reais</span>
+            <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-bold tracking-[0.2em] text-white uppercase">Bloqueios aéreos</span>
             <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-bold tracking-[0.2em] text-white uppercase">IA + time humano</span>
           </div>
           
           <p className="text-lg md:text-xl text-white/70 max-w-3xl text-center leading-relaxed mb-6 md:mb-8">
-            O Téo desenha o roteiro com inteligência artificial. A Tomorrow Travel cuida da execução com atendimento humano, WhatsApp oficial e empresa registrada no Brasil.
+            Pacotes, bloqueios aéreos, eventos e grupos do inventário Tomorrow Travel, com tecnologia para descobrir e atendimento humano para confirmar cada detalhe.
           </p>
 
-          <div className="relative z-30 flex flex-col sm:flex-row gap-5 mb-7 md:mb-8">
+          <div className="relative z-30 mb-7 flex w-full flex-col gap-5 sm:w-auto sm:flex-row md:mb-8">
             <Link
-              to="/teo"
-              className="relative z-30 isolate inline-flex min-h-[68px] min-w-[320px] items-center justify-center gap-4 overflow-hidden rounded-lg border border-gold-light/70 px-10 py-5 text-lg font-bold text-accent-foreground opacity-100 shadow-[var(--shadow-glow-gold)] transition-transform duration-300 hover:scale-105"
+              to="/oportunidades/catalogo"
+              className="relative z-30 isolate inline-flex min-h-[68px] w-full items-center justify-center gap-3 overflow-hidden rounded-lg border border-gold-light/70 px-6 py-5 text-base font-bold text-accent-foreground opacity-100 shadow-[var(--shadow-glow-gold)] transition-transform duration-300 hover:scale-105 sm:w-auto sm:min-w-[320px] sm:gap-4 sm:px-10 sm:text-lg"
               style={{
                 background: 'var(--gradient-gold)',
                 color: 'hsl(var(--accent-foreground))',
                 boxShadow: 'var(--shadow-glow-gold)',
               }}
             >
-              <MessageCircle className="relative z-10 w-6 h-6" />
-              <span className="relative z-10 whitespace-nowrap font-semibold">Conversar com o Téo</span>
+              <Radar className="relative z-10 w-6 h-6" />
+              <span className="relative z-10 whitespace-nowrap font-semibold">Ver oportunidades reais</span>
               <ArrowRight className="w-5 h-5 relative z-10 transition-transform group-hover:translate-x-2" />
             </Link>
             
             <Link
-              to="/explorar"
-              className="btn-outline border-white/20 bg-white/5 backdrop-blur-sm text-white hover:bg-white/10 flex items-center justify-center gap-2 text-lg px-10 py-5"
+              to="/teo"
+              className="btn-outline flex w-full items-center justify-center gap-2 border-white/20 bg-white/5 px-6 py-5 text-base text-white backdrop-blur-sm hover:bg-white/10 sm:w-auto sm:px-10 sm:text-lg"
             >
-              Ver roteiros reais
+              <MessageCircle className="w-5 h-5" />
+              Planejar com o Téo
             </Link>
           </div>
 
