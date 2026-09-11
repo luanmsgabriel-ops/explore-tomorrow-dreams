@@ -2,45 +2,60 @@
 
 Data: 2026-09-11
 
-## Base
+## Estado atual
 
-- `main`: `8bd1a7a91d4511e9cef5a9ffeec1862eef4db741`;
-- branch: `fix/home-live-inventory-hero`;
-- origem da revisão: captura mobile enviada pelo usuário após o merge do PR `#100`.
+O refinamento anterior do Hero já foi incorporado à `main` pelos PRs `#101` e `#102`. Após nova revisão visual no mobile, o usuário pediu que o vídeo do Hero seja exibido sem blur e sem qualquer camada global cobrindo a imagem.
 
-## Escopo
+Base verificada antes desta intervenção:
 
-- remover o personagem Téo e o balão do Hero, sem alterar o Téo ou seus fluxos;
-- reduzir a altura e reorganizar a hierarquia do Hero no mobile;
-- substituir o JPEG com fundo preto por um lockup horizontal transparente próprio para o cabeçalho;
-- concentrar os CTAs em catálogo e calendário;
-- exibir quantidades reais de pacotes e bloqueios aéreos vindas de `travel-offers-public`;
-- atualizar os indicadores automaticamente a cada cinco minutos e ao retornar à página.
-- substituir os três vídeos anteriores por um único vídeo de radar, com arquivos otimizados e enquadramentos próprios para desktop e mobile;
-- remover áudio, blur e reprodução acelerada do fundo do Hero;
-- compactar os acessos no mobile e reposicionar a narrativa de funcionamento, FAQ e CTA final em torno das oportunidades;
-- consolidar a prova social, removendo a segunda seção consecutiva de avaliações;
-- impedir a sobreposição do convite de instalação com o botão flutuante do Téo.
+- `main`: `8c67174653368ee0acc83bec8b7b7a78da1c6445`;
+- branch desta correção: `fix/home-hero-uncovered-video`;
+- não havia PR aberto da Home no início desta intervenção;
+- commits posteriores ao antigo checkpoint `8bd1a7a91d4511e9cef5a9ffeec1862eef4db741` foram revisados antes da alteração.
 
-## Assets do novo Hero
+## Escopo desta correção
 
-- vídeo desktop: `726 KB`, `1280 × 720 px`, H.264, sem áudio;
-- vídeo mobile: `493 KB`, `540 × 960 px`, H.264, sem áudio;
-- posters responsivos: menos de `60 KB` cada;
-- logo horizontal: PNG RGBA com transparência real.
+- preservar os vídeos responsivos atuais do Radar Tomorrow;
+- remover o overlay `bg-black/10` do componente de fundo;
+- remover o gradiente vertical global aplicado sobre todo o Hero;
+- remover o gradiente radial global aplicado sobre todo o Hero;
+- manter o vídeo sem `filter`, `blur` ou alteração de velocidade;
+- preservar textos, indicadores reais, CTAs, Téo, WhatsApp, banco e Edge Functions.
 
-## Segurança
+## Arquivos funcionais alterados
 
-- contadores derivados exclusivamente de `fetchTravelOfferFacets`;
-- nenhum número fixo no componente de produção;
-- nenhum acesso direto a tabelas, `raw_data` ou `source_url`;
-- nenhuma alteração em banco, Edge Functions, Téo, WhatsApp ou autenticação;
+- `src/components/landing/HeroCinematicBackground.tsx`;
+- `src/components/landing/OpportunityHero.tsx`.
+
+## Resultado técnico
+
+O vídeo continua ocupando todo o Hero com `object-cover`, mas agora não possui nenhuma camada visual global entre o arquivo de vídeo e o conteúdo da interface. O poster responsivo permanece como fallback e o comportamento de `prefers-reduced-motion` continua preservado.
+
+## Validação executada
+
+Foi criado um workflow temporário exclusivamente para validar a branch e removido após a execução, antes do PR.
+
+Run GitHub Actions: `34610827643` — concluído com sucesso.
+
+- instalação de dependências: aprovada;
+- TypeScript (`npx tsc --noEmit`): aprovado;
+- ESLint dos dois componentes alterados: aprovado;
+- testes focados da Home (`HomeNavigation` e `HomeInventoryPulse`): aprovados;
+- build de produção (`npm run build`): aprovado;
+- workflow temporário removido da branch após a validação.
+
+## Segurança e integridade
+
+- nenhuma alteração em dados comerciais;
+- nenhum acesso direto a `travel_offers`;
+- nenhum uso de `raw_data` ou `source_url`;
+- nenhuma alteração em Téo, WhatsApp, autenticação, Supabase ou Edge Functions;
 - nenhuma publicação automática.
 
-## Estados
+## Estados separados
 
-- IMPLEMENTADO: sim, na branch isolada;
-- TESTADO: sim no escopo, incluindo navegação, inventário, ESLint dos arquivos alterados e build;
+- IMPLEMENTADO: sim, na branch `fix/home-hero-uncovered-video`;
+- TESTADO: sim;
 - MERGEADO: não;
 - SINCRONIZADO NO LOVABLE: não;
 - PUBLICADO: não;
@@ -48,12 +63,4 @@ Data: 2026-09-11
 
 ## Próxima ação exata
 
-Abrir PR e revisar o preview visual mobile/desktop antes de qualquer merge ou publicação.
-
-## Validação executada
-
-- ESLint dos arquivos TypeScript/TSX alterados: aprovado;
-- testes focados da Home: 2 arquivos e 3 testes aprovados;
-- build de produção: aprovado;
-- a suíte global mantém falhas preexistentes e não relacionadas em `opportunityCompare.test.tsx`;
-- avisos globais preexistentes de CSS, lint e tamanho de chunks permanecem fora do escopo.
+Abrir PR contra `main`, revisar o diff e o preview visual mobile/desktop e somente depois decidir sobre merge e publicação.
