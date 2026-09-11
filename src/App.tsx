@@ -31,6 +31,8 @@ const ClientDashboard = lazyWithRetry(() => import("./pages/ClientDashboard"));
 const MyTomorrowDashboard = lazyWithRetry(() => import("./pages/MyTomorrowDashboard"));
 const MyTomorrowTrips = lazyWithRetry(() => import("./pages/MyTomorrowTrips"));
 const MyTomorrowTripDetail = lazyWithRetry(() => import("./pages/MyTomorrowTripDetail"));
+const MyTomorrowProfile = lazyWithRetry(() => import("./pages/MyTomorrowProfile"));
+const MyTomorrowPreferences = lazyWithRetry(() => import("./pages/MyTomorrowPreferences"));
 const Install = lazyWithRetry(() => import("./pages/Install"));
 const Avaliacao = lazyWithRetry(() => import("./pages/Avaliacao"));
 const Blog = lazyWithRetry(() => import("./pages/Blog"));
@@ -98,6 +100,8 @@ const App = () => (
           <Route path="/minha-area" element={<ClientProtected label="My Tomorrow"><MyTomorrowDashboard /></ClientProtected>} />
           <Route path="/minha-area/viagens" element={<ClientProtected label="minhas viagens"><MyTomorrowTrips /></ClientProtected>} />
           <Route path="/minha-area/viagens/:tripId" element={<ClientProtected label="viagem"><MyTomorrowTripDetail /></ClientProtected>} />
+          <Route path="/minha-area/perfil" element={<ClientProtected label="Travel Profile"><MyTomorrowProfile /></ClientProtected>} />
+          <Route path="/minha-area/preferencias" element={<ClientProtected label="preferências de viagem"><MyTomorrowPreferences /></ClientProtected>} />
           <Route path="/minha-area/operacional" element={<ClientProtected label="detalhes operacionais"><ClientDashboard /></ClientProtected>} />
           <Route path="/avaliacao/:id" element={<PageSuspense label="avaliação"><Avaliacao /></PageSuspense>} />
           <Route path="/install" element={<PageSuspense label="instalação"><Install /></PageSuspense>} />
