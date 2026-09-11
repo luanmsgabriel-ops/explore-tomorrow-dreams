@@ -88,21 +88,6 @@ create policy "Users read own preference events"
   to authenticated
   using (user_id = auth.uid());
 
-drop policy if exists "Users insert own preference events" on public.traveler_preference_events;
-create policy "Users insert own preference events"
-  on public.traveler_preference_events
-  for insert
-  to authenticated
-  with check (user_id = auth.uid());
-
-drop policy if exists "Users revoke own preference events" on public.traveler_preference_events;
-create policy "Users revoke own preference events"
-  on public.traveler_preference_events
-  for update
-  to authenticated
-  using (user_id = auth.uid())
-  with check (user_id = auth.uid());
-
 drop policy if exists "Admins manage preference events" on public.traveler_preference_events;
 create policy "Admins manage preference events"
   on public.traveler_preference_events
@@ -172,19 +157,11 @@ begin
     raise exception 'authentication_required';
   end if;
 
-  delete from public.traveler_affinities
-  where user_id = v_user_id;
+  delete from public.traveler_affinities where user_id = v_user_id;
 
   insert into public.traveler_affinities (
-    user_id,
-    preference_key,
-    affinity_score,
-    evidence_count,
-    want_count,
-    like_count,
-    neutral_count,
-    not_for_me_count,
-    recalculated_at
+    user_id, preference_key, affinity_score, evidence_count,
+    want_count, like_count, neutral_count, not_for_me_count, recalculated_at
   )
   select
     v_user_id,
@@ -202,8 +179,7 @@ begin
     count(*) filter (where response = 'not_for_me')::integer,
     now()
   from public.traveler_preference_events
-  where user_id = v_user_id
-    and revoked_at is null
+  where user_id = v_user_id and revoked_at is null
   group by preference_key;
 
   get diagnostics v_count = row_count;
@@ -211,5 +187,61 @@ begin
 end;
 $$;
 
+create or replace function public.record_my_travel_preference(
+  p_preference_key text,
+  p_response text,
+  p_source text default 'onboarding',
+  p_evidence jsonb default null
+)
+returns integer
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  v_user_id uuid := auth.uid();
+begin
+  if v_user_id is null then raise exception 'authentication_required'; end if;
+  if p_preference_key not in (
+    'praia','neve','parques','cidade','natureza','gastronomia','compras','aventura',
+    'resort','all_inclusive','cruzeiro','eventos','cultura','vida_noturna','familia','casal'
+  ) then raise exception 'invalid_preference_key'; end if;
+  if p_response not in ('want','like','neutral','not_for_me') then raise exception 'invalid_preference_response'; end if;
+  if p_source not in ('onboarding','profile_edit','reset_replacement') then raise exception 'invalid_preference_source'; end if;
+
+  update public.traveler_preference_events
+    set revoked_at = now()
+    where user_id = v_user_id and preference_key = p_preference_key and revoked_at is null;
+
+  insert into public.traveler_preference_events (user_id, preference_key, response, source, evidence)
+  values (v_user_id, p_preference_key, p_response, p_source, p_evidence);
+
+  return public.rebuild_my_traveler_affinities();
+end;
+$$;
+
+create or replace function public.reset_my_travel_preferences()
+returns integer
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  v_user_id uuid := auth.uid();
+begin
+  if v_user_id is null then raise exception 'authentication_required'; end if;
+
+  update public.traveler_preference_events
+    set revoked_at = now()
+    where user_id = v_user_id and revoked_at is null;
+
+  return public.rebuild_my_traveler_affinities();
+end;
+$$;
+
 revoke all on function public.rebuild_my_traveler_affinities() from public;
+revoke all on function public.record_my_travel_preference(text, text, text, jsonb) from public;
+revoke all on function public.reset_my_travel_preferences() from public;
 grant execute on function public.rebuild_my_traveler_affinities() to authenticated;
+grant execute on function public.record_my_travel_preference(text, text, text, jsonb) to authenticated;
+grant execute on function public.reset_my_travel_preferences() to authenticated;
