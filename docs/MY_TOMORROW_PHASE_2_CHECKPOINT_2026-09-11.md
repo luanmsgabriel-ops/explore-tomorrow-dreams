@@ -3,7 +3,8 @@
 Data: 2026-09-11
 Branch: `feat/my-tomorrow-phase-2-trip-shell`
 Base: `1a885ccaa34d5b5b87e74a2a1aaf5c7e79eeaa7c`
-Estado: INICIADA — primeiro slice implementado, banco não aplicado
+PR: #109
+Estado: IMPLEMENTADA E TESTADA EM CI — banco não aplicado
 
 ## Autorização que altera o gate anterior
 
@@ -11,10 +12,10 @@ O checkpoint da Fase 1 bloqueava a Fase 2 até aplicação/validação E2E da mi
 
 Consequência:
 
-- a Fase 2 pode ser IMPLEMENTADA e TESTADA estaticamente;
-- nenhuma migration será executada agora;
-- nenhum estado que dependa do banco será marcado como validado;
-- as migrations devem ser aplicadas juntas somente quando o lote atingir três migrations e houver autorização de execução.
+- a Fase 2 foi implementada e testada estaticamente;
+- nenhuma migration foi executada;
+- nenhum estado que dependa do banco foi marcado como validado;
+- as migrations serão aplicadas juntas somente quando o lote atingir três migrations e houver autorização de execução.
 
 ## Lote de migrations
 
@@ -22,7 +23,7 @@ Consequência:
 2. `20260911173000_my_tomorrow_trip_lifecycle.sql` — Fase 2 — pendente de aplicação;
 3. TERCEIRA MIGRATION — ainda não criada; deve ser acumulada antes do gate conjunto.
 
-Não consolidar os três arquivos fisicamente em um único SQL antes de eles estarem fechados e revisados. A intenção operacional é aplicar o lote de três em uma única janela controlada, preservando ordem e auditabilidade.
+Os arquivos permanecem separados e ordenados para preservar auditabilidade. A intenção operacional é aplicar as três migrations em uma única janela controlada, depois de revisão do lote completo.
 
 ## Decisão de domínio preservada
 
@@ -32,9 +33,7 @@ Não consolidar os três arquivos fisicamente em um único SQL antes de eles est
 - não converter automaticamente registros existentes;
 - My Tomorrow unifica as duas fontes apenas na experiência de usuário.
 
-## Primeiro slice implementado
-
-### Banco versionado, não aplicado
+## Banco versionado, não aplicado
 
 A migration da Fase 2 adiciona a `trip_sessions`:
 
@@ -51,41 +50,69 @@ Estágios aceitos:
 
 `dreaming`, `researching`, `planning`, `monitoring`, `ready_to_buy`, `booked`, `traveling`, `completed`, `cancelled`.
 
-O campo é separado de `trip_sessions.status`, que permanece runtime do Trip Composer.
+`lifecycle_stage` é separado de `trip_sessions.status`, que continua sendo o estado runtime do Trip Composer.
 
-### Backend
+## Backend
 
 Nova Edge Function versionada, não deployada:
 
 `supabase/functions/my-tomorrow-trips/index.ts`
 
-Responsabilidades do primeiro slice:
+Contrato implementado:
 
 - autenticação JWT obrigatória;
-- listagem unificada de planning trips e `client_trips` acessíveis por RLS;
-- criação de planning trip;
-- atualização de planning trip própria;
-- validação de data e orçamento no backend;
-- nenhum acesso direto a `travel_offers`;
-- nenhum uso de Service Role no fluxo do cliente.
+- cliente Supabase com token do usuário e RLS, sem Service Role;
+- listagem unificada de planning trips próprias e `client_trips` visíveis pela RLS existente;
+- criação de planning trip em `trip_sessions`;
+- atualização apenas de planning trip própria;
+- update parcial preserva campos omitidos;
+- validação de faixa de datas e orçamento no backend;
+- `client_trips` permanece read-only nesse fluxo;
+- nenhum acesso a `travel_offers` nesta fase.
 
-### Frontend
+## Frontend
 
-Novas rotas protegidas:
+Rotas protegidas:
 
-- `/minha-area` — nova shell My Tomorrow;
-- `/minha-area/viagens` — lista e criação de viagens;
-- `/minha-area/viagens/:tripId` — rota reservada ao detalhe da viagem, ainda usando o slice da lista nesta primeira entrega;
-- `/minha-area/operacional` — dashboard legado preservado para viagem contratada.
+- `/minha-area` — shell My Tomorrow mobile-first;
+- `/minha-area/viagens` — lista unificada e criação de viagens pré-compra;
+- `/minha-area/viagens/:tripId` — detalhe e edição da planning trip;
+- `/minha-area/operacional` — dashboard operacional legado preservado para viagens contratadas.
+
+Entregas principais:
+
+- dashboard pessoal com viagens em planejamento e próxima viagem contratada;
+- criação em `dreaming`, `researching` ou `planning`;
+- edição de destino, origem, aeroporto, período, passageiros e orçamento;
+- separação visual entre planejamento e viagem contratada;
+- link de planning trip para catálogo público de oportunidades;
+- manutenção das abas existentes de Aéreo, Hospedagem, Vouchers, Checklist e Informações no módulo operacional.
 
 Arquivos principais:
 
 - `src/pages/MyTomorrowDashboard.tsx`;
 - `src/pages/MyTomorrowTrips.tsx`;
+- `src/pages/MyTomorrowTripDetail.tsx`;
 - `src/lib/myTomorrowTrips.ts`;
-- `src/App.tsx`.
+- `src/lib/myTomorrowTrips.test.ts`;
+- `src/App.tsx`;
+- `supabase/functions/my-tomorrow-trips/index.ts`;
+- `supabase/migrations/20260911173000_my_tomorrow_trip_lifecycle.sql`.
 
-## Fora do escopo deste slice
+## Validação
+
+Run final: `34623380665` — PASS integral.
+
+- testes focados: 1 arquivo / 3 testes PASS;
+- TypeScript: PASS;
+- ESLint do escopo: PASS;
+- build de produção: PASS;
+- `deno check` da Edge Function: PASS;
+- `git diff --check`: PASS.
+
+Run `34623195201` falhou somente no mock do teste por hoisting do Vitest antes de executar qualquer teste; o mock foi corrigido com `vi.hoisted` e o gate final passou no run acima.
+
+## Fora do escopo
 
 - Radar CRUD;
 - matching;
@@ -98,23 +125,18 @@ Arquivos principais:
 - execução de migration;
 - alteração do prompt/tom/sistema do Téo.
 
-## Próximo passo exato da Fase 2
+## Próximo passo exato
 
-1. validar TypeScript, ESLint, build e `deno check` do slice atual;
-2. corrigir qualquer falha encontrada;
-3. implementar detalhe/edit de planning trip em `/minha-area/viagens/:tripId`;
-4. adicionar navegação explícita aos módulos operacionais quando a entidade for `booked`;
-5. registrar os testes finais da Fase 2;
-6. manter as duas migrations acumuladas sem execução;
-7. somente depois seguir para a fase que produzirá a terceira migration do lote.
+A Fase 2 de código está fechada. O próximo desenvolvimento é a Fase 3 — Travel Profile + onboarding de preferências — que deverá produzir a terceira migration do lote sem aplicar as duas anteriores. Quando as três estiverem fechadas e revisadas, executar uma única janela de migration na ordem 1 → 2 → 3, seguida dos gates integrados de RLS e E2E.
 
-## Estados neste checkpoint
+## Estados
 
-- IMPLEMENTADO: PARCIAL — primeiro slice.
-- TESTADO: PENDENTE do gate deste branch.
-- MERGEADO: NÃO.
+- IMPLEMENTADO: SIM.
+- TESTADO em CI/estático: SIM.
+- TESTADO em banco/ambiente real: NÃO.
+- MERGEADO: NÃO neste checkpoint.
 - MIGRATIONS EXECUTADAS: NÃO.
-- EDGE FUNCTIONS DEPLOYADAS: NÃO.
+- EDGE FUNCTION DEPLOYADA: NÃO.
 - SINCRONIZADO NO LOVABLE: NÃO.
 - PUBLICADO: NÃO.
 - VALIDADO EM PRODUÇÃO: NÃO.
