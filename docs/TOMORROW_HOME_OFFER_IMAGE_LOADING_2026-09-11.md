@@ -4,12 +4,15 @@ Data: 2026-09-11
 
 ## Base verificada
 
-- `main`: `dff4decf33ffc43db2468bae18af149fe417f1bc`;
+- `main` no início da intervenção: `dff4decf33ffc43db2468bae18af149fe417f1bc`;
+- `main` reconfirmada ao final: `80d3e32baf8c8ddd3002f94fda2cd8db890442d1`;
 - branch: `fix/home-offer-image-loading`;
 - PR: `#111`;
 - master plan e implementação atual revisados antes da alteração;
 - histórico da otimização `travel-offer-image` e do cache de imagens revisado;
 - escopo restrito à antecipação do carregamento das imagens dos cards da Home.
+
+Durante a validação, a `main` avançou com a Fase 3 do My Tomorrow. Os quatro arquivos funcionais/teste já existentes neste escopo foram reconferidos na nova `main` e permaneceram com os mesmos blobs da base inicial, sem conflito funcional com esta correção. O PR permaneceu mergeável.
 
 ## Diagnóstico
 
@@ -33,11 +36,11 @@ A vitrine da Home recebe seis pacotes pela camada pública e cada card usa a ima
 
 ## Validação
 
-Workflow temporário usado exclusivamente para a validação do PR e removido da branch após a execução.
+O workflow temporário foi usado exclusivamente para validar o PR e removido da branch após as execuções.
 
-Run aprovado: `34626668180`.
+Run final aprovado contra o estado mais recente da `main`: `34626959150`.
 
-- instalação de dependências: aprovada com `npm install --legacy-peer-deps --no-package-lock` por causa do descompasso preexistente entre `package.json` e `package-lock.json`;
+- instalação de dependências: aprovada com `npm install --legacy-peer-deps --no-package-lock`;
 - TypeScript (`npx tsc --noEmit`): aprovado;
 - ESLint dos arquivos alterados: aprovado;
 - testes focados da vitrine e do carregamento diferido de imagens: aprovados;
@@ -45,7 +48,9 @@ Run aprovado: `34626668180`.
 - `git diff --check` contra `main`: aprovado;
 - workflow temporário removido após a validação.
 
-Run anterior `34626593227` falhou somente na instalação com `npm ci`, porque o lockfile atual do repositório já estava fora de sincronia com `package.json`; nenhum teste do código chegou a executar nesse run.
+Run anterior aprovado: `34626668180`, com os mesmos gates.
+
+Run `34626593227` falhou somente na instalação com `npm ci`, porque o lockfile atual do repositório já estava fora de sincronia com `package.json`; nenhum teste do código chegou a executar nesse run.
 
 ## Estados
 
