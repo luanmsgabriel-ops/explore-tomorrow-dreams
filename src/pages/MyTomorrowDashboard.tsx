@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, ChevronRight, Compass, Loader2, MapPinned, PlaneTakeoff, Plus, SlidersHorizontal, Sparkles, UserRound } from "lucide-react";
+import { CalendarDays, ChevronRight, Compass, Loader2, MapPinned, PlaneTakeoff, Plus, Radar, SlidersHorizontal, Sparkles, UserRound } from "lucide-react";
 
 import { Header } from "@/components/Header";
 import { supabase } from "@/integrations/supabase/client";
@@ -68,6 +68,7 @@ export default function MyTomorrowDashboard() {
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/65 sm:text-base">Organize viagens que ainda são ideia, acompanhe as que estão em planejamento e mantenha suas viagens contratadas no mesmo lugar.</p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link to="/minha-area/viagens?nova=1" className="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-300 px-4 py-3 text-sm font-semibold text-[#041012] transition hover:bg-cyan-200"><Plus className="size-4" />Criar viagem</Link>
+              <Link to="/minha-area/radares" className="inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-300/15"><Radar className="size-4" />Meus radares</Link>
               <Link to="/minha-area/viagens" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"><MapPinned className="size-4" />Ver minhas viagens</Link>
               <Link to="/minha-area/perfil" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"><UserRound className="size-4" />Travel Profile</Link>
             </div>
@@ -75,7 +76,7 @@ export default function MyTomorrowDashboard() {
         </section>
 
         {loading ? <div className="grid min-h-64 place-items-center"><Loader2 className="size-7 animate-spin text-cyan-300" /></div> : null}
-        {!loading && error ? <div className="mt-6 rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5 text-sm text-amber-100">A nova camada de viagens ainda depende das migrations acumuladas. Seus módulos operacionais atuais permanecem preservados.</div> : null}
+        {!loading && error ? <div className="mt-6 rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5 text-sm text-amber-100">Não foi possível carregar sua central de viagens agora. Seus módulos operacionais permanecem preservados.</div> : null}
 
         {!loading && !error ? (
           <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
@@ -98,6 +99,12 @@ export default function MyTomorrowDashboard() {
             </section>
 
             <aside className="space-y-6">
+              <section className="rounded-[1.75rem] border border-cyan-300/15 bg-[linear-gradient(145deg,rgba(41,203,210,0.08),rgba(255,255,255,0.025))] p-5 sm:p-6">
+                <div className="flex items-center gap-3"><Radar className="size-5 text-cyan-300" /><h2 className="font-serif text-xl">Radar Tomorrow</h2></div>
+                <p className="mt-3 text-sm leading-relaxed text-white/55">Cadastre uma intenção de viagem, edite os critérios e pause ou reative o monitoramento quando quiser.</p>
+                <Link to="/minha-area/radares" className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-cyan-300">Abrir meus radares <ChevronRight className="size-4" /></Link>
+              </section>
+
               <section className="rounded-[1.75rem] border border-[#d4af37]/20 bg-[linear-gradient(145deg,rgba(212,175,55,0.08),rgba(255,255,255,0.025))] p-5 sm:p-6">
                 <div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-xl bg-[#d4af37]/10 text-[#d4af37]"><PlaneTakeoff className="size-5" /></div><div><p className="text-xs uppercase tracking-[0.18em] text-white/45">Próxima contratada</p><h2 className="font-serif text-xl">{nextBooked?.destinationName || "Nenhuma próxima viagem"}</h2></div></div>
                 {nextBooked ? <><p className="mt-4 text-sm text-white/60">{formatDate(nextBooked.startDate)} até {formatDate(nextBooked.endDate)}</p><Link to="/minha-area/operacional" className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#d4af37]">Abrir documentos e detalhes <ChevronRight className="size-4" /></Link></> : <p className="mt-4 text-sm text-white/55">Quando uma viagem for contratada, os módulos de aéreo, hospedagem, vouchers e checklist aparecerão aqui.</p>}
@@ -115,7 +122,7 @@ export default function MyTomorrowDashboard() {
                   <div className="rounded-xl bg-white/[0.04] p-3"><p className="text-2xl font-semibold">{activeTrips.length}</p><p className="text-xs text-white/45">ativas</p></div>
                   <div className="rounded-xl bg-white/[0.04] p-3"><p className="text-2xl font-semibold">{trips.filter((trip) => trip.stage === "completed").length}</p><p className="text-xs text-white/45">concluídas</p></div>
                 </div>
-                <div className="mt-4 flex items-center gap-2 text-xs text-white/45"><CalendarDays className="size-4" />Radar e alertas entram em fases posteriores.</div>
+                <div className="mt-4 flex items-center gap-2 text-xs text-white/45"><CalendarDays className="size-4" />Matching e alertas entram nas próximas fases.</div>
               </section>
             </aside>
           </div>
