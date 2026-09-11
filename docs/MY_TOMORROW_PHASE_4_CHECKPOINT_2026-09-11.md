@@ -3,7 +3,8 @@
 Data: 2026-09-11
 Branch: `feat/my-tomorrow-phase-4-radar-crud`
 Base: `1ede19c85dff16eec2e4744eee126d1172225031`
-Estado: IMPLEMENTAÇÃO DE CÓDIGO CONCLUÍDA — banco ainda não aplicado nesta fase
+PR: #112
+Estado: IMPLEMENTADA E TESTADA EM CI — migration e Edge Function ainda não aplicadas
 
 ## Preflight
 
@@ -98,6 +99,18 @@ CTA `Salvar busca como radar`:
 - carrega origem, destino, datas, passageiros, orçamento, tipo, subtipo e categoria;
 - não persiste resultados, preço de uma oferta específica, `raw_data`, `source_url` ou dado interno de fornecedor.
 
+## Validação
+
+Run final: `34636090081` — PASS integral.
+
+- testes focados: 1 arquivo / 4 testes PASS;
+- TypeScript: PASS;
+- ESLint do escopo: PASS;
+- build de produção: PASS;
+- `deno check` de `my-tomorrow-radars`: PASS;
+- `git diff --check`: PASS;
+- revisão de diff: 12 arquivos, sem alteração de Téo, WhatsApp ou Tomorrow Live.
+
 ## Fora do escopo
 
 - matching engine;
@@ -111,17 +124,27 @@ CTA `Salvar busca como radar`:
 - aplicação da migration da Fase 4;
 - deploy da nova Edge Function.
 
-## Gate de saída da Fase 4
+## Próximo passo exato
 
-Antes do merge:
+Após merge:
 
-1. testes focados;
-2. TypeScript;
-3. ESLint do escopo;
-4. build;
-5. `deno check`;
-6. `git diff --check`;
-7. revisão de diff;
-8. remover workflow temporário.
+1. aplicar `20260911193000_my_tomorrow_radar_crud.sql`;
+2. deployar somente `my-tomorrow-radars`;
+3. validar RLS com usuário A × B;
+4. validar criar/editar/pausar/reativar/excluir;
+5. validar vínculo com planning trip própria e rejeição de trip alheia;
+6. validar conversão catálogo → radar;
+7. confirmar sync do Lovable;
+8. somente depois iniciar Fase 5 — Matching Engine v1.
 
-Depois do merge, aplicar migration e Edge Function em janela controlada e validar RLS A × B e CRUD real antes de iniciar a Fase 5.
+## Estados
+
+- IMPLEMENTADO: SIM.
+- TESTADO em CI/estático: SIM.
+- TESTADO em banco real: NÃO nesta fase.
+- MERGEADO: NÃO neste checkpoint.
+- MIGRATION EXECUTADA: NÃO.
+- EDGE FUNCTION DEPLOYADA: NÃO.
+- SINCRONIZADO NO LOVABLE: NÃO confirmado.
+- PUBLICADO: NÃO.
+- VALIDADO EM PRODUÇÃO: NÃO.
