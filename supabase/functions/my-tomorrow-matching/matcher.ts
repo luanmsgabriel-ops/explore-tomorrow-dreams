@@ -54,6 +54,7 @@ export type MatchResult = {
 };
 
 const DAY = 86_400_000;
+const AIRPORT_DESTINATION_BY_IATA: Record<string, string> = { REC: "Recife", POA: "Porto Alegre" };
 const norm = (value: string | null | undefined) => (value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const dateMs = (value: string | null | undefined) => value ? new Date(`${value}T00:00:00Z`).getTime() : null;
 const shiftDate = (value: string | null, days: number) => {
@@ -61,6 +62,10 @@ const shiftDate = (value: string | null, days: number) => {
   return ms === null ? null : ms + days * DAY;
 };
 const textEqual = (a: string | null, b: string | null) => !a || norm(a) === norm(b);
+const canonicalDestination = (offer: PublicOfferForMatching) => offer.offer_type === "bloqueio_aereo" && offer.destination_iata
+  ? AIRPORT_DESTINATION_BY_IATA[offer.destination_iata.toUpperCase()] ?? offer.destination
+  : offer.destination;
+const destinationMatches = (radar: RadarForMatching, offer: PublicOfferForMatching) => textEqual(radar.destination, canonicalDestination(offer));
 const currencyEqual = (radar: RadarForMatching, offer: PublicOfferForMatching) => !offer.currency || offer.currency === radar.budget_currency;
 
 function hardChecks(radar: RadarForMatching, offer: PublicOfferForMatching, flexibleDates: boolean) {
@@ -68,7 +73,7 @@ function hardChecks(radar: RadarForMatching, offer: PublicOfferForMatching, flex
   checks.push({ key: "offer_type", ok: !radar.offer_type || offer.offer_type === radar.offer_type });
   checks.push({ key: "offer_subtype", ok: !radar.offer_subtype || offer.offer_subtype === radar.offer_subtype });
   checks.push({ key: "origin", ok: textEqual(radar.origin, offer.origin) });
-  checks.push({ key: "destination", ok: textEqual(radar.destination, offer.destination) });
+  checks.push({ key: "destination", ok: destinationMatches(radar, offer) });
   checks.push({ key: "currency", ok: currencyEqual(radar, offer) });
   checks.push({ key: "budget_min", ok: radar.budget_min === null || offer.price_per_person >= radar.budget_min });
   checks.push({ key: "budget_max", ok: radar.budget_max === null || offer.price_per_person <= radar.budget_max });
@@ -91,7 +96,7 @@ function factor(key: string, label: string, matched: boolean, weight: number, de
 function scoreFactors(radar: RadarForMatching, offer: PublicOfferForMatching, affinities: Affinity[]) {
   const factors: MatchFactor[] = [];
   factors.push(factor("origin", "Origem compatível", !radar.origin || textEqual(radar.origin, offer.origin), 15));
-  factors.push(factor("destination", "Destino exato", !radar.destination || textEqual(radar.destination, offer.destination), 20));
+  factors.push(factor("destination", "Destino exato", !radar.destination || destinationMatches(radar, offer), 20));
 
   const exactDates = hardChecks(radar, offer, false).filter((item) => item.key === "start_date" || item.key === "end_date").every((item) => item.ok);
   const flexibleDates = hardChecks(radar, offer, true).filter((item) => item.key === "start_date" || item.key === "end_date").every((item) => item.ok);
@@ -126,15 +131,11 @@ export function evaluateRadarMatch(radar: RadarForMatching, offer: PublicOfferFo
 
   let matchClass: MatchClass | null = exact ? "exact" : flexible ? "flexible" : null;
   if (!matchClass) {
-    // Discovery may relax destination/category only. Origin, offer type, dates (including
+    // Discovery may relax destination only. Origin, type/subtype, dates (including
     // explicit flexibility), budget/currency and passenger constraints remain mandatory.
-    const discoveryRequired = flexibleHard
-      .filter((item) => item.key !== "destination")
-      .every((item) => item.ok);
+    const discoveryRequired = flexibleHard.filter((item) => item.key !== "destination").every((item) => item.ok);
     const categoryAffinity = affinities.some((item) => item.score > 0 && norm(item.preference_key) === norm(offer.category));
-    if (discoveryRequired && categoryAffinity && radar.destination && !textEqual(radar.destination, offer.destination)) {
-      matchClass = "discovery";
-    }
+    if (discoveryRequired && categoryAffinity && radar.destination && !destinationMatches(radar, offer)) matchClass = "discovery";
   }
   if (!matchClass) return null;
 
@@ -159,7 +160,7 @@ export function sanitizeOfferSnapshot(offer: PublicOfferForMatching) {
     category: offer.category,
     origin: offer.origin,
     origin_iata: offer.origin_iata,
-    destination: offer.destination,
+    destination: canonicalDestination(offer),
     destination_iata: offer.destination_iata,
     departure_date: offer.departure_date,
     return_date: offer.return_date,
