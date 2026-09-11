@@ -14,6 +14,12 @@ const json = (body: unknown, status = 200, origin: string | null = null) => new 
 const uuid = (value: unknown) => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value) ? value : null;
 const day = 86_400_000;
 const shift = (value: string | null, days: number) => value ? new Date(new Date(`${value}T00:00:00Z`).getTime() + days * day).toISOString().slice(0, 10) : null;
+const stableJson = (value: unknown) => JSON.stringify(value, Object.keys((value && typeof value === "object" ? value : {}) as Record<string, unknown>).sort());
+const sha256 = async (value: string) => {
+  const data = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+};
 
 async function clients(token: string) {
   const url = Deno.env.get("SUPABASE_URL");
@@ -93,9 +99,23 @@ async function runMatching(token: string, radarId: string) {
     return evaluated ? { offer, evaluated } : null;
   }).filter((item): item is NonNullable<typeof item> => Boolean(item));
 
+  const { data: previousRows, error: previousError } = await service.from("travel_radar_matches")
+    .select("id,offer_id,offer_snapshot,offer_updated_at,expired_at")
+    .eq("radar_id", r.id)
+    .eq("algorithm_version", MATCH_ALGORITHM_VERSION);
+  if (previousError) throw previousError;
+  const previous = new Map((previousRows ?? []).map((row: Record<string, unknown>) => [String(row.offer_id), row]));
+
   const now = new Date().toISOString();
   const currentOfferIds = matches.map(({ offer }) => offer.id);
+  let alertsCreated = 0;
   for (const { offer, evaluated } of matches) {
+    const snapshot = sanitizeOfferSnapshot(offer);
+    const prior = previous.get(offer.id) as Record<string, unknown> | undefined;
+    const priorSnapshot = prior?.offer_snapshot ?? null;
+    const isNew = !prior || Boolean(prior.expired_at);
+    const changed = Boolean(prior && !prior.expired_at && stableJson(priorSnapshot) !== stableJson(snapshot));
+
     const row = {
       radar_id: r.id,
       user_id: user.id,
@@ -105,14 +125,38 @@ async function runMatching(token: string, radarId: string) {
       score: evaluated.score,
       matched_factors: evaluated.matchedFactors,
       unmatched_factors: evaluated.unmatchedFactors,
-      offer_snapshot: sanitizeOfferSnapshot(offer),
+      offer_snapshot: snapshot,
       offer_updated_at: offer.updated_at,
       last_matched_at: now,
       expired_at: null,
       updated_at: now,
     };
-    const { error } = await service.from("travel_radar_matches").upsert(row, { onConflict: "radar_id,offer_id,algorithm_version" });
+    const { data: matchRow, error } = await service.from("travel_radar_matches")
+      .upsert(row, { onConflict: "radar_id,offer_id,algorithm_version" })
+      .select("id")
+      .single();
     if (error) throw error;
+
+    if (isNew || changed) {
+      const alertType = isNew ? "new_match" : "offer_changed";
+      const snapshotHash = await sha256(stableJson(snapshot));
+      const dedupeKey = `${r.id}:${alertType}:${offer.id}:${MATCH_ALGORITHM_VERSION}:${snapshotHash}`;
+      const { error: alertError } = await service.from("travel_radar_alerts").upsert({
+        user_id: user.id,
+        radar_id: r.id,
+        match_id: matchRow.id,
+        offer_id: offer.id,
+        alert_type: alertType,
+        dedupe_key: dedupeKey,
+        match_class: evaluated.matchClass,
+        score: evaluated.score,
+        offer_snapshot: snapshot,
+        reason: { matched_factors: evaluated.matchedFactors, unmatched_factors: evaluated.unmatchedFactors },
+        updated_at: now,
+      }, { onConflict: "user_id,dedupe_key", ignoreDuplicates: true });
+      if (alertError) throw alertError;
+      alertsCreated += 1;
+    }
   }
 
   let expireQuery = service.from("travel_radar_matches").update({ expired_at: now, updated_at: now }).eq("radar_id", r.id).eq("algorithm_version", MATCH_ALGORITHM_VERSION).is("expired_at", null);
@@ -131,6 +175,7 @@ async function runMatching(token: string, radarId: string) {
     exact: matches.filter((item) => item.evaluated.matchClass === "exact").length,
     flexible: matches.filter((item) => item.evaluated.matchClass === "flexible").length,
     discovery: matches.filter((item) => item.evaluated.matchClass === "discovery").length,
+    alerts_created: alertsCreated,
     checked_at: now,
   };
 }
