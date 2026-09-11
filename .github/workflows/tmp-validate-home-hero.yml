@@ -1,0 +1,34 @@
+name: Temporary Home Hero Validation
+
+on:
+  push:
+    branches:
+      - fix/home-hero-uncovered-video
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+
+      - name: TypeScript
+        run: npx tsc --noEmit
+
+      - name: ESLint scope
+        run: npx eslint src/components/landing/HeroCinematicBackground.tsx src/components/landing/OpportunityHero.tsx
+
+      - name: Focused Home tests
+        run: npx vitest run src/components/landing/HomeNavigation.test.tsx src/components/landing/HomeInventoryPulse.test.tsx
+
+      - name: Production build
+        run: npm run build
