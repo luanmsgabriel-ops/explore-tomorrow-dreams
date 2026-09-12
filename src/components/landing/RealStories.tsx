@@ -81,10 +81,10 @@ const relativePosition = (index: number, activeIndex: number) => {
 };
 
 const quoteSize = (quote: string) => {
-  if (quote.length > 220) return 'text-[0.82rem] leading-[1.16] md:text-[1.02rem] md:leading-[1.18]';
-  if (quote.length > 165) return 'text-[0.9rem] leading-[1.15] md:text-[1.12rem] md:leading-[1.17]';
-  if (quote.length > 110) return 'text-[1rem] leading-[1.12] md:text-[1.25rem] md:leading-[1.14]';
-  return 'text-[1.12rem] leading-[1.1] md:text-[1.4rem] md:leading-[1.1]';
+  if (quote.length > 220) return 'text-[0.78rem] leading-[1.18] sm:text-[0.88rem] md:text-[1rem]';
+  if (quote.length > 165) return 'text-[0.86rem] leading-[1.16] sm:text-[0.96rem] md:text-[1.08rem]';
+  if (quote.length > 110) return 'text-[0.96rem] leading-[1.14] sm:text-[1.05rem] md:text-[1.18rem]';
+  return 'text-[1.08rem] leading-[1.1] sm:text-[1.16rem] md:text-[1.32rem]';
 };
 
 export const RealStories = () => {
@@ -117,7 +117,7 @@ export const RealStories = () => {
   const goTo = (index: number) => setActiveIndex(normalizeIndex(index));
 
   return (
-    <section className="overflow-hidden bg-[radial-gradient(ellipse_at_top,_#fde68a_0%,_#f5c542_35%,_#c8941f_70%,_#8a5a10_100%)] py-16 md:py-28 lg:py-32">
+    <section className="overflow-hidden bg-[radial-gradient(ellipse_at_top,_#fde68a_0%,_#f5c542_35%,_#c8941f_70%,_#8a5a10_100%)] py-14 md:py-24 lg:py-28">
       <div className="container mx-auto px-4 lg:px-8">
         <motion.div
           initial="hidden"
@@ -125,7 +125,7 @@ export const RealStories = () => {
           viewport={{ once: true }}
           variants={staggerContainer}
         >
-          <motion.div variants={fadeUp} className="mb-8 md:mb-12">
+          <motion.div variants={fadeUp} className="mb-7 md:mb-10">
             <EditorialHeading
               eyebrow="Relatos de Confiança"
               size="lg"
@@ -141,7 +141,7 @@ export const RealStories = () => {
 
           <motion.div
             variants={fadeUp}
-            className="relative mx-auto h-[430px] w-full max-w-6xl select-none md:h-[540px]"
+            className="relative mx-auto w-full max-w-6xl select-none pb-14 md:pb-16"
             style={{ perspective: 1400 }}
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
@@ -149,13 +149,13 @@ export const RealStories = () => {
             onBlurCapture={() => setIsPaused(false)}
           >
             <motion.div
-              className="absolute inset-x-0 top-0 h-[378px] touch-pan-y md:h-[480px]"
+              className="relative h-[405px] overflow-hidden touch-pan-y sm:h-[445px] md:h-[500px] lg:h-[520px]"
               drag={shouldReduceMotion ? false : 'x'}
               dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.1}
+              dragElastic={0.08}
               onDragEnd={(_, info) => {
-                if (info.offset.x < -45) goTo(activeIndex + 1);
-                if (info.offset.x > 45) goTo(activeIndex - 1);
+                if (info.offset.x < -42) goTo(activeIndex + 1);
+                if (info.offset.x > 42) goTo(activeIndex - 1);
               }}
             >
               {STORIES.map((story, index) => {
@@ -167,30 +167,30 @@ export const RealStories = () => {
                 const direction = position === 0 ? 0 : position > 0 ? 1 : -1;
 
                 const x = isMobile
-                  ? direction * 150
-                  : direction * (distance === 1 ? 245 : 430);
-                const y = distance === 0 ? 0 : distance === 1 ? 22 : 48;
-                const scale = distance === 0 ? 1 : distance === 1 ? 0.78 : 0.64;
-                const rotateY = shouldReduceMotion ? 0 : direction * (distance === 1 ? -11 : -18);
-                const opacity = !isVisible ? 0 : distance === 0 ? 1 : distance === 1 ? 0.72 : 0.26;
+                  ? direction * 238
+                  : direction * (distance === 1 ? 330 : 585);
+                const y = distance === 0 ? 0 : distance === 1 ? 24 : 52;
+                const scale = distance === 0 ? 1 : distance === 1 ? (isMobile ? 0.72 : 0.8) : 0.62;
+                const rotateY = shouldReduceMotion ? 0 : direction * (distance === 1 ? -12 : -19);
+                const opacity = !isVisible ? 0 : distance === 0 ? 1 : distance === 1 ? (isMobile ? 0.46 : 0.7) : 0.24;
 
                 return (
                   <motion.article
                     key={story.author}
-                    className="absolute left-1/2 top-[46%] w-[260px] -translate-x-1/2 -translate-y-1/2 md:top-1/2 md:w-[340px]"
+                    className="absolute left-1/2 top-0 w-[82vw] max-w-[315px] -translate-x-1/2 sm:max-w-[335px] md:w-[360px] md:max-w-none lg:w-[380px]"
                     initial={false}
                     animate={{ x, y, scale, rotateY, opacity, zIndex: 30 - distance }}
                     transition={
                       shouldReduceMotion
                         ? { duration: 0 }
-                        : { type: 'spring', stiffness: 125, damping: 22, mass: 0.85 }
+                        : { type: 'spring', stiffness: 130, damping: 23, mass: 0.82 }
                     }
                     style={{ pointerEvents: isVisible ? 'auto' : 'none' }}
                     aria-hidden={!isVisible}
                   >
                     <button
                       type="button"
-                      className="group relative block aspect-[3/4] w-full overflow-hidden rounded-[1.6rem] border border-white/20 text-left shadow-[0_24px_58px_-24px_rgba(7,35,39,0.6)] outline-none focus-visible:ring-2 focus-visible:ring-ocean-deep/70 md:rounded-[2rem]"
+                      className="group relative block aspect-[3/4] w-full overflow-hidden rounded-[1.7rem] border border-white/20 text-left shadow-[0_26px_60px_-24px_rgba(7,35,39,0.62)] outline-none focus-visible:ring-2 focus-visible:ring-ocean-deep/70 md:rounded-[2rem]"
                       onClick={() => goTo(index)}
                       tabIndex={isVisible ? 0 : -1}
                       aria-label={`Ver avaliação de ${story.author}`}
@@ -204,9 +204,9 @@ export const RealStories = () => {
                         height={1365}
                         className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.025]"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/42 to-black/5" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/44 to-black/5" />
 
-                      <div className="absolute inset-0 flex flex-col justify-end p-5 md:p-7">
+                      <div className="absolute inset-0 flex flex-col justify-end p-5 sm:p-6 md:p-7">
                         <div className="mb-3 flex items-center gap-2 md:mb-4 md:gap-3">
                           <span className="whitespace-nowrap text-[9px] font-bold tracking-[0.12em] text-gold md:text-[11px] md:tracking-[0.18em]">
                             ★★★★★
@@ -227,7 +227,7 @@ export const RealStories = () => {
 
                       {isActive && !shouldReduceMotion && (
                         <motion.div
-                          className="pointer-events-none absolute inset-0 rounded-[1.6rem] ring-1 ring-white/25 md:rounded-[2rem]"
+                          className="pointer-events-none absolute inset-0 rounded-[1.7rem] ring-1 ring-white/25 md:rounded-[2rem]"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: [0.2, 0.58, 0.2] }}
                           transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
@@ -243,7 +243,7 @@ export const RealStories = () => {
               <button
                 type="button"
                 onClick={() => goTo(activeIndex - 1)}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-ocean-deep/25 bg-white/20 text-ocean-deep backdrop-blur-sm transition hover:bg-ocean-deep hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ocean-deep/60 md:h-11 md:w-11"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-ocean-deep/25 bg-white/24 text-ocean-deep backdrop-blur-sm transition hover:bg-ocean-deep hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ocean-deep/60 md:h-11 md:w-11"
                 aria-label="Avaliação anterior"
               >
                 <ChevronLeft className="h-4 w-4 md:h-5 md:w-5" />
@@ -266,7 +266,7 @@ export const RealStories = () => {
               <button
                 type="button"
                 onClick={() => goTo(activeIndex + 1)}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-ocean-deep/25 bg-white/20 text-ocean-deep backdrop-blur-sm transition hover:bg-ocean-deep hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ocean-deep/60 md:h-11 md:w-11"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-ocean-deep/25 bg-white/24 text-ocean-deep backdrop-blur-sm transition hover:bg-ocean-deep hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ocean-deep/60 md:h-11 md:w-11"
                 aria-label="Próxima avaliação"
               >
                 <ChevronRight className="h-4 w-4 md:h-5 md:w-5" />
