@@ -178,10 +178,16 @@ export default function MyTomorrowRadarDetail() {
     return <div className="min-h-screen bg-[#041012] text-white"><Header /><main className="mx-auto max-w-4xl px-5 pt-28">{error || "Radar não encontrado."}</main></div>;
   }
 
+  const originLabel = (radar.origin_airports ?? []).length ? radar.origin_airports.join(" · ") : radar.origin || "Origem aberta";
+  const destinationLabel = radar.destination || radar.category || "Discovery aberto";
+  const periodLabel = `${formatDate(radar.start_date)} a ${formatDate(radar.end_date)}`;
+  const lastScanLabel = radar.last_checked_at ? new Date(radar.last_checked_at).toLocaleString("pt-BR") : "Ainda não executado";
+  const bestPrice = best ? offerPrice(best.offer_snapshot) : "Sem sinal ainda";
+
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_50%_-10%,rgba(34,211,238,.10),transparent_30%),#041012] text-white">
       <Header />
-      <main className="mx-auto max-w-6xl px-4 pb-20 pt-24 sm:px-6">
+      <main className="mx-auto max-w-7xl px-4 pb-20 pt-24 sm:px-6">
         <div className="flex items-center justify-between gap-4">
           <Link to="/minha-area/radares" className="inline-flex items-center gap-2 text-sm text-white/50"><ArrowLeft className="size-4" />Meus radares</Link>
           <Link to="/minha-area/radares/novo" className="inline-flex items-center gap-2 rounded-xl border border-cyan-300/20 px-3 py-2 text-xs text-cyan-200"><Plus className="size-3.5" />Novo Radar</Link>
@@ -197,27 +203,56 @@ export default function MyTomorrowRadarDetail() {
 
         {error ? <div className="mt-5 rounded-xl border border-amber-300/20 bg-amber-300/5 p-4 text-sm text-amber-100">{error}</div> : null}
 
-        <section className="mt-5 overflow-hidden rounded-[2rem] border border-cyan-300/15 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,.12),transparent_36%),rgba(255,255,255,.025)] p-6 sm:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <div className="flex items-center gap-2 text-xs uppercase tracking-[.22em] text-cyan-300"><RadarIcon className={`size-4 ${matching ? "animate-spin" : ""}`} />{radar.status === "active" ? "Ativo · varrendo" : "Radar pausado"}</div>
-              <h1 className="mt-3 font-serif text-4xl sm:text-5xl">{radar.name}</h1>
-              <p className="mt-3 max-w-2xl text-sm text-white/50">
-                {(radar.origin_airports ?? []).length ? radar.origin_airports.join(" · ") : radar.origin || "Origem aberta"} → {radar.destination || radar.category || "Discovery aberto"} · {formatDate(radar.start_date)} a {formatDate(radar.end_date)}
-              </p>
-            </div>
-            <div className="grid min-w-52 place-items-center py-1">
-              <RadarSignalGlobe signals={matches.length} scanning={matching} />
-            </div>
+        <section className="relative mt-5 overflow-hidden rounded-[2rem] border border-cyan-300/15 bg-[radial-gradient(circle_at_50%_46%,rgba(22,181,195,.10),transparent_27%),radial-gradient(circle_at_top_right,rgba(212,175,55,.06),transparent_30%),linear-gradient(180deg,rgba(5,41,45,.96),rgba(3,24,27,.98))] p-5 shadow-[0_30px_90px_rgba(0,0,0,.28)] sm:p-7 lg:p-8">
+          <div className="pointer-events-none absolute inset-0 opacity-40" aria-hidden="true">
+            <div className="absolute left-[9%] top-[19%] h-px w-[18%] bg-gradient-to-r from-transparent via-cyan-300/30 to-transparent" />
+            <div className="absolute right-[8%] top-[31%] h-px w-[16%] bg-gradient-to-r from-transparent via-[#d4af37]/30 to-transparent" />
+            <div className="absolute bottom-[18%] left-[6%] h-px w-[20%] bg-gradient-to-r from-transparent via-[#d4af37]/25 to-transparent" />
+            <div className="absolute bottom-[25%] right-[5%] h-px w-[19%] bg-gradient-to-r from-transparent via-cyan-300/25 to-transparent" />
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-2">
-            <button onClick={() => void refresh()} disabled={matching || radar.status !== "active"} className="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-4 py-3 text-sm font-semibold text-[#041012] disabled:opacity-40"><RefreshCw className={`size-4 ${matching ? "animate-spin" : ""}`} />{matching ? "Varrendo..." : "Varrer agora"}</button>
-            <button onClick={() => setEditing((value) => !value)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm"><Settings2 className="size-4" />Ajustar critérios</button>
-            <button onClick={() => void toggle()} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm">{radar.status === "active" ? <Pause className="size-4" /> : <Play className="size-4" />}{radar.status === "active" ? "Pausar" : "Reativar"}</button>
-            <button onClick={() => void remove()} className="inline-flex items-center gap-2 rounded-xl border border-red-300/15 px-4 py-3 text-sm text-red-200"><Trash2 className="size-4" />Excluir</button>
+          <div className="relative z-10">
+            <div className="flex flex-col gap-3 border-b border-white/[.055] pb-5 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-xs uppercase tracking-[.22em] text-cyan-300"><RadarIcon className={`size-4 ${matching ? "animate-spin" : ""}`} />{radar.status === "active" ? "Ativo · varrendo" : "Radar pausado"}</div>
+                <h1 className="mt-3 font-serif text-4xl sm:text-5xl">{radar.name}</h1>
+                <p className="mt-3 text-sm text-white/45">{originLabel} → {destinationLabel} · {periodLabel}</p>
+              </div>
+              <div className="hidden text-right lg:block">
+                <p className="text-[10px] uppercase tracking-[.32em] text-cyan-200/55">Tomorrow Radar Intelligence</p>
+                <p className="mt-2 max-w-xs text-xs leading-5 text-white/30">Varredura contínua do inventário público da Tomorrow Travel.</p>
+              </div>
+            </div>
+
+            <div className="mt-4 grid items-center gap-4 lg:grid-cols-[minmax(180px,1fr)_auto_minmax(180px,1fr)] lg:gap-3 xl:gap-7">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
+                <HudPanel eyebrow="Origem monitorada" value={originLabel} accent="cyan" />
+                <HudPanel eyebrow="Janela de embarque" value={periodLabel} accent="gold" />
+                <HudPanel eyebrow="Sinais exatos" value={String(counts.exact)} subvalue={`${counts.flexible} flexíveis`} accent="cyan" />
+              </div>
+
+              <div className="relative mx-auto grid min-h-[22rem] place-items-center sm:min-h-[29rem] lg:min-h-[32rem]">
+                <div className="pointer-events-none absolute inset-x-[-8%] top-1/2 h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-cyan-300/15 to-transparent" aria-hidden="true" />
+                <div className="pointer-events-none absolute bottom-[7%] left-1/2 h-20 w-[78%] -translate-x-1/2 rounded-[50%] bg-cyan-300/[.035] blur-2xl" aria-hidden="true" />
+                <RadarSignalGlobe signals={matches.length} scanning={matching} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
+                <HudPanel eyebrow="Destino" value={destinationLabel} accent="gold" />
+                <HudPanel eyebrow="Melhor sinal" value={bestPrice} subvalue={best ? `${Math.round(best.score)}% aderência` : undefined} accent="gold" />
+                <HudPanel eyebrow="Última varredura" value={lastScanLabel} accent="cyan" compact />
+              </div>
+            </div>
+
+            <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-white/[.055] pt-5">
+              <button onClick={() => void refresh()} disabled={matching || radar.status !== "active"} className="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-4 py-3 text-sm font-semibold text-[#041012] shadow-[0_0_28px_rgba(34,211,238,.18)] disabled:opacity-40"><RefreshCw className={`size-4 ${matching ? "animate-spin" : ""}`} />{matching ? "Varrendo..." : "Varrer agora"}</button>
+              <button onClick={() => setEditing((value) => !value)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/10 px-4 py-3 text-sm"><Settings2 className="size-4" />Ajustar critérios</button>
+              <button onClick={() => void toggle()} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/10 px-4 py-3 text-sm">{radar.status === "active" ? <Pause className="size-4" /> : <Play className="size-4" />}{radar.status === "active" ? "Pausar" : "Reativar"}</button>
+              <button onClick={() => void remove()} className="inline-flex items-center gap-2 rounded-xl border border-red-300/15 bg-black/10 px-4 py-3 text-sm text-red-200"><Trash2 className="size-4" />Excluir</button>
+              <span className="ml-auto hidden text-[10px] uppercase tracking-[.24em] text-[#d4af37]/55 lg:block">O amanhã não espera.</span>
+            </div>
+            {summary ? <p className="mt-4 text-sm text-cyan-100/70">{summary}</p> : null}
           </div>
-          {summary ? <p className="mt-4 text-sm text-cyan-100/70">{summary}</p> : null}
         </section>
 
         {editing ? (
@@ -255,6 +290,18 @@ export default function MyTomorrowRadarDetail() {
           )}
         </section>
       </main>
+    </div>
+  );
+}
+
+function HudPanel({ eyebrow, value, subvalue, accent, compact = false }: { eyebrow: string; value: string; subvalue?: string; accent: "cyan" | "gold"; compact?: boolean }) {
+  const accentClass = accent === "gold" ? "text-[#e6c75a] border-[#d4af37]/18" : "text-cyan-300 border-cyan-300/15";
+  return (
+    <div className={`relative overflow-hidden rounded-2xl border bg-black/[.08] p-4 backdrop-blur-sm ${accentClass}`}>
+      <div className={`absolute left-0 top-0 h-px w-16 ${accent === "gold" ? "bg-[#d4af37]/70" : "bg-cyan-300/70"}`} aria-hidden="true" />
+      <p className="text-[9px] uppercase tracking-[.24em] opacity-70">{eyebrow}</p>
+      <p className={`${compact ? "text-xs leading-5" : "text-base"} mt-2 font-medium text-white/85`}>{value}</p>
+      {subvalue ? <p className="mt-1 text-[10px] uppercase tracking-[.15em] text-white/30">{subvalue}</p> : null}
     </div>
   );
 }
