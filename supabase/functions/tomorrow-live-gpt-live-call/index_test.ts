@@ -55,12 +55,13 @@ Deno.test("cria sessão GPT-Live-1 por WebRTC sem expor a chave", async () => {
   assertMatch(safetyIdentifier, /^[a-f0-9]{64}$/);
   assertEquals(session.model, "gpt-live-1");
   assertEquals(audio.output.voice, "tempo");
-  assertEquals(instructions.includes("PAULISTANO FORTE"), true);
-  assertEquals(instructions.includes("nunca carioca"), true);
+  assertEquals(instructions.includes("PAULISTANO LEVE"), true);
+  assertEquals(instructions.includes("EMPOLGAÇÃO DOBRADA"), true);
+  assertEquals(instructions.includes("INFORMALIDADE ALTA, MAS NATURAL"), true);
+  assertEquals(instructions.includes("Não use gíria em toda resposta"), true);
+  assertEquals(instructions.includes("nunca comece com 'Eu'"), true);
   assertEquals(instructions.includes("HIPERESPONTÂNEO"), true);
-  assertEquals(instructions.includes("HIPERINFORMAL"), true);
   assertEquals(instructions.includes("HIPEREMPOLGADO"), true);
-  assertEquals(instructions.includes("Oi, tudo bem?"), true);
   assertEquals(instructions.includes("risada curta"), true);
   assertEquals(instructions.includes("limpeza de garganta ou tosse leve"), true);
   assertEquals(instructions.includes("Não verbalize descrições de efeitos"), true);
