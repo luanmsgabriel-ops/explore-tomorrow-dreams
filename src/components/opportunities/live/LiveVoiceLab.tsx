@@ -14,7 +14,7 @@ export function LiveVoiceLab() {
         <div className="border-b border-tomorrow-line px-5 py-5 sm:px-7">
           <div className="flex flex-wrap items-center gap-3">
             <OpportunityBadge variant="neutral"><FlaskConical className="size-3.5" aria-hidden="true" />Voice Lab</OpportunityBadge>
-            <OpportunityBadge variant="warning">Téo · hiperenergia</OpportunityBadge>
+            <OpportunityBadge variant="package">Téo · hiperenergia</OpportunityBadge>
           </div>
           <h2 id="gpt-live-lab-title" className="mt-3 font-editorial text-3xl text-tomorrow-text sm:text-4xl">Téo · GPT-Live-1</h2>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-tomorrow-muted">Preset oficial de teste travado: voz Tempo, sotaque paulista forte (São Paulo capital/Grande SP), empolgação extrema desde a primeira palavra, espontaneidade extrema e informalidade extrema.</p>
