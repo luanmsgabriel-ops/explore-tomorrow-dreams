@@ -1,0 +1,35 @@
+name: Radar Experience V2 Validation
+on:
+  pull_request:
+    paths:
+      - 'src/lib/myTomorrowRadars.ts'
+      - 'src/pages/MyTomorrowRadarCreate.tsx'
+      - 'src/pages/MyTomorrowRadarDetail.tsx'
+      - 'src/pages/MyTomorrowRadars.tsx'
+      - 'supabase/functions/my-tomorrow-radars/**'
+      - 'supabase/functions/my-tomorrow-matching/**'
+      - 'supabase/migrations/20260912150000_radar_multiorigin_preferences.sql'
+      - '.github/workflows/radar-experience-v2-validation.yml'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm install --no-audit --no-fund
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: Scoped ESLint
+        run: npx eslint src/lib/myTomorrowRadars.ts src/pages/MyTomorrowRadarCreate.tsx src/pages/MyTomorrowRadarDetail.tsx src/pages/MyTomorrowRadars.tsx
+      - name: Production build
+        run: npm run build
+      - name: Matcher tests
+        run: npx deno test supabase/functions/my-tomorrow-matching/matcher.test.ts
+      - name: Deno check matching
+        run: npx deno check supabase/functions/my-tomorrow-matching/index.ts
+      - name: Deno check radars
+        run: npx deno check supabase/functions/my-tomorrow-radars/index.ts
+      - name: Diff check
+        run: git diff --check origin/${{ github.base_ref }}...HEAD
