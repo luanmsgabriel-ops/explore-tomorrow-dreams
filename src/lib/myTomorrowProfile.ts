@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { ProfileStage, RefinementChoice } from "@/lib/progressiveTravelProfile";
 
 export type PreferenceResponse = "want" | "like" | "neutral" | "not_for_me";
 export type DirectFlightPreference = "prefer_direct" | "neutral" | "accept_connections";
@@ -31,6 +32,7 @@ export type TravelProfileState = {
   profile: TravelProfileSettings | null;
   affinities: TravelerAffinity[];
   latestAnswers: Record<string, PreferenceResponse>;
+  refinements: Record<string, RefinementChoice>;
 };
 
 export type TravelProfileInput = {
@@ -53,8 +55,8 @@ async function invokeProfile<T>(body: Record<string, unknown>): Promise<T> {
 }
 
 export async function getTravelProfile(): Promise<TravelProfileState> {
-  const data = await invokeProfile<{ ok: true; profile: TravelProfileSettings | null; affinities: TravelerAffinity[]; latestAnswers: Record<string, PreferenceResponse> }>({ action: "get" });
-  return { profile: data.profile, affinities: data.affinities, latestAnswers: data.latestAnswers };
+  const data = await invokeProfile<{ ok: true; profile: TravelProfileSettings | null; affinities: TravelerAffinity[]; latestAnswers: Record<string, PreferenceResponse>; refinements?: Record<string, RefinementChoice> }>({ action: "get" });
+  return { profile: data.profile, affinities: data.affinities, latestAnswers: data.latestAnswers, refinements: data.refinements ?? {} };
 }
 
 export async function updateTravelProfile(profile: TravelProfileInput) {
@@ -64,6 +66,10 @@ export async function updateTravelProfile(profile: TravelProfileInput) {
 
 export async function answerTravelPreference(preferenceKey: string, response: PreferenceResponse) {
   await invokeProfile<{ ok: true }>({ action: "answer", preferenceKey, response });
+}
+
+export async function answerProfileRefinement(questionKey: string, stage: Exclude<ProfileStage, "interests">, choice: RefinementChoice) {
+  await invokeProfile<{ ok: true }>({ action: "refine", questionKey, stage, choice });
 }
 
 export async function resetTravelPreferences() {
