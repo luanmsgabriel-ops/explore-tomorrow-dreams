@@ -23,16 +23,16 @@ export const profileStages: Array<{ key: ProfileStage; target: number; label: st
 ];
 
 export const refinementQuestions: RefinementQuestion[] = [
-  { key: "style_explore_rest", stage: "style", prompt: "Qual viagem parece mais com você?", left: "Descansar sem pressa", right: "Explorar o máximo possível", leftImage: "/images/posters/maldivas.jpg", rightImage: "/images/posters/lencois.jpg", axis: "exploration" },
-  { key: "style_plan_spontaneous", stage: "style", prompt: "Como você prefere viajar?", left: "Tudo planejado", right: "Espaço para improvisar", leftImage: "/images/posters/dubai.jpg", rightImage: "/images/posters/jeri.jpg", axis: "planning" },
-  { key: "style_classic_discovery", stage: "style", prompt: "O que te atrai mais?", left: "Os grandes clássicos", right: "Lugares menos óbvios", leftImage: "/images/posters/dubai.jpg", rightImage: "/images/posters/noronha.jpg", axis: "discovery" },
-  { key: "comfort_hotel", stage: "comfort", prompt: "Na hospedagem, o que pesa mais?", left: "Funcional e bem localizado", right: "O hotel faz parte da experiência", leftImage: "/images/posters/jeri.jpg", rightImage: "/images/posters/maldivas.jpg", axis: "comfort" },
-  { key: "comfort_flight", stage: "comfort", prompt: "No deslocamento, você prefere?", left: "Economizar mesmo com conexão", right: "Pagar mais por praticidade", leftImage: "/images/posters/lencois.jpg", rightImage: "/images/posters/dubai.jpg", axis: "comfort" },
-  { key: "comfort_structure", stage: "comfort", prompt: "Durante a viagem?", left: "Resolver as coisas pelo caminho", right: "Ter estrutura já organizada", leftImage: "/images/posters/jeri.jpg", rightImage: "/images/posters/maldivas.jpg", axis: "independence" },
-  { key: "rhythm_days", stage: "rhythm", prompt: "Seu dia ideal de viagem?", left: "Poucos compromissos", right: "Roteiro cheio de experiências", leftImage: "/images/posters/noronha.jpg", rightImage: "/images/posters/dubai.jpg", axis: "pace" },
-  { key: "rhythm_repeat_new", stage: "rhythm", prompt: "Quando encontra algo que ama?", left: "Voltaria sem pensar", right: "Prefiro descobrir algo novo", leftImage: "/images/posters/maldivas.jpg", rightImage: "/images/posters/lencois.jpg", axis: "discovery" },
-  { key: "advanced_guided", stage: "advanced", prompt: "Para conhecer um lugar novo?", left: "Gosto de explorar sozinho", right: "Prefiro experiências guiadas", leftImage: "/images/posters/jeri.jpg", rightImage: "/images/posters/dubai.jpg", axis: "independence" },
-  { key: "advanced_priority", stage: "advanced", prompt: "Se precisar escolher?", left: "Mais experiências pelo mesmo valor", right: "Menos experiências, mais conforto", leftImage: "/images/posters/lencois.jpg", rightImage: "/images/posters/maldivas.jpg", axis: "comfort" },
+  { key: "style_explore_rest", stage: "style", prompt: "Qual viagem parece mais com você?", left: "Descansar sem pressa", right: "Explorar o máximo possível", leftImage: "bem_estar", rightImage: "aventura", axis: "exploration" },
+  { key: "style_plan_spontaneous", stage: "style", prompt: "Como você prefere viajar?", left: "Tudo planejado", right: "Espaço para improvisar", leftImage: "all_inclusive", rightImage: "solo", axis: "planning" },
+  { key: "style_classic_discovery", stage: "style", prompt: "O que te atrai mais?", left: "Os grandes clássicos", right: "Lugares menos óbvios", leftImage: "cultura", rightImage: "experiencias_locais", axis: "discovery" },
+  { key: "comfort_hotel", stage: "comfort", prompt: "Na hospedagem, o que pesa mais?", left: "Funcional e bem localizado", right: "O hotel faz parte da experiência", leftImage: "cidade", rightImage: "resort", axis: "comfort" },
+  { key: "comfort_flight", stage: "comfort", prompt: "No deslocamento, você prefere?", left: "Economizar mesmo com conexão", right: "Pagar mais por praticidade", leftImage: "compras", rightImage: "resort", axis: "comfort" },
+  { key: "comfort_structure", stage: "comfort", prompt: "Durante a viagem?", left: "Resolver as coisas pelo caminho", right: "Ter estrutura já organizada", leftImage: "solo", rightImage: "all_inclusive", axis: "independence" },
+  { key: "rhythm_days", stage: "rhythm", prompt: "Seu dia ideal de viagem?", left: "Poucos compromissos", right: "Roteiro cheio de experiências", leftImage: "bem_estar", rightImage: "eventos", axis: "pace" },
+  { key: "rhythm_repeat_new", stage: "rhythm", prompt: "Quando encontra algo que ama?", left: "Voltaria sem pensar", right: "Prefiro descobrir algo novo", leftImage: "casal", rightImage: "experiencias_locais", axis: "discovery" },
+  { key: "advanced_guided", stage: "advanced", prompt: "Para conhecer um lugar novo?", left: "Gosto de explorar sozinho", right: "Prefiro experiências guiadas", leftImage: "solo", rightImage: "cultura", axis: "independence" },
+  { key: "advanced_priority", stage: "advanced", prompt: "Se precisar escolher?", left: "Mais experiências pelo mesmo valor", right: "Menos experiências, mais conforto", leftImage: "aventura", rightImage: "resort", axis: "comfort" },
 ];
 
 const stageQuestionCounts = refinementQuestions.reduce<Record<string, number>>((acc, question) => {

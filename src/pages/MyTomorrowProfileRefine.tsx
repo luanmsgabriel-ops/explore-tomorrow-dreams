@@ -15,6 +15,7 @@ import {
   refinementQuestions,
   type RefinementChoice,
 } from "@/lib/progressiveTravelProfile";
+import { travelMatchVisualStyle } from "@/lib/travelMatchVisuals";
 
 const axisLabels: Record<string, [string, string]> = {
   exploration: ["Descanso", "Exploração"],
@@ -143,16 +144,19 @@ export default function MyTomorrowProfileRefine() {
 
         <h1 className="mt-8 font-serif text-3xl">{next.prompt}</h1>
         <div className="mt-6 grid grid-cols-2 gap-3">
-          {options.map(([choice, label, image]) => (
+          {options.map(([choice, label, visual]) => (
             <button
               key={choice}
               type="button"
               disabled={saving}
               onClick={() => void choose(choice)}
-              className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[.04] text-left transition active:scale-[.98] disabled:opacity-50"
+              className="group overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[.04] text-left transition active:scale-[.98] disabled:opacity-50"
             >
-              <img src={image} alt="" className="aspect-[3/4] w-full object-cover" />
-              <span className="block p-4 text-sm font-semibold">{label}</span>
+              <div className="relative aspect-[3/4] overflow-hidden">
+                <div className="absolute inset-0" style={travelMatchVisualStyle(visual)} />
+                <div className="absolute inset-0 bg-[linear-gradient(to_top,#041012_0%,rgba(4,16,18,.96)_30%,rgba(4,16,18,.35)_58%,transparent_100%)]" />
+                <span className="absolute inset-x-0 bottom-0 block p-4 text-sm font-semibold leading-snug">{label}</span>
+              </div>
             </button>
           ))}
         </div>
