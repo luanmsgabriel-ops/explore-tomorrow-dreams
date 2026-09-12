@@ -4,7 +4,7 @@ Data: 2026-09-12
 Branch: `feat/radar-experience-v2`
 Base validada: `b4868dd1be9d94c1c139dac99691eeb61893675a`
 PR: #122
-Estado: IMPLEMENTADO E TESTADO EM CI; não mergeado; migration e Edge Functions não aplicadas/deployadas.
+Estado: IMPLEMENTADO E TESTADO EM CI; lote de 3 migrations aplicado no banco; Edge Functions ainda não deployadas.
 
 ## Objetivo
 
@@ -34,33 +34,32 @@ Algoritmo atualizado para `radar-v1.1.0`.
 - cada IATA selecionado gera consulta pública usando `origin_iata`;
 - Exact, Flexible e Discovery preservam a origem escolhida;
 - Discovery continua podendo relaxar apenas destino, nunca origem;
-- matches ativos de versões antigas deixam de ser exibidos e são expirados na próxima execução v1.1.0;
+- matches ativos de versões antigas deixam de ser exibidos;
 - teste explícito garante que Radar GRU/CGH rejeita CNF e GYN inclusive em Discovery.
 
-## Migration pendente — segunda do lote atual
+## Lote de 3 migrations — APLICADO
 
-`supabase/migrations/20260912150000_radar_multiorigin_preferences.sql`
+1. `20260912102000_progressive_traveler_profile.sql`;
+2. `20260912150000_radar_multiorigin_preferences.sql`;
+3. `20260912151000_radar_v11_match_reconciliation.sql`.
 
-Adiciona:
-- `origin_airports text[]`;
-- `boarding_priorities text[]`;
-- `sensitivity`;
-- índice GIN de origens.
-
-Reconciliação legada:
-- `origin` com IATA de 3 letras é promovido para `origin_airports`;
-- radares antigos com `source_filters.origin_scope = 'sao_paulo_airports'` recebem `GRU`, `CGH`, `VCP`.
-
-Não aplicar isoladamente. Pela regra do projeto, aguardar a terceira migration do lote antes do gate de banco.
+Resultados do gate de banco:
+- `traveler_profile_refinements` criada com RLS e função `record_my_profile_refinement`;
+- `travel_radars` recebeu `origin_airports`, `boarding_priorities` e `sensitivity`;
+- Radar Maceió legado reconciliado manualmente para `GRU`, `CGH`, `VCP`, pois o registro antigo não preservou `origin_scope`;
+- 38 matches ativos de `radar-v1.0.0` foram expirados;
+- nenhum match antigo permanece ativo.
 
 ## Edge Functions alteradas — ainda não deployadas
 
 - `my-tomorrow-radars` — valida/persiste multi-origem, prioridades e sensibilidade;
-- `my-tomorrow-matching` — consulta por IATA, algoritmo v1.1.0 e limpeza de matches antigos.
+- `my-tomorrow-matching` — consulta por IATA, algoritmo v1.1.0 e limpeza/listagem apenas da versão atual.
+
+A migration de perfil também habilita a versão já preparada de `my-tomorrow-profile`; o deploy dessa Function permanece um gate separado caso ainda não esteja sincronizada no ambiente.
 
 ## Validação
 
-Run final de código: `34700495299` — PASS integral.
+Run final de código após fechamento do lote: `34701044437` — PASS integral.
 
 - TypeScript: PASS;
 - ESLint do escopo: PASS;
@@ -75,17 +74,17 @@ Run final de código: `34700495299` — PASS integral.
 - IMPLEMENTADO: SIM.
 - TESTADO: SIM.
 - MERGEADO: NÃO.
-- MIGRATION EXECUTADA: NÃO.
+- MIGRATIONS EXECUTADAS: SIM — lote de 3 aplicado.
 - EDGE FUNCTIONS DEPLOYADAS: NÃO.
-- SINCRONIZADO NO LOVABLE: NÃO.
+- SINCRONIZADO NO LOVABLE: NÃO confirmado.
 - PUBLICADO: NÃO.
 - VALIDADO EM PRODUÇÃO: NÃO.
 
 ## Próximo passo exato
 
-1. manter PR #122 aberto até definição do terceiro item do lote de migrations ou autorização para aplicar o lote;
-2. quando houver 3 migrations, aplicar o lote na ordem;
-3. deployar `my-tomorrow-radars` e `my-tomorrow-matching`;
+1. mergear PR #122 após revisão final do diff;
+2. sincronizar o SHA resultante no Lovable;
+3. deployar `my-tomorrow-radars` e `my-tomorrow-matching` no backend do projeto;
 4. validar Radar GRU+CGH+VCP contra inventário real e comprovar ausência de CNF/GYN;
 5. validar primeira varredura automática, alternância entre dois radares e edição secundária;
-6. somente depois sincronizar/publicar e validar em produção.
+6. somente então publicar o frontend e validar em produção.
