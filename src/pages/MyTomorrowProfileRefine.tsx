@@ -15,7 +15,7 @@ import {
   refinementQuestions,
   type RefinementChoice,
 } from "@/lib/progressiveTravelProfile";
-import { travelMatchVisualStyle } from "@/lib/travelMatchVisuals";
+import { travelMatchVisualUrl } from "@/lib/travelMatchVisuals";
 
 const axisLabels: Record<string, [string, string]> = {
   exploration: ["Descanso", "Exploração"],
@@ -56,6 +56,16 @@ export default function MyTomorrowProfileRefine() {
     [refinements],
   );
   const axes = deriveProfileAxes(refinements);
+
+  useEffect(() => {
+    if (!next) return;
+    [next.leftImage, next.rightImage].forEach((visual) => {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = travelMatchVisualUrl(visual);
+      void image.decode().catch(() => undefined);
+    });
+  }, [next]);
 
   const choose = async (choice: RefinementChoice) => {
     if (!next || saving) return;
@@ -152,9 +162,16 @@ export default function MyTomorrowProfileRefine() {
               onClick={() => void choose(choice)}
               className="group overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[.04] text-left transition active:scale-[.98] disabled:opacity-50"
             >
-              <div className="relative aspect-[3/4] overflow-hidden">
-                <div className="absolute inset-0" style={travelMatchVisualStyle(visual)} />
-                <div className="absolute inset-0 bg-[linear-gradient(to_top,#041012_0%,rgba(4,16,18,.96)_30%,rgba(4,16,18,.35)_58%,transparent_100%)]" />
+              <div className="relative aspect-[3/4] overflow-hidden bg-[#07191c]">
+                <img
+                  src={travelMatchVisualUrl(visual)}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 h-full w-full object-contain"
+                  decoding="async"
+                  draggable={false}
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(4,16,18,.98)_0%,rgba(4,16,18,.78)_28%,rgba(4,16,18,.22)_56%,transparent_80%)]" />
                 <span className="absolute inset-x-0 bottom-0 block p-4 text-sm font-semibold leading-snug">{label}</span>
               </div>
             </button>
