@@ -186,7 +186,7 @@ export function HomeOpportunityShowcase() {
 
         {offers.length > 0 ? (
           <>
-            <div className="sm:hidden">
+            <div className="lg:hidden">
               <div
                 ref={mobileCarouselRef}
                 onScroll={handleMobileScroll}
@@ -241,7 +241,7 @@ export function HomeOpportunityShowcase() {
               </div>
             </div>
 
-            <div className="hidden items-stretch gap-5 sm:grid sm:grid-cols-2 xl:grid-cols-3">
+            <div className="hidden items-stretch gap-5 lg:grid lg:grid-cols-2 xl:grid-cols-3">
               {offers.map((item, index) => (
                 <div key={item.id} className="h-full">
                   {renderOfferCard(item, index)}
