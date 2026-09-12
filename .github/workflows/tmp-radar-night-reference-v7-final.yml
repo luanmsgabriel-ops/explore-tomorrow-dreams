@@ -1,0 +1,31 @@
+name: Temporary Radar Night Reference V7 Final
+
+on:
+  push:
+    branches:
+      - fix/radar-night-reference-v7-final
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps --no-package-lock --no-audit --no-fund
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: Scoped ESLint
+        run: npx eslint src/components/my-tomorrow/RadarSignalGlobe.tsx src/components/my-tomorrow/RadarSignalGlobe.test.tsx
+      - name: Focused tests
+        run: npx vitest run src/components/my-tomorrow/RadarSignalGlobe.test.tsx
+      - name: Production build
+        run: npm run build
+      - name: Diff check
+        run: git diff --check origin/main...HEAD
