@@ -1,140 +1,37 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Loader2, Pause, Play, Radar as RadarIcon, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, BellRing, ChevronRight, ExternalLink, Loader2, Pause, Play, Plus, Radar as RadarIcon, RefreshCw, Settings2, Sparkles, Trash2 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { listMyRadarMatches, runMyRadarMatching, type RadarMatch } from "@/lib/myTomorrowMatches";
-import { deleteMyRadar, getMyRadar, setMyRadarStatus, updateMyRadar, type TravelRadar } from "@/lib/myTomorrowRadars";
+import { deleteMyRadar, getMyRadar, listMyRadars, setMyRadarStatus, updateMyRadar, type TravelRadar } from "@/lib/myTomorrowRadars";
 
-const matchLabel = { exact: "Match exato", flexible: "Match flexível", discovery: "Descoberta" } as const;
-const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const matchLabel={exact:"Match exato",flexible:"Data flexível",discovery:"Descoberta"} as const;
+const money=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
+const formatDate=(value:string|null)=>value?new Intl.DateTimeFormat("pt-BR",{day:"2-digit",month:"short"}).format(new Date(`${value}T12:00:00`)):"aberto";
 
-export default function MyTomorrowRadarDetail() {
-  const { radarId = "" } = useParams();
-  const navigate = useNavigate();
-  const [radar, setRadar] = useState<TravelRadar | null>(null);
-  const [matches, setMatches] = useState<RadarMatch[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [matching, setMatching] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [matchingSummary, setMatchingSummary] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", origin: "", destination: "", startDate: "", endDate: "", flexibility: "0", minNights: "", maxNights: "", passengers: "", budgetMin: "", budgetMax: "", category: "" });
-
-  const loadMatches = async () => {
-    try { setMatches(await listMyRadarMatches(radarId)); }
-    catch (e) { setError(e instanceof Error ? e.message : "Não foi possível carregar os matches."); }
-  };
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const item = await getMyRadar(radarId);
-        setRadar(item);
-        setForm({
-          name: item.name,
-          origin: item.origin || "",
-          destination: item.destination || "",
-          startDate: item.start_date || "",
-          endDate: item.end_date || "",
-          flexibility: String(item.flexibility_days || 0),
-          minNights: item.min_nights ? String(item.min_nights) : "",
-          maxNights: item.max_nights ? String(item.max_nights) : "",
-          passengers: item.passengers ? String(item.passengers) : "",
-          budgetMin: item.budget_min != null ? String(item.budget_min) : "",
-          budgetMax: item.budget_max != null ? String(item.budget_max) : "",
-          category: item.category || "",
-        });
-        await loadMatches();
-      } catch (e) { setError(e instanceof Error ? e.message : "Não foi possível carregar o radar."); }
-      finally { setLoading(false); }
-    })();
-  }, [radarId]);
-
-  const save = async (event: React.FormEvent) => {
-    event.preventDefault(); setSaving(true); setError(null);
-    try {
-      const updated = await updateMyRadar(radarId, {
-        name: form.name,
-        origin: form.origin || null,
-        destination: form.destination || null,
-        start_date: form.startDate || null,
-        end_date: form.endDate || null,
-        flexibility_days: Number(form.flexibility || 0),
-        min_nights: form.minNights ? Number(form.minNights) : null,
-        max_nights: form.maxNights ? Number(form.maxNights) : null,
-        passengers: form.passengers ? Number(form.passengers) : null,
-        budget_min: form.budgetMin ? Number(form.budgetMin) : null,
-        budget_max: form.budgetMax ? Number(form.budgetMax) : null,
-        category: form.category || null,
-      });
-      setRadar(updated);
-      setMatchingSummary("Radar atualizado. Execute uma nova busca para recalcular os matches.");
-    } catch (e) { setError(e instanceof Error ? e.message : "Não foi possível salvar o radar."); }
-    finally { setSaving(false); }
-  };
-
-  const toggle = async () => {
-    if (!radar) return;
-    const updated = await setMyRadarStatus(radar.id, radar.status === "active" ? "pause" : "resume");
-    setRadar(updated);
-  };
-
-  const remove = async () => {
-    await deleteMyRadar(radarId);
-    navigate("/minha-area/radares", { replace: true });
-  };
-
-  const runMatching = async () => {
-    setMatching(true); setError(null); setMatchingSummary(null);
-    try {
-      const result = await runMyRadarMatching(radarId);
-      setMatchingSummary(`${result.matches} matches: ${result.exact} exatos, ${result.flexible} flexíveis e ${result.discovery} descobertas.`);
-      await loadMatches();
-      setRadar((current) => current ? { ...current, last_checked_at: result.checked_at } : current);
-    } catch (e) { setError(e instanceof Error ? e.message : "Não foi possível atualizar o Radar."); }
-    finally { setMatching(false); }
-  };
-
-  return <div className="min-h-screen bg-[#041012] text-white"><Header />
-    <main className="mx-auto max-w-4xl px-4 pb-16 pt-24 sm:px-6 lg:px-8">
-      <Link to="/minha-area/radares" className="inline-flex items-center gap-2 text-sm text-white/55"><ArrowLeft className="size-4"/>Voltar aos radares</Link>
-      {loading ? <div className="grid min-h-64 place-items-center"><Loader2 className="size-6 animate-spin text-cyan-300"/></div> : null}
-      {error ? <div className="mt-5 rounded-xl border border-amber-300/20 bg-amber-300/5 p-4 text-sm text-amber-100">{error}</div> : null}
-      {radar ? <>
-        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Radar Tomorrow</p><h1 className="mt-2 font-serif text-4xl">{radar.name}</h1><p className="mt-2 text-sm text-white/50">{radar.status === "active" ? "Monitorando" : radar.status === "paused" ? "Pausado" : "Arquivado"} · origem {radar.source === "catalog" ? "catálogo" : "manual"}</p></div><div className="flex gap-2"><button onClick={()=>void toggle()} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm">{radar.status === "active" ? <Pause className="size-4"/> : <Play className="size-4"/>}{radar.status === "active" ? "Pausar" : "Reativar"}</button><button onClick={()=>void remove()} className="inline-flex items-center gap-2 rounded-xl border border-red-300/15 px-4 py-2 text-sm text-red-200"><Trash2 className="size-4"/>Excluir</button></div></div>
-        <form onSubmit={save} className="mt-8 grid gap-4 rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-5 sm:grid-cols-2">
-          <input className="rounded-xl border border-white/10 bg-black/20 px-3 py-3 sm:col-span-2" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Nome do radar"/>
-          <input className="rounded-xl border border-white/10 bg-black/20 px-3 py-3" value={form.origin} onChange={e=>setForm({...form,origin:e.target.value})} placeholder="Origem"/>
-          <input className="rounded-xl border border-white/10 bg-black/20 px-3 py-3" value={form.destination} onChange={e=>setForm({...form,destination:e.target.value})} placeholder="Destino"/>
-          <input type="date" className="rounded-xl border border-white/10 bg-black/20 px-3 py-3" value={form.startDate} onChange={e=>setForm({...form,startDate:e.target.value})}/>
-          <input type="date" className="rounded-xl border border-white/10 bg-black/20 px-3 py-3" value={form.endDate} onChange={e=>setForm({...form,endDate:e.target.value})}/>
-          <input type="number" min="0" max="60" className="rounded-xl border border-white/10 bg-black/20 px-3 py-3" value={form.flexibility} onChange={e=>setForm({...form,flexibility:e.target.value})} placeholder="Flexibilidade em dias"/>
-          <input type="number" min="1" max="20" className="rounded-xl border border-white/10 bg-black/20 px-3 py-3" value={form.passengers} onChange={e=>setForm({...form,passengers:e.target.value})} placeholder="Passageiros"/>
-          <input type="number" min="1" max="60" className="rounded-xl border border-white/10 bg-black/20 px-3 py-3" value={form.minNights} onChange={e=>setForm({...form,minNights:e.target.value})} placeholder="Mínimo de noites"/>
-          <input type="number" min="1" max="60" className="rounded-xl border border-white/10 bg-black/20 px-3 py-3" value={form.maxNights} onChange={e=>setForm({...form,maxNights:e.target.value})} placeholder="Máximo de noites"/>
-          <input type="number" min="0" className="rounded-xl border border-white/10 bg-black/20 px-3 py-3" value={form.budgetMin} onChange={e=>setForm({...form,budgetMin:e.target.value})} placeholder="Orçamento mínimo por pessoa"/>
-          <input type="number" min="0" className="rounded-xl border border-white/10 bg-black/20 px-3 py-3" value={form.budgetMax} onChange={e=>setForm({...form,budgetMax:e.target.value})} placeholder="Orçamento máximo por pessoa"/>
-          <input className="rounded-xl border border-white/10 bg-black/20 px-3 py-3 sm:col-span-2" value={form.category} onChange={e=>setForm({...form,category:e.target.value})} placeholder="Categoria"/>
-          <div className="sm:col-span-2"><button disabled={saving} className="rounded-xl bg-cyan-300 px-5 py-3 text-sm font-semibold text-[#041012] disabled:opacity-50">{saving ? "Salvando..." : "Salvar alterações"}</button></div>
-        </form>
-
-        <section className="mt-8 rounded-[1.5rem] border border-cyan-300/15 bg-white/[0.035] p-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><div className="flex items-center gap-2"><RadarIcon className="size-5 text-cyan-300"/><h2 className="font-serif text-2xl">Oportunidades encontradas</h2></div><p className="mt-2 text-sm text-white/50">Exact, Flexible e Discovery são calculados separadamente pelo algoritmo versionado.</p></div><button disabled={matching || radar.status !== "active"} onClick={()=>void runMatching()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-300 px-4 py-3 text-sm font-semibold text-[#041012] disabled:opacity-40"><RefreshCw className={`size-4 ${matching ? "animate-spin" : ""}`}/>{matching ? "Buscando..." : "Atualizar Radar"}</button></div>
-          {matchingSummary ? <p className="mt-4 rounded-xl bg-cyan-300/5 p-3 text-sm text-cyan-100">{matchingSummary}</p> : null}
-          {radar.last_checked_at ? <p className="mt-3 text-xs text-white/35">Última avaliação: {new Date(radar.last_checked_at).toLocaleString("pt-BR")}</p> : null}
-          <div className="mt-5 space-y-3">
-            {matches.length === 0 ? <div className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-white/45">Nenhum match ativo. Execute o Radar para consultar o inventário público atual.</div> : matches.map((match) => {
-              const offer = match.offer_snapshot;
-              const canShowScore = (match.matched_factors.length + match.unmatched_factors.length) >= 3;
-              return <article key={match.id} className="rounded-2xl border border-white/10 bg-black/15 p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><span className={`text-xs font-semibold uppercase tracking-[0.15em] ${match.match_class === "exact" ? "text-cyan-300" : match.match_class === "flexible" ? "text-[#d4af37]" : "text-violet-300"}`}>{matchLabel[match.match_class]}</span><h3 className="mt-1 text-lg font-semibold">{offer.name || offer.destination || "Oportunidade"}</h3><p className="mt-1 text-sm text-white/50">{offer.origin || "Origem não informada"} → {offer.destination || "Destino não informado"}</p></div><div className="text-left sm:text-right"><p className="text-lg font-semibold text-white">{offer.currency === "BRL" || !offer.currency ? money.format(offer.price_per_person) : `${offer.currency} ${offer.price_per_person.toLocaleString("pt-BR")}`}</p><p className="text-xs text-white/40">por pessoa{canShowScore ? ` · ${Math.round(match.score)}% aderência` : ""}</p></div></div>
-                <div className="mt-3 flex flex-wrap gap-2">{match.matched_factors.slice(0,4).map((factor) => <span key={factor.key} className="rounded-full border border-cyan-300/15 bg-cyan-300/5 px-2.5 py-1 text-xs text-cyan-100">✓ {factor.label}</span>)}{match.unmatched_factors.slice(0,2).map((factor) => <span key={factor.key} className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-white/45">{factor.label}</span>)}</div>
-                <Link to={`/oportunidades/oferta/${offer.id}`} className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-cyan-300">Ver oportunidade real <ExternalLink className="size-4"/></Link>
-              </article>;
-            })}
-          </div>
-        </section>
-      </> : null}
-    </main>
-  </div>;
+export default function MyTomorrowRadarDetail(){
+  const{radarId=""}=useParams();const navigate=useNavigate();const[radar,setRadar]=useState<TravelRadar|null>(null);const[radars,setRadars]=useState<TravelRadar[]>([]);const[matches,setMatches]=useState<RadarMatch[]>([]);const[loading,setLoading]=useState(true);const[matching,setMatching]=useState(false);const[saving,setSaving]=useState(false);const[editing,setEditing]=useState(false);const[error,setError]=useState<string|null>(null);const[summary,setSummary]=useState<string|null>(null);const[form,setForm]=useState({name:"",destination:"",start:"",end:"",budget:"",passengers:""});
+  const loadMatches=async()=>{const next=await listMyRadarMatches(radarId);setMatches(next)};
+  const hydrateForm=(item:TravelRadar)=>setForm({name:item.name,destination:item.destination||"",start:item.start_date||"",end:item.end_date||"",budget:item.budget_max!=null?String(item.budget_max):"",passengers:item.passengers?String(item.passengers):""});
+  const refresh=async(auto=false)=>{if(!radar&&!auto)return;setMatching(true);setError(null);try{const result=await runMyRadarMatching(radarId);setSummary(`${result.matches} sinais: ${result.exact} exatos, ${result.flexible} flexíveis e ${result.discovery} descobertas.`);await loadMatches();setRadar((current)=>current?{...current,last_checked_at:result.checked_at}:current)}catch(e){setError(e instanceof Error?e.message:"Não foi possível atualizar o Radar.")}finally{setMatching(false)}};
+  useEffect(()=>{let active=true;void(async()=>{try{const[item,all]=await Promise.all([getMyRadar(radarId),listMyRadars()]);if(!active)return;setRadar(item);setRadars(all);hydrateForm(item);await loadMatches();if(item.status==="active"&&!item.last_checked_at)void refresh(true)}catch(e){if(active)setError(e instanceof Error?e.message:"Não foi possível carregar o Radar.")}finally{if(active)setLoading(false)}})();return()=>{active=false}},[radarId]);
+  const best=matches[0]??null;const counts=useMemo(()=>({exact:matches.filter((m)=>m.match_class==="exact").length,flexible:matches.filter((m)=>m.match_class==="flexible").length,discovery:matches.filter((m)=>m.match_class==="discovery").length}),[matches]);
+  const toggle=async()=>{if(!radar)return;const updated=await setMyRadarStatus(radar.id,radar.status==="active"?"pause":"resume");setRadar(updated)};
+  const remove=async()=>{await deleteMyRadar(radarId);navigate("/minha-area/radares",{replace:true})};
+  const save=async()=>{if(!radar)return;setSaving(true);try{const updated=await updateMyRadar(radar.id,{name:form.name,destination:form.destination||null,start_date:form.start||null,end_date:form.end||null,budget_max:form.budget?Number(form.budget):null,passengers:form.passengers?Number(form.passengers):null});setRadar(updated);setEditing(false);setSummary("Critérios atualizados. O Radar recalculará os sinais.");await refresh()}catch(e){setError(e instanceof Error?e.message:"Não foi possível salvar os critérios.")}finally{setSaving(false)}};
+  if(loading)return <div className="min-h-screen bg-[#041012] text-white"><Header/><div className="grid min-h-screen place-items-center"><Loader2 className="size-7 animate-spin text-cyan-300"/></div></div>;
+  if(!radar)return <div className="min-h-screen bg-[#041012] text-white"><Header/><main className="mx-auto max-w-4xl px-5 pt-28">{error||"Radar não encontrado."}</main></div>;
+  return <div className="min-h-screen bg-[radial-gradient(circle_at_50%_-10%,rgba(34,211,238,.10),transparent_30%),#041012] text-white"><Header/><main className="mx-auto max-w-6xl px-4 pb-20 pt-24 sm:px-6">
+    <div className="flex items-center justify-between gap-4"><Link to="/minha-area/radares" className="inline-flex items-center gap-2 text-sm text-white/50"><ArrowLeft className="size-4"/>Meus radares</Link><Link to="/minha-area/radares/novo" className="inline-flex items-center gap-2 rounded-xl border border-cyan-300/20 px-3 py-2 text-xs text-cyan-200"><Plus className="size-3.5"/>Novo Radar</Link></div>
+    <nav className="mt-5 flex gap-2 overflow-x-auto pb-2">{radars.map((item)=><Link key={item.id} to={`/minha-area/radares/${item.id}`} className={`whitespace-nowrap rounded-full border px-4 py-2 text-xs ${item.id===radar.id?"border-cyan-300 bg-cyan-300/10 text-cyan-100":"border-white/10 text-white/45"}`}>{item.name.replace(/^Radar\s+/i,"")}</Link>)}</nav>
+    {error?<div className="mt-5 rounded-xl border border-amber-300/20 bg-amber-300/5 p-4 text-sm text-amber-100">{error}</div>:null}
+    <section className="mt-5 overflow-hidden rounded-[2rem] border border-cyan-300/15 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,.12),transparent_36%),rgba(255,255,255,.025)] p-6 sm:p-8"><div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between"><div><div className="flex items-center gap-2 text-xs uppercase tracking-[.22em] text-cyan-300"><RadarIcon className={`size-4 ${matching?"animate-spin":""}`}/>{radar.status==="active"?"Ativo · varrendo":"Radar pausado"}</div><h1 className="mt-3 font-serif text-4xl sm:text-5xl">{radar.name}</h1><p className="mt-3 max-w-2xl text-sm text-white/50">{(radar.origin_airports??[]).length?radar.origin_airports.join(" · "):radar.origin||"Origem aberta"} → {radar.destination||radar.category||"Discovery aberto"} · {formatDate(radar.start_date)} a {formatDate(radar.end_date)}</p></div><div className="grid min-w-44 place-items-center"><div className="relative grid size-36 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[.03]"><div className="absolute inset-[18%] rounded-full border border-white/10"/><div className="absolute inset-[34%] rounded-full border border-[#d4af37]/25"/><span className="text-center"><strong className="block text-3xl">{matches.length}</strong><small className="text-[10px] uppercase tracking-[.18em] text-white/35">sinais ativos</small></span></div></div></div><div className="mt-6 flex flex-wrap gap-2"><button onClick={()=>void refresh()} disabled={matching||radar.status!=="active"} className="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-4 py-3 text-sm font-semibold text-[#041012] disabled:opacity-40"><RefreshCw className={`size-4 ${matching?"animate-spin":""}`}/>{matching?"Varrendo...":"Varrer agora"}</button><button onClick={()=>setEditing((v)=>!v)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm"><Settings2 className="size-4"/>Ajustar critérios</button><button onClick={()=>void toggle()} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm">{radar.status==="active"?<Pause className="size-4"/>:<Play className="size-4"/>}{radar.status==="active"?"Pausar":"Reativar"}</button><button onClick={()=>void remove()} className="inline-flex items-center gap-2 rounded-xl border border-red-300/15 px-4 py-3 text-sm text-red-200"><Trash2 className="size-4"/>Excluir</button></div>{summary?<p className="mt-4 text-sm text-cyan-100/70">{summary}</p>:null}</section>
+    {editing?<section className="mt-5 rounded-[1.5rem] border border-white/10 bg-white/[.025] p-5"><div className="flex items-center justify-between"><h2 className="font-serif text-2xl">Ajustar critérios</h2><span className="text-xs text-white/30">Configuração secundária</span></div><div className="mt-4 grid gap-3 sm:grid-cols-2"><EditField label="Nome" value={form.name} set={(v)=>setForm({...form,name:v})}/><EditField label="Destino" value={form.destination} set={(v)=>setForm({...form,destination:v})}/><EditField label="De" type="date" value={form.start} set={(v)=>setForm({...form,start:v})}/><EditField label="Até" type="date" value={form.end} set={(v)=>setForm({...form,end:v})}/><EditField label="Até R$ por pessoa" type="number" value={form.budget} set={(v)=>setForm({...form,budget:v})}/><EditField label="Passageiros" type="number" value={form.passengers} set={(v)=>setForm({...form,passengers:v})}/></div><button disabled={saving} onClick={()=>void save()} className="mt-4 rounded-xl bg-cyan-300 px-5 py-3 text-sm font-semibold text-[#041012]">{saving?"Salvando...":"Salvar e recalcular"}</button></section>:null}
+    <section className="mt-8 grid gap-4 md:grid-cols-3"><Metric label="Exatos" value={counts.exact} tone="cyan"/><Metric label="Flexíveis" value={counts.flexible} tone="gold"/><Metric label="Discovery" value={counts.discovery} tone="violet"/></section>
+    {best?<section className="mt-8 overflow-hidden rounded-[2rem] border border-[#d4af37]/25 bg-white/[.03]"><div className="grid md:grid-cols-[.8fr_1.2fr]">{best.offer_snapshot.image_url?<img src={best.offer_snapshot.image_url} alt="" className="h-64 w-full object-cover md:h-full"/>:<div className="grid min-h-56 place-items-center bg-cyan-300/[.04]"><Sparkles className="size-10 text-[#d4af37]"/></div>}<div className="p-6"><div className="flex items-center gap-2 text-xs uppercase tracking-[.18em] text-[#e7c95e]"><BellRing className="size-4"/>Melhor sinal agora</div><h2 className="mt-3 font-serif text-3xl">{best.offer_snapshot.name||best.offer_snapshot.destination||"Oportunidade"}</h2><p className="mt-2 text-sm text-white/50">{best.offer_snapshot.origin||"Origem não informada"} → {best.offer_snapshot.destination||"Destino não informado"}</p><div className="mt-5 flex items-end justify-between gap-4"><div><strong className="text-3xl">{best.offer_snapshot.currency==="BRL"||!best.offer_snapshot.currency?money.format(best.offer_snapshot.price_per_person):`${best.offer_snapshot.currency} ${best.offer_snapshot.price_per_person.toLocaleString("pt-BR")}`}</strong><p className="text-xs text-white/35">por pessoa · {Math.round(best.score)}% aderência</p></div><Link to={`/oportunidades/oferta/${best.offer_snapshot.id}`} className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-300">Abrir <ExternalLink className="size-4"/></Link></div><div className="mt-5 flex flex-wrap gap-2">{best.matched_factors.slice(0,5).map((factor)=><span key={factor.key} className="rounded-full border border-cyan-300/15 bg-cyan-300/5 px-3 py-1.5 text-xs text-cyan-100">✓ {factor.label}</span>)}</div></div></div></section>:null}
+    <section className="mt-8"><div className="flex items-end justify-between"><div><p className="text-xs uppercase tracking-[.18em] text-cyan-300">Sinais do Radar</p><h2 className="mt-2 font-serif text-3xl">Oportunidades encontradas</h2></div>{radar.last_checked_at?<p className="hidden text-xs text-white/30 sm:block">Última varredura {new Date(radar.last_checked_at).toLocaleString("pt-BR")}</p>:null}</div>{!matches.length?<div className="mt-5 rounded-[1.5rem] border border-dashed border-white/10 p-8 text-center text-sm text-white/40">{matching?"O Radar está procurando sinais...":"Nenhuma oportunidade compatível encontrada nesta varredura."}</div>:<div className="mt-5 grid gap-3">{matches.slice(0,18).map((match)=><MatchCard key={match.id} match={match}/>)}</div>}</section>
+  </main></div>;
 }
+function Metric({label,value,tone}:{label:string;value:number;tone:"cyan"|"gold"|"violet"}){const cls=tone==="cyan"?"text-cyan-300 border-cyan-300/15":tone==="gold"?"text-[#e7c95e] border-[#d4af37]/20":"text-violet-300 border-violet-300/15";return <div className={`rounded-[1.5rem] border bg-white/[.025] p-5 ${cls}`}><span className="text-xs uppercase tracking-[.18em]">{label}</span><strong className="mt-2 block text-3xl text-white">{value}</strong></div>}
+function MatchCard({match}:{match:RadarMatch}){const offer=match.offer_snapshot;return <article className="rounded-[1.5rem] border border-white/10 bg-white/[.025] p-5"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><span className={`text-[10px] font-semibold uppercase tracking-[.16em] ${match.match_class==="exact"?"text-cyan-300":match.match_class==="flexible"?"text-[#e7c95e]":"text-violet-300"}`}>{matchLabel[match.match_class]}</span><h3 className="mt-1 text-lg font-semibold">{offer.name||offer.destination||"Oportunidade"}</h3><p className="mt-1 text-sm text-white/45">{offer.origin||"Origem não informada"} → {offer.destination||"Destino não informado"}</p></div><div className="flex items-center gap-5"><div className="text-right"><strong>{offer.currency==="BRL"||!offer.currency?money.format(offer.price_per_person):`${offer.currency} ${offer.price_per_person.toLocaleString("pt-BR")}`}</strong><p className="text-xs text-white/35">{Math.round(match.score)}% aderência</p></div><Link to={`/oportunidades/oferta/${offer.id}`} className="grid size-10 place-items-center rounded-full border border-white/10 text-cyan-300"><ChevronRight className="size-4"/></Link></div></div></article>}
+function EditField({label,value,set,type="text"}:{label:string;value:string;set:(v:string)=>void;type?:string}){return <label className="rounded-xl border border-white/10 bg-black/15 p-3"><span className="text-[10px] uppercase tracking-[.14em] text-white/30">{label}</span><input type={type} value={value} onChange={(e)=>set(e.target.value)} className="mt-1 w-full bg-transparent outline-none [color-scheme:dark]"/></label>}
