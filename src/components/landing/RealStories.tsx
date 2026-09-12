@@ -149,7 +149,7 @@ export const RealStories = () => {
             onBlurCapture={() => setIsPaused(false)}
           >
             <motion.div
-              className="relative h-[405px] overflow-hidden touch-pan-y sm:h-[445px] md:h-[500px] lg:h-[520px]"
+              className="relative h-[430px] overflow-hidden touch-pan-y sm:h-[455px] md:h-[500px] lg:h-[520px]"
               drag={shouldReduceMotion ? false : 'x'}
               dragConstraints={{ left: 0, right: 0 }}
               dragElastic={0.08}

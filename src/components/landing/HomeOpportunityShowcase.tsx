@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, Radar } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, Radar } from 'lucide-react';
+import { useCallback, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import {
@@ -44,6 +45,9 @@ function badgesFor(item: TravelOfferCatalogItem): OpportunityCardBadge[] {
 }
 
 export function HomeOpportunityShowcase() {
+  const [activeOfferIndex, setActiveOfferIndex] = useState(0);
+  const mobileCarouselRef = useRef<HTMLDivElement>(null);
+
   const offersQuery = useQuery({
     queryKey: ['travel-offers-public', 'home-showcase'],
     queryFn: ({ signal }) => fetchTravelOfferCatalog({
@@ -58,6 +62,71 @@ export function HomeOpportunityShowcase() {
   });
 
   const offers = offersQuery.data?.items ?? [];
+
+  const goToOffer = useCallback((index: number) => {
+    const container = mobileCarouselRef.current;
+    if (!container || offers.length === 0) return;
+
+    const normalizedIndex = (index + offers.length) % offers.length;
+    const slides = Array.from(container.querySelectorAll<HTMLElement>('[data-offer-slide]'));
+    const target = slides[normalizedIndex];
+    if (!target) return;
+
+    const left = target.offsetLeft - (container.clientWidth - target.clientWidth) / 2;
+    container.scrollTo({ left, behavior: 'smooth' });
+    setActiveOfferIndex(normalizedIndex);
+  }, [offers.length]);
+
+  const handleMobileScroll = useCallback(() => {
+    const container = mobileCarouselRef.current;
+    if (!container) return;
+
+    const slides = Array.from(container.querySelectorAll<HTMLElement>('[data-offer-slide]'));
+    if (slides.length === 0) return;
+
+    const center = container.scrollLeft + container.clientWidth / 2;
+    let closestIndex = 0;
+    let closestDistance = Number.POSITIVE_INFINITY;
+
+    slides.forEach((slide, index) => {
+      const slideCenter = slide.offsetLeft + slide.clientWidth / 2;
+      const distance = Math.abs(slideCenter - center);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
+      }
+    });
+
+    setActiveOfferIndex(closestIndex);
+  }, []);
+
+  const renderOfferCard = (item: TravelOfferCatalogItem, index: number) => (
+    <OpportunityCard
+      id={item.id}
+      kind={item.kind === 'air_block' ? 'air_block' : 'package'}
+      title={item.name || item.category}
+      origin={item.origin}
+      originIata={item.origin_iata}
+      destination={item.destination || item.destination_iata || 'Destino não informado'}
+      destinationIata={item.destination_iata}
+      departureLabel={formatDate(item.departure_date)}
+      returnLabel={formatDate(item.return_date)}
+      nights={item.nights}
+      pricePerPerson={item.price_per_person}
+      taxPerPerson={item.tax_per_person}
+      currency={item.currency}
+      availableSeats={item.available_seats}
+      airfareIncluded={item.airfare_included}
+      imageUrl={item.image_url}
+      imageAlt={item.destination ? `Vista de ${item.destination}` : 'Imagem pública da oportunidade'}
+      imageEager={index < 3}
+      imagePreloadMargin="900px 0px"
+      badges={badgesFor(item)}
+      actionHref={`/oportunidades/oferta/${encodeURIComponent(item.id)}`}
+      actionLabel="Ver detalhes"
+      className="h-full"
+    />
+  );
 
   return (
     <section
@@ -116,36 +185,70 @@ export function HomeOpportunityShowcase() {
         ) : null}
 
         {offers.length > 0 ? (
-          <div className="grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {offers.map((item, index) => (
-              <OpportunityCard
-                key={item.id}
-                id={item.id}
-                kind={item.kind === 'air_block' ? 'air_block' : 'package'}
-                title={item.name || item.category}
-                origin={item.origin}
-                originIata={item.origin_iata}
-                destination={item.destination || item.destination_iata || 'Destino não informado'}
-                destinationIata={item.destination_iata}
-                departureLabel={formatDate(item.departure_date)}
-                returnLabel={formatDate(item.return_date)}
-                nights={item.nights}
-                pricePerPerson={item.price_per_person}
-                taxPerPerson={item.tax_per_person}
-                currency={item.currency}
-                availableSeats={item.available_seats}
-                airfareIncluded={item.airfare_included}
-                imageUrl={item.image_url}
-                imageAlt={item.destination ? `Vista de ${item.destination}` : 'Imagem pública da oportunidade'}
-                imageEager={index < 3}
-                imagePreloadMargin="900px 0px"
-                badges={badgesFor(item)}
-                actionHref={`/oportunidades/oferta/${encodeURIComponent(item.id)}`}
-                actionLabel="Ver detalhes"
-                className="h-full"
-              />
-            ))}
-          </div>
+          <>
+            <div className="sm:hidden">
+              <div
+                ref={mobileCarouselRef}
+                onScroll={handleMobileScroll}
+                className="-mx-4 flex snap-x snap-mandatory items-stretch gap-4 overflow-x-auto px-[6vw] pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                aria-label="Carrossel de oportunidades em destaque"
+              >
+                {offers.map((item, index) => (
+                  <div
+                    key={item.id}
+                    data-offer-slide
+                    className="flex w-[88vw] max-w-[390px] shrink-0 snap-center"
+                  >
+                    {renderOfferCard(item, index)}
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 flex items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => goToOffer(activeOfferIndex - 1)}
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-tomorrow-line bg-tomorrow-surface/70 text-tomorrow-text backdrop-blur-sm transition hover:border-tomorrow-gold/60 hover:text-tomorrow-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomorrow-gold/60"
+                  aria-label="Oportunidade anterior"
+                >
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                </button>
+
+                <div className="flex items-center gap-1.5" aria-label={`Oportunidade ${activeOfferIndex + 1} de ${offers.length}`}>
+                  {offers.map((item, index) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => goToOffer(index)}
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        index === activeOfferIndex
+                          ? 'w-7 bg-tomorrow-gold'
+                          : 'w-1.5 bg-tomorrow-muted/40 hover:bg-tomorrow-muted/70'
+                      }`}
+                      aria-label={`Ir para oportunidade ${index + 1}`}
+                    />
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => goToOffer(activeOfferIndex + 1)}
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-tomorrow-line bg-tomorrow-surface/70 text-tomorrow-text backdrop-blur-sm transition hover:border-tomorrow-gold/60 hover:text-tomorrow-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomorrow-gold/60"
+                  aria-label="Próxima oportunidade"
+                >
+                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+
+            <div className="hidden items-stretch gap-5 sm:grid sm:grid-cols-2 xl:grid-cols-3">
+              {offers.map((item, index) => (
+                <div key={item.id} className="h-full">
+                  {renderOfferCard(item, index)}
+                </div>
+              ))}
+            </div>
+          </>
         ) : null}
 
         <div className="mt-8 border-t border-tomorrow-line pt-6 text-sm text-tomorrow-muted">
