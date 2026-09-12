@@ -5,7 +5,8 @@ const radar: RadarForMatching = {
   id: "00000000-0000-4000-8000-000000000001",
   user_id: "00000000-0000-4000-8000-000000000002",
   status: "active",
-  origin: "São Paulo",
+  origin: null,
+  origin_airports: ["GRU", "CGH"],
   destination: "Recife",
   start_date: "2026-10-10",
   end_date: "2026-10-15",
@@ -52,6 +53,12 @@ Deno.test("exact never violates hard filters", () => {
   assertEquals(evaluateRadarMatch(radar, { ...baseOffer, available_seats: 1 }), null);
 });
 
+Deno.test("multi-origin only accepts explicitly selected airports", () => {
+  assert(evaluateRadarMatch(radar, { ...baseOffer, origin_iata: "CGH", origin: "São Paulo" }));
+  assertEquals(evaluateRadarMatch(radar, { ...baseOffer, origin_iata: "CNF", origin: "Belo Horizonte" }), null);
+  assertEquals(evaluateRadarMatch(radar, { ...baseOffer, origin_iata: "GYN", origin: "Goiânia" }, [{ preference_key: "praia", score: 1 }]), null);
+});
+
 Deno.test("flexible uses only explicit date flexibility", () => {
   const result = evaluateRadarMatch(radar, { ...baseOffer, departure_date: "2026-10-08", return_date: "2026-10-13" });
   assert(result);
@@ -68,6 +75,11 @@ Deno.test("discovery is separate and requires positive explicit affinity", () =>
   assert(result.unmatchedFactors.some((factor) => factor.key === "destination"));
 });
 
+Deno.test("discovery never relaxes selected origin", () => {
+  const alternative = { ...baseOffer, destination: "Maceió", origin: "Belo Horizonte", origin_iata: "CNF" };
+  assertEquals(evaluateRadarMatch(radar, alternative, [{ preference_key: "praia", score: 1 }]), null);
+});
+
 Deno.test("paused radar never matches and snapshot stays public-minimal", () => {
   assertEquals(evaluateRadarMatch({ ...radar, status: "paused" }, baseOffer), null);
   const snapshot = sanitizeOfferSnapshot(baseOffer) as Record<string, unknown>;
@@ -78,17 +90,7 @@ Deno.test("paused radar never matches and snapshot stays public-minimal", () => 
 
 Deno.test("air-block destination follows the same public canonicalization", () => {
   const airRadar = { ...radar, offer_type: "bloqueio_aereo" as const, offer_subtype: "bloqueio" as const, min_nights: null, max_nights: null };
-  const rawAirOffer: PublicOfferForMatching = {
-    ...baseOffer,
-    id: "10000000-0000-4000-8000-000000000003",
-    offer_type: "bloqueio_aereo",
-    offer_subtype: "bloqueio",
-    name: null,
-    category: "Bloqueio aéreo",
-    destination: "Porto de Galinhas",
-    destination_iata: "REC",
-    airfare_included: true,
-  };
+  const rawAirOffer: PublicOfferForMatching = { ...baseOffer, id: "10000000-0000-4000-8000-000000000003", offer_type: "bloqueio_aereo", offer_subtype: "bloqueio", name: null, category: "Bloqueio aéreo", destination: "Porto de Galinhas", destination_iata: "REC", airfare_included: true };
   const result = evaluateRadarMatch(airRadar, rawAirOffer);
   assert(result);
   assertEquals(result.matchClass, "exact");
