@@ -27,7 +27,7 @@ export type GptLiveVoice = typeof GPT_LIVE_VOICES[number];
 
 export const GPT_LIVE_ACCENT_PRESETS = [
   { id: "pt_br_neutral", label: "Brasil neutro", description: "Português brasileiro nativo, sem marca regional forte." },
-  { id: "pt_br_sao_paulo", label: "Paulistano leve", description: "Traços sutis de São Paulo, sem caricatura." },
+  { id: "pt_br_sao_paulo", label: "Paulistano médio", description: "Sotaque de São Paulo claramente perceptível, natural e sem caricatura." },
   { id: "pt_br_rio", label: "Carioca leve", description: "Traços sutis do Rio de Janeiro, sem caricatura." },
   { id: "pt_br_minas", label: "Mineiro leve", description: "Traços sutis de Minas Gerais, sem caricatura." },
   { id: "pt_br_nordeste", label: "Nordeste leve", description: "Traços sutis do Nordeste brasileiro, sem caricatura." },
@@ -61,7 +61,7 @@ export interface GptLiveLabSettings {
 
 export const TEO_GPT_LIVE_SETTINGS: GptLiveLabSettings = {
   voice: "tempo",
-  accent: "pt_br_neutral",
+  accent: "pt_br_sao_paulo",
   pace: "agile",
   style: "conversational",
 };
