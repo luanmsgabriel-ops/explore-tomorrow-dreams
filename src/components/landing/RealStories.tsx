@@ -175,66 +175,71 @@ export const RealStories = () => {
                 const opacity = !isVisible ? 0 : distance === 0 ? 1 : distance === 1 ? (isMobile ? 0.46 : 0.7) : 0.24;
 
                 return (
-                  <motion.article
+                  <div
                     key={story.author}
-                    className="absolute left-1/2 top-0 w-[82vw] max-w-[315px] -translate-x-1/2 sm:max-w-[335px] md:w-[360px] md:max-w-none lg:w-[380px]"
-                    initial={false}
-                    animate={{ x, y, scale, rotateY, opacity, zIndex: 30 - distance }}
-                    transition={
-                      shouldReduceMotion
-                        ? { duration: 0 }
-                        : { type: 'spring', stiffness: 130, damping: 23, mass: 0.82 }
-                    }
-                    style={{ pointerEvents: isVisible ? 'auto' : 'none' }}
+                    className="pointer-events-none absolute inset-x-0 top-0 flex justify-center"
+                    style={{ zIndex: 30 - distance }}
                     aria-hidden={!isVisible}
                   >
-                    <button
-                      type="button"
-                      className="group relative block aspect-[3/4] w-full overflow-hidden rounded-[1.7rem] border border-white/20 text-left shadow-[0_26px_60px_-24px_rgba(7,35,39,0.62)] outline-none focus-visible:ring-2 focus-visible:ring-ocean-deep/70 md:rounded-[2rem]"
-                      onClick={() => goTo(index)}
-                      tabIndex={isVisible ? 0 : -1}
-                      aria-label={`Ver avaliação de ${story.author}`}
+                    <motion.article
+                      className="w-[82vw] max-w-[315px] sm:max-w-[335px] md:w-[360px] md:max-w-none lg:w-[380px]"
+                      initial={false}
+                      animate={{ x, y, scale, rotateY, opacity }}
+                      transition={
+                        shouldReduceMotion
+                          ? { duration: 0 }
+                          : { type: 'spring', stiffness: 130, damping: 23, mass: 0.82 }
+                      }
+                      style={{ pointerEvents: isVisible ? 'auto' : 'none' }}
                     >
-                      <img
-                        src={story.image}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        width={1024}
-                        height={1365}
-                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.025]"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/44 to-black/5" />
+                      <button
+                        type="button"
+                        className="group relative block aspect-[3/4] w-full overflow-hidden rounded-[1.7rem] border border-white/20 text-left shadow-[0_26px_60px_-24px_rgba(7,35,39,0.62)] outline-none focus-visible:ring-2 focus-visible:ring-ocean-deep/70 md:rounded-[2rem]"
+                        onClick={() => goTo(index)}
+                        tabIndex={isVisible ? 0 : -1}
+                        aria-label={`Ver avaliação de ${story.author}`}
+                      >
+                        <img
+                          src={story.image}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          width={1024}
+                          height={1365}
+                          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.025]"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/44 to-black/5" />
 
-                      <div className="absolute inset-0 flex flex-col justify-end p-5 sm:p-6 md:p-7">
-                        <div className="mb-3 flex items-center gap-2 md:mb-4 md:gap-3">
-                          <span className="whitespace-nowrap text-[9px] font-bold tracking-[0.12em] text-gold md:text-[11px] md:tracking-[0.18em]">
-                            ★★★★★
-                          </span>
-                          <span className="whitespace-nowrap text-[7px] font-bold uppercase tracking-[0.14em] text-white/65 md:text-[9px] md:tracking-[0.22em]">
-                            Avaliação Google
-                          </span>
+                        <div className="absolute inset-0 flex flex-col justify-end p-5 sm:p-6 md:p-7">
+                          <div className="mb-3 flex items-center gap-2 md:mb-4 md:gap-3">
+                            <span className="whitespace-nowrap text-[9px] font-bold tracking-[0.12em] text-gold md:text-[11px] md:tracking-[0.18em]">
+                              ★★★★★
+                            </span>
+                            <span className="whitespace-nowrap text-[7px] font-bold uppercase tracking-[0.14em] text-white/65 md:text-[9px] md:tracking-[0.22em]">
+                              Avaliação Google
+                            </span>
+                          </div>
+
+                          <blockquote className={`mb-4 font-editorial text-white md:mb-5 ${quoteSize(story.quote)}`}>
+                            “{story.quote}”
+                          </blockquote>
+
+                          <p className="text-[9px] font-bold uppercase tracking-[0.11em] text-white/75 md:text-[11px] md:tracking-[0.13em]">
+                            {story.author}
+                          </p>
                         </div>
 
-                        <blockquote className={`mb-4 font-editorial text-white md:mb-5 ${quoteSize(story.quote)}`}>
-                          “{story.quote}”
-                        </blockquote>
-
-                        <p className="text-[9px] font-bold uppercase tracking-[0.11em] text-white/75 md:text-[11px] md:tracking-[0.13em]">
-                          {story.author}
-                        </p>
-                      </div>
-
-                      {isActive && !shouldReduceMotion && (
-                        <motion.div
-                          className="pointer-events-none absolute inset-0 rounded-[1.7rem] ring-1 ring-white/25 md:rounded-[2rem]"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: [0.2, 0.58, 0.2] }}
-                          transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
-                        />
-                      )}
-                    </button>
-                  </motion.article>
+                        {isActive && !shouldReduceMotion && (
+                          <motion.div
+                            className="pointer-events-none absolute inset-0 rounded-[1.7rem] ring-1 ring-white/25 md:rounded-[2rem]"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: [0.2, 0.58, 0.2] }}
+                            transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+                          />
+                        )}
+                      </button>
+                    </motion.article>
+                  </div>
                 );
               })}
             </motion.div>
