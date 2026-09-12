@@ -2055,6 +2055,7 @@ export type Database = {
       }
       travel_radars: {
         Row: {
+          boarding_priorities: string[]
           budget_currency: string
           budget_max: number | null
           budget_min: number | null
@@ -2072,7 +2073,9 @@ export type Database = {
           offer_subtype: string | null
           offer_type: string | null
           origin: string | null
+          origin_airports: string[]
           passengers: number | null
+          sensitivity: string
           source: string
           source_filters: Json | null
           start_date: string | null
@@ -2082,6 +2085,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          boarding_priorities?: string[]
           budget_currency?: string
           budget_max?: number | null
           budget_min?: number | null
@@ -2099,7 +2103,9 @@ export type Database = {
           offer_subtype?: string | null
           offer_type?: string | null
           origin?: string | null
+          origin_airports?: string[]
           passengers?: number | null
+          sensitivity?: string
           source?: string
           source_filters?: Json | null
           start_date?: string | null
@@ -2109,6 +2115,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          boarding_priorities?: string[]
           budget_currency?: string
           budget_max?: number | null
           budget_min?: number | null
@@ -2126,7 +2133,9 @@ export type Database = {
           offer_subtype?: string | null
           offer_type?: string | null
           origin?: string | null
+          origin_airports?: string[]
           passengers?: number | null
+          sensitivity?: string
           source?: string
           source_filters?: Json | null
           start_date?: string | null
@@ -2314,6 +2323,39 @@ export type Database = {
           response?: string
           revoked_at?: string | null
           source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      traveler_profile_refinements: {
+        Row: {
+          answered_at: string
+          choice: string
+          id: string
+          question_key: string
+          revoked_at: string | null
+          source: string
+          stage: string
+          user_id: string
+        }
+        Insert: {
+          answered_at?: string
+          choice: string
+          id?: string
+          question_key: string
+          revoked_at?: string | null
+          source?: string
+          stage: string
+          user_id: string
+        }
+        Update: {
+          answered_at?: string
+          choice?: string
+          id?: string
+          question_key?: string
+          revoked_at?: string | null
+          source?: string
+          stage?: string
           user_id?: string
         }
         Relationships: []
@@ -3128,6 +3170,25 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       rebuild_my_traveler_affinities: { Args: never; Returns: number }
+      record_my_profile_refinement: {
+        Args: { p_choice: string; p_question_key: string; p_stage: string }
+        Returns: {
+          answered_at: string
+          choice: string
+          id: string
+          question_key: string
+          revoked_at: string | null
+          source: string
+          stage: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "traveler_profile_refinements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       record_my_travel_preference: {
         Args: {
           p_evidence?: Json
