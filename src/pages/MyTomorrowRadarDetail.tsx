@@ -10,7 +10,6 @@ import {
   Pause,
   Play,
   Plus,
-  Radar as RadarIcon,
   RefreshCw,
   Settings2,
   Sparkles,
@@ -181,19 +180,17 @@ export default function MyTomorrowRadarDetail() {
   const originLabel = (radar.origin_airports ?? []).length ? radar.origin_airports.join(" · ") : radar.origin || "Origem aberta";
   const destinationLabel = radar.destination || radar.category || "Discovery aberto";
   const periodLabel = `${formatDate(radar.start_date)} a ${formatDate(radar.end_date)}`;
-  const lastScanLabel = radar.last_checked_at ? new Date(radar.last_checked_at).toLocaleString("pt-BR") : "Ainda não executado";
-  const bestPrice = best ? offerPrice(best.offer_snapshot) : "Sem sinal ainda";
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_50%_-10%,rgba(34,211,238,.10),transparent_30%),#041012] text-white">
+    <div className="min-h-screen bg-[#031416] text-white">
       <Header />
-      <main className="mx-auto max-w-7xl px-4 pb-20 pt-24 sm:px-6">
-        <div className="flex items-center justify-between gap-4">
+      <main className="mx-auto max-w-[94rem] px-3 pb-20 pt-24 sm:px-5 lg:px-6">
+        <div className="flex items-center justify-between gap-4 px-1 sm:px-2">
           <Link to="/minha-area/radares" className="inline-flex items-center gap-2 text-sm text-white/50"><ArrowLeft className="size-4" />Meus radares</Link>
           <Link to="/minha-area/radares/novo" className="inline-flex items-center gap-2 rounded-xl border border-cyan-300/20 px-3 py-2 text-xs text-cyan-200"><Plus className="size-3.5" />Novo Radar</Link>
         </div>
 
-        <nav className="mt-5 flex gap-2 overflow-x-auto pb-2">
+        <nav className="mt-4 flex gap-2 overflow-x-auto px-1 pb-2 sm:px-2">
           {radars.map((item) => (
             <Link key={item.id} to={`/minha-area/radares/${item.id}`} className={`whitespace-nowrap rounded-full border px-4 py-2 text-xs ${item.id === radar.id ? "border-cyan-300 bg-cyan-300/10 text-cyan-100" : "border-white/10 text-white/45"}`}>
               {item.name.replace(/^Radar\s+/i, "")}
@@ -201,57 +198,58 @@ export default function MyTomorrowRadarDetail() {
           ))}
         </nav>
 
-        {error ? <div className="mt-5 rounded-xl border border-amber-300/20 bg-amber-300/5 p-4 text-sm text-amber-100">{error}</div> : null}
+        {error ? <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/5 p-4 text-sm text-amber-100">{error}</div> : null}
 
-        <section className="relative mt-5 overflow-hidden rounded-[2rem] border border-cyan-300/15 bg-[radial-gradient(circle_at_50%_46%,rgba(22,181,195,.10),transparent_27%),radial-gradient(circle_at_top_right,rgba(212,175,55,.06),transparent_30%),linear-gradient(180deg,rgba(5,41,45,.96),rgba(3,24,27,.98))] p-5 shadow-[0_30px_90px_rgba(0,0,0,.28)] sm:p-7 lg:p-8">
-          <div className="pointer-events-none absolute inset-0 opacity-40" aria-hidden="true">
-            <div className="absolute left-[9%] top-[19%] h-px w-[18%] bg-gradient-to-r from-transparent via-cyan-300/30 to-transparent" />
-            <div className="absolute right-[8%] top-[31%] h-px w-[16%] bg-gradient-to-r from-transparent via-[#d4af37]/30 to-transparent" />
-            <div className="absolute bottom-[18%] left-[6%] h-px w-[20%] bg-gradient-to-r from-transparent via-[#d4af37]/25 to-transparent" />
-            <div className="absolute bottom-[25%] right-[5%] h-px w-[19%] bg-gradient-to-r from-transparent via-cyan-300/25 to-transparent" />
+        <section className="relative mt-3 min-h-[48rem] overflow-hidden rounded-[2.1rem] border border-cyan-300/[.10] bg-[radial-gradient(circle_at_50%_44%,rgba(14,116,128,.16),transparent_31%),radial-gradient(circle_at_12%_28%,rgba(20,163,176,.08),transparent_24%),radial-gradient(circle_at_88%_33%,rgba(212,175,55,.055),transparent_22%),linear-gradient(180deg,#041c1f_0%,#031416_60%,#021012_100%)] shadow-[0_42px_120px_rgba(0,0,0,.42)] sm:min-h-[55rem] lg:min-h-[62rem]">
+          <div className="pointer-events-none absolute inset-0 opacity-80" aria-hidden="true">
+            <div className="absolute -left-[12%] top-[22%] size-[36rem] rounded-full bg-cyan-400/[.025] blur-[90px]" />
+            <div className="absolute -right-[14%] top-[30%] size-[31rem] rounded-full bg-[#d4af37]/[.022] blur-[100px]" />
+            <div className="absolute inset-x-0 bottom-0 h-[28%] bg-[radial-gradient(ellipse_at_center,rgba(22,155,167,.06),transparent_66%)]" />
           </div>
 
-          <div className="relative z-10">
-            <div className="flex flex-col gap-3 border-b border-white/[.055] pb-5 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <div className="flex items-center gap-2 text-xs uppercase tracking-[.22em] text-cyan-300"><RadarIcon className={`size-4 ${matching ? "animate-spin" : ""}`} />{radar.status === "active" ? "Ativo · varrendo" : "Radar pausado"}</div>
-                <h1 className="mt-3 font-serif text-4xl sm:text-5xl">{radar.name}</h1>
-                <p className="mt-3 text-sm text-white/45">{originLabel} → {destinationLabel} · {periodLabel}</p>
-              </div>
-              <div className="hidden text-right lg:block">
-                <p className="text-[10px] uppercase tracking-[.32em] text-cyan-200/55">Tomorrow Radar Intelligence</p>
-                <p className="mt-2 max-w-xs text-xs leading-5 text-white/30">Varredura contínua do inventário público da Tomorrow Travel.</p>
-              </div>
+          <div className="absolute left-5 top-5 z-30 sm:left-8 sm:top-8 lg:left-12 lg:top-10">
+            <h1 className="text-2xl font-medium uppercase tracking-[.16em] text-white sm:text-3xl lg:text-4xl">{radar.name}</h1>
+            <p className="mt-3 text-[10px] uppercase tracking-[.22em] text-cyan-200/70 sm:text-xs">{originLabel} → {destinationLabel}</p>
+            <p className="mt-2 text-[10px] uppercase tracking-[.22em] text-cyan-200/62 sm:text-xs">{periodLabel}</p>
+          </div>
+
+          <div className="absolute right-5 top-6 z-30 hidden text-right lg:block lg:right-12 lg:top-11">
+            <p className="text-xs uppercase tracking-[.38em] text-cyan-200/65">Explorando</p>
+            <p className="mt-2 text-xs uppercase tracking-[.38em] text-cyan-200/65">novos</p>
+            <p className="mt-2 text-xs uppercase tracking-[.38em] text-cyan-200/65">horizontes</p>
+            <div className="ml-auto mt-4 h-px w-10 bg-[#d4af37]/80" />
+          </div>
+
+          <div className="absolute bottom-[13.5rem] left-5 z-30 hidden lg:block lg:left-12">
+            <div className="mb-4 flex h-8 items-end gap-[3px]" aria-hidden="true">
+              {[8,15,22,13,27,18,31,15,24,10].map((height, index) => <span key={index} className="w-[2px] rounded-full bg-cyan-300/60" style={{ height }} />)}
             </div>
+            <p className="text-[11px] uppercase tracking-[.36em] leading-6 text-cyan-200/55">Varrendo<br/>oportunidades<br/>em tempo real</p>
+          </div>
 
-            <div className="mt-4 grid items-center gap-4 lg:grid-cols-[minmax(180px,1fr)_auto_minmax(180px,1fr)] lg:gap-3 xl:gap-7">
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
-                <HudPanel eyebrow="Origem monitorada" value={originLabel} accent="cyan" />
-                <HudPanel eyebrow="Janela de embarque" value={periodLabel} accent="gold" />
-                <HudPanel eyebrow="Sinais exatos" value={String(counts.exact)} subvalue={`${counts.flexible} flexíveis`} accent="cyan" />
-              </div>
+          <div className="absolute bottom-[13.5rem] right-5 z-30 hidden text-right lg:block lg:right-12">
+            <p className="text-[11px] uppercase tracking-[.36em] leading-6 text-cyan-200/55">O mundo<br/>sempre tem<br/>mais para você</p>
+            <div className="ml-auto mt-4 h-px w-12 bg-[#d4af37]/80" />
+          </div>
 
-              <div className="relative mx-auto grid min-h-[22rem] place-items-center sm:min-h-[29rem] lg:min-h-[32rem]">
-                <div className="pointer-events-none absolute inset-x-[-8%] top-1/2 h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-cyan-300/15 to-transparent" aria-hidden="true" />
-                <div className="pointer-events-none absolute bottom-[7%] left-1/2 h-20 w-[78%] -translate-x-1/2 rounded-[50%] bg-cyan-300/[.035] blur-2xl" aria-hidden="true" />
-                <RadarSignalGlobe signals={matches.length} scanning={matching} />
-              </div>
+          <div className="absolute inset-x-0 top-[7rem] z-10 flex justify-center sm:top-[6rem] lg:top-[2.3rem]">
+            <RadarSignalGlobe signals={matches.length} scanning={matching} />
+          </div>
 
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
-                <HudPanel eyebrow="Destino" value={destinationLabel} accent="gold" />
-                <HudPanel eyebrow="Melhor sinal" value={bestPrice} subvalue={best ? `${Math.round(best.score)}% aderência` : undefined} accent="gold" />
-                <HudPanel eyebrow="Última varredura" value={lastScanLabel} accent="cyan" compact />
-              </div>
+          <div className="absolute inset-x-0 bottom-6 z-40 flex flex-col items-center gap-3 px-4 sm:bottom-8">
+            <div className="flex w-full max-w-[42rem] gap-3 sm:gap-5">
+              <button onClick={() => void toggle()} className="inline-flex min-h-16 flex-1 items-center justify-center gap-3 rounded-[1.4rem] border border-cyan-300/35 bg-[#041a1d]/80 px-5 text-base text-white shadow-[inset_0_0_24px_rgba(34,211,238,.04),0_0_22px_rgba(34,211,238,.04)] backdrop-blur-md sm:min-h-20 sm:text-xl">
+                {radar.status === "active" ? <Pause className="size-5 sm:size-6" /> : <Play className="size-5 sm:size-6" />}{radar.status === "active" ? "Pausar" : "Reativar"}
+              </button>
+              <button onClick={() => void remove()} className="inline-flex min-h-16 flex-1 items-center justify-center gap-3 rounded-[1.4rem] border border-red-300/25 bg-[#041a1d]/80 px-5 text-base text-red-200 shadow-[inset_0_0_24px_rgba(255,120,120,.035)] backdrop-blur-md sm:min-h-20 sm:text-xl">
+                <Trash2 className="size-5 sm:size-6" />Excluir
+              </button>
             </div>
-
-            <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-white/[.055] pt-5">
-              <button onClick={() => void refresh()} disabled={matching || radar.status !== "active"} className="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-4 py-3 text-sm font-semibold text-[#041012] shadow-[0_0_28px_rgba(34,211,238,.18)] disabled:opacity-40"><RefreshCw className={`size-4 ${matching ? "animate-spin" : ""}`} />{matching ? "Varrendo..." : "Varrer agora"}</button>
-              <button onClick={() => setEditing((value) => !value)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/10 px-4 py-3 text-sm"><Settings2 className="size-4" />Ajustar critérios</button>
-              <button onClick={() => void toggle()} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/10 px-4 py-3 text-sm">{radar.status === "active" ? <Pause className="size-4" /> : <Play className="size-4" />}{radar.status === "active" ? "Pausar" : "Reativar"}</button>
-              <button onClick={() => void remove()} className="inline-flex items-center gap-2 rounded-xl border border-red-300/15 bg-black/10 px-4 py-3 text-sm text-red-200"><Trash2 className="size-4" />Excluir</button>
-              <span className="ml-auto hidden text-[10px] uppercase tracking-[.24em] text-[#d4af37]/55 lg:block">O amanhã não espera.</span>
+            <div className="flex flex-wrap justify-center gap-2 text-xs">
+              <button onClick={() => void refresh()} disabled={matching || radar.status !== "active"} className="inline-flex items-center gap-2 rounded-full border border-cyan-300/15 bg-black/15 px-4 py-2 text-cyan-100/75 disabled:opacity-40"><RefreshCw className={`size-3.5 ${matching ? "animate-spin" : ""}`} />{matching ? "Varrendo..." : "Varrer agora"}</button>
+              <button onClick={() => setEditing((value) => !value)} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/15 px-4 py-2 text-white/55"><Settings2 className="size-3.5" />Ajustar critérios</button>
             </div>
-            {summary ? <p className="mt-4 text-sm text-cyan-100/70">{summary}</p> : null}
+            {summary ? <p className="max-w-xl text-center text-xs text-cyan-100/55">{summary}</p> : null}
           </div>
         </section>
 
@@ -290,18 +288,6 @@ export default function MyTomorrowRadarDetail() {
           )}
         </section>
       </main>
-    </div>
-  );
-}
-
-function HudPanel({ eyebrow, value, subvalue, accent, compact = false }: { eyebrow: string; value: string; subvalue?: string; accent: "cyan" | "gold"; compact?: boolean }) {
-  const accentClass = accent === "gold" ? "text-[#e6c75a] border-[#d4af37]/18" : "text-cyan-300 border-cyan-300/15";
-  return (
-    <div className={`relative overflow-hidden rounded-2xl border bg-black/[.08] p-4 backdrop-blur-sm ${accentClass}`}>
-      <div className={`absolute left-0 top-0 h-px w-16 ${accent === "gold" ? "bg-[#d4af37]/70" : "bg-cyan-300/70"}`} aria-hidden="true" />
-      <p className="text-[9px] uppercase tracking-[.24em] opacity-70">{eyebrow}</p>
-      <p className={`${compact ? "text-xs leading-5" : "text-base"} mt-2 font-medium text-white/85`}>{value}</p>
-      {subvalue ? <p className="mt-1 text-[10px] uppercase tracking-[.15em] text-white/30">{subvalue}</p> : null}
     </div>
   );
 }

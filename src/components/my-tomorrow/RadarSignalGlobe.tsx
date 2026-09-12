@@ -3,182 +3,208 @@ interface RadarSignalGlobeProps {
   scanning?: boolean;
 }
 
-const particles = [
-  [4, 18, 1.1, 0.1, "cyan"], [8, 43, 0.8, 1.4, "gold"], [12, 76, 1.2, 2.2, "cyan"],
-  [18, 8, 0.8, 0.8, "cyan"], [22, 91, 1.1, 1.8, "gold"], [29, 26, 0.7, 2.8, "cyan"],
-  [34, 70, 1.0, 0.4, "cyan"], [40, 5, 0.8, 2.1, "gold"], [46, 94, 1.2, 1.1, "cyan"],
-  [54, 11, 0.8, 2.6, "cyan"], [61, 88, 1.0, 1.7, "gold"], [67, 5, 0.8, 0.7, "cyan"],
-  [74, 93, 0.8, 3.1, "cyan"], [81, 17, 1.2, 2.4, "gold"], [88, 82, 0.7, 1.2, "cyan"],
-  [94, 34, 1.0, 2.9, "cyan"], [96, 63, 0.8, 0.9, "gold"], [15, 58, 0.75, 2.0, "cyan"],
-  [84, 55, 0.65, 1.6, "cyan"], [26, 40, 0.7, 2.3, "gold"], [72, 36, 0.75, 1.3, "cyan"],
+const stars = [
+  [4, 17, 1.1, 0.1, "cyan"], [8, 63, .8, 1.2, "gold"], [13, 84, 1.2, 2.0, "cyan"],
+  [18, 11, .7, .6, "cyan"], [24, 93, 1.1, 1.6, "gold"], [30, 5, .8, 2.5, "cyan"],
+  [36, 88, 1.0, .3, "cyan"], [43, 8, .8, 2.1, "gold"], [49, 96, 1.1, 1.0, "cyan"],
+  [56, 6, .8, 2.4, "cyan"], [63, 91, 1.0, 1.5, "gold"], [70, 9, .8, .8, "cyan"],
+  [76, 94, .9, 3.0, "cyan"], [83, 16, 1.2, 2.3, "gold"], [90, 82, .7, 1.1, "cyan"],
+  [95, 33, 1.0, 2.8, "cyan"], [96, 64, .8, .9, "gold"], [10, 47, .75, 2.0, "cyan"],
+  [88, 52, .65, 1.5, "cyan"], [27, 41, .7, 2.2, "gold"], [74, 36, .75, 1.3, "cyan"],
 ] as const;
 
 const signalNodes = [
-  [55, 40, "gold"], [68, 47, "cyan"], [43, 56, "cyan"], [59, 67, "gold"], [72, 62, "cyan"], [39, 45, "gold"],
+  [135, 126, "gold"], [191, 116, "cyan"], [232, 151, "gold"], [213, 225, "cyan"],
+  [142, 237, "gold"], [104, 198, "cyan"], [258, 210, "gold"], [95, 145, "cyan"],
 ] as const;
 
 export function RadarSignalGlobe({ signals, scanning = false }: RadarSignalGlobeProps) {
   return (
     <div
-      className="radar-premium relative grid aspect-square w-[min(84vw,21rem)] shrink-0 place-items-center sm:w-[27rem] lg:w-[31rem]"
+      className="radar-reference relative grid aspect-square w-[min(94vw,42rem)] shrink-0 place-items-center sm:w-[46rem] lg:w-[52rem] xl:w-[58rem]"
       aria-label={`${signals} sinais ativos`}
       data-scanning={scanning}
     >
       <style>{`
-        @keyframes radar-orbit-cw { to { transform: rotate(360deg); } }
-        @keyframes radar-orbit-ccw { to { transform: rotate(-360deg); } }
-        @keyframes radar-globe-turn { 0%,100% { transform: rotateY(-8deg) rotateX(4deg) scale(.985); } 50% { transform: rotateY(10deg) rotateX(-3deg) scale(1.015); } }
-        @keyframes radar-pulse { 0%,100% { opacity:.28; transform:scale(.84); } 50% { opacity:1; transform:scale(1.22); } }
-        @keyframes radar-float { 0%,100% { transform:translate3d(0,0,0) scale(.72); opacity:.20; } 50% { transform:translate3d(0,-7px,0) scale(1.3); opacity:1; } }
-        @keyframes radar-beam { 0% { opacity:.16; } 45% { opacity:.92; } 100% { opacity:.16; } }
-        @keyframes radar-number { 0%,100% { filter:drop-shadow(0 0 7px rgba(212,175,55,.38)); } 50% { filter:drop-shadow(0 0 22px rgba(255,218,105,.78)); } }
-        @keyframes radar-horizon { 0%,100% { opacity:.24; transform:scaleX(.92); } 50% { opacity:.62; transform:scaleX(1.04); } }
-        .radar-premium .orbit-cw { animation: radar-orbit-cw 18s linear infinite; transform-origin:center; }
-        .radar-premium .orbit-ccw { animation: radar-orbit-ccw 27s linear infinite; transform-origin:center; }
-        .radar-premium .orbit-fast { animation: radar-orbit-cw 12s linear infinite; transform-origin:center; }
-        .radar-premium .sweep { animation: radar-orbit-cw 6.5s linear infinite; transform-origin:center; }
-        .radar-premium[data-scanning="true"] .sweep { animation-duration: 1.65s; }
-        .radar-premium .globe-shell { animation: radar-globe-turn 8s ease-in-out infinite; transform-origin:center; transform-box:fill-box; }
-        .radar-premium .node-pulse { animation: radar-pulse 2.4s ease-in-out infinite; transform-origin:center; transform-box:fill-box; }
-        .radar-premium .dust { animation: radar-float 3.7s ease-in-out infinite; }
-        .radar-premium .beam { animation: radar-beam 2.8s ease-in-out infinite; }
-        .radar-premium .signal-count { animation: radar-number 3.6s ease-in-out infinite; }
-        .radar-premium .horizon-glow { animation: radar-horizon 5s ease-in-out infinite; }
+        @keyframes rr-spin { to { transform: rotate(360deg); } }
+        @keyframes rr-spin-back { to { transform: rotate(-360deg); } }
+        @keyframes rr-float { 0%,100% { opacity:.25; transform:translateY(0) scale(.75); } 50% { opacity:1; transform:translateY(-6px) scale(1.25); } }
+        @keyframes rr-pulse { 0%,100% { opacity:.35; transform:scale(.82); } 50% { opacity:1; transform:scale(1.3); } }
+        @keyframes rr-globe-breathe { 0%,100% { transform:scale(.992); filter:brightness(.96); } 50% { transform:scale(1.008); filter:brightness(1.08); } }
+        @keyframes rr-number { 0%,100% { filter:drop-shadow(0 0 10px rgba(255,201,78,.45)); } 50% { filter:drop-shadow(0 0 28px rgba(255,218,112,.9)); } }
+        .radar-reference .ring-cw { animation: rr-spin 25s linear infinite; transform-origin:center; }
+        .radar-reference .ring-ccw { animation: rr-spin-back 34s linear infinite; transform-origin:center; }
+        .radar-reference .orbit-fast { animation: rr-spin 15s linear infinite; transform-origin:center; }
+        .radar-reference .sweep-trail { animation: rr-spin 7.2s linear infinite; transform-origin:center; }
+        .radar-reference[data-scanning="true"] .sweep-trail { animation-duration: 2.15s; }
+        .radar-reference .sweep-edge { animation: rr-spin 7.2s linear infinite; transform-origin:center; }
+        .radar-reference[data-scanning="true"] .sweep-edge { animation-duration: 2.15s; }
+        .radar-reference .dust { animation: rr-float 4s ease-in-out infinite; }
+        .radar-reference .node { animation: rr-pulse 2.6s ease-in-out infinite; transform-origin:center; transform-box:fill-box; }
+        .radar-reference .globe-core { animation: rr-globe-breathe 8s ease-in-out infinite; transform-origin:center; transform-box:fill-box; }
+        .radar-reference .signal-count { animation: rr-number 3.8s ease-in-out infinite; }
         @media (prefers-reduced-motion: reduce) {
-          .radar-premium .orbit-cw,.radar-premium .orbit-ccw,.radar-premium .orbit-fast,.radar-premium .sweep,.radar-premium .globe-shell,.radar-premium .node-pulse,.radar-premium .dust,.radar-premium .beam,.radar-premium .signal-count,.radar-premium .horizon-glow { animation:none !important; }
+          .radar-reference .ring-cw,.radar-reference .ring-ccw,.radar-reference .orbit-fast,.radar-reference .sweep-trail,.radar-reference .sweep-edge,.radar-reference .dust,.radar-reference .node,.radar-reference .globe-core,.radar-reference .signal-count { animation:none !important; }
         }
       `}</style>
 
-      <div className="absolute inset-[-5%] rounded-full bg-[radial-gradient(circle,rgba(36,219,235,.11)_0%,rgba(12,96,103,.045)_42%,transparent_72%)] blur-2xl" aria-hidden="true" />
-      <div className="absolute inset-[1%] rounded-full border border-cyan-300/[.08] shadow-[0_0_90px_rgba(34,211,238,.11)]" aria-hidden="true" />
-      <div className="absolute inset-[8%] rounded-full border border-[#d4af37]/16 shadow-[inset_0_0_45px_rgba(212,175,55,.045)]" aria-hidden="true" />
-      <div className="absolute inset-[14%] rounded-full border border-cyan-200/[.08]" aria-hidden="true" />
+      <div className="pointer-events-none absolute inset-[-7%] rounded-full bg-[radial-gradient(circle,rgba(26,226,241,.16)_0%,rgba(7,70,78,.08)_42%,transparent_72%)] blur-3xl" aria-hidden="true" />
+      <div className="pointer-events-none absolute inset-[4%] rounded-full border border-cyan-300/[.08] shadow-[0_0_120px_rgba(34,211,238,.14)]" aria-hidden="true" />
+      <div className="pointer-events-none absolute inset-[10%] rounded-full border border-[#d4af37]/16" aria-hidden="true" />
 
-      {particles.map(([left, top, size, delay, tone], index) => (
+      {stars.map(([left, top, size, delay, tone], index) => (
         <span
           key={index}
-          className={`dust absolute rounded-full ${tone === "gold" ? "bg-[#f5d875] shadow-[0_0_14px_rgba(212,175,55,.95)]" : "bg-cyan-200 shadow-[0_0_11px_rgba(103,232,249,.9)]"}`}
-          style={{ left: `${left}%`, top: `${top}%`, width: size * 2.7, height: size * 2.7, animationDelay: `${delay}s` }}
+          className={`dust absolute rounded-full ${tone === "gold" ? "bg-[#ffd76a] shadow-[0_0_13px_rgba(255,207,76,.95)]" : "bg-cyan-200 shadow-[0_0_11px_rgba(103,232,249,.92)]"}`}
+          style={{ left: `${left}%`, top: `${top}%`, width: size * 2.8, height: size * 2.8, animationDelay: `${delay}s` }}
           aria-hidden="true"
         />
       ))}
 
-      <svg viewBox="0 0 360 360" className="absolute inset-0 size-full overflow-visible" aria-hidden="true">
+      <div
+        className="sweep-trail pointer-events-none absolute inset-[18.3%] z-[6] rounded-full opacity-80"
+        style={{
+          background: "conic-gradient(from -92deg, rgba(92,240,255,0) 0deg, rgba(92,240,255,0) 286deg, rgba(92,240,255,.03) 304deg, rgba(92,240,255,.10) 321deg, rgba(92,240,255,.26) 338deg, rgba(111,246,255,.58) 353deg, rgba(181,251,255,.96) 359deg, rgba(255,255,255,.98) 360deg)",
+          WebkitMaskImage: "radial-gradient(circle, transparent 0 9%, black 10% 99%, transparent 100%)",
+          maskImage: "radial-gradient(circle, transparent 0 9%, black 10% 99%, transparent 100%)",
+          filter: "drop-shadow(0 0 14px rgba(60,230,246,.48))",
+        }}
+        aria-hidden="true"
+      />
+
+      <svg viewBox="0 0 640 640" className="absolute inset-0 size-full overflow-visible" aria-hidden="true">
         <defs>
-          <radialGradient id="radarSphereV4" cx="37%" cy="29%" r="76%">
-            <stop offset="0" stopColor="#b8f7ff" stopOpacity=".20" />
-            <stop offset=".24" stopColor="#1c9bab" stopOpacity=".14" />
-            <stop offset=".60" stopColor="#0a525b" stopOpacity=".12" />
-            <stop offset="1" stopColor="#02090b" stopOpacity=".96" />
+          <radialGradient id="earthBase" cx="35%" cy="26%" r="78%">
+            <stop offset="0" stopColor="#5de7f2" stopOpacity=".38" />
+            <stop offset=".22" stopColor="#126f7d" stopOpacity=".42" />
+            <stop offset=".55" stopColor="#07343d" stopOpacity=".86" />
+            <stop offset=".82" stopColor="#03181d" stopOpacity=".98" />
+            <stop offset="1" stopColor="#01090b" />
           </radialGradient>
-          <linearGradient id="radarGoldV4" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#fff6c4" />
-            <stop offset=".36" stopColor="#f0cf64" />
-            <stop offset=".68" stopColor="#d4af37" />
-            <stop offset="1" stopColor="#7b5811" />
+          <radialGradient id="earthHighlight" cx="25%" cy="18%" r="80%">
+            <stop offset="0" stopColor="#bffbff" stopOpacity=".30" />
+            <stop offset=".27" stopColor="#36dfee" stopOpacity=".10" />
+            <stop offset=".62" stopColor="#04181c" stopOpacity="0" />
+          </radialGradient>
+          <linearGradient id="goldMetal" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#fff7c8" />
+            <stop offset=".18" stopColor="#ffe58d" />
+            <stop offset=".46" stopColor="#d8a936" />
+            <stop offset=".72" stopColor="#f2c65d" />
+            <stop offset="1" stopColor="#7c5714" />
           </linearGradient>
-          <linearGradient id="radarBeamV4" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#67e8f9" stopOpacity="0" />
-            <stop offset=".52" stopColor="#67e8f9" stopOpacity=".08" />
-            <stop offset="1" stopColor="#67e8f9" stopOpacity=".82" />
+          <linearGradient id="cyanGold" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stopColor="#54ebf8" />
+            <stop offset=".55" stopColor="#8ff5fb" />
+            <stop offset="1" stopColor="#f2cc63" />
           </linearGradient>
-          <linearGradient id="radarArcV4" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor="#67e8f9" stopOpacity=".06" />
-            <stop offset=".55" stopColor="#67e8f9" stopOpacity=".7" />
-            <stop offset="1" stopColor="#f1d16c" stopOpacity=".9" />
-          </linearGradient>
-          <filter id="goldGlowV4" x="-120%" y="-120%" width="340%" height="340%">
-            <feGaussianBlur stdDeviation="3.4" result="blur" />
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          <filter id="glowCyan" x="-150%" y="-150%" width="400%" height="400%">
+            <feGaussianBlur stdDeviation="5" result="b" />
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
-          <filter id="cyanGlowV4" x="-120%" y="-120%" width="340%" height="340%">
-            <feGaussianBlur stdDeviation="2.7" result="blur" />
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          <filter id="glowGold" x="-150%" y="-150%" width="400%" height="400%">
+            <feGaussianBlur stdDeviation="5" result="b" />
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
-          <clipPath id="sphereClipV4"><circle cx="180" cy="180" r="103" /></clipPath>
+          <clipPath id="earthClip"><circle cx="320" cy="320" r="210" /></clipPath>
         </defs>
 
-        <g className="orbit-ccw" opacity=".82">
-          <circle cx="180" cy="180" r="164" fill="none" stroke="#67e8f9" strokeOpacity=".09" strokeWidth="1" />
-          <circle cx="180" cy="180" r="157" fill="none" stroke="#d4af37" strokeOpacity=".24" strokeDasharray="2 11" strokeWidth="1.2" />
-          <path d="M22 180a158 158 0 0 1 316 0" fill="none" stroke="#67e8f9" strokeOpacity=".28" strokeWidth="1.3" />
-          <path d="M47 83a158 158 0 0 1 264 23" fill="none" stroke="url(#radarGoldV4)" strokeOpacity=".70" strokeWidth="1.7" strokeLinecap="round" />
-          <circle cx="299" cy="83" r="3.3" fill="#ffd96d" filter="url(#goldGlowV4)" />
-          <circle cx="51" cy="109" r="2.1" fill="#67e8f9" filter="url(#cyanGlowV4)" />
+        <g className="ring-ccw">
+          <circle cx="320" cy="320" r="300" fill="none" stroke="#59eaf7" strokeOpacity=".18" strokeWidth="1.2" />
+          <circle cx="320" cy="320" r="286" fill="none" stroke="#d4af37" strokeOpacity=".34" strokeDasharray="3 13" strokeWidth="1.3" />
+          <circle cx="320" cy="320" r="273" fill="none" stroke="#59eaf7" strokeOpacity=".20" strokeDasharray="1 8" strokeWidth="1" />
+          <path d="M70 189 A292 292 0 0 1 564 154" fill="none" stroke="url(#cyanGold)" strokeOpacity=".72" strokeWidth="2" strokeLinecap="round" />
+          <path d="M93 496 A289 289 0 0 0 550 521" fill="none" stroke="#e7c65c" strokeOpacity=".52" strokeWidth="2" strokeDasharray="62 34 10 29" strokeLinecap="round" />
         </g>
 
-        <g className="orbit-cw" opacity=".88">
-          <circle cx="180" cy="180" r="142" fill="none" stroke="#67e8f9" strokeOpacity=".16" strokeWidth="1" />
-          <path d="M43 180a137 137 0 0 0 274 0" fill="none" stroke="#d4af37" strokeOpacity=".48" strokeDasharray="47 28 9 25" strokeWidth="1.5" strokeLinecap="round" />
-          <circle cx="294" cy="227" r="2.8" fill="#ffd66b" filter="url(#goldGlowV4)" />
-          <circle cx="99" cy="71" r="2.2" fill="#67e8f9" filter="url(#cyanGlowV4)" />
+        <g className="ring-cw">
+          <circle cx="320" cy="320" r="252" fill="none" stroke="#68edf8" strokeOpacity=".22" strokeWidth="1.2" />
+          <circle cx="320" cy="320" r="236" fill="none" stroke="#d4af37" strokeOpacity=".26" strokeDasharray="46 20 8 24" strokeWidth="1.5" />
+          <ellipse cx="320" cy="320" rx="279" ry="103" transform="rotate(-13 320 320)" fill="none" stroke="#67e8f9" strokeOpacity=".34" strokeDasharray="2 9" strokeWidth="1.2" />
+          <ellipse cx="320" cy="320" rx="266" ry="73" transform="rotate(18 320 320)" fill="none" stroke="#e8c55b" strokeOpacity=".38" strokeDasharray="68 30 8 22" strokeWidth="1.3" />
         </g>
 
-        <g className="orbit-fast" opacity=".55">
-          <ellipse cx="180" cy="180" rx="154" ry="63" transform="rotate(-17 180 180)" fill="none" stroke="url(#radarArcV4)" strokeDasharray="92 26 12 33" strokeWidth="1.1" />
-          <circle cx="318" cy="130" r="2.4" fill="#f3d67a" filter="url(#goldGlowV4)" />
+        <g className="orbit-fast">
+          <path d="M67 359 C145 236 249 213 357 224 C465 235 529 195 584 139" fill="none" stroke="#7cf0fa" strokeOpacity=".42" strokeDasharray="3 8" strokeWidth="1.2" />
+          <path d="M93 179 C182 254 289 257 385 205 C462 164 526 170 588 229" fill="none" stroke="#e2bc4f" strokeOpacity=".36" strokeDasharray="3 8" strokeWidth="1.2" />
         </g>
 
-        <g className="globe-shell" style={{ perspective: 760 }}>
-          <circle cx="180" cy="180" r="103" fill="url(#radarSphereV4)" stroke="#67e8f9" strokeOpacity=".55" strokeWidth="1.6" />
-          <circle cx="180" cy="180" r="99" fill="none" stroke="#d4af37" strokeOpacity=".20" strokeWidth="1" />
-          <g clipPath="url(#sphereClipV4)" opacity=".82">
-            <ellipse cx="180" cy="180" rx="29" ry="103" fill="none" stroke="#67e8f9" strokeOpacity=".29" />
-            <ellipse cx="180" cy="180" rx="58" ry="103" fill="none" stroke="#67e8f9" strokeOpacity=".19" />
-            <ellipse cx="180" cy="180" rx="84" ry="103" fill="none" stroke="#d4af37" strokeOpacity=".12" />
-            <ellipse cx="180" cy="180" rx="103" ry="29" fill="none" stroke="#67e8f9" strokeOpacity=".31" />
-            <ellipse cx="180" cy="180" rx="103" ry="56" fill="none" stroke="#67e8f9" strokeOpacity=".18" />
-            <ellipse cx="180" cy="180" rx="103" ry="82" fill="none" stroke="#d4af37" strokeOpacity=".11" />
-            <path d="M134 84 C156 88 164 103 160 118 C157 132 169 139 171 153 C174 169 166 179 172 195 C178 212 187 224 181 242 C176 257 166 267 158 279" fill="none" stroke="#d7f8fb" strokeOpacity=".31" strokeWidth="1.15" />
-            <path d="M197 91 C218 94 234 106 239 122 C244 139 231 148 236 164 C242 181 251 192 243 210 C235 229 214 231 209 248 C205 261 213 270 224 278" fill="none" stroke="#d7f8fb" strokeOpacity=".22" strokeWidth="1" />
-            <path d="M198 151 C208 143 219 143 226 152 C232 162 227 172 231 181 C237 194 233 205 225 215 C217 225 214 237 211 251 C207 267 196 277 188 266 C181 256 184 242 178 233 C171 223 173 210 181 200 C189 189 189 177 187 168 C185 160 190 156 198 151 Z" fill="url(#radarGoldV4)" fillOpacity=".38" stroke="#ffe392" strokeOpacity=".86" strokeWidth="1.3" filter="url(#goldGlowV4)" />
-            <path d="M116 129 C131 120 145 120 160 126" fill="none" stroke="#d4af37" strokeOpacity=".26" />
-            <path d="M221 132 C236 134 247 143 254 156" fill="none" stroke="#67e8f9" strokeOpacity=".23" />
-            <path d="M109 190 C139 173 158 174 181 182 C207 192 226 188 252 170" fill="none" stroke="#67e8f9" strokeOpacity=".19" strokeDasharray="2 5" />
+        <g className="globe-core">
+          <circle cx="320" cy="320" r="210" fill="url(#earthBase)" stroke="#7bf1fb" strokeOpacity=".72" strokeWidth="2.4" filter="url(#glowCyan)" />
+          <circle cx="320" cy="320" r="208" fill="url(#earthHighlight)" />
+          <g clipPath="url(#earthClip)">
+            <ellipse cx="320" cy="320" rx="54" ry="210" fill="none" stroke="#70ecf6" strokeOpacity=".20" />
+            <ellipse cx="320" cy="320" rx="108" ry="210" fill="none" stroke="#70ecf6" strokeOpacity=".14" />
+            <ellipse cx="320" cy="320" rx="164" ry="210" fill="none" stroke="#d7ba4d" strokeOpacity=".10" />
+            <ellipse cx="320" cy="320" rx="210" ry="48" fill="none" stroke="#70ecf6" strokeOpacity=".20" />
+            <ellipse cx="320" cy="320" rx="210" ry="94" fill="none" stroke="#70ecf6" strokeOpacity=".13" />
+            <ellipse cx="320" cy="320" rx="210" ry="150" fill="none" stroke="#d7ba4d" strokeOpacity=".09" />
+
+            <path d="M210 185 C237 163 276 154 310 158 C336 161 352 176 371 185 C389 193 417 189 435 201 C451 211 448 228 433 239 C414 252 391 249 375 257 C362 264 356 278 344 284 C331 291 314 286 304 296 C294 306 298 321 283 328 C269 334 252 327 243 316 C230 300 232 279 222 265 C213 251 196 241 193 226 C190 211 197 196 210 185 Z" fill="#bfeef2" fillOpacity=".16" stroke="#d9fafc" strokeOpacity=".45" strokeWidth="1.2" />
+            <path d="M278 299 C296 286 322 286 338 297 C355 309 357 328 368 341 C379 353 397 360 400 377 C404 395 393 411 382 425 C369 442 361 461 348 479 C337 493 326 511 311 505 C297 499 297 478 287 465 C277 452 258 444 253 428 C248 413 258 399 255 385 C252 370 240 358 243 342 C246 326 261 310 278 299 Z" fill="url(#goldMetal)" fillOpacity=".48" stroke="#ffe292" strokeOpacity=".88" strokeWidth="1.5" filter="url(#glowGold)" />
+            <path d="M187 249 C204 236 223 234 239 242 M390 230 C412 230 432 241 444 259 M181 355 C203 345 228 346 245 358 M392 392 C413 384 438 389 452 405" fill="none" stroke="#8cf3fb" strokeOpacity=".30" strokeWidth="1.2" />
+
+            {[...Array(22)].map((_, index) => {
+              const points = [
+                [243,214],[265,202],[288,217],[307,199],[337,211],[365,221],[392,237],[421,258],
+                [225,277],[259,267],[292,280],[329,267],[356,285],[391,296],[435,315],
+                [223,348],[265,337],[296,355],[341,349],[378,365],[418,381],[277,410],[324,401]
+              ];
+              const [x,y] = points[index];
+              return <circle key={index} cx={x} cy={y} r={index % 5 === 0 ? 2.4 : 1.35} fill={index % 4 === 0 ? "#ffd36b" : "#9af6fb"} opacity={index % 3 === 0 ? .9 : .55} />;
+            })}
           </g>
-        </g>
-
-        <g className="sweep">
-          <path className="beam" d="M180 180 L180 50 A130 130 0 0 1 269 86 Z" fill="url(#radarBeamV4)" />
-          <line x1="180" y1="180" x2="269" y2="86" stroke="#67e8f9" strokeOpacity=".95" strokeWidth="1.45" filter="url(#cyanGlowV4)" />
-        </g>
-
-        <g fill="none" strokeLinecap="round">
-          <path d="M86 215 C124 176 155 169 192 171 C229 174 258 157 286 124" stroke="#d4af37" strokeOpacity=".56" strokeDasharray="2 5" strokeWidth="1.15" />
-          <path d="M114 136 C146 158 181 152 210 136 C234 122 257 120 281 134" stroke="#67e8f9" strokeOpacity=".47" strokeDasharray="2 4" strokeWidth="1.05" />
         </g>
 
         {signalNodes.map(([x, y, tone], index) => (
-          <g key={index} className="node-pulse" style={{ animationDelay: `${index * 0.34}s` }}>
-            <circle cx={x * 3.6} cy={y * 3.6} r="5.3" fill="none" stroke={tone === "gold" ? "#d4af37" : "#67e8f9"} strokeOpacity=".24" />
-            <circle cx={x * 3.6} cy={y * 3.6} r="2.35" fill={tone === "gold" ? "#ffdc73" : "#67e8f9"} filter={tone === "gold" ? "url(#goldGlowV4)" : "url(#cyanGlowV4)"} />
+          <g key={index} className="node" style={{ animationDelay: `${index * .28}s` }}>
+            <circle cx={x + 160} cy={y + 160} r="8" fill="none" stroke={tone === "gold" ? "#f0c85e" : "#6cebf7"} strokeOpacity=".20" />
+            <circle cx={x + 160} cy={y + 160} r="3.1" fill={tone === "gold" ? "#ffd36b" : "#91f6fb"} filter={tone === "gold" ? "url(#glowGold)" : "url(#glowCyan)"} />
           </g>
         ))}
 
-        <g fontFamily="Inter, sans-serif" fontSize="10" letterSpacing="2" textAnchor="middle">
-          <text x="180" y="17" fill="#f3d67a" opacity=".92">N</text>
-          <text x="180" y="348" fill="#f3d67a" opacity=".92">S</text>
-          <text x="14" y="184" fill="#f3d67a" opacity=".92">O</text>
-          <text x="347" y="184" fill="#f3d67a" opacity=".92">L</text>
+        <g fill="none" strokeLinecap="round">
+          <path d="M106 363 C180 287 252 279 323 299 C401 321 469 291 531 221" stroke="#72ecf7" strokeOpacity=".46" strokeDasharray="2 6" strokeWidth="1.5" />
+          <path d="M131 228 C214 280 290 273 350 236 C405 202 474 198 529 243" stroke="#e8c85f" strokeOpacity=".45" strokeDasharray="2 6" strokeWidth="1.4" />
         </g>
-        <g fill="#f3d67a" opacity=".9">
-          <path d="M180 23 l-6 10 h12z" />
-          <path d="M180 337 l6-10 h-12z" />
-          <path d="M23 180 l10-6 v12z" />
-          <path d="M337 180 l-10 6 v-12z" />
+
+        <g className="sweep-edge">
+          <line x1="320" y1="320" x2="320" y2="118" stroke="#c5fcff" strokeOpacity=".98" strokeWidth="3.1" filter="url(#glowCyan)" />
+          <circle cx="320" cy="118" r="4.2" fill="#d8feff" filter="url(#glowCyan)" />
+        </g>
+
+        <g fontFamily="Inter, sans-serif" textAnchor="middle">
+          <text x="320" y="36" fontSize="18" letterSpacing="2" fill="#f2ce63">N</text>
+          <text x="320" y="617" fontSize="18" letterSpacing="2" fill="#f2ce63">S</text>
+          <text x="28" y="326" fontSize="18" letterSpacing="2" fill="#f2ce63">O</text>
+          <text x="612" y="326" fontSize="18" letterSpacing="2" fill="#f2ce63">L</text>
+        </g>
+        <g fill="url(#goldMetal)" filter="url(#glowGold)">
+          <path d="M320 49 l-9 16 h18z" />
+          <path d="M320 591 l9-16 h-18z" />
+          <path d="M49 320 l16-9 v18z" />
+          <path d="M591 320 l-16 9 v-18z" />
+        </g>
+
+        <g fill="#f5d36f" opacity=".90" filter="url(#glowGold)">
+          <path d="M537 390 l16 4 -8 5 7 12 -5 3 -9-11 -8 7 2-16z" />
+          <path d="M561 333 l13 3 -6 4 6 10 -4 2 -7-9 -7 6 1-13z" />
         </g>
       </svg>
 
       <div className="relative z-20 flex flex-col items-center justify-center text-center" aria-hidden="true">
-        <strong className="signal-count bg-gradient-to-b from-[#fff9dd] via-[#f4d776] to-[#a77a13] bg-clip-text text-[3.75rem] font-semibold leading-none text-transparent sm:text-[4.6rem]">
-          {signals}
-        </strong>
-        <span className="mt-2 text-[9px] font-medium uppercase tracking-[.34em] text-cyan-100/65 sm:text-[10px]">sinais ativos</span>
-        <span className="mt-3 h-px w-20 bg-gradient-to-r from-transparent via-[#e0bd4d]/90 to-transparent" />
+        <div className="mb-3 h-[7.8rem] w-[7.8rem] rounded-full border border-cyan-100/20 bg-black/45 shadow-[0_0_44px_rgba(0,0,0,.65),inset_0_0_28px_rgba(71,234,247,.05)] sm:h-[9.6rem] sm:w-[9.6rem]" />
+        <div className="pointer-events-none absolute inset-0 grid place-items-center">
+          <div className="-translate-y-1 text-center">
+            <strong className="signal-count bg-gradient-to-b from-[#fff8d6] via-[#f1c95c] to-[#9b6c16] bg-clip-text text-[4.6rem] font-medium leading-none text-transparent sm:text-[6.6rem]">
+              {signals}
+            </strong>
+            <span className="mt-1 block text-[10px] uppercase tracking-[.42em] text-cyan-100/80 sm:text-xs">sinais ativos</span>
+          </div>
+        </div>
       </div>
 
-      <div className="horizon-glow pointer-events-none absolute bottom-[4%] left-1/2 h-px w-[72%] -translate-x-1/2 bg-gradient-to-r from-transparent via-[#d4af37]/45 to-transparent shadow-[0_0_16px_rgba(212,175,55,.22)]" aria-hidden="true" />
-      <div className="pointer-events-none absolute inset-[.5%] rounded-full border border-white/[.035] shadow-[inset_0_0_48px_rgba(34,211,238,.055)]" aria-hidden="true" />
+      <div className="pointer-events-none absolute bottom-[5%] left-1/2 h-16 w-[64%] -translate-x-1/2 rounded-[50%] bg-cyan-300/[.05] blur-2xl" aria-hidden="true" />
     </div>
   );
 }
