@@ -57,6 +57,9 @@ verify_jwt = false
 [functions.tomorrow-live-realtime-call]
 verify_jwt = false
 
+[functions.tomorrow-live-gpt-live-call]
+verify_jwt = false
+
 [functions.travel-offer-image]
 verify_jwt = false
 
