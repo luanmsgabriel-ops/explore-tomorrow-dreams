@@ -10,6 +10,7 @@ on:
       - 'supabase/functions/my-tomorrow-radars/**'
       - 'supabase/functions/my-tomorrow-matching/**'
       - 'supabase/migrations/20260912150000_radar_multiorigin_preferences.sql'
+      - 'supabase/migrations/20260912151000_radar_v11_match_reconciliation.sql'
       - '.github/workflows/radar-experience-v2-validation.yml'
 jobs:
   validate:
