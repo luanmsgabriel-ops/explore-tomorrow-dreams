@@ -59,12 +59,14 @@ export interface GptLiveLabSettings {
   style: GptLiveStylePreset;
 }
 
-export const DEFAULT_GPT_LIVE_LAB_SETTINGS: GptLiveLabSettings = {
-  voice: "marin",
+export const TEO_GPT_LIVE_SETTINGS: GptLiveLabSettings = {
+  voice: "tempo",
   accent: "pt_br_neutral",
-  pace: "natural",
-  style: "concierge",
+  pace: "agile",
+  style: "conversational",
 };
+
+export const DEFAULT_GPT_LIVE_LAB_SETTINGS: GptLiveLabSettings = TEO_GPT_LIVE_SETTINGS;
 
 export const isGptLiveVoice = (value: unknown): value is GptLiveVoice =>
   typeof value === "string" && (GPT_LIVE_VOICES as readonly string[]).includes(value);
