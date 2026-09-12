@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowRight, ChevronLeft, ChevronRight, Radar } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import {
@@ -44,9 +45,23 @@ function badgesFor(item: TravelOfferCatalogItem): OpportunityCardBadge[] {
   return badges;
 }
 
+function relativePosition(index: number, activeIndex: number, length: number) {
+  let distance = index - activeIndex;
+  const half = length / 2;
+
+  if (distance > half) distance -= length;
+  if (distance < -half) distance += length;
+
+  return distance;
+}
+
 export function HomeOpportunityShowcase() {
   const [activeOfferIndex, setActiveOfferIndex] = useState(0);
-  const mobileCarouselRef = useRef<HTMLDivElement>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isNarrow, setIsNarrow] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
+  );
+  const shouldReduceMotion = useReducedMotion();
 
   const offersQuery = useQuery({
     queryKey: ['travel-offers-public', 'home-showcase'],
@@ -63,42 +78,35 @@ export function HomeOpportunityShowcase() {
 
   const offers = offersQuery.data?.items ?? [];
 
-  const goToOffer = useCallback((index: number) => {
-    const container = mobileCarouselRef.current;
-    if (!container || offers.length === 0) return;
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)');
+    const onChange = () => setIsNarrow(media.matches);
 
-    const normalizedIndex = (index + offers.length) % offers.length;
-    const slides = Array.from(container.querySelectorAll<HTMLElement>('[data-offer-slide]'));
-    const target = slides[normalizedIndex];
-    if (!target) return;
-
-    const left = target.offsetLeft - (container.clientWidth - target.clientWidth) / 2;
-    container.scrollTo({ left, behavior: 'smooth' });
-    setActiveOfferIndex(normalizedIndex);
-  }, [offers.length]);
-
-  const handleMobileScroll = useCallback(() => {
-    const container = mobileCarouselRef.current;
-    if (!container) return;
-
-    const slides = Array.from(container.querySelectorAll<HTMLElement>('[data-offer-slide]'));
-    if (slides.length === 0) return;
-
-    const center = container.scrollLeft + container.clientWidth / 2;
-    let closestIndex = 0;
-    let closestDistance = Number.POSITIVE_INFINITY;
-
-    slides.forEach((slide, index) => {
-      const slideCenter = slide.offsetLeft + slide.clientWidth / 2;
-      const distance = Math.abs(slideCenter - center);
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestIndex = index;
-      }
-    });
-
-    setActiveOfferIndex(closestIndex);
+    onChange();
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
   }, []);
+
+  useEffect(() => {
+    if (offers.length === 0 || isPaused || shouldReduceMotion) return;
+
+    const interval = window.setInterval(() => {
+      setActiveOfferIndex((current) => (current + 1) % offers.length);
+    }, 5600);
+
+    return () => window.clearInterval(interval);
+  }, [offers.length, isPaused, shouldReduceMotion]);
+
+  useEffect(() => {
+    if (activeOfferIndex >= offers.length && offers.length > 0) {
+      setActiveOfferIndex(0);
+    }
+  }, [activeOfferIndex, offers.length]);
+
+  const goToOffer = (index: number) => {
+    if (offers.length === 0) return;
+    setActiveOfferIndex((index + offers.length) % offers.length);
+  };
 
   const renderOfferCard = (item: TravelOfferCatalogItem, index: number) => (
     <OpportunityCard
@@ -186,29 +194,75 @@ export function HomeOpportunityShowcase() {
 
         {offers.length > 0 ? (
           <>
-            <div className="lg:hidden">
-              <div
-                ref={mobileCarouselRef}
-                onScroll={handleMobileScroll}
-                className="-mx-4 flex snap-x snap-mandatory items-stretch gap-4 overflow-x-auto px-[6vw] pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                aria-label="Carrossel de oportunidades em destaque"
+            <div
+              className="relative mx-auto max-w-6xl select-none pb-14 lg:hidden"
+              style={{ perspective: 1500 }}
+              onMouseEnter={() => setIsPaused(true)}
+              onMouseLeave={() => setIsPaused(false)}
+              onFocusCapture={() => setIsPaused(true)}
+              onBlurCapture={() => setIsPaused(false)}
+            >
+              <motion.div
+                className="relative h-[560px] overflow-hidden touch-pan-y sm:h-[590px] md:h-[620px]"
+                drag={shouldReduceMotion ? false : 'x'}
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.08}
+                onDragEnd={(_, info) => {
+                  if (info.offset.x < -42) goToOffer(activeOfferIndex + 1);
+                  if (info.offset.x > 42) goToOffer(activeOfferIndex - 1);
+                }}
               >
-                {offers.map((item, index) => (
-                  <div
-                    key={item.id}
-                    data-offer-slide
-                    className="flex w-[88vw] max-w-[390px] shrink-0 snap-center"
-                  >
-                    {renderOfferCard(item, index)}
-                  </div>
-                ))}
-              </div>
+                {offers.map((item, index) => {
+                  const position = relativePosition(index, activeOfferIndex, offers.length);
+                  const distance = Math.abs(position);
+                  const maxVisibleDistance = isNarrow ? 1 : 2;
+                  const isVisible = distance <= maxVisibleDistance;
+                  const isActive = position === 0;
+                  const direction = position === 0 ? 0 : position > 0 ? 1 : -1;
 
-              <div className="mt-5 flex items-center justify-center gap-3">
+                  const x = isNarrow
+                    ? direction * 248
+                    : direction * (distance === 1 ? 360 : 640);
+                  const y = distance === 0 ? 0 : distance === 1 ? 28 : 58;
+                  const scale = distance === 0 ? 1 : distance === 1 ? (isNarrow ? 0.74 : 0.8) : 0.62;
+                  const rotateY = shouldReduceMotion ? 0 : direction * (distance === 1 ? -13 : -20);
+                  const opacity = !isVisible ? 0 : distance === 0 ? 1 : distance === 1 ? (isNarrow ? 0.48 : 0.72) : 0.26;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="pointer-events-none absolute inset-x-0 top-0 flex justify-center"
+                      style={{ zIndex: 30 - distance }}
+                      aria-hidden={!isVisible}
+                    >
+                      <motion.div
+                        className="w-[84vw] max-w-[390px] sm:w-[390px] md:w-[420px]"
+                        initial={false}
+                        animate={{ x, y, scale, rotateY, opacity }}
+                        transition={
+                          shouldReduceMotion
+                            ? { duration: 0 }
+                            : { type: 'spring', stiffness: 130, damping: 23, mass: 0.82 }
+                        }
+                        style={{
+                          pointerEvents: isActive ? 'auto' : 'none',
+                          filter: isActive ? 'none' : 'saturate(0.82) brightness(0.78)',
+                        }}
+                      >
+                        <div className={isActive ? 'drop-shadow-[0_28px_48px_rgba(0,0,0,0.38)]' : ''}>
+                          {renderOfferCard(item, index)}
+                        </div>
+                      </motion.div>
+                    </div>
+                  );
+                })}
+              </motion.div>
+
+              <div className="absolute bottom-0 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3">
                 <button
                   type="button"
                   onClick={() => goToOffer(activeOfferIndex - 1)}
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-tomorrow-line bg-tomorrow-surface/70 text-tomorrow-text backdrop-blur-sm transition hover:border-tomorrow-gold/60 hover:text-tomorrow-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomorrow-gold/60"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-tomorrow-line bg-tomorrow-surface/80 text-tomorrow-text backdrop-blur-sm transition hover:border-tomorrow-gold/60 hover:text-tomorrow-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomorrow-gold/60"
                   aria-label="Oportunidade anterior"
                 >
                   <ChevronLeft className="h-4 w-4" aria-hidden="true" />
@@ -233,7 +287,7 @@ export function HomeOpportunityShowcase() {
                 <button
                   type="button"
                   onClick={() => goToOffer(activeOfferIndex + 1)}
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-tomorrow-line bg-tomorrow-surface/70 text-tomorrow-text backdrop-blur-sm transition hover:border-tomorrow-gold/60 hover:text-tomorrow-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomorrow-gold/60"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-tomorrow-line bg-tomorrow-surface/80 text-tomorrow-text backdrop-blur-sm transition hover:border-tomorrow-gold/60 hover:text-tomorrow-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomorrow-gold/60"
                   aria-label="Próxima oportunidade"
                 >
                   <ChevronRight className="h-4 w-4" aria-hidden="true" />
