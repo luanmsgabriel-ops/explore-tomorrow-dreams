@@ -27,7 +27,7 @@ export type GptLiveVoice = typeof GPT_LIVE_VOICES[number];
 
 export const GPT_LIVE_ACCENT_PRESETS = [
   { id: "pt_br_neutral", label: "Brasil neutro", description: "Português brasileiro nativo, sem marca regional forte." },
-  { id: "pt_br_sao_paulo", label: "Paulista forte", description: "São Paulo capital/Grande SP, claramente perceptível, sem traços cariocas e sem caricatura." },
+  { id: "pt_br_sao_paulo", label: "Paulista leve", description: "Traços leves e naturais de São Paulo, sem caricatura e sem musicalidade carioca." },
   { id: "pt_br_rio", label: "Carioca leve", description: "Traços sutis do Rio de Janeiro, sem caricatura." },
   { id: "pt_br_minas", label: "Mineiro leve", description: "Traços sutis de Minas Gerais, sem caricatura." },
   { id: "pt_br_nordeste", label: "Nordeste leve", description: "Traços sutis do Nordeste brasileiro, sem caricatura." },
