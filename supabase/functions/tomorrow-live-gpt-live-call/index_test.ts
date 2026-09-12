@@ -13,10 +13,10 @@ const sdpAnswer = "v=0\r\no=- 2 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\n";
 
 const requestBody = (overrides: Record<string, unknown> = {}) => JSON.stringify({
   sdp: sdpOffer,
-  voice: "quartz",
+  voice: "tempo",
   accent: "pt_br_sao_paulo",
-  pace: "natural",
-  style: "concierge",
+  pace: "agile",
+  style: "conversational",
   ...overrides,
 });
 
@@ -50,11 +50,11 @@ Deno.test("cria sessão GPT-Live-1 por WebRTC sem expor a chave", async () => {
   assertEquals(response.status, 200);
   assertEquals(body.sdp, sdpAnswer);
   assertEquals(body.model, "gpt-live-1");
-  assertEquals(body.voice, "quartz");
+  assertEquals(body.voice, "tempo");
   assertEquals(authorization, "Bearer server-key");
   assertMatch(safetyIdentifier, /^[a-f0-9]{64}$/);
   assertEquals(session.model, "gpt-live-1");
-  assertEquals(audio.output.voice, "quartz");
+  assertEquals(audio.output.voice, "tempo");
   assertEquals(instructions.includes("PAULISTANO FORTE"), true);
   assertEquals(instructions.includes("nunca carioca"), true);
   assertEquals(instructions.includes("HIPERESPONTÂNEO"), true);
