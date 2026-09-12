@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { answerTravelPreference, getTravelProfile, type PreferenceResponse } from "@/lib/myTomorrowProfile";
 import { completeTravelMatch, travelMatchCategories } from "@/lib/travelMatch";
-import { travelMatchVisualStyle } from "@/lib/travelMatchVisuals";
+import { travelMatchVisualUrl } from "@/lib/travelMatchVisuals";
 
 const positive = new Set<PreferenceResponse>(["want", "like"]);
 const TRANSITION_MS = 140;
@@ -23,13 +23,6 @@ export default function MyTomorrowWelcome() {
   const touchStart = useRef<number | null>(null);
   const writeQueue = useRef<Promise<void>>(Promise.resolve());
   const writeFailed = useRef(false);
-
-  useEffect(() => {
-    const sprite = new Image();
-    sprite.decoding = "async";
-    sprite.src = "/travel-match/generated-sprite.jpg";
-    void sprite.decode().catch(() => undefined);
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -51,6 +44,16 @@ export default function MyTomorrowWelcome() {
   const currentIndex = index === -1 ? travelMatchCategories.length : index;
   const current = currentIndex < travelMatchCategories.length ? travelMatchCategories[currentIndex] : null;
   const progress = Math.round((currentIndex / travelMatchCategories.length) * 100);
+
+  useEffect(() => {
+    const candidates = travelMatchCategories.slice(currentIndex, currentIndex + 3);
+    candidates.forEach(([key]) => {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = travelMatchVisualUrl(key);
+      void image.decode().catch(() => undefined);
+    });
+  }, [currentIndex]);
 
   useEffect(() => {
     if (!loading && !current && !completed) setCompleted(true);
@@ -174,7 +177,7 @@ export default function MyTomorrowWelcome() {
   const interactionLocked = finishing || leavingX !== 0;
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#041012] px-4 py-5 text-white sm:grid sm:place-items-center">
+    <main className="min-h-screen overflow-x-hidden bg-[#041012] px-4 py-5 text-white sm:grid sm:place-items-center">
       <section className="mx-auto w-full max-w-md">
         <div className="flex items-center gap-4">
           <button onClick={undo} disabled={!history.length || interactionLocked} className="grid size-10 place-items-center rounded-full border border-white/10 disabled:opacity-30"><ArrowLeft className="size-4" /></button>
@@ -184,7 +187,7 @@ export default function MyTomorrowWelcome() {
           </div>
         </div>
 
-        <div className="relative mt-5 h-[68vh] min-h-[500px] max-h-[700px]">
+        <div className="relative mx-auto mt-5 aspect-[3/4] w-full max-w-[430px]">
           <article
             onTouchStart={(event) => { touchStart.current = event.touches[0]?.clientX ?? null; }}
             onTouchMove={(event) => {
@@ -205,8 +208,17 @@ export default function MyTomorrowWelcome() {
               contain: "paint",
             }}
           >
-            <div className="absolute inset-0 bg-cover" style={{ ...travelMatchVisualStyle(key), transform: "translateZ(0)" }} />
-            <div className="absolute inset-0 bg-[linear-gradient(to_top,#02090a_0%,#02090a_34%,rgba(2,9,10,.82)_47%,rgba(2,9,10,.12)_70%,rgba(0,0,0,.05)_100%)]" />
+            <img
+              key={key}
+              src={travelMatchVisualUrl(key)}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 h-full w-full object-contain"
+              decoding="async"
+              fetchPriority="high"
+              draggable={false}
+            />
+            <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(2,9,10,.98)_0%,rgba(2,9,10,.82)_24%,rgba(2,9,10,.38)_45%,rgba(2,9,10,.08)_66%,transparent_82%)]" />
             <div className="absolute inset-x-0 bottom-0 p-7">
               <p className="text-[11px] font-semibold uppercase tracking-[.24em] text-cyan-200">Isso combina com você?</p>
               <h1 className="mt-2 font-serif text-5xl">{label}</h1>
