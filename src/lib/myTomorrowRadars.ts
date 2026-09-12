@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 export type RadarStatus = "active" | "paused" | "archived";
 export type RadarOfferType = "bloqueio_aereo" | "pacote";
 export type RadarOfferSubtype = "bloqueio" | "nacional" | "internacional" | "evento" | "grupo_guiado";
+export type RadarSensitivity = "observer" | "attentive" | "hunter";
 
 export interface TravelRadar {
   id: string;
@@ -11,6 +12,7 @@ export interface TravelRadar {
   name: string;
   status: RadarStatus;
   origin: string | null;
+  origin_airports: string[];
   destination: string | null;
   start_date: string | null;
   end_date: string | null;
@@ -24,6 +26,8 @@ export interface TravelRadar {
   offer_type: RadarOfferType | null;
   offer_subtype: RadarOfferSubtype | null;
   category: string | null;
+  boarding_priorities: string[];
+  sensitivity: RadarSensitivity;
   source: "manual" | "catalog";
   source_filters: Record<string, unknown> | null;
   last_checked_at: string | null;
