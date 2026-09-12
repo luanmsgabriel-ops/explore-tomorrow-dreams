@@ -45,6 +45,7 @@ Deno.test("cria sessão GPT-Live-1 por WebRTC sem expor a chave", async () => {
   const session = receivedBody.session as Record<string, unknown>;
   const audio = session.audio as { output: { voice: string } };
   const transport = receivedBody.transport as Record<string, unknown>;
+  const instructions = String(session.instructions);
 
   assertEquals(response.status, 200);
   assertEquals(body.sdp, sdpAnswer);
@@ -54,7 +55,13 @@ Deno.test("cria sessão GPT-Live-1 por WebRTC sem expor a chave", async () => {
   assertMatch(safetyIdentifier, /^[a-f0-9]{64}$/);
   assertEquals(session.model, "gpt-live-1");
   assertEquals(audio.output.voice, "quartz");
-  assertEquals(String(session.instructions).includes("paulistano leve"), true);
+  assertEquals(instructions.includes("paulistano leve"), true);
+  assertEquals(instructions.includes("engraçado e descontraído"), true);
+  assertEquals(instructions.includes("risada curta e genuína"), true);
+  assertEquals(instructions.includes("limpeza de garganta ou tosse leve"), true);
+  assertEquals(instructions.includes("não simule doença"), true);
+  assertEquals(instructions.includes("Não verbalize descrições de efeitos"), true);
+  assertEquals(instructions.includes("Não use uma reação humana em toda resposta"), true);
   assertEquals(transport, { type: "webrtc", sdp: sdpOffer });
   assertEquals(JSON.stringify(receivedBody).includes("server-key"), false);
 });
