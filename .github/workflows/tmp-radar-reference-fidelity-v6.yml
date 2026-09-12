@@ -1,0 +1,31 @@
+name: Temporary Radar Reference Fidelity V6
+
+on:
+  push:
+    branches:
+      - fix/radar-reference-fidelity-v6-ci
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: Scoped ESLint
+        run: npx eslint src/components/my-tomorrow/RadarSignalGlobe.tsx src/components/my-tomorrow/RadarSignalGlobe.test.tsx
+      - name: Focused tests
+        run: npx vitest run src/components/my-tomorrow/RadarSignalGlobe.test.tsx
+      - name: Production build
+        run: npm run build
+      - name: Diff check
+        run: git diff --check HEAD^ HEAD
