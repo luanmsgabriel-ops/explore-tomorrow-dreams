@@ -2,6 +2,7 @@ name: Radar Experience V2 Validation
 on:
   pull_request:
     paths:
+      - 'src/App.tsx'
       - 'src/lib/myTomorrowRadars.ts'
       - 'src/pages/MyTomorrowRadarCreate.tsx'
       - 'src/pages/MyTomorrowRadarDetail.tsx'
@@ -22,7 +23,7 @@ jobs:
       - name: TypeScript
         run: npx tsc --noEmit
       - name: Scoped ESLint
-        run: npx eslint src/lib/myTomorrowRadars.ts src/pages/MyTomorrowRadarCreate.tsx src/pages/MyTomorrowRadarDetail.tsx src/pages/MyTomorrowRadars.tsx
+        run: npx eslint src/App.tsx src/lib/myTomorrowRadars.ts src/pages/MyTomorrowRadarCreate.tsx src/pages/MyTomorrowRadarDetail.tsx src/pages/MyTomorrowRadars.tsx
       - name: Production build
         run: npm run build
       - name: Matcher tests
