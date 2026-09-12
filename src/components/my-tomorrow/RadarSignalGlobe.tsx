@@ -11,7 +11,11 @@ const particles = [
 
 export function RadarSignalGlobe({ signals, scanning = false }: RadarSignalGlobeProps) {
   return (
-    <div className="radar-signal-globe relative grid size-44 place-items-center sm:size-52" aria-label={`${signals} sinais ativos`}>
+    <div
+      className="radar-signal-globe relative grid size-44 place-items-center sm:size-52"
+      aria-label={`${signals} sinais ativos`}
+      data-scanning={scanning}
+    >
       <style>{`
         @keyframes radar-sweep { to { transform: rotate(360deg); } }
         @keyframes radar-dust { 0%,100% { opacity:.18; transform:scale(.8) translateY(0) } 50% { opacity:.95; transform:scale(1.35) translateY(-3px) } }
