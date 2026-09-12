@@ -1,4 +1,4 @@
-export const MATCH_ALGORITHM_VERSION = "radar-v1.0.0";
+export const MATCH_ALGORITHM_VERSION = "radar-v1.1.0";
 
 export type MatchClass = "exact" | "flexible" | "discovery";
 
@@ -7,6 +7,7 @@ export type RadarForMatching = {
   user_id: string;
   status: "active" | "paused" | "archived";
   origin: string | null;
+  origin_airports?: string[] | null;
   destination: string | null;
   start_date: string | null;
   end_date: string | null;
@@ -46,131 +47,21 @@ export type PublicOfferForMatching = {
 
 export type Affinity = { preference_key: string; score: number };
 export type MatchFactor = { key: string; label: string; matched: boolean; weight: number; detail?: string };
-export type MatchResult = {
-  matchClass: MatchClass;
-  score: number;
-  matchedFactors: MatchFactor[];
-  unmatchedFactors: MatchFactor[];
-};
+export type MatchResult = { matchClass: MatchClass; score: number; matchedFactors: MatchFactor[]; unmatchedFactors: MatchFactor[] };
 
-const DAY = 86_400_000;
-const AIRPORT_DESTINATION_BY_IATA: Record<string, string> = { REC: "Recife", POA: "Porto Alegre" };
-const norm = (value: string | null | undefined) => (value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-const dateMs = (value: string | null | undefined) => value ? new Date(`${value}T00:00:00Z`).getTime() : null;
-const shiftDate = (value: string | null, days: number) => {
-  const ms = dateMs(value);
-  return ms === null ? null : ms + days * DAY;
-};
-const textEqual = (a: string | null, b: string | null) => !a || norm(a) === norm(b);
-const canonicalDestination = (offer: PublicOfferForMatching) => offer.offer_type === "bloqueio_aereo" && offer.destination_iata
-  ? AIRPORT_DESTINATION_BY_IATA[offer.destination_iata.toUpperCase()] ?? offer.destination
-  : offer.destination;
-const destinationMatches = (radar: RadarForMatching, offer: PublicOfferForMatching) => textEqual(radar.destination, canonicalDestination(offer));
-const currencyEqual = (radar: RadarForMatching, offer: PublicOfferForMatching) => !offer.currency || offer.currency === radar.budget_currency;
+const DAY=86_400_000;
+const AIRPORT_DESTINATION_BY_IATA:Record<string,string>={REC:"Recife",POA:"Porto Alegre"};
+const norm=(value:string|null|undefined)=>(value??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+const dateMs=(value:string|null|undefined)=>value?new Date(`${value}T00:00:00Z`).getTime():null;
+const shiftDate=(value:string|null,days:number)=>{const ms=dateMs(value);return ms===null?null:ms+days*DAY};
+const textEqual=(a:string|null,b:string|null)=>!a||norm(a)===norm(b);
+const canonicalDestination=(offer:PublicOfferForMatching)=>offer.offer_type==="bloqueio_aereo"&&offer.destination_iata?AIRPORT_DESTINATION_BY_IATA[offer.destination_iata.toUpperCase()]??offer.destination:offer.destination;
+const destinationMatches=(radar:RadarForMatching,offer:PublicOfferForMatching)=>textEqual(radar.destination,canonicalDestination(offer));
+const currencyEqual=(radar:RadarForMatching,offer:PublicOfferForMatching)=>!offer.currency||offer.currency===radar.budget_currency;
+const originMatches=(radar:RadarForMatching,offer:PublicOfferForMatching)=>{const airports=(radar.origin_airports??[]).map((x)=>x.toUpperCase()).filter(Boolean);if(airports.length)return Boolean(offer.origin_iata&&airports.includes(offer.origin_iata.toUpperCase()));return textEqual(radar.origin,offer.origin)};
 
-function hardChecks(radar: RadarForMatching, offer: PublicOfferForMatching, flexibleDates: boolean) {
-  const checks: Array<{ key: string; ok: boolean }> = [];
-  checks.push({ key: "offer_type", ok: !radar.offer_type || offer.offer_type === radar.offer_type });
-  checks.push({ key: "offer_subtype", ok: !radar.offer_subtype || offer.offer_subtype === radar.offer_subtype });
-  checks.push({ key: "origin", ok: textEqual(radar.origin, offer.origin) });
-  checks.push({ key: "destination", ok: destinationMatches(radar, offer) });
-  checks.push({ key: "currency", ok: currencyEqual(radar, offer) });
-  checks.push({ key: "budget_min", ok: radar.budget_min === null || offer.price_per_person >= radar.budget_min });
-  checks.push({ key: "budget_max", ok: radar.budget_max === null || offer.price_per_person <= radar.budget_max });
-  checks.push({ key: "passengers", ok: radar.passengers === null || offer.available_seats === null || offer.available_seats >= radar.passengers });
-
-  const dep = dateMs(offer.departure_date);
-  const ret = dateMs(offer.return_date);
-  const flex = flexibleDates ? Math.max(0, radar.flexibility_days) : 0;
-  const startMin = shiftDate(radar.start_date, -flex);
-  const endMax = shiftDate(radar.end_date, flex);
-  checks.push({ key: "start_date", ok: radar.start_date === null || (dep !== null && startMin !== null && dep >= startMin) });
-  checks.push({ key: "end_date", ok: radar.end_date === null || ((ret ?? dep) !== null && endMax !== null && (ret ?? dep)! <= endMax) });
-  return checks;
-}
-
-function factor(key: string, label: string, matched: boolean, weight: number, detail?: string): MatchFactor {
-  return { key, label, matched, weight, ...(detail ? { detail } : {}) };
-}
-
-function scoreFactors(radar: RadarForMatching, offer: PublicOfferForMatching, affinities: Affinity[]) {
-  const factors: MatchFactor[] = [];
-  factors.push(factor("origin", "Origem compatível", !radar.origin || textEqual(radar.origin, offer.origin), 15));
-  factors.push(factor("destination", "Destino exato", !radar.destination || destinationMatches(radar, offer), 20));
-
-  const exactDates = hardChecks(radar, offer, false).filter((item) => item.key === "start_date" || item.key === "end_date").every((item) => item.ok);
-  const flexibleDates = hardChecks(radar, offer, true).filter((item) => item.key === "start_date" || item.key === "end_date").every((item) => item.ok);
-  factors.push(factor("dates", exactDates ? "Dentro do período" : "Dentro da flexibilidade de datas", exactDates || flexibleDates, 20));
-
-  const budgetOk = currencyEqual(radar, offer)
-    && (radar.budget_min === null || offer.price_per_person >= radar.budget_min)
-    && (radar.budget_max === null || offer.price_per_person <= radar.budget_max);
-  factors.push(factor("budget", "Dentro do orçamento", budgetOk, 15));
-
-  const seatsOk = radar.passengers === null || offer.available_seats === null || offer.available_seats >= radar.passengers;
-  factors.push(factor("seats", "Vagas compatíveis", seatsOk, 10, offer.available_seats === null ? "Disponibilidade não informada" : undefined));
-
-  const nightsOk = (radar.min_nights === null || (offer.nights !== null && offer.nights >= radar.min_nights))
-    && (radar.max_nights === null || (offer.nights !== null && offer.nights <= radar.max_nights));
-  factors.push(factor("nights", "Duração compatível", nightsOk, 8));
-  factors.push(factor("subtype", "Tipo de viagem compatível", !radar.offer_subtype || offer.offer_subtype === radar.offer_subtype, 5));
-  factors.push(factor("category", "Categoria desejada", !radar.category || norm(radar.category) === norm(offer.category), 4));
-
-  const offerCategory = norm(offer.category);
-  const affinity = affinities.find((item) => norm(item.preference_key) === offerCategory && item.score > 0);
-  factors.push(factor("profile_affinity", "Alinhada ao seu perfil", Boolean(affinity), 3, affinity ? `afinidade ${affinity.score.toFixed(2)}` : undefined));
-  return factors;
-}
-
-export function evaluateRadarMatch(radar: RadarForMatching, offer: PublicOfferForMatching, affinities: Affinity[] = []): MatchResult | null {
-  if (radar.status !== "active") return null;
-  const exactHard = hardChecks(radar, offer, false);
-  const flexibleHard = hardChecks(radar, offer, true);
-  const exact = exactHard.every((item) => item.ok);
-  const flexible = !exact && radar.flexibility_days > 0 && flexibleHard.every((item) => item.ok);
-
-  let matchClass: MatchClass | null = exact ? "exact" : flexible ? "flexible" : null;
-  if (!matchClass) {
-    // Discovery may relax destination only. Origin, type/subtype, dates (including
-    // explicit flexibility), budget/currency and passenger constraints remain mandatory.
-    const discoveryRequired = flexibleHard.filter((item) => item.key !== "destination").every((item) => item.ok);
-    const categoryAffinity = affinities.some((item) => item.score > 0 && norm(item.preference_key) === norm(offer.category));
-    if (discoveryRequired && categoryAffinity && radar.destination && !destinationMatches(radar, offer)) matchClass = "discovery";
-  }
-  if (!matchClass) return null;
-
-  const factors = scoreFactors(radar, offer, affinities);
-  const totalWeight = factors.reduce((sum, item) => sum + item.weight, 0);
-  const earned = factors.filter((item) => item.matched).reduce((sum, item) => sum + item.weight, 0);
-  const score = Number(((earned / totalWeight) * 100).toFixed(3));
-  return {
-    matchClass,
-    score,
-    matchedFactors: factors.filter((item) => item.matched),
-    unmatchedFactors: factors.filter((item) => !item.matched),
-  };
-}
-
-export function sanitizeOfferSnapshot(offer: PublicOfferForMatching) {
-  return {
-    id: offer.id,
-    offer_type: offer.offer_type,
-    offer_subtype: offer.offer_subtype,
-    name: offer.name,
-    category: offer.category,
-    origin: offer.origin,
-    origin_iata: offer.origin_iata,
-    destination: canonicalDestination(offer),
-    destination_iata: offer.destination_iata,
-    departure_date: offer.departure_date,
-    return_date: offer.return_date,
-    nights: offer.nights,
-    price_per_person: offer.price_per_person,
-    tax_per_person: offer.tax_per_person,
-    currency: offer.currency,
-    available_seats: offer.available_seats,
-    airfare_included: offer.airfare_included,
-    image_url: offer.image_url,
-    updated_at: offer.updated_at,
-  };
-}
+function hardChecks(radar:RadarForMatching,offer:PublicOfferForMatching,flexibleDates:boolean){const checks:Array<{key:string;ok:boolean}>=[];checks.push({key:"offer_type",ok:!radar.offer_type||offer.offer_type===radar.offer_type});checks.push({key:"offer_subtype",ok:!radar.offer_subtype||offer.offer_subtype===radar.offer_subtype});checks.push({key:"origin",ok:originMatches(radar,offer)});checks.push({key:"destination",ok:destinationMatches(radar,offer)});checks.push({key:"currency",ok:currencyEqual(radar,offer)});checks.push({key:"budget_min",ok:radar.budget_min===null||offer.price_per_person>=radar.budget_min});checks.push({key:"budget_max",ok:radar.budget_max===null||offer.price_per_person<=radar.budget_max});checks.push({key:"passengers",ok:radar.passengers===null||offer.available_seats===null||offer.available_seats>=radar.passengers});const dep=dateMs(offer.departure_date),ret=dateMs(offer.return_date),flex=flexibleDates?Math.max(0,radar.flexibility_days):0,startMin=shiftDate(radar.start_date,-flex),endMax=shiftDate(radar.end_date,flex);checks.push({key:"start_date",ok:radar.start_date===null||(dep!==null&&startMin!==null&&dep>=startMin)});checks.push({key:"end_date",ok:radar.end_date===null||((ret??dep)!==null&&endMax!==null&&(ret??dep)!<=endMax)});return checks}
+function factor(key:string,label:string,matched:boolean,weight:number,detail?:string):MatchFactor{return{key,label,matched,weight,...(detail?{detail}:{})}}
+function scoreFactors(radar:RadarForMatching,offer:PublicOfferForMatching,affinities:Affinity[]){const factors:MatchFactor[]=[];factors.push(factor("origin","Origem compatível",originMatches(radar,offer),15));factors.push(factor("destination","Destino exato",!radar.destination||destinationMatches(radar,offer),20));const exactDates=hardChecks(radar,offer,false).filter((i)=>i.key==="start_date"||i.key==="end_date").every((i)=>i.ok),flexibleDates=hardChecks(radar,offer,true).filter((i)=>i.key==="start_date"||i.key==="end_date").every((i)=>i.ok);factors.push(factor("dates",exactDates?"Dentro do período":"Dentro da flexibilidade de datas",exactDates||flexibleDates,20));const budgetOk=currencyEqual(radar,offer)&&(radar.budget_min===null||offer.price_per_person>=radar.budget_min)&&(radar.budget_max===null||offer.price_per_person<=radar.budget_max);factors.push(factor("budget","Dentro do orçamento",budgetOk,15));const seatsOk=radar.passengers===null||offer.available_seats===null||offer.available_seats>=radar.passengers;factors.push(factor("seats","Vagas compatíveis",seatsOk,10,offer.available_seats===null?"Disponibilidade não informada":undefined));const nightsOk=(radar.min_nights===null||(offer.nights!==null&&offer.nights>=radar.min_nights))&&(radar.max_nights===null||(offer.nights!==null&&offer.nights<=radar.max_nights));factors.push(factor("nights","Duração compatível",nightsOk,8));factors.push(factor("subtype","Tipo de viagem compatível",!radar.offer_subtype||offer.offer_subtype===radar.offer_subtype,5));factors.push(factor("category","Categoria desejada",!radar.category||norm(radar.category)===norm(offer.category),4));const offerCategory=norm(offer.category),affinity=affinities.find((item)=>norm(item.preference_key)===offerCategory&&item.score>0);factors.push(factor("profile_affinity","Alinhada ao seu perfil",Boolean(affinity),3,affinity?`afinidade ${affinity.score.toFixed(2)}`:undefined));return factors}
+export function evaluateRadarMatch(radar:RadarForMatching,offer:PublicOfferForMatching,affinities:Affinity[]=[]):MatchResult|null{if(radar.status!=="active")return null;const exactHard=hardChecks(radar,offer,false),flexibleHard=hardChecks(radar,offer,true),exact=exactHard.every((i)=>i.ok),flexible=!exact&&radar.flexibility_days>0&&flexibleHard.every((i)=>i.ok);let matchClass:MatchClass|null=exact?"exact":flexible?"flexible":null;if(!matchClass){const discoveryRequired=flexibleHard.filter((i)=>i.key!=="destination").every((i)=>i.ok),categoryAffinity=affinities.some((item)=>item.score>0&&norm(item.preference_key)===norm(offer.category));if(discoveryRequired&&categoryAffinity&&radar.destination&&!destinationMatches(radar,offer))matchClass="discovery"}if(!matchClass)return null;const factors=scoreFactors(radar,offer,affinities),totalWeight=factors.reduce((s,i)=>s+i.weight,0),earned=factors.filter((i)=>i.matched).reduce((s,i)=>s+i.weight,0);return{matchClass,score:Number(((earned/totalWeight)*100).toFixed(3)),matchedFactors:factors.filter((i)=>i.matched),unmatchedFactors:factors.filter((i)=>!i.matched)}}
+export function sanitizeOfferSnapshot(offer:PublicOfferForMatching){return{id:offer.id,offer_type:offer.offer_type,offer_subtype:offer.offer_subtype,name:offer.name,category:offer.category,origin:offer.origin,origin_iata:offer.origin_iata,destination:canonicalDestination(offer),destination_iata:offer.destination_iata,departure_date:offer.departure_date,return_date:offer.return_date,nights:offer.nights,price_per_person:offer.price_per_person,tax_per_person:offer.tax_per_person,currency:offer.currency,available_seats:offer.available_seats,airfare_included:offer.airfare_included,image_url:offer.image_url,updated_at:offer.updated_at}}
