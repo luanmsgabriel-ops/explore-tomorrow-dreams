@@ -1,0 +1,27 @@
+name: Home Real Stories Validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/components/landing/RealStories.tsx'
+      - '.github/workflows/home-real-stories-validation.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: ESLint scoped
+        run: npx eslint src/components/landing/RealStories.tsx
+      - name: Build
+        run: npm run build
