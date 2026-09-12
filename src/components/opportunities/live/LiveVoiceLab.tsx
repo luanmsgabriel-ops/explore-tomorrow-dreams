@@ -14,10 +14,10 @@ export function LiveVoiceLab() {
         <div className="border-b border-tomorrow-line px-5 py-5 sm:px-7">
           <div className="flex flex-wrap items-center gap-3">
             <OpportunityBadge variant="neutral"><FlaskConical className="size-3.5" aria-hidden="true" />Voice Lab</OpportunityBadge>
-            <OpportunityBadge variant="warning">Téo atualizado</OpportunityBadge>
+            <OpportunityBadge variant="warning">Téo · energia máxima</OpportunityBadge>
           </div>
           <h2 id="gpt-live-lab-title" className="mt-3 font-editorial text-3xl text-tomorrow-text sm:text-4xl">Téo · GPT-Live-1</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-tomorrow-muted">Preset oficial de teste travado para a personalidade do Téo: brasileiro, divertido, espontâneo, ágil e consultivo. Não há mais seleção manual de voz, sotaque, ritmo ou estilo nesta tela.</p>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-tomorrow-muted">Preset oficial de teste travado: voz Tempo, sotaque paulistano médio, empolgação máxima desde a primeira palavra, espontaneidade extrema e informalidade extrema.</p>
         </div>
 
         <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[1fr_.78fr]">
@@ -26,15 +26,15 @@ export function LiveVoiceLab() {
               <div className="rounded-full border border-tomorrow-gold/30 bg-tomorrow-gold/10 p-2.5 text-tomorrow-gold"><Sparkles className="size-5" aria-hidden="true" /></div>
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-tomorrow-gold">Personalidade ativa</p>
-                <h3 className="mt-1 font-editorial text-2xl text-tomorrow-text">Téo mais humano e divertido</h3>
+                <h3 className="mt-1 font-editorial text-2xl text-tomorrow-text">Téo no teto de energia</h3>
               </div>
             </div>
-            <p className="mt-4 text-sm leading-relaxed text-tomorrow-muted">Humor leve, respostas faladas em português brasileiro, interjeições naturais, pequenas pausas e reações vocais discretas. O comportamento evita tom calmo demais, voz de locutor, call center ou atendimento engessado.</p>
+            <p className="mt-4 text-sm leading-relaxed text-tomorrow-muted">A fala deve começar empolgada já no primeiro “Olá”, permanecer intensa durante toda a sessão e reagir de forma muito espontânea, informal e brasileira. O sotaque de São Paulo deve ser perceptível em intensidade média, sem caricatura.</p>
             <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold">
-              <span className="rounded-full border border-tomorrow-teal/25 bg-tomorrow-teal/8 px-3 py-1.5 text-tomorrow-teal-soft">Divertido</span>
-              <span className="rounded-full border border-tomorrow-teal/25 bg-tomorrow-teal/8 px-3 py-1.5 text-tomorrow-teal-soft">Espontâneo</span>
-              <span className="rounded-full border border-tomorrow-teal/25 bg-tomorrow-teal/8 px-3 py-1.5 text-tomorrow-teal-soft">Ágil</span>
-              <span className="rounded-full border border-tomorrow-teal/25 bg-tomorrow-teal/8 px-3 py-1.5 text-tomorrow-teal-soft">Consultivo</span>
+              <span className="rounded-full border border-tomorrow-teal/25 bg-tomorrow-teal/8 px-3 py-1.5 text-tomorrow-teal-soft">Empolgação máxima</span>
+              <span className="rounded-full border border-tomorrow-teal/25 bg-tomorrow-teal/8 px-3 py-1.5 text-tomorrow-teal-soft">Espontaneidade ×3</span>
+              <span className="rounded-full border border-tomorrow-teal/25 bg-tomorrow-teal/8 px-3 py-1.5 text-tomorrow-teal-soft">Informalidade ×3</span>
+              <span className="rounded-full border border-tomorrow-teal/25 bg-tomorrow-teal/8 px-3 py-1.5 text-tomorrow-teal-soft">Paulistano médio</span>
             </div>
           </div>
 
@@ -43,9 +43,10 @@ export function LiveVoiceLab() {
             <dl className="mt-4 grid gap-3 text-sm">
               <div className="flex items-center justify-between gap-4"><dt className="text-tomorrow-muted">Modelo</dt><dd className="font-semibold text-tomorrow-text">gpt-live-1</dd></div>
               <div className="flex items-center justify-between gap-4"><dt className="text-tomorrow-muted">Voz</dt><dd className="font-semibold text-tomorrow-text">Tempo</dd></div>
-              <div className="flex items-center justify-between gap-4"><dt className="text-tomorrow-muted">Português</dt><dd className="font-semibold text-tomorrow-text">Brasil neutro</dd></div>
-              <div className="flex items-center justify-between gap-4"><dt className="text-tomorrow-muted">Ritmo</dt><dd className="font-semibold text-tomorrow-text">Ágil</dd></div>
-              <div className="flex items-center justify-between gap-4"><dt className="text-tomorrow-muted">Estilo</dt><dd className="font-semibold text-tomorrow-text">Conversacional divertido</dd></div>
+              <div className="flex items-center justify-between gap-4"><dt className="text-tomorrow-muted">Sotaque</dt><dd className="font-semibold text-tomorrow-text">Paulistano médio</dd></div>
+              <div className="flex items-center justify-between gap-4"><dt className="text-tomorrow-muted">Ritmo</dt><dd className="font-semibold text-tomorrow-text">Ágil · energia máxima</dd></div>
+              <div className="flex items-center justify-between gap-4"><dt className="text-tomorrow-muted">Espontaneidade</dt><dd className="font-semibold text-tomorrow-text">Extrema ×3</dd></div>
+              <div className="flex items-center justify-between gap-4"><dt className="text-tomorrow-muted">Informalidade</dt><dd className="font-semibold text-tomorrow-text">Extrema ×3</dd></div>
               <div className="flex items-center justify-between gap-4"><dt className="text-tomorrow-muted">Prompt</dt><dd className="font-semibold text-tomorrow-gold">Personalidade Téo ativa</dd></div>
             </dl>
 
@@ -66,7 +67,7 @@ export function LiveVoiceLab() {
           </div>
         </div>
 
-        <div className="border-t border-tomorrow-line px-5 py-4 text-xs leading-relaxed text-tomorrow-muted sm:px-7">Configuração travada para este teste: Tempo + Brasil neutro + ritmo ágil + estilo conversacional. As reações humanas são orientadas pelo prompt e devem aparecer de forma ocasional e natural.</div>
+        <div className="border-t border-tomorrow-line px-5 py-4 text-xs leading-relaxed text-tomorrow-muted sm:px-7">Preset travado: Tempo + paulistano médio + ritmo ágil + empolgação máxima + espontaneidade extrema + informalidade extrema. Para sentir mudanças de voz, encerre a sessão anterior e inicie uma nova.</div>
       </div>
     </section>
   );
