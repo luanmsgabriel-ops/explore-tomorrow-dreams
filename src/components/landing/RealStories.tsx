@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { EditorialHeading } from './EditorialHeading';
@@ -80,15 +80,29 @@ const relativePosition = (index: number, activeIndex: number) => {
   return distance;
 };
 
+const quoteSize = (quote: string) => {
+  if (quote.length > 220) return 'text-[0.82rem] leading-[1.16] md:text-[1.02rem] md:leading-[1.18]';
+  if (quote.length > 165) return 'text-[0.9rem] leading-[1.15] md:text-[1.12rem] md:leading-[1.17]';
+  if (quote.length > 110) return 'text-[1rem] leading-[1.12] md:text-[1.25rem] md:leading-[1.14]';
+  return 'text-[1.12rem] leading-[1.1] md:text-[1.4rem] md:leading-[1.1]';
+};
+
 export const RealStories = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
+  );
   const shouldReduceMotion = useReducedMotion();
 
-  const visibleIndexes = useMemo(
-    () => STORIES.map((_, index) => index).filter((index) => Math.abs(relativePosition(index, activeIndex)) <= 2),
-    [activeIndex],
-  );
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)');
+    const onChange = () => setIsMobile(media.matches);
+
+    onChange();
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, []);
 
   useEffect(() => {
     if (isPaused || shouldReduceMotion) return;
@@ -103,7 +117,7 @@ export const RealStories = () => {
   const goTo = (index: number) => setActiveIndex(normalizeIndex(index));
 
   return (
-    <section className="overflow-hidden bg-[radial-gradient(ellipse_at_top,_#fde68a_0%,_#f5c542_35%,_#c8941f_70%,_#8a5a10_100%)] py-24 md:py-40">
+    <section className="overflow-hidden bg-[radial-gradient(ellipse_at_top,_#fde68a_0%,_#f5c542_35%,_#c8941f_70%,_#8a5a10_100%)] py-16 md:py-28 lg:py-32">
       <div className="container mx-auto px-4 lg:px-8">
         <motion.div
           initial="hidden"
@@ -111,7 +125,7 @@ export const RealStories = () => {
           viewport={{ once: true }}
           variants={staggerContainer}
         >
-          <motion.div variants={fadeUp} className="mb-12 md:mb-16">
+          <motion.div variants={fadeUp} className="mb-8 md:mb-12">
             <EditorialHeading
               eyebrow="Relatos de Confiança"
               size="lg"
@@ -120,65 +134,63 @@ export const RealStories = () => {
               Histórias reais dos <br />
               <span className="font-editorial-italic gradient-text-teal italic">nossos viajantes</span>
             </EditorialHeading>
-            <p className="mt-6 max-w-xl font-editorial text-lg leading-relaxed text-ocean-deep/80">
+            <p className="mt-5 max-w-xl font-editorial text-base leading-relaxed text-ocean-deep/80 md:text-lg">
               Cada viagem começa com um planejamento. Mas é durante a experiência que a confiança é construída.
             </p>
           </motion.div>
 
           <motion.div
             variants={fadeUp}
-            className="relative mx-auto h-[540px] max-w-6xl select-none md:h-[610px]"
-            style={{ perspective: 1500 }}
+            className="relative mx-auto h-[430px] w-full max-w-6xl select-none md:h-[540px]"
+            style={{ perspective: 1400 }}
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
             onFocusCapture={() => setIsPaused(true)}
             onBlurCapture={() => setIsPaused(false)}
           >
             <motion.div
-              className="absolute inset-0 touch-pan-y"
+              className="absolute inset-x-0 top-0 h-[378px] touch-pan-y md:h-[480px]"
               drag={shouldReduceMotion ? false : 'x'}
               dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.12}
+              dragElastic={0.1}
               onDragEnd={(_, info) => {
-                if (info.offset.x < -55) goTo(activeIndex + 1);
-                if (info.offset.x > 55) goTo(activeIndex - 1);
+                if (info.offset.x < -45) goTo(activeIndex + 1);
+                if (info.offset.x > 45) goTo(activeIndex - 1);
               }}
             >
               {STORIES.map((story, index) => {
                 const position = relativePosition(index, activeIndex);
                 const distance = Math.abs(position);
+                const maxVisibleDistance = isMobile ? 1 : 2;
+                const isVisible = distance <= maxVisibleDistance;
                 const isActive = position === 0;
-                const isVisible = visibleIndexes.includes(index);
+                const direction = position === 0 ? 0 : position > 0 ? 1 : -1;
 
-                const x = position * (isActive ? 0 : 245);
-                const y = distance === 0 ? 0 : distance === 1 ? 34 : 72;
-                const scale = distance === 0 ? 1 : distance === 1 ? 0.84 : 0.68;
-                const rotateY = shouldReduceMotion ? 0 : position * -15;
-                const opacity = !isVisible ? 0 : distance === 0 ? 1 : distance === 1 ? 0.82 : 0.34;
+                const x = isMobile
+                  ? direction * 150
+                  : direction * (distance === 1 ? 245 : 430);
+                const y = distance === 0 ? 0 : distance === 1 ? 22 : 48;
+                const scale = distance === 0 ? 1 : distance === 1 ? 0.78 : 0.64;
+                const rotateY = shouldReduceMotion ? 0 : direction * (distance === 1 ? -11 : -18);
+                const opacity = !isVisible ? 0 : distance === 0 ? 1 : distance === 1 ? 0.72 : 0.26;
 
                 return (
                   <motion.article
                     key={story.author}
-                    className="absolute left-1/2 top-1/2 w-[78vw] max-w-[360px] -translate-x-1/2 -translate-y-1/2 md:w-[390px] md:max-w-none"
+                    className="absolute left-1/2 top-[46%] w-[260px] -translate-x-1/2 -translate-y-1/2 md:top-1/2 md:w-[340px]"
                     initial={false}
-                    animate={{
-                      x,
-                      y,
-                      scale,
-                      rotateY,
-                      opacity,
-                      zIndex: 20 - distance,
-                    }}
+                    animate={{ x, y, scale, rotateY, opacity, zIndex: 30 - distance }}
                     transition={
                       shouldReduceMotion
                         ? { duration: 0 }
-                        : { type: 'spring', stiffness: 115, damping: 20, mass: 0.9 }
+                        : { type: 'spring', stiffness: 125, damping: 22, mass: 0.85 }
                     }
+                    style={{ pointerEvents: isVisible ? 'auto' : 'none' }}
                     aria-hidden={!isVisible}
                   >
                     <button
                       type="button"
-                      className="group relative block aspect-[3/4] w-full overflow-hidden rounded-[2rem] border border-white/20 text-left shadow-[0_30px_80px_-28px_rgba(7,35,39,0.65)] outline-none focus-visible:ring-2 focus-visible:ring-ocean-deep/70"
+                      className="group relative block aspect-[3/4] w-full overflow-hidden rounded-[1.6rem] border border-white/20 text-left shadow-[0_24px_58px_-24px_rgba(7,35,39,0.6)] outline-none focus-visible:ring-2 focus-visible:ring-ocean-deep/70 md:rounded-[2rem]"
                       onClick={() => goTo(index)}
                       tabIndex={isVisible ? 0 : -1}
                       aria-label={`Ver avaliação de ${story.author}`}
@@ -190,32 +202,34 @@ export const RealStories = () => {
                         decoding="async"
                         width={1024}
                         height={1365}
-                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.035]"
+                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.025]"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/35 to-black/5" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/42 to-black/5" />
 
-                      <div className="absolute inset-0 flex flex-col justify-end p-7 md:p-8">
-                        <div className="mb-4 flex items-center gap-3">
-                          <span className="text-[11px] font-bold tracking-[0.18em] text-gold">★★★★★</span>
-                          <span className="text-[9px] font-bold uppercase tracking-[0.22em] text-white/65">
+                      <div className="absolute inset-0 flex flex-col justify-end p-5 md:p-7">
+                        <div className="mb-3 flex items-center gap-2 md:mb-4 md:gap-3">
+                          <span className="whitespace-nowrap text-[9px] font-bold tracking-[0.12em] text-gold md:text-[11px] md:tracking-[0.18em]">
+                            ★★★★★
+                          </span>
+                          <span className="whitespace-nowrap text-[7px] font-bold uppercase tracking-[0.14em] text-white/65 md:text-[9px] md:tracking-[0.22em]">
                             Avaliação Google
                           </span>
                         </div>
 
-                        <blockquote className="mb-6 font-editorial text-[1.35rem] leading-[1.08] text-white md:text-[1.55rem]">
+                        <blockquote className={`mb-4 font-editorial text-white md:mb-5 ${quoteSize(story.quote)}`}>
                           “{story.quote}”
                         </blockquote>
 
-                        <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-white/75">
+                        <p className="text-[9px] font-bold uppercase tracking-[0.11em] text-white/75 md:text-[11px] md:tracking-[0.13em]">
                           {story.author}
                         </p>
                       </div>
 
                       {isActive && !shouldReduceMotion && (
                         <motion.div
-                          className="pointer-events-none absolute inset-0 rounded-[2rem] ring-1 ring-white/30"
+                          className="pointer-events-none absolute inset-0 rounded-[1.6rem] ring-1 ring-white/25 md:rounded-[2rem]"
                           initial={{ opacity: 0 }}
-                          animate={{ opacity: [0.25, 0.7, 0.25] }}
+                          animate={{ opacity: [0.2, 0.58, 0.2] }}
                           transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
                         />
                       )}
@@ -225,24 +239,24 @@ export const RealStories = () => {
               })}
             </motion.div>
 
-            <div className="absolute bottom-0 left-1/2 z-30 flex -translate-x-1/2 items-center gap-4">
+            <div className="absolute bottom-0 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 md:gap-4">
               <button
                 type="button"
                 onClick={() => goTo(activeIndex - 1)}
-                className="grid h-11 w-11 place-items-center rounded-full border border-ocean-deep/25 bg-ocean-deep/10 text-ocean-deep backdrop-blur-sm transition hover:bg-ocean-deep hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ocean-deep/60"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-ocean-deep/25 bg-white/20 text-ocean-deep backdrop-blur-sm transition hover:bg-ocean-deep hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ocean-deep/60 md:h-11 md:w-11"
                 aria-label="Avaliação anterior"
               >
-                <ChevronLeft className="h-5 w-5" />
+                <ChevronLeft className="h-4 w-4 md:h-5 md:w-5" />
               </button>
 
-              <div className="flex items-center gap-2" aria-label={`Avaliação ${activeIndex + 1} de ${STORIES.length}`}>
+              <div className="flex items-center gap-1.5 md:gap-2" aria-label={`Avaliação ${activeIndex + 1} de ${STORIES.length}`}>
                 {STORIES.map((story, index) => (
                   <button
                     key={story.author}
                     type="button"
                     onClick={() => goTo(index)}
-                    className={`h-1.5 rounded-full transition-all duration-500 ${
-                      index === activeIndex ? 'w-8 bg-ocean-deep' : 'w-1.5 bg-ocean-deep/35 hover:bg-ocean-deep/60'
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      index === activeIndex ? 'w-6 bg-ocean-deep md:w-8' : 'w-1.5 bg-ocean-deep/35 hover:bg-ocean-deep/60'
                     }`}
                     aria-label={`Ir para avaliação ${index + 1}`}
                   />
@@ -252,10 +266,10 @@ export const RealStories = () => {
               <button
                 type="button"
                 onClick={() => goTo(activeIndex + 1)}
-                className="grid h-11 w-11 place-items-center rounded-full border border-ocean-deep/25 bg-ocean-deep/10 text-ocean-deep backdrop-blur-sm transition hover:bg-ocean-deep hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ocean-deep/60"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-ocean-deep/25 bg-white/20 text-ocean-deep backdrop-blur-sm transition hover:bg-ocean-deep hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ocean-deep/60 md:h-11 md:w-11"
                 aria-label="Próxima avaliação"
               >
-                <ChevronRight className="h-5 w-5" />
+                <ChevronRight className="h-4 w-4 md:h-5 md:w-5" />
               </button>
             </div>
           </motion.div>
